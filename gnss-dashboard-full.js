@@ -260,10 +260,40 @@ window.addEventListener('load', () => {
     // --- BLOC 8 : INITIALISATION ---
 
     // Dans votre fichier JavaScript principal, par exemple gnss-dashboard-full (15).js ou ukf-lib.js
-// Dans gnss-dashboard-full (15) (4).js (ou le fichier principal de démarrage)
+// Dans gnss-dashboard-full (15) (4).js (ou le fichier principal de démarrage
 
 window.addEventListener('load', () => {
-    // ... votre code existant : syncH(), initGPS(), setupEventListeners(), etc.
+    
+    // 1. Initialisation des systèmes critiques
+    syncH(); // Démarrer la synchro NTP
+    initGPS(); // Démarrer le GPS avec options stables
+    setupEventListeners(); // Attacher les contrôles
+
+    // =========================================================
+    // 🔴 CORRECTION 1 : FORCER LE FALLBACK (ÉCRASER LES -- STATIQUES)
+    // =========================================================
+    const setFallbackDefaults = () => {
+        // Vitesse (IDs de votre affichage)
+        if($('speed-display')) $('speed-display').textContent = '0.0 km/h'; // Grande jauge
+        if($('speed-stable-ms')) $('speed-stable-ms').textContent = '0.00 m/s';
+        if($('speed-stable-kms')) $('speed-stable-kms').textContent = '0.000 km/s';
+        if($('speed-3d-inst')) $('speed-3d-inst').textContent = '0.0 km/h';
+        if($('speed-raw-ms')) $('speed-raw-ms').textContent = '0.00 m/s';
+
+        // Énergie (IDs de votre affichage)
+        if($('relativistic-energy')) $('relativistic-energy').textContent = '0.00 J';
+        if($('energy-mass-rest')) $('energy-mass-rest').textContent = 'N/A'; // Laissez N/A s'il y a un calcul complexe non initialisé
+        if($('momentum')) $('momentum').textContent = '0.00 kg⋅m/s';
+    };
+    
+    setFallbackDefaults(); // ⬅️ Exécuter pour l'initialisation
+
+    // 2. Premier rafraîchissement (utilise les 0.00 fixés ci-dessus)
+    updateDashboardDOM();
+
+    // 3. Boucle principale de rafraîchissement
+    setInterval(updateDashboardDOM, 250);
+});
 
     // 🔴 CORRECTION CRITIQUE 1 : Demander l'accès aux capteurs de mouvement au démarrage.
     if (typeof initIMU === 'function') { // Assurez-vous que la fonction existe
@@ -379,12 +409,46 @@ if (currentLat !== 0 && now) { // Si on a une position (même par défaut) et l'
         setInterval(fetchWeather, 60000); // Météo toutes les minutes (Simulée ou Réelle)
 
         // 4. Gestion Boutons
-        if($('toggle-gps-btn')) {
-            $('toggle-gps-btn').addEventListener('click', () => {
-                isGpsPaused = !isGpsPaused;
-                $('toggle-gps-btn').textContent = isGpsPaused ? "▶️ REPRENDRE GPS" : "⏸️ PAUSE GPS";
-            });
+        // DANS le bloc d'initialisation (setupEventListeners)
+// ...
+const gpsToggleButton = $('gps-toggle-btn'); // ID de votre bouton Pause/Reprendre
+if (gpsToggleButton) {
+    gpsToggleButton.addEventListener('click', () => {
+        isGpsPaused = !isGpsPaused;
+        // ... votre logique existante pour GPS
+        
+        // 🔴 CORRECTION 3 : Déclencher l'initialisation de l'IMU au premier clic
+        if (typeof initIMU === 'function') {
+            initIMU(); 
         }
+        
+    }, { once: true }); // Optionnel : pour ne demander la permission qu'une seule fois
+}
+
+// ET DANS UNE NOUVELLE FONCTION initIMU (si elle est manquante ou incomplète)
+function initIMU() {
+    if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) {
+        // Logique spécifique aux mobiles iOS/Android pour la permission
+        DeviceMotionEvent.requestPermission().then(permissionState => {
+            if (permissionState === 'granted') {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+                if ($('imu-status')) $('imu-status').textContent = 'Actif';
+            } else {
+                if ($('imu-status')) $('imu-status').textContent = 'Refusé';
+            }
+        }).catch(err => {
+            console.error('Erreur IMU:', err);
+            if ($('imu-status')) $('imu-status').textContent = 'Erreur';
+        });
+    } else if (window.DeviceMotionEvent) {
+        // Navigateurs de bureau / Anciens systèmes : Démarrer directement
+        window.addEventListener('devicemotion', handleDeviceMotion);
+        if ($('imu-status')) $('imu-status').textContent = 'Actif';
+    } else {
+        if ($('imu-status')) $('imu-status').textContent = 'Non Supporté';
+    }
+}
+// Assurez-vous que handleDeviceMotion(event) existe pour traiter les données !
         if($('reset-all-btn')) {
             $('reset-all-btn').addEventListener('click', () => location.reload());
         }
