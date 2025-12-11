@@ -1,0 +1,20 @@
+{
+  "name": "gnss-weather-proxy",
+  "version": "1.0.0",
+  "description": "Proxy Vercel pour masquer la clé API OpenWeatherMap et gérer les requêtes CORS.",
+  "main": "api/weather.js",
+  "scripts": {
+    "start": "node api/weather.js"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  },
+  "keywords": [
+    "vercel",
+    "serverless",
+    "proxy",
+    "weather"
+  ],
+  "author": "",
+  "license": "ISC"
+}
