@@ -92,6 +92,34 @@
             });
         }
     }
+    // Fonction pour forcer l'affichage à 0.00 au lieu de -- ou N/A au démarrage
+function initDOMDefaults() {
+    // Liste des IDs qui affichent des tirets par défaut dans le HTML
+    const defaults = {
+        'speed-stable': '0.0 km/h',
+        'speed-stable-ms': '0.00 m/s',
+        'speed-stable-kms': '0.000 km/s',
+        'speed-3d-inst': '0.0 km/h',
+        'speed-raw-ms': '0.00 m/s',
+        'vitesse-max-session': '0.0 km/h',
+        'speed-avg-moving': '0.0 km/h',
+        'speed-avg-total': '0.0 km/h',
+        'perc-speed-sound': '0.00 %',
+        'mach-number': '0.0000',
+        'percent-speed-light': '0.00e+0 %'
+    };
+
+    for (const [id, val] of Object.entries(defaults)) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+}
+
+// Ajouter l'appel dans l'initialisation principale
+window.addEventListener('load', () => {
+    initDOMDefaults(); // <--- AJOUTER CETTE LIGNE AU DÉBUT DU LOAD
+    
+    // ... reste de votre code (syncH, initGPS, etc.)
 
     // --- BLOC 4 : GPS & UKF (NAVIGATION) ---
 
