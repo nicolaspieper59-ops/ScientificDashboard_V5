@@ -260,7 +260,44 @@ window.addEventListener('load', () => {
     // --- BLOC 8 : INITIALISATION ---
 
     // Dans votre fichier JavaScript principal, par exemple gnss-dashboard-full (15).js ou ukf-lib.js
+// Dans gnss-dashboard-full (15) (4).js (ou le fichier principal de démarrage)
+
 window.addEventListener('load', () => {
+    // ... votre code existant : syncH(), initGPS(), setupEventListeners(), etc.
+
+    // 🔴 CORRECTION CRITIQUE 1 : Demander l'accès aux capteurs de mouvement au démarrage.
+    if (typeof initIMU === 'function') { // Assurez-vous que la fonction existe
+        initIMU(); 
+    }
+    
+    // Si initIMU nécessite une permission (nécessaire sur les mobiles),
+    // l'appel doit être lié au bouton "REPRENDRE GPS" ou à un autre bouton.
+});
+
+// Ajoutez cette fonction (si elle n'existe pas) pour l'accès moderne aux capteurs
+function initIMU() {
+    if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) {
+        // iOS/Android : Nécessite une interaction utilisateur (ex: un clic)
+        const imuButton = document.getElementById('resume-gps-button-id'); // Utilisez l'ID de votre bouton GPS
+        if (imuButton) {
+            imuButton.addEventListener('click', () => {
+                DeviceMotionEvent.requestPermission().then(permissionState => {
+                    if (permissionState === 'granted') {
+                        // Accès accordé, démarrer les écouteurs de capteurs
+                        window.addEventListener('devicemotion', handleDeviceMotion);
+                        $('imu-status').textContent = 'Actif'; // Mettre à jour le DOM
+                    }
+                }).catch(console.error);
+            }, { once: true });
+        }
+    } else if (window.DeviceMotionEvent) {
+        // Autres navigateurs, démarrer directement
+        window.addEventListener('devicemotion', handleDeviceMotion);
+        if ($('imu-status')) $('imu-status').textContent = 'Actif'; // Mettre à jour le DOM
+    } else {
+        if ($('imu-status')) $('imu-status').textContent = 'Non Supporté';
+    }
+}
     
     // 1. Initialisation des systèmes critiques
     syncH(); 
@@ -302,6 +339,27 @@ window.addEventListener('load', () => {
 
     // 3. Boucle principale de rafraîchissement
     setInterval(updateDashboardDOM, 250);
+    // Dans updateDashboardDOM() :
+
+// ... après la mise à jour de l'horloge ...
+
+// Récupération des données pour le calcul Astro
+const currentLat = currentPosition.lat; // 43.296400 par défaut
+const currentLon = currentPosition.lon; // 5.369700 par défaut
+const now = getCDate(lServH, lLocH); // L'heure synchronisée
+
+if (currentLat !== 0 && now) { // Si on a une position (même par défaut) et l'heure
+    // 🔴 CORRECTION CRITIQUE 4 : Appeler la fonction Astro
+    const astroData = calculateAstroData(currentLat, currentLon, now); 
+    
+    // Mettre à jour les champs Soleil
+    if ($('sun-alt')) $('sun-alt').textContent = dataOrDefault(astroData.sun.altitude * R2D, 1, '°');
+    if ($('sun-azimuth')) $('sun-azimuth').textContent = dataOrDefault(astroData.sun.azimuth * R2D, 1, '°');
+    // ... tous les autres champs Astro (Lever, Coucher, Lune, etc.)
+} else {
+    // Si l'une des dépendances est manquante, réinitialiser à N/A ou une valeur par défaut
+    // (Cette partie est probablement déjà la cause de vos N/A actuels).
+                                                                       }
 });
 
         // 1. Initialiser UKF
