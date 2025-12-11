@@ -259,8 +259,50 @@ window.addEventListener('load', () => {
 
     // --- BLOC 8 : INITIALISATION ---
 
-    window.addEventListener('load', () => {
-        console.log("🚀 Démarrage Dashboard V8 (Pro)");
+    // Dans votre fichier JavaScript principal, par exemple gnss-dashboard-full (15).js ou ukf-lib.js
+window.addEventListener('load', () => {
+    
+    // 1. Initialisation des systèmes critiques
+    syncH(); 
+    initGPS(); 
+    setupEventListeners(); 
+
+    // =========================================================
+    // 🔴 AJOUT CRITIQUE POUR LE FALLBACK (CORRECTION)
+    // =========================================================
+    // Ceci écrase les -- et les N/A statiques de l'HTML
+    const setFallbackDefaults = () => {
+        // Vitesse (pour éliminer les tirets --)
+        if($('speed-display')) $('speed-display').textContent = '0.0 km/h'; // Grande jauge
+        if($('speed-stable-ms')) $('speed-stable-ms').textContent = '0.00 m/s';
+        if($('speed-stable-kms')) $('speed-stable-kms').textContent = '0.000 km/s';
+        if($('speed-3d-inst')) $('speed-3d-inst').textContent = '0.0 km/h';
+        if($('speed-raw-ms')) $('speed-raw-ms').textContent = '0.00 m/s';
+
+        // Énergie/Relativité (pour éliminer les N/A)
+        if($('relativistic-energy')) $('relativistic-energy').textContent = '0.00 J';
+        if($('momentum')) $('momentum').textContent = '0.00 kg⋅m/s';
+        
+        // IMU (les N/A persisteront tant que le capteur sera Inactif, mais on assure l'accélération)
+        if($('accel-x')) $('accel-x').textContent = '0.0 m/s²';
+        if($('accel-y')) $('accel-y').textContent = '0.0 m/s²';
+        if($('accel-z')) $('accel-z').textContent = '0.0 m/s²';
+        
+        // Mettre à jour le message d'attente
+        const statusMsg = document.querySelector('.speed-distance-section h3');
+        if (statusMsg && statusMsg.textContent.includes('Attente du signal')) {
+             statusMsg.textContent = 'GPS Inactif / Initialisation OK';
+        }
+    };
+    
+    setFallbackDefaults(); // ⬅️ Exécuter au chargement
+
+    // 2. Premier rafraîchissement des valeurs de Fallback
+    updateDashboardDOM(); // Ceci utilise les valeurs par défaut de l'état global (spd: 0.0)
+
+    // 3. Boucle principale de rafraîchissement
+    setInterval(updateDashboardDOM, 250);
+});
 
         // 1. Initialiser UKF
         if (typeof ProfessionalUKF !== 'undefined') {
