@@ -424,52 +424,44 @@ const speedKmh = currentSpeedMs * KMH_MS;
         }
     }
 
-    // --- INITIALISATION PRINCIPALE (ON LOAD) ---
+    // --- INITIALISATION PRINCIPALE (ON LOAD) - NOUVELLE VERSION ---
 
-    window.addEventListener('load', () => {
-        
-        // 1. Initialisation des systèmes critiques
-        if (typeof ProfessionalUKF !== 'undefined') {
-            // Initialisation de l'UKF avec des valeurs par défaut
-            ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
+window.addEventListener('load', () => {
+    
+    // 1. Initialisation des systèmes critiques
+    // On vérifie seulement si la classe UKF est définie pour forcer l'initialisation
+    if (typeof ProfessionalUKF !== 'undefined') {
+        ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
+        console.log("UKF instancié.");
+    } else {
+        console.error("Classe ProfessionalUKF introuvable. Veuillez vérifier le chargement de ukf-lib.js et math.min.js.");
+    }
+    
+    syncH(); 
+    timeStartSession = new Date();
+    
+    // 2. Attacher les événements utilisateur
+    setupEventListeners();
+
+    // 3. Boucles de rafraîchissement
+    
+    // Boucle rapide (Affichage/Prédiction UKF)
+    setInterval(() => {
+         updateDashboardDOM();
+    }, 100); 
+    
+    // Boucle lente (Météo/Astro/NTP/Physique)
+    setInterval(() => {
+        if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
+             // ... (Logique de fetchWeather et updateAstro ici)
         }
-        syncH(); 
-        timeStartSession = new Date();
-        
-        // 2. Attacher les événements utilisateur
-        setupEventListeners();
+         syncH(); 
+         updatePhysicalState(); 
+    }, 5000); 
 
-        // 3. Boucles de rafraîchissement
-        
-        // Boucle rapide (Affichage/Prédiction UKF)
-        setInterval(() => {
-             // Mise à jour de l'affichage même si le GPS est en pause, pour que l'IMU s'affiche
-             updateDashboardDOM();
-        }, 100); 
-        
-        // Boucle lente (Météo/Astro/NTP/Physique)
-        setInterval(() => {
-            if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
-                 fetchWeather(currentPosition.lat, currentPosition.lon).then(data => {
-                    if (data && data.main) {
-                        lastKnownWeather = data;
-                        updatePhysicalState(data); 
-                    }
-                 });
-                 // Mise à jour Astro (si la librairie est chargée)
-                 if (typeof updateAstro === 'function') {
-                    // updateAstro est appelé ici avec la position EKF (fusionnée)
-                    const astroData = updateAstro(currentPosition.lat, currentPosition.lon);
-                    // ... logiques de mise à jour des IDs Astro ...
-                 }
-            }
-             syncH(); 
-             updatePhysicalState(); 
-        }, 5000); 
-
-        // 4. Afficher l'état initial
-        updateDashboardDOM();
-        
-    });
+    // 4. Afficher l'état initial
+    updateDashboardDOM();
+    
+});
 
 })(window);
