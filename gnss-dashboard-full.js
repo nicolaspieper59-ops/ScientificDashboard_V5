@@ -61,6 +61,7 @@
     let lastKnownWeather = null;
     let maxSpeedMs = 0.0;
     let netherMode = false;
+    let linearAccel = [0.0, 0.0, 0.0];
     
     // =================================================================
     // BLOC 2/4 : UTILITAIRES DE BASE, FORMATAGE ET PHYSIQUE
@@ -172,6 +173,13 @@
         currentAccelMs2_X = acc.x || 0.0;
         currentAccelMs2_Y = acc.y || 0.0;
         currentAccelMs2_Z = acc.z || 0.0;
+
+        const g_accel = currentG_Acc; // Gravité locale (g)
+    
+    // Accélération linéaire (celle qui doit être intégrée)
+        linearAccel[0] = currentAccelMs2_X;
+        linearAccel[1] = currentAccelMs2_Y;
+        linearAccel[2] = currentAccelMs2_Z - g_accel;
         
         // La fusion UKF/EKF utilise les données IMU pour l'estimation d'état
         if (ukf && typeof ukf.processIMUData === 'function') {
@@ -474,7 +482,8 @@ setInterval(() => {
          
          // L'UKF prédit l'état en utilisant les dernières accélérations
          // Si le GPS est perdu, l'état évolue uniquement avec l'IMU
-         ukf.predict(dt_prediction, [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z]); 
+         // CORRECTION CRITIQUE (Étape 2/2) : Utiliser l'accélération LINÉAIRE (sans gravité)
+         ukf.predict(dt_prediction, linearAccel); 
          
          // La VITESSE affichée vient maintenant TOUJOURS de l'état filtré UKF
          currentSpeedMs = ukf.getState().speed;
@@ -482,7 +491,7 @@ setInterval(() => {
 
      // 3. Affichage
      updateDashboardDOM();
-}, 100); 
+}, 100);
     
     // Boucle lente (Météo/Astro/NTP/Physique)
     setInterval(() => {
