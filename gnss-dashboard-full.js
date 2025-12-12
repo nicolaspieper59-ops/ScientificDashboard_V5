@@ -295,11 +295,20 @@
         const speedKmh = currentSpeedMs * KMH_MS;
         
         // Mise à jour du grand champ de vitesse (si vous l'avez gardé)
-        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speedKmh, 1, ' km/h');
-        if ($('speed-status-text')) $('speed-status-text').textContent = gpsStatusMessage;
+        // Trouvez ces lignes (ou équivalentes) dans updateDashboardDOM() et ajustez les décimales
+const speedKmh = currentSpeedMs * KMH_MS;
 
-        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 1, ' km/h');
-        if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 2, ' m/s');
+// Grand affichage principal (si présent) :
+        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // Changé à 5 décimales
+
+// Vitesse Stable (km/h) :
+        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // Changé à 5 décimales
+
+// Vitesse Stable (m/s) :
+        if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 5, ' m/s'); // Changé à 5 décimales
+
+// Vitesse Brute (m/s) :
+        if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 5, ' m/s'); // Changé à 5 décimales
         if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 2, ' m/s');
         if ($('vmax-session')) $('vmax-session').textContent = dataOrDefault(maxSpeedMs * KMH_MS, 1, ' km/h');
         
