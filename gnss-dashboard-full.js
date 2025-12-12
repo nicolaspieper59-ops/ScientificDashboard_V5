@@ -175,11 +175,18 @@
         currentAccelMs2_Z = acc.z || 0.0;
 
         const g_accel = currentG_Acc; // Gravité locale (g)
-    
-    // Accélération linéaire (celle qui doit être intégrée)
-        linearAccel[0] = currentAccelMs2_X;
-        linearAccel[1] = currentAccelMs2_Y;
-        linearAccel[2] = currentAccelMs2_Z - g_accel;
+    // 2. Gyroscope (Taux angulaires)
+        const gyro = event.rotationRate;
+        const D2R = Math.PI / 180;
+        currentGyroRadS_X = (gyro.alpha || 0.0) * D2R; 
+        currentGyroRadS_Y = (gyro.beta || 0.0) * D2R;
+        currentGyroRadS_Z = (gyro.gamma || 0.0) * D2R;
+
+    // 3. Stockage des valeurs brutes dans 'linearAccel' (qui devient 'rawAccel')
+    // Le filtre UKF se chargera de la correction G
+       linearAccel[0] = currentAccelMs2_X; 
+       linearAccel[1] = currentAccelMs2_Y;
+       linearAccel[2] = currentAccelMs2_Z;
         
         // La fusion UKF/EKF utilise les données IMU pour l'estimation d'état
         if (ukf && typeof ukf.processIMUData === 'function') {
@@ -480,13 +487,19 @@ setInterval(() => {
      // 2. PRÉDICTION UKF (Fluidité / Mode Grotte)
      if (ukf && typeof ukf.predict === 'function' && ukf.isInitialized() && dt_prediction > 0) {
          
-         // L'UKF prédit l'état en utilisant les dernières accélérations
-         // Si le GPS est perdu, l'état évolue uniquement avec l'IMU
-         // CORRECTION CRITIQUE (Étape 2/2) : Utiliser l'accélération LINÉAIRE (sans gravité)
-         ukf.predict(dt_prediction, linearAccel); 
+         // Passer l'accélération BRUTE ET le Gyroscope à l'UKF
+         const rawAccels = [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z];
+         const rawGyros = [currentGyroRadS_X, currentGyroRadS_Y, currentGyroRadS_Z];
          
-         // La VITESSE affichée vient maintenant TOUJOURS de l'état filtré UKF
-         currentSpeedMs = ukf.getState().speed;
+         // Appel de la prédiction professionnelle
+         ukf.predict(dt_prediction, rawAccels, rawGyros); 
+         
+         const ukfState = ukf.getState();
+         currentSpeedMs = ukfState.speed;
+         
+         // Mise à jour de l'affichage Roll/Pitch
+         $('pitch').textContent = dataOrDefault(ukfState.pitch, 1, '°');
+         $('roll').textContent = dataOrDefault(ukfState.roll, 1, '°');
      }
 
      // 3. Affichage
