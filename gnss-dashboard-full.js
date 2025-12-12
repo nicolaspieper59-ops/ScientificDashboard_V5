@@ -1,6 +1,6 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V14)
-// CORRECTION FRÉQUENCE (20ms / 50Hz) + CORRECTION DÉPENDANCE UKF
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V15)
+// CORRECTION FRÉQUENCE (20ms / 50Hz)
 // =================================================================
 
 ((window) => {
@@ -36,9 +36,8 @@
     let lServH = new Date();    // Heure du serveur
     let lLocH = new Date();     // Heure locale
     
-    // CORRECTION: Déclarations uniques de temps
     let timeStartSession = null;
-    let timeMovementMs = 0; // Temps de mouvement en millisecondes
+    let timeMovementMs = 0; 
     
     // Position/Vitesse/Altitude (Valeurs de Fallback - Marseille)
     let currentPosition = { lat: 43.296400, lon: 5.369700, acc: 10.0, spd: 0.0 };
@@ -78,7 +77,6 @@
     
     /** Formate un nombre, gère N/A. */
     const dataOrDefault = (val, decimals, suffix = '') => {
-        // Condition ajoutée pour forcer 0.00 si c'est null ou N/A pour éviter le N/A dans les champs numériques critiques.
         if (val === undefined || val === null || isNaN(val)) {
              val = 0.0;
         }
@@ -90,8 +88,8 @@
     
     /** Formate en notation scientifique ou normale. */
     const dataOrDefaultExp = (val, decimals) => {
-        if (val === undefined || val === null || isNaN(val)) return '0.00e+0 %';
-        if (typeof val !== 'number') return '0.00e+0 %';
+        // CORRECTION: Assurer un affichage cohérent pour les valeurs nulles
+        if (val === undefined || val === null || isNaN(val) || typeof val !== 'number') return '0.00e+0 %';
         if (Math.abs(val) > 1e6 || Math.abs(val) < 1e-4) {
             return val.toExponential(decimals);
         }
@@ -122,7 +120,6 @@
     
     /** Calcule la gravité locale (g) WGS84. */
     if (typeof window.getGravity !== 'function') {
-        // Fallback si la fonction n'est pas dans ukf-lib.js (réimplémenté ici pour l'utiliser)
         window.getGravity = (latRad, alt) => {
             const G_E = 9.780327; // Gravité à l'équateur (m/s²)
             const sin2 = Math.sin(latRad)**2;
@@ -372,16 +369,21 @@
         } 
         
         if (ukf && typeof ukf.getStateCovariance === 'function') {
-            const P = ukf.getStateCovariance();
-            // L'incertitude est basée sur la racine carrée de la covariance (écart type)
-            // Indices 3 et 4 sont Vx et Vy
-            if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(Math.sqrt(P.get([3, 3]) + P.get([4, 4])), 3, ' m/s');
-            if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = dataOrDefault(Math.sqrt(P.get([2, 2])), 3, ' m');
+            if (typeof math !== 'undefined') {
+                const P = ukf.getStateCovariance();
+                // Incertitude Vitesse: sqrt(P_Vx + P_Vy)
+                if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(Math.sqrt(P.get([3, 3]) + P.get([4, 4])), 3, ' m/s');
+                // Incertitude Altitude: sqrt(P_Alt)
+                if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = dataOrDefault(Math.sqrt(P.get([2, 2])), 3, ' m');
+            } else {
+                if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = 'N/A';
+                if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = 'N/A';
+            }
             
             // Statut EKF/UKF
             if ($('ekf-status')) $('ekf-status').textContent = ukf.isInitialized() ? 'Actif' : 'Initialisation...';
             
-            // Angles Roll/Pitch (mis à jour dans la boucle rapide)
+            // Angles Roll/Pitch
             const ukfState = ukf.getState();
             if ($('pitch')) $('pitch').textContent = dataOrDefault(ukfState.pitch, 1, '°');
             if ($('roll')) $('roll').textContent = dataOrDefault(ukfState.roll, 1, '°');
@@ -431,7 +433,6 @@
 
     /** Attache tous les événements aux éléments DOM. */
     function setupEventListeners() {
-        // S'assurer que le bouton utilise le bon ID 'gps-pause-toggle'
         const gpsToggleButton = $('gps-pause-toggle'); 
         if (gpsToggleButton) {
             gpsToggleButton.addEventListener('click', toggleGpsPause);
@@ -464,8 +465,8 @@
     // --- INITIALISATION PRINCIPALE (ON LOAD) ---
 
 window.addEventListener('load', () => {
-    
-    // 1. Initialisation des systèmes critiques
+
+// 1. Initialisation des systèmes critiques
     if (typeof math !== 'undefined' && typeof ProfessionalUKF !== 'undefined') {
         ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
         console.log("UKF instancié et prêt pour la fusion.");
@@ -479,9 +480,9 @@ window.addEventListener('load', () => {
     // 2. Attacher les événements utilisateur
     setupEventListeners();
 
-    // 3. Boucles de rafraîchissement
-    
-    // Boucle rapide (Affichage/Prédiction UKF) - CORRIGÉ À 20ms (50 Hz)
+    // 3. Boucles de rafraîchissement    
+
+    // Boucle rapide (Affichage/Prédiction UKF) - 20ms (50 Hz)
     setInterval(() => {
          // 1. Calculer le delta-t entre les ticks (dt)
          const currentTime = new Date().getTime();
@@ -498,18 +499,17 @@ window.addEventListener('load', () => {
              
              const ukfState = ukf.getState();
              currentSpeedMs = ukfState.speed;
-             
-             // Les angles Roll/Pitch sont mis à jour dans updateDashboardDOM pour éviter la redondance
          }
 
          // 3. Affichage
          updateDashboardDOM(); 
          
-    }, 20); // Changé de 100ms à 20ms (50Hz)
+    }, 20); 
     
     // Boucle lente (Météo/Astro/NTP/Physique) - 1000ms (1Hz)
     setInterval(() => {
         updateTimeCounters(); 
+        
         
         if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
              // fetchWeather et updateAstro ici
