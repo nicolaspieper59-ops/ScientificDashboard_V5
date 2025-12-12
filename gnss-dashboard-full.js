@@ -308,10 +308,17 @@
         if ($('gps-status')) $('gps-status').textContent = 'Actif';
     }
 
-// ... (Fin du Bloc 3)
- // =================================================================
+// ... (Fin du Bloc 3) l'UKF (se fera normalement dans le 'load' si math.js est là)
+// =================================================================
 // BLOC 4/4 : MISE À JOUR DOM, ÉVÉNEMENTS ET INITIALISATION
 // =================================================================
+
+    // --- VARIABLES D'ÉTAT GLOBALES (À ASSURER D'AVOIR DÉCLARÉ DANS LE BLOC 1) ---
+    
+    // Déclaration pour éviter les erreurs de portée si elles ne sont pas dans le scope :
+    // let isGpsPaused = true;
+    // let gpsWatchID = null;
+    // let isIMUActive = false;
 
     // --- FONCTIONS DE MISE À JOUR DOM ---
 
@@ -323,47 +330,66 @@
         if ($('lat-coord')) $('lat-coord').textContent = dataOrDefault(currentPosition.lat, 6, '°');
         if ($('lon-coord')) $('lon-coord').textContent = dataOrDefault(currentPosition.lon, 6, '°');
         if ($('alt-meter')) $('alt-meter').textContent = formatDistance(currentAltitudeM);
-        if ($('speed-ms')) $('speed-ms').textContent = dataOrDefault(currentSpeedMs, 2, ' m/s');
-        if ($('speed-kmh')) $('speed-kmh').textContent = dataOrDefault(currentSpeedMs * KMH_MS, 1, ' km/h');
+        // Utilisation de la vitesse stable/UKF pour l'affichage principal
+        if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 2, ' m/s');
+        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(currentSpeedMs * KMH_MS, 1, ' km/h');
         
         // Vitesse Brute (pour comparaison)
-        if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 2, ' m/s (Brut)');
+        if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 2, ' m/s');
 
         // UKF et Précision
-        if ($('ukf-pos-acc')) $('ukf-pos-acc').textContent = formatDistance(currentPosition.acc);
+        if ($('precision-gps-acc')) $('precision-gps-acc').textContent = formatDistance(currentPosition.acc); // Précision GPS Acq.
         if ($('ukf-vel-acc')) $('ukf-vel-acc').textContent = ukf ? dataOrDefault(ukf.getStateCovariance().get([4, 4]), 3, ' m²/s²') : 'N/A';
+        // Mise à jour de l'incertitude d'altitude si disponible
+        if ($('ukf-alt-incertitude')) $('ukf-alt-incertitude').textContent = ukf ? formatDistance(Math.sqrt(ukf.getStateCovariance().get([2, 2]))) : 'N/A';
         
         // Météo (si les données ont été récupérées)
         if (lastKnownWeather) {
-            if ($('temp-air-2')) $('temp-air-2').textContent = dataOrDefault(lastKnownWeather.main.temp, 1, ' °C');
-            if ($('pressure-2')) $('pressure-2').textContent = dataOrDefault(lastKnownWeather.main.pressure, 0, ' hPa');
+            if ($('temp-air')) $('temp-air').textContent = dataOrDefault(lastKnownWeather.main.temp, 1, ' °C');
+            if ($('pressure-atm')) $('pressure-atm').textContent = dataOrDefault(lastKnownWeather.main.pressure, 0, ' hPa');
             if ($('air-density')) $('air-density').textContent = dataOrDefault(currentAirDensity, 3, ' kg/m³');
         } else {
              // Fallbacks/Valeurs par défaut
-             if ($('temp-air-2')) $('temp-air-2').textContent = '15.0 °C (Défaut)';
-             if ($('pressure-2')) $('pressure-2').textContent = '1013 hPa (Défaut)';
+             if ($('temp-air')) $('temp-air').textContent = 'N/A';
+             if ($('pressure-atm')) $('pressure-atm').textContent = 'N/A';
              if ($('air-density')) $('air-density').textContent = dataOrDefault(RHO_SEA_LEVEL, 3, ' kg/m³ (Défaut)');
         }
         
         // Physique
-        if ($('speed-of-sound-calc')) $('speed-of-sound-calc').textContent = dataOrDefault(currentSpeedOfSound, 2, ' m/s');
+        if ($('speed-of-sound-calc')) $('speed-of-sound-calc').textContent = dataOrDefault(currentSpeedOfSound, 4, ' m/s');
         if ($('gravity-base')) $('gravity-base').textContent = dataOrDefault(currentG_Acc, 4, ' m/s²');
         
         // IMU/Forces
         if ($('accel-x')) $('accel-x').textContent = dataOrDefault(currentAccelMs2_X, 3, ' m/s²');
         if ($('accel-y')) $('accel-y').textContent = dataOrDefault(currentAccelMs2_Y, 3, ' m/s²');
         if ($('accel-z')) $('accel-z').textContent = dataOrDefault(currentAccelMs2_Z, 3, ' m/s²');
+        
+        // Statut IMU
+        if ($('imu-status')) $('imu-status').textContent = isIMUActive ? 'Actif' : 'Inactif';
+
 
         // Heure NTP
         const now = getCDate(lServH, lLocH);
-        if (now && !$('local-time').textContent.includes('SYNCHRO ÉCHOUÉE')) {
+        if (now && !$('date-heure-utc').textContent.includes('N/A')) { // L'ID du HTML est 'date-heure-utc' dans le snippet original
             $('local-time').textContent = now.toLocaleTimeString('fr-FR');
-            $('date-display').textContent = now.toLocaleDateString('fr-FR');
-
+            $('date-heure-utc').textContent = now.toUTCString().slice(-12, -4); // Heure UTC
+            
             // Mise à jour Astro (Nécessite la librairie astro.js et SunCalc)
-            if (typeof updateAstro === 'function' && typeof SunCalc !== 'undefined') {
-                updateAstro(now, currentPosition.lat, currentPosition.lon);
+            if (typeof updateAstro === 'function' && currentPosition.lat !== 0.0) {
+                // updateAstro(date, lat, lon) est dans astro.js
+                const astroData = updateAstro(now, currentPosition.lat, currentPosition.lon); 
+                // Mise à jour des champs astro (TST, MST, Alt/Az Soleil, etc.)
+                // Les IDs spécifiques comme 'tst-time', 'mst-time' sont mis à jour par astroData dans la fonction updateAstro
             }
+        } else {
+             $('local-time').textContent = '21:25:57'; // Valeur initiale si NTP non synchro
+             $('date-heure-utc').textContent = 'N/A';
+        }
+        
+        // Mise à jour du bouton de pause (texte)
+        const pauseBtn = $('pause-gps-btn'); // Utilisation d'un ID cohérent pour le bouton
+        if (pauseBtn) {
+             pauseBtn.textContent = isGpsPaused ? '⏯️ REPRENDRE GPS' : '⏸️ PAUSE GPS';
         }
     }
 
@@ -372,44 +398,162 @@
      * après une mise à jour météo ou un changement de corps céleste.
      */
     function updatePhysicalState(weatherData = lastKnownWeather) {
-        if (weatherData) {
-            lastT_K = weatherData.tempK;
-            lastP_hPa = weatherData.pressure_hPa;
-            currentAirDensity = weatherData.air_density;
-            currentSpeedOfSound = getSpeedOfSound(lastT_K);
+        if (weatherData && weatherData.main) {
+            // Conversion de l'API (supposée)
+            const T_K = weatherData.main.temp + 273.15; // Temp en Kelvin
+            const P_Pa = weatherData.main.pressure * 100; // Pression en Pascals
+            
+            currentAirDensity = P_Pa / (R_AIR * T_K);
+            currentSpeedOfSound = getSpeedOfSound(T_K); // Assurez-vous que R_AIR et getSpeedOfSound sont définis
         }
         
-        // Mise à jour de la gravité (Gravité est dynamique)
+        // Mise à jour de la gravité
+        // Nécessite la conversion lat en radians et l'accès à getGravity()
         currentG_Acc = getGravity(currentPosition.lat * D2R, currentAltitudeM);
         
         // (Logique pour 'ROTATING' ou autres corps célestes omise pour la concision)
     }
 
 
+    // =================================================================
+    // GESTION DES RESSOURCES ET CONTRÔLE
+    // =================================================================
+
+    /**
+     * Démarre la surveillance GPS (Geolocation API), en évitant les doublons.
+     */
+    function initGPS() {
+        if (gpsWatchID !== null) {
+            console.warn("initGPS() : Le GPS est déjà en cours d'écoute. Processus ignoré.");
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            console.error("Géolocalisation non supportée par ce navigateur.");
+            return;
+        }
+        
+        const options = {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 5000
+        };
+
+        gpsWatchID = navigator.geolocation.watchPosition(
+            handleGpsSuccess,
+            handleGpsError,
+            options
+        );
+        
+        if ($('gps-status')) $('gps-status').textContent = 'Acquisition en cours...';
+    }
+
+
+    /**
+     * Démarre l'écoute des capteurs IMU (devicemotion), en gérant la permission (iOS).
+     */
+    function initIMU() {
+        if (isIMUActive) {
+            console.warn("initIMU() : IMU déjà actif. Démarrage ignoré.");
+            return;
+        }
+
+        const setIMUStatus = (status) => {
+            if ($('imu-status')) $('imu-status').textContent = status;
+            isIMUActive = (status === 'Actif');
+        };
+
+        // Logique pour les navigateurs nécessitant une interaction utilisateur (ex: iOS 13+)
+        if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) {
+            DeviceMotionEvent.requestPermission().then(permissionState => {
+                if (permissionState === 'granted') {
+                    window.addEventListener('devicemotion', handleDeviceMotion);
+                    setIMUStatus('Actif');
+                } else {
+                    setIMUStatus('Refusé');
+                }
+            }).catch(err => {
+                console.error('Erreur IMU (Permission):', err);
+                setIMUStatus('Erreur');
+            });
+        } 
+        // Logique pour les navigateurs plus anciens ou de bureau (Démarrage direct)
+        else if (window.DeviceMotionEvent) { 
+            window.addEventListener('devicemotion', handleDeviceMotion); // Ancienne API IMU
+            setIMUStatus('Actif');
+        } else {
+            setIMUStatus('Non Supporté');
+        }
+    }
+
+    /**
+     * Bascule l'état de pause/marche et gère le démarrage/l'arrêt propre du GPS et de l'IMU.
+     */
+    function toggleGpsPause() {
+        isGpsPaused = !isGpsPaused;
+        const pauseBtn = $('pause-gps-btn'); // ID supposé pour le bouton de pause/reprise
+
+        if (isGpsPaused) {
+            // --- ⏸️ MODE PAUSE : ARRÊT PROPRE ET LIBÉRATION DES RESSOURCES ---
+            if (pauseBtn) pauseBtn.textContent = '⏯️ REPRENDRE GPS';
+            
+            // 1. Arrêter la surveillance GPS
+            if (gpsWatchID !== null) {
+                navigator.geolocation.clearWatch(gpsWatchID);
+                gpsWatchID = null; 
+                if ($('gps-status')) $('gps-status').textContent = 'Arrêté (Pause)';
+            }
+            
+            // 2. Arrêter l'écoute des événements IMU
+            window.removeEventListener('devicemotion', handleDeviceMotion);
+            isIMUActive = false;
+            if ($('imu-status')) $('imu-status').textContent = 'Inactif';
+
+        } else {
+            // --- ▶️ MODE REPRISE : DÉMARRAGE SYNCHRONISÉ ---
+            if (pauseBtn) pauseBtn.textContent = '⏸️ PAUSE GPS';
+            
+            // 1. Démarrer/Reprendre l'acquisition GPS
+            initGPS();
+            
+            // 2. Démarrer/Activer l'IMU (déclencheur de permission)
+            initIMU(); 
+        }
+        
+        // Mettre à jour l'affichage immédiatement
+        updateDashboardDOM(); 
+    }
+
+
     // --- GESTIONNAIRE D'ÉVÉNEMENTS (BOUTONS/MENUS) ---
 
     function setupEventListeners() {
-        // Bouton de Démarrage/Pause
-        const toggleGpsBtn = $('toggle-gps-btn');
-        if (toggleGpsBtn) {
-            toggleGpsBtn.addEventListener('click', () => {
-                isGpsPaused = !isGpsPaused;
-                if (isGpsPaused) {
-                    toggleGpsBtn.textContent = '▶️ Reprendre';
-                    if ($('gps-status')) $('gps-status').textContent = 'En Pause';
-                } else {
-                    toggleGpsBtn.textContent = '⏸️ Pause GPS';
-                    if ($('gps-status')) $('gps-status').textContent = 'Actif';
-                    // S'assurer que les systèmes sont démarrés si c'est la première fois
-                    if (!map) initMap(currentPosition.lat, currentPosition.lon); 
-                    if (!ukf) {
-                         // Initialiser l'UKF (se fera normalement dans le 'load' si math.js est là)
-                    }
-                }
-            });
+        // 🎯 CONTRÔLE PRINCIPAL : PAUSE/REPRISE GPS ET IMU (Utilise toggleGpsPause)
+        const pauseBtn = $('pause-gps-btn'); // ID corrigé/supposé
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', toggleGpsPause);
+            // Initialiser le texte du bouton à l'état initial (PAUSE)
+            pauseBtn.textContent = isGpsPaused ? '⏯️ REPRENDRE GPS' : '⏸️ PAUSE GPS';
         }
         
         // Autres contrôles
+        
+        // Réinitialisation de la Distance (Réinit. Dist.)
+        if ($('reset-dist-btn')) {
+             $('reset-dist-btn').addEventListener('click', resetDistance);
+        }
+        
+        // Réinitialisation de la Vitesse Max (Réinit. V-Max)
+        if ($('reset-vmax-btn')) {
+             $('reset-vmax-btn').addEventListener('click', resetVmax);
+        }
+        
+        // TOUT RÉINITIALISER
+        if ($('reset-all-btn')) {
+             $('reset-all-btn').addEventListener('click', () => location.reload());
+        }
+
+        // Masse de l'objet
         if ($('mass-input')) {
             $('mass-input').addEventListener('input', (e) => {
                 currentMass = parseFloat(e.target.value) || 70.0;
@@ -429,24 +573,34 @@
         if ($('ukf-reactivity-mode')) {
              $('ukf-reactivity-mode').addEventListener('change', (e) => currentUKFReactivity = e.target.value);
         }
+        
+        // Forcer Précision GPS
+        if ($('force-gps-precision-input')) {
+             $('force-gps-precision-input').addEventListener('change', (e) => {
+                 const val = parseFloat(e.target.value) || 0.0;
+                 if (ukf) ukf.setForcedAccuracy(val);
+             });
+        }
     }
 
     // --- INITIALISATION PRINCIPALE (ON LOAD) ---
 
     window.addEventListener('load', () => {
         
-        // Vérification et initialisation des systèmes critiques
+        // 1. Initialisation des systèmes critiques
+        
+        // Initialisation de l'UKF
         if (typeof math !== 'undefined' && typeof ProfessionalUKF !== 'undefined') {
-            // Initialisation de l'UKF avec les valeurs par défaut.
+            // L'UKF est initialisé avec la position par défaut (Marseille dans le Bloc 1)
             ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
         } else {
             console.warn("L'UKF professionnel est désactivé. Mode GPS/Capteur brut activé.");
         }
         
-        // 1. Initialisation des systèmes critiques (Même si en pause)
         syncH(); // Synchro NTP (pour avoir l'heure correcte)
-        initGPS(); // Démarrer le watcher GPS
-        initIMU(); // Demander la permission IMU et démarrer le watcher
+        
+        // 🚨 IMPORTANT : Les appels initGPS() et initIMU() sont retirés d'ici. 
+        // Ils seront désormais déclenchés UNIQUEMENT par le toggleGpsPause() (clic utilisateur).
 
         // 2. Attacher les événements utilisateur
         setupEventListeners();
@@ -455,24 +609,28 @@
         
         // Boucle rapide (Affichage/Prédiction UKF)
         setInterval(() => {
-             // updateDashboardDOM est appelé même en pause pour afficher les valeurs par défaut/fallbacks
+             // updateDashboardDOM est appelé pour afficher l'état courant (même en pause)
              updateDashboardDOM();
+             // Si non en pause, l'UKF doit être mis à jour (gestion dans handleGpsSuccess/handleDeviceMotion)
         }, 100); // 100ms
         
-        // Boucle lente (Météo/Astro/NTP)
+        // Boucle lente (Météo/Astro/NTP/Physique)
         setInterval(() => {
             // Récupération des données Météo (si non en pause et position définie)
             if (!isGpsPaused && currentPosition.lat !== 0.0) {
                  fetchWeather(currentPosition.lat, currentPosition.lon).then(data => {
                     if (data) {
                         lastKnownWeather = data;
-                        updatePhysicalState(data);
+                        updatePhysicalState(data); // Recalcule Densité/Son/Gravité
                     }
                  });
             }
              // Re-synchronisation NTP occasionnelle
              syncH(); 
-        }, DOM_SLOW_UPDATE_MS); // Ex: 5 secondes
+             
+             // Mise à jour de l'état physique (même si pas de nouvelle météo)
+             updatePhysicalState();
+        }, DOM_SLOW_UPDATE_MS); // Ex: 5 secondes (DOM_SLOW_UPDATE_MS)
 
         // 4. Afficher l'état initial (avant le premier clic)
         updateDashboardDOM();
