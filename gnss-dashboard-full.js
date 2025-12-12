@@ -1,6 +1,6 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL STABLE V12 (CORRIGÉ)
-// CORRECTION CRITIQUE UKF + SYNCHRO TEMPS & VITESSE 5 DÉCIMALES
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V13)
+// FUSION UKF QUATERNION & SYNCHRO TEMPS/AFFICHAGE CORRIGÉES
 // =================================================================
 
 ((window) => {
@@ -28,19 +28,17 @@
     let isGpsPaused = true;     // Démarrage en mode PAUSE par défaut
     let gpsWatchID = null;      // ID de la surveillance GPS (null si inactif)
     let isIMUActive = false;    // État d'activité du capteur IMU
-    let gpsStatusMessage = 'Attente du signal GPS...'; // Message affiché dans la section Vitesse
+    let gpsStatusMessage = 'Attente du signal GPS...'; // Message affiché
     let dt_prediction = 0.0; 
     let lastPredictionTime = new Date().getTime();
 
     // --- VARIABLES DE DONNÉES TEMPS RÉEL ---
     let lServH = new Date();    // Heure du serveur
     let lLocH = new Date();     // Heure locale
-    let timeStartSession = new Date();
-    let timeStartMovement = new Date();
-    // ...
+    
+    // CORRECTION: Déclarations uniques de temps
     let timeStartSession = null;
     let timeMovementMs = 0; // Temps de mouvement en millisecondes
-// ...
     
     // Position/Vitesse/Altitude (Valeurs de Fallback - Marseille)
     let currentPosition = { lat: 43.296400, lon: 5.369700, acc: 10.0, spd: 0.0 };
@@ -53,6 +51,11 @@
     let currentAccelMs2_Y = 0.0;
     let currentAccelMs2_Z = 0.0;
     
+    // AJOUT: Taux Angulaires (Gyroscope)
+    let currentGyroRadS_X = 0.0;
+    let currentGyroRadS_Y = 0.0;
+    let currentGyroRadS_Z = 0.0;
+
     // Distances
     let totalDistanceM = 0.0;
     let lastPosition = null;
@@ -65,7 +68,7 @@
     let lastKnownWeather = null;
     let maxSpeedMs = 0.0;
     let netherMode = false;
-    let linearAccel = [0.0, 0.0, 0.0];
+    let linearAccel = [0.0, 0.0, 0.0]; // Utilisé comme rawAccel pour predict
     
     // =================================================================
     // BLOC 2/4 : UTILITAIRES DE BASE, FORMATAGE ET PHYSIQUE
@@ -77,13 +80,11 @@
     const dataOrDefault = (val, decimals, suffix = '') => {
         // Condition ajoutée pour forcer 0.00 si c'est null ou N/A pour éviter le N/A dans les champs numériques critiques.
         if (val === undefined || val === null || isNaN(val)) {
-             // Utilisation d'une petite valeur pour 'val' lors du formatage si c'est N/A
              val = 0.0;
         }
         if (typeof val === 'number') {
             return val.toFixed(decimals) + suffix;
         }
-        // Si la valeur est une chaîne (ex: 'N/A' explicite dans l'état initial), la retourner
         return val;
     };
     
@@ -99,7 +100,7 @@
     /** Formate une distance en m ou km. */
     const formatDistance = (m) => {
         if (m === undefined || m === null || isNaN(m)) return '0.000 m'; // 3 décimales
-        if (m < 1000) return dataOrDefault(m, 3, ' m'); // Changé 2 à 3 décimales pour les mètres
+        if (m < 1000) return dataOrDefault(m, 3, ' m'); 
         return dataOrDefault(m / 1000, 3, ' km');
     };
     
@@ -145,7 +146,7 @@
     };
     
     /** Réinitialise les compteurs de distance. */
-    const resetDistance = () => { totalDistanceM = 0.0; lastPosition = null; timeStartMovement = new Date(); };
+    const resetDistance = () => { totalDistanceM = 0.0; lastPosition = null; };
     
     /** Réinitialise la vitesse max. */
     const resetVmax = () => { maxSpeedMs = 0.0; };
@@ -173,36 +174,23 @@
     
     /** Traite les données brutes du capteur de mouvement. */
     const handleDeviceMotion = (event) => {
+        // 1. Accélération BRUTE (Inclut G)
         const acc = event.accelerationIncludingGravity;
         currentAccelMs2_X = acc.x || 0.0;
         currentAccelMs2_Y = acc.y || 0.0;
         currentAccelMs2_Z = acc.z || 0.0;
 
-        const g_accel = currentG_Acc; // Gravité locale (g)
-    // 2. Gyroscope (Taux angulaires)
+        // 2. Gyroscope (Taux angulaires)
         const gyro = event.rotationRate;
-        const D2R = Math.PI / 180;
         currentGyroRadS_X = (gyro.alpha || 0.0) * D2R; 
         currentGyroRadS_Y = (gyro.beta || 0.0) * D2R;
         currentGyroRadS_Z = (gyro.gamma || 0.0) * D2R;
 
-    // 3. Stockage des valeurs brutes dans 'linearAccel' (qui devient 'rawAccel')
-    // Le filtre UKF se chargera de la correction G
-       linearAccel[0] = currentAccelMs2_X; 
-       linearAccel[1] = currentAccelMs2_Y;
-       linearAccel[2] = currentAccelMs2_Z;
-        
-        // La fusion UKF/EKF utilise les données IMU pour l'estimation d'état
-        if (ukf && typeof ukf.processIMUData === 'function') {
-            // Note: rotationRate (gyroscope) n'est pas utilisé ici, mais est disponible dans event.rotationRate
-            ukf.processIMUData(currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z, event.rotationRate);
-            
-            // Si le GPS n'est pas actif (mode grotte), nous mettons à jour la vitesse filtrée par l'UKF
-            // L'UKF intègre les accélérations pour estimer un changement de vitesse.
-            if (gpsWatchID === null || !ukf.isInitialized()) {
-                currentSpeedMs = ukf.getState(4); // L'index 4 est généralement la vitesse dans l'état UKF
-            }
-        }
+        // 3. Stockage des valeurs brutes pour la prédiction UKF (dans la boucle rapide)
+        // L'UKF professionnel se charge de la soustraction de G
+        linearAccel[0] = currentAccelMs2_X; 
+        linearAccel[1] = currentAccelMs2_Y;
+        linearAccel[2] = currentAccelMs2_Z;
     };
 
     /** Démarre l'écoute des capteurs IMU et gère la permission. */
@@ -242,38 +230,29 @@
         rawSpeedMs = speed || 0.0;
         currentAltitudeM = altitude || 0.0;
 
-        // Calcul de la distance parcourue (turf.js doit être chargé)
+        // Calcul de la distance parcourue
         if (lastPosition && typeof turf !== 'undefined' && typeof turf.distance === 'function') {
             const distanceKM = turf.distance(turf.point([lastPosition.lon, lastPosition.lat]), turf.point([longitude, latitude]), { units: 'kilometers' });
             totalDistanceM += distanceKM * 1000;
         }
         lastPosition = { lat: latitude, lon: longitude };
 
-        // Mise à jour de l'UKF/EKF - Le GPS domine l'IMU ici
-        // Dans gnss-dashboard-full.js (Bloc 3/4)
-
-// Dans la fonction handleGpsSuccess :
-// ...
-// Mise à jour de l'UKF/EKF - Le GPS corrige l'UKF (mais ne doit pas écraser la vitesse filtrée)
+        // Mise à jour de l'UKF/EKF - Le GPS corrige l'UKF (Correction)
         if (ukf && typeof ukf.update === 'function') {
             ukf.update(pos); 
-     // ON NE TOUCHE PLUS À currentSpeedMs ICI. Elle est mise à jour par la boucle rapide (100ms).
         } else {
-     // Mode Fallback (UKF désactivé)
-             currentSpeedMs = rawSpeedMs;
-}
-// ...
+            // Mode Fallback (UKF désactivé) : Nous utilisons la vitesse brute
+            currentSpeedMs = rawSpeedMs;
+        }
 
         maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
         
-        // Mise à jour du message de statut global 
         gpsStatusMessage = `Fix: ${dataOrDefault(accuracy, 1)}m`; 
     };
 
     /** Gère les erreurs GPS. */
     const handleGpsError = (error) => {
         console.error('Erreur GPS:', error.message);
-        // Mise à jour du message de statut global 
         if (error.code === 1) {
             gpsStatusMessage = `Erreur: 1 (Permission refusée)`;
         } else {
@@ -281,7 +260,7 @@
         }
     };
     
-    /** Démarre la surveillance GPS (Geolocation API), en évitant les doublons et en stockant l'ID. */
+    /** Démarre la surveillance GPS (Geolocation API). */
     const initGPS = () => {
         if (gpsWatchID !== null) return;
 
@@ -290,7 +269,6 @@
             
             gpsWatchID = navigator.geolocation.watchPosition(handleGpsSuccess, handleGpsError, options);
             
-            // Mise à jour du message de statut global juste après le lancement
             gpsStatusMessage = 'Acquisition en cours...';
 
         } else {
@@ -298,39 +276,32 @@
         }
     };
 
-    // Dans gnss-dashboard-full.js (Bloc 3/4)
 
-// ...
+    /** Calcule et affiche le temps écoulé (Session et Mouvement). (CORRECTION TEMPS) */
+    const updateTimeCounters = () => {
+        if (timeStartSession) {
+            const currentTime = new Date();
+            const elapsedTimeMs = currentTime - timeStartSession;
 
-/** Calcule et affiche le temps écoulé (Session et Mouvement). */
-const updateTimeCounters = () => {
-    if (timeStartSession) {
-        const currentTime = new Date();
-        const elapsedTimeMs = currentTime - timeStartSession;
+            // Mise à jour du temps de mouvement (si la vitesse est supérieure à un seuil)
+            if (currentSpeedMs > 0.05) { 
+                timeMovementMs += 1000; // Ajout d'une seconde (car cette fonction est dans le 1000ms interval)
+            }
 
-        // Mise à jour du temps de mouvement (si la vitesse est supérieure à un seuil)
-        if (currentSpeedMs > 0.05) { // 0.05 m/s est un seuil de mouvement raisonnable
-            timeMovementMs += 1000; // Ajout d'une seconde (car cette fonction est dans le 1000ms interval)
+            // Affichage du temps de session (time-elapsed)
+            if ($('time-elapsed')) $('time-elapsed').textContent = dataOrDefault(elapsedTimeMs / 1000, 2, ' s');
+            
+            // Affichage du temps de mouvement
+            if ($('time-movement')) $('time-movement').textContent = dataOrDefault(timeMovementMs / 1000, 2, ' s');
         }
-
-        // Affichage du temps de session
-        $('time-elapsed').textContent = dataOrDefault(elapsedTimeMs / 1000, 2, ' s');
-        
-        // Affichage du temps de mouvement
-        $('time-movement').textContent = dataOrDefault(timeMovementMs / 1000, 2, ' s');
-    }
-};
-
-// ...
+    };
 
 
     // =================================================================
     // BLOC 4/4 : CONTRÔLE, MISE À JOUR DOM ET INITIALISATION
     // =================================================================
 
-    /**
-     * Met à jour les valeurs de l'interface du tableau de bord.
-     */
+    /** Met à jour les valeurs de l'interface du tableau de bord. */
     function updateDashboardDOM() {
         // --- 1. Contrôles et Système (Correction Heure Locale/UTC) ---
         const now = getCDate(lServH, lLocH); 
@@ -343,7 +314,7 @@ const updateTimeCounters = () => {
                 $('utc-datetime').textContent = `${now.toISOString().slice(0, 10)} ${utcTime} (UTC)`;
             }
             
-            if ($('elapsed-time')) $('elapsed-time').textContent = dataOrDefault((now.getTime() - timeStartSession.getTime()) / 1000, 2, ' s');
+            // CORRECTION: Le temps écoulé est mis à jour par updateTimeCounters() (dans la boucle 1000ms)
         }
 
         // --- 2. IMU (Accéléromètre/Gyroscope) ---
@@ -352,13 +323,9 @@ const updateTimeCounters = () => {
         if ($('accel-y')) $('accel-y').textContent = dataOrDefault(currentAccelMs2_Y, 3, ' m/s²');
         if ($('accel-z')) $('accel-z').textContent = dataOrDefault(currentAccelMs2_Z, 3, ' m/s²');
 
-        // --- 3. Vitesse, Distance & Relativité (Correction 5 Décimales) ---
+        // --- 3. Vitesse, Distance & Relativité (5 Décimales) ---
         const speedKmh = currentSpeedMs * KMH_MS; 
         
-        // Mise à jour du grand champ de vitesse (supposant ID: speed-main-display)
-        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // 5 décimales
-        if ($('speed-status-text')) $('speed-status-text').textContent = gpsStatusMessage;
-
         // Vitesse Stable (km/h) : Application de 5 décimales
         if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 5, ' km/h'); 
         
@@ -383,14 +350,13 @@ const updateTimeCounters = () => {
         // --- 4. Météo & BioSVT ---
         if ($('air-density')) $('air-density').textContent = dataOrDefault(currentAirDensity, 4, ' kg/m³');
         if (lastKnownWeather && lastKnownWeather.main) {
-            // ... Mises à jour Météo ...
             if ($('weather-status')) $('weather-status').textContent = 'Actif';
+            // ... (Mises à jour Météo) ...
         } else {
              if ($('weather-status')) $('weather-status').textContent = 'INACTIF';
         }
 
         // --- 5. Dynamique & Forces ---
-        // Gravité Locale (g) - Devrait être N/A si position par défaut
         if ($('gravity-local')) $('gravity-local').textContent = dataOrDefault(currentG_Acc, 4, ' m/s²');
         if ($('drag-force')) $('drag-force').textContent = dataOrDefault(0.5 * currentAirDensity * currentSpeedMs**2 * 0.5 * 1.0, 2, ' N'); 
         if ($('kinetic-energy')) $('kinetic-energy').textContent = dataOrDefault(0.5 * currentMass * currentSpeedMs**2, 2, ' J');
@@ -408,10 +374,11 @@ const updateTimeCounters = () => {
         
         if (ukf && typeof ukf.getStateCovariance === 'function') {
             const P = ukf.getStateCovariance();
+            // L'incertitude est basée sur la racine carrée de la covariance (écart type)
             if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(Math.sqrt(P.get([4, 4])), 3, ' m/s');
             if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = dataOrDefault(Math.sqrt(P.get([2, 2])), 3, ' m');
             
-            // L'UKF est Initialisé si le constructeur a été appelé (même sans GPS)
+            // Statut EKF/UKF
             if ($('ekf-status')) $('ekf-status').textContent = ukf.isInitialized() ? 'Actif' : 'Initialisation...';
         } else {
             if ($('ekf-status')) $('ekf-status').textContent = 'INACTIF (UKF Manquant)';
@@ -432,7 +399,6 @@ const updateTimeCounters = () => {
                 navigator.geolocation.clearWatch(gpsWatchID);
                 gpsWatchID = null; 
             }
-            // L'IMU reste actif si on le souhaite, mais pour la pause on le coupe pour économiser la batterie
             window.removeEventListener('devicemotion', handleDeviceMotion);
             isIMUActive = false;
             
@@ -443,6 +409,11 @@ const updateTimeCounters = () => {
             if (pauseBtn) pauseBtn.textContent = '⏸️ PAUSE GPS';
             initGPS();
             initIMU(); 
+            
+            // Initialiser le temps de session au moment de la reprise
+            if (timeStartSession === null) {
+                timeStartSession = new Date();
+            }
         }
         
         updateDashboardDOM(); 
@@ -458,7 +429,6 @@ const updateTimeCounters = () => {
             gpsToggleButton.textContent = isGpsPaused ? "▶️ MARCHE GPS" : "⏸️ PAUSE GPS";
         }
         
-        // ... (Autres écouteurs pour réinitialisation et masse) ...
         if ($('reset-dist-btn')) $('reset-dist-btn').addEventListener('click', resetDistance);
         if ($('reset-vmax-btn')) $('reset-vmax-btn').addEventListener('click', resetVmax);
         if ($('reset-all-btn')) $('reset-all-btn').addEventListener('click', () => {
@@ -482,66 +452,56 @@ const updateTimeCounters = () => {
         }
     }
 
-    // --- INITIALISATION PRINCIPALE (ON LOAD) ---
+    // ---
 
-window.addEventListener('load', () => {
+ window.addEventListener('load', () => {
     
     // 1. Initialisation des systèmes critiques
-    // CORRECTION CRITIQUE: Vérifier la dépendance math avant d'instancier l'UKF.
     if (typeof math !== 'undefined' && typeof ProfessionalUKF !== 'undefined') {
         ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
         console.log("UKF instancié et prêt pour la fusion.");
     } else {
-        console.error("CRITIQUE: UKF ou dépendances (math.js) introuvables. Fusion désactivée. Vérifiez les chemins dans l'HTML.");
+        console.error("CRITIQUE: UKF ou dépendances (math.js) introuvables. Fusion désactivée.");
     }
     
     syncH(); 
-    timeStartSession = new Date();
+    timeStartSession = new Date(); // Initialisation au chargement (sera géré par toggleGpsPause après)
     
     // 2. Attacher les événements utilisateur
     setupEventListeners();
 
-    // 3. Boucles de rafraîchissement
-    
-    // Boucle rapide (Affichage/Prédiction UKF)
-    // Dans gnss-dashboard-full.js (Bloc 4/4)
 
-// Boucle rapide (Affichage/Prédiction UKF)
-setInterval(() => {
-     // 1. Calculer le delta-t entre les ticks (dt)
-     const currentTime = new Date().getTime();
-     dt_prediction = (currentTime - lastPredictionTime) / 1000.0;
-     lastPredictionTime = currentTime;
-
-     // ...
-     // 2. PRÉDICTION UKF (Fusion complète IMU)
-     // L'UKF doit être instancié, mais plus nécessairement initialisé par GPS.
-     if (ukf && typeof ukf.predict === 'function' && dt_prediction > 0) {
-         
-         const rawAccels = [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z];
-         const rawGyros = [currentGyroRadS_X, currentGyroRadS_Y, currentGyroRadS_Z];
-         
-         ukf.predict(dt_prediction, rawAccels, rawGyros); 
-         
-         const ukfState = ukf.getState();
-         currentSpeedMs = ukfState.speed;
-
-         // ... (Mise à jour Roll/Pitch) ...
-     
-// ...
-         
-         // Mise à jour de l'affichage Roll/Pitch
-         $('pitch').textContent = dataOrDefault(ukfState.pitch, 1, '°');
-         $('roll').textContent = dataOrDefault(ukfState.roll, 1, '°');
-     }
-
-     // 3. Affichage
-     
-}, 100);
-    
-    // Boucle lente (Météo/Astro/NTP/Physique)
     setInterval(() => {
-        updateTimeCounters();
+         // 1. Calculer le delta-t entre les ticks (dt)
+         const currentTime = new Date().getTime();
+         dt_prediction = (currentTime - lastPredictionTime) / 1000.0;
+         lastPredictionTime = currentTime;
+
+         // 2. PRÉDICTION UKF (Fusion complète IMU)
+         // L'UKF tourne tant qu'il est instancié (Mode Grotte)
+         if (ukf && typeof ukf.predict === 'function' && dt_prediction > 0) {
+             
+             const rawAccels = [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z];
+             const rawGyros = [currentGyroRadS_X, currentGyroRadS_Y, currentGyroRadS_Z];
+             
+             ukf.predict(dt_prediction, rawAccels, rawGyros); 
+             
+             const ukfState = ukf.getState();
+             currentSpeedMs = ukfState.speed;    
+
+             // Mise à jour de l'affichage Roll/Pitch
+             if ($('pitch')) $('pitch').textContent = dataOrDefault(ukfState.pitch, 1, '°');
+             if ($('roll')) $('roll').textContent = dataOrDefault(ukfState.roll, 1, '°');
+         }
+
+         // 3. Affichage (CORRECTION CRITIQUE)
+         updateDashboardDOM(); 
+         
+    }, 100);
+    
+    // Boucle lente (Météo/Astro/NTP/Physique) - 1000ms
+    setInterval(() => {
+        updateTimeCounters(); // <-- CORRECTION TEMPS
         
         if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
              // fetchWeather et updateAstro ici
@@ -555,4 +515,4 @@ setInterval(() => {
 
 });
 
-})(window);                        
+})(window);
