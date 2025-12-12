@@ -135,14 +135,14 @@
         <div class="column-1">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
-                <div class="data-point"><span>Heure Locale (NTP)</span><span id="local-time-ntp">N/A</span></div>
+                <div class="data-point"><span>Heure Locale (NTP)</span><span id="local-time">N/A</span></div>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">N/A</span></div>
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">0.00 s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">0.00 s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">00:00</span></div>
                 <hr>
                 <div class="controls-grid" role="group">
-                    <button id="toggle-gps-btn" class="control-btn accent">▶️ MARCHE GPS</button>
+                    <button id="gps-pause-toggle" class="control-btn accent">▶️ MARCHE GPS</button>
                     <select id="freq-select" aria-label="Fréquence GPS">
                         <option value="HIGH_FREQ">Haute Fréquence</option>
                         <option value="LOW_FREQ">Basse Fréquence</option>
@@ -231,17 +231,15 @@
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">0.0 km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">0.00 m/s</span></div>
                 <div class="data-point"><span>Vitesse Brute (m/s)</span><span id="raw-speed-ms">0.00 m/s</span></div>
-                <div class="data-point"><span>Vitesse Max (Session)</span><span id="vmax-session">0.0 km/h</span></div>div>
-                <hr>
-                <div class="data-point"><span>Vitesse Max (Session)</span><span id="vitesse-max-session">0.0 km/h</span></div>
+                <div class="data-point"><span>Vitesse Max (Session)</span><span id="vmax-session">0.0 km/h</span></div>
                 <div class="data-point"><span>Vitesse Moyenne (Mvt)</span><span id="speed-avg-moving">0.0 km/h</span></div>
                 <div class="data-point"><span>Vitesse Moyenne (Totale)</span><span id="speed-avg-total">0.0 km/h</span></div>
                 <hr>
                 <h3>Physique & Relativité</h3>
-                <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="vitesse-son-locale">N/A</span></div>
+                <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="speed-of-sound-calc">N/A</span></div>
                 <div class="data-point"><span>% Vitesse du Son</span><span id="perc-speed-sound">0.00 %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">0.0000</span></div>
-                <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="percent-speed-light">0.00e+0 %</span></div>
+                <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="%speed-of-light">0.00e+0 %</span></div>
                 <div class="data-point"><span>Facteur de Lorentz (γ)</span><span id="lorentz-factor">1.0000</span></div>
                 <div class="data-point"><span>Temps Dilation (Vitesse)</span><span id="time-dilation-vitesse">0.00 ns/j</span></div>
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">0.00 ns/j</span></div>
@@ -254,7 +252,7 @@
                 
                 <hr>
                 <h3>Distance (3D)</h3>
-                <div class="data-point"><span>Distance Totale (3D)</span><span id="distance-totale">0.000 km | 0.00 m</span></div>
+                <div class="data-point"><span>Distance Totale (3D)</span><span id="distance-total-3d">0.000 km | 0.00 m</span></div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">1.000</span></div>
                 <span id="nether-mode-status" style="display:none;">1.000</span>
                 
@@ -342,9 +340,9 @@
                         <option value="STABLE">Microscopique (x2.5)</option>
                     </select>
                 </div>
-                <div class="data-point"><span>Statut GPS (Acquisition)</span><span id="statut-gps-acquisition">N/A</span></div>
-                <div class="data-point"><span>Statut EKF (Fusion)</span><span id="statut-ekf-fusion">N/A</span></div>
-                <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="ukf-v-uncert">N/A</span></div>
+                <div class="data-point"><span>Statut GPS (Acquisition)</span><span id="gps-status-acquisition">N/A</span></div>
+                <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ekf-status">N/A</span></div>
+                <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="uncertainty-vel-p">N/A</span></div>
                 <div class="data-point"><span>Incertitude Alt. (σ)</span><span id="ukf-alt-sigma">N/A</span></div>
                 <div class="data-point"><span>Bruit Mesure Vitesse (R)</span><span id="ukf-r-noise">N/A</span></div>
                 <div class="data-point"><span>Bande Passante (Nyquist)</span><span id="bande-passante">N/A</span></div>
