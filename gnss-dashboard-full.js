@@ -1,6 +1,6 @@
 // =================================================================
 // GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V15)
-// CORRECTION FRÉQUENCE (20ms / 50Hz)
+// CORRECTION FRÉQUENCE (20ms / 50Hz) ET NETTOYAGE
 // =================================================================
 
 ((window) => {
@@ -24,26 +24,26 @@
     const TEMP_STD_K = 288.15;      // 15°C standard
 
     // --- VARIABLES D'ÉTAT CRITIQUES (Gestion des ressources) ---
-    let ukf = null;             // Instanciation de ProfessionalUKF
-    let isGpsPaused = true;     // Démarrage en mode PAUSE par défaut
-    let gpsWatchID = null;      // ID de la surveillance GPS (null si inactif)
-    let isIMUActive = false;    // État d'activité du capteur IMU
-    let gpsStatusMessage = 'Attente du signal GPS...'; // Message affiché
+    let ukf = null;             
+    let isGpsPaused = true;     
+    let gpsWatchID = null;      
+    let isIMUActive = false;    
+    let gpsStatusMessage = 'Attente du signal GPS...'; 
     let dt_prediction = 0.0; 
     let lastPredictionTime = new Date().getTime();
 
     // --- VARIABLES DE DONNÉES TEMPS RÉEL ---
-    let lServH = new Date();    // Heure du serveur
-    let lLocH = new Date();     // Heure locale
+    let lServH = new Date();    
+    let lLocH = new Date();     
     
-    let timeStartSession = null;
+    let timeStartSession = null; // Corrected to start as null
     let timeMovementMs = 0; 
     
     // Position/Vitesse/Altitude (Valeurs de Fallback - Marseille)
     let currentPosition = { lat: 43.296400, lon: 5.369700, acc: 10.0, spd: 0.0 };
     let currentAltitudeM = 0.0;
-    let currentSpeedMs = 0.0;   // Vitesse filtrée (UKF)
-    let rawSpeedMs = 0.0;       // Vitesse brute (GPS)
+    let currentSpeedMs = 0.0;   
+    let rawSpeedMs = 0.0;       
 
     // Accélération/Forces (IMU)
     let currentAccelMs2_X = 0.0;
@@ -60,14 +60,14 @@
     let lastPosition = null;
 
     // Physique/Environnement
-    let currentMass = 70.0;             // Masse par défaut (kg)
+    let currentMass = 70.0;             
     let currentAirDensity = RHO_SEA_LEVEL;
-    let currentSpeedOfSound = 340.29;   // Vitesse du son par défaut
-    let currentG_Acc = 9.8067;          // Gravité locale par défaut
+    let currentSpeedOfSound = 340.29;   
+    let currentG_Acc = 9.8067;          
     let lastKnownWeather = null;
     let maxSpeedMs = 0.0;
     let netherMode = false;
-    let linearAccel = [0.0, 0.0, 0.0]; // Utilisé comme rawAccel pour predict
+    let linearAccel = [0.0, 0.0, 0.0]; 
     
     // =================================================================
     // BLOC 2/4 : UTILITAIRES DE BASE, FORMATAGE ET PHYSIQUE
@@ -88,17 +88,16 @@
     
     /** Formate en notation scientifique ou normale. */
     const dataOrDefaultExp = (val, decimals) => {
-        // CORRECTION: Assurer un affichage cohérent pour les valeurs nulles
-        if (val === undefined || val === null || isNaN(val) || typeof val !== 'number') return '0.00e+0 %';
-        if (Math.abs(val) > 1e6 || Math.abs(val) < 1e-4) {
-            return val.toExponential(decimals);
+        const value = (val === undefined || val === null || isNaN(val) || typeof val !== 'number') ? 0.0 : val;
+        if (Math.abs(value) > 1e6 || Math.abs(value) < 1e-4) {
+            return value.toExponential(decimals);
         }
-        return val.toFixed(decimals);
+        return value.toFixed(decimals);
     };
 
     /** Formate une distance en m ou km. */
     const formatDistance = (m) => {
-        if (m === undefined || m === null || isNaN(m)) return '0.000 m'; // 3 décimales
+        if (m === undefined || m === null || isNaN(m)) return '0.000 m'; 
         if (m < 1000) return dataOrDefault(m, 3, ' m'); 
         return dataOrDefault(m / 1000, 3, ' km');
     };
@@ -107,7 +106,8 @@
     const getCDate = (serverDate, localDate) => {
         if (!serverDate || !localDate) return null;
         const offset = localDate.getTime() - serverDate.getTime();
-        return new Date(Date.now() - offset);
+        // Calcule le temps actuel en appliquant le décalage initial (NTP)
+        return new Date(Date.now() - offset); 
     };
     
     /** Synchro NTP simple. */
@@ -139,13 +139,12 @@
             currentAirDensity = RHO_SEA_LEVEL;
         }
         
-        // Mettre à jour la vitesse du son locale et la gravité locale
         currentSpeedOfSound = getSpeedOfSound(T_K);
         currentG_Acc = window.getGravity(currentPosition.lat * D2R, currentAltitudeM);
     };
     
     /** Réinitialise les compteurs de distance. */
-    const resetDistance = () => { totalDistanceM = 0.0; lastPosition = null; };
+    const resetDistance = () => { totalDistanceM = 0.0; lastPosition = null; timeMovementMs = 0; };
     
     /** Réinitialise la vitesse max. */
     const resetVmax = () => { maxSpeedMs = 0.0; };
@@ -166,7 +165,7 @@
     
 
     // =================================================================
-    // BLOC 3/4 : GESTIONNAIRES D'API (GPS, IMU) - CORRIGÉS
+    // BLOC 3/4 : GESTIONNAIRES D'API (GPS, IMU)
     // =================================================================
 
     // --- A. IMU HANDLERS ---
@@ -185,7 +184,8 @@
         currentGyroRadS_Y = (gyro.beta || 0.0) * D2R;
         currentGyroRadS_Z = (gyro.gamma || 0.0) * D2R;
 
-        // 3. Stockage des valeurs brutes pour la prédiction UKF (dans la boucle rapide)
+        // 3. Stockage des valeurs brutes pour la prédiction UKF
+        // L'UKF utilisera ces valeurs dans la boucle 20ms
         linearAccel[0] = currentAccelMs2_X; 
         linearAccel[1] = currentAccelMs2_Y;
         linearAccel[2] = currentAccelMs2_Z;
@@ -263,7 +263,8 @@
         if (gpsWatchID !== null) return;
 
         if (navigator.geolocation) {
-            const options = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 };
+            // Timeout court pour la haute précision
+            const options = { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }; 
             
             gpsWatchID = navigator.geolocation.watchPosition(handleGpsSuccess, handleGpsError, options);
             
@@ -277,20 +278,27 @@
 
     /** Calcule et affiche le temps écoulé (Session et Mouvement). */
     const updateTimeCounters = () => {
-        if (timeStartSession) {
-            const currentTime = new Date();
-            const elapsedTimeMs = currentTime - timeStartSession;
+        // La variable 'now' est calculée dans updateDashboardDOM, nous devons la recalculer ici
+        const now = getCDate(lServH, lLocH);
+        
+        if (timeStartSession && now) {
+            const elapsedTimeMs = now.getTime() - timeStartSession.getTime();
 
             // Mise à jour du temps de mouvement (si la vitesse est supérieure à un seuil)
+            // L'ajout est fait sur la base du 1000ms interval de la boucle lente
             if (currentSpeedMs > 0.05) { 
-                timeMovementMs += 1000; // Ajout d'une seconde (car cette fonction est dans le 1000ms interval)
+                timeMovementMs += 1000; 
             }
 
-            // Affichage du temps de session (time-elapsed)
+            // Affichage du temps de session
             if ($('time-elapsed')) $('time-elapsed').textContent = dataOrDefault(elapsedTimeMs / 1000, 2, ' s');
             
             // Affichage du temps de mouvement
             if ($('time-movement')) $('time-movement').textContent = dataOrDefault(timeMovementMs / 1000, 2, ' s');
+        } else if ($('time-elapsed')) {
+            // Initialisation si timeStartSession est null (avant le premier démarrage)
+             $('time-elapsed').textContent = '0.00 s';
+             if ($('time-movement')) $('time-movement').textContent = '0.00 s';
         }
     };
 
@@ -306,13 +314,13 @@
         if (now) { 
             if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString('fr-FR');
             
-            // Affichage UTC/GMT
+            // Affichage UTC/GMT (Logique de formatage stable)
             if ($('utc-datetime')) {
                 const utcTime = now.toUTCString().split(' ')[4];
                 $('utc-datetime').textContent = `${now.toISOString().slice(0, 10)} ${utcTime} (UTC)`;
             }
         }
-
+        
         // --- 2. IMU (Accéléromètre/Gyroscope) ---
         if ($('imu-status')) $('imu-status').textContent = isIMUActive ? 'Actif' : 'Inactif';
         if ($('accel-x')) $('accel-x').textContent = dataOrDefault(currentAccelMs2_X, 3, ' m/s²');
@@ -465,8 +473,8 @@
     // --- INITIALISATION PRINCIPALE (ON LOAD) ---
 
 window.addEventListener('load', () => {
-
-// 1. Initialisation des systèmes critiques
+    
+    // 1. Initialisation des systèmes critiques
     if (typeof math !== 'undefined' && typeof ProfessionalUKF !== 'undefined') {
         ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
         console.log("UKF instancié et prêt pour la fusion.");
@@ -475,14 +483,11 @@ window.addEventListener('load', () => {
     }
     
     syncH(); 
-    timeStartSession = new Date(); 
+    // timeStartSession n'est pas initialisé ici, mais lors du premier MARCHE GPS
     
     // 2. Attacher les événements utilisateur
-    setupEventListeners();
+    setupEventListeners(); 
 
-    // 3. Boucles de rafraîchissement    
-
-    // Boucle rapide (Affichage/Prédiction UKF) - 20ms (50 Hz)
     setInterval(() => {
          // 1. Calculer le delta-t entre les ticks (dt)
          const currentTime = new Date().getTime();
@@ -499,28 +504,28 @@ window.addEventListener('load', () => {
              
              const ukfState = ukf.getState();
              currentSpeedMs = ukfState.speed;
-         }
+
+        }
 
          // 3. Affichage
          updateDashboardDOM(); 
          
-    }, 20); 
+    }, 20); // Fréquence finale: 50 Hz (20ms)
     
     // Boucle lente (Météo/Astro/NTP/Physique) - 1000ms (1Hz)
     setInterval(() => {
         updateTimeCounters(); 
         
-        
         if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
              // fetchWeather et updateAstro ici
         }
-         syncH(); 
+         syncH(); // Synchronisation NTP (1 fois par seconde)
          updatePhysicalState(); 
-    }, 1000); 
+    }, 1000);
 
     // 4. Afficher l'état initial
     updateDashboardDOM();   
 
 });
 
-})(window);
+})(window);                    
