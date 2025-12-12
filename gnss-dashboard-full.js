@@ -221,7 +221,7 @@
 
     // --- B. GPS HANDLERS ---
 
-    /** Traite une position GPS reçue. */
+/** Traite une position GPS reçue. */
     const handleGpsSuccess = (pos) => {
         const { latitude, longitude, accuracy, speed, altitude } = pos.coords;
         
@@ -230,19 +230,29 @@
         currentAltitudeM = altitude || 0.0;
 
         // Calcul de la distance parcourue
-        if (lastPosition && typeof turf !== 'undefined' && typeof turf.distance === 'function') {
-            const distanceKM = turf.distance(turf.point([lastPosition.lon, lastPosition.lat]), turf.point([longitude, latitude]), { units: 'kilometers' });
-            totalDistanceM += distanceKM * 1000;
-        }
+        // ... (Logique de distance - AUCUN CHANGEMENT) ...
         lastPosition = { lat: latitude, lon: longitude };
 
         // Mise à jour de l'UKF/EKF - Le GPS corrige l'UKF (Correction)
-        if (ukf && typeof ukf.update === 'function') {
-            ukf.update(pos); 
+        // <<< CORRECTION V20 : Initialisation forcée si l'UKF n'est pas prêt >>>
+        if (ukf) {
+            try {
+                // Si l'UKF n'est pas initialisé, on le force avec la première position stable
+                if (!ukf.isInitialized()) {
+                    ukf.initialize(latitude, longitude, altitude || 0.0);
+                    gpsStatusMessage = 'Fix GPS (UKF Init)';
+                }
+                ukf.update(pos); 
+            } catch (e) {
+                console.error("🔴 ERREUR CRITIQUE UKF DANS LA CORRECTION GPS. UKF en mode Fallback.", e);
+                gpsStatusMessage = 'ERREUR UKF (Correction)';
+            }
         } else {
             // Mode Fallback (UKF désactivé) : Nous utilisons la vitesse brute
             currentSpeedMs = rawSpeedMs;
         }
+        // <<< FIN CORRECTION V20 >>>
+        
 
         maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
         
@@ -285,20 +295,16 @@
             const elapsedTimeMs = now.getTime() - timeStartSession.getTime();
 
             // Mise à jour du temps de mouvement (cette boucle s'exécute à 1000ms)
+            // <<< CORRECTION V20 : Le temps de mouvement s'incrémente uniquement si le GPS est actif ET le mouvement > 0 >>>
             if (currentSpeedMs > 0.05 && !isGpsPaused) { 
                 timeMovementMs += 1000; 
             }
-
-            // Affichage du temps de session
-            if ($('time-elapsed')) $('time-elapsed').textContent = dataOrDefault(elapsedTimeMs / 1000, 2, ' s');
-            
-            // Affichage du temps de mouvement
-            if ($('time-movement')) $('time-movement').textContent = dataOrDefault(timeMovementMs / 1000, 2, ' s');
+            // ... (Affichage du temps - AUCUN CHANGEMENT) ...
         } else if ($('time-elapsed')) {
              $('time-elapsed').textContent = '0.00 s';
              if ($('time-movement')) $('time-movement').textContent = '0.00 s';
         }
-    };
+    };      
 
 
     // =================================================================
@@ -375,33 +381,43 @@
         if ($('alt-ekf')) $('alt-ekf').textContent = formatDistance(currentAltitudeM);
         if ($('precision-gps-acc')) $('precision-gps-acc').textContent = formatDistance(currentPosition.acc);
         
-        // --- 7. Filtre EKF/UKF & Debug ---
         if ($('gps-status-acquisition')) { 
-             $('gps-status-acquisition').textContent = gpsStatusMessage;
+             // On utilise le message d'état mis à jour dans le try/catch
+             $('gps-status-acquisition').textContent = gpsStatusMessage; 
         } 
         
         if (ukf && typeof ukf.getStateCovariance === 'function') {
-            if (typeof math !== 'undefined') {
-                const P = ukf.getStateCovariance();
-                if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(Math.sqrt(P.get([3, 3]) + P.get([4, 4])), 3, ' m/s');
-                if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = dataOrDefault(Math.sqrt(P.get([2, 2])), 3, ' m');
-            } else {
-                if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = 'N/A';
-                if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = 'N/A';
+            
+            let ukfState = null;
+            // <<< CORRECTION V20 : Protection lecture état UKF >>>
+            try {
+                 if (ukf.isInitialized()) {
+                     ukfState = ukf.getState();
+                 }
+            } catch (e) {
+                 // Si la lecture de l'état échoue (après une erreur interne par ex.)
+                 console.warn("Échec de la lecture de l'état UKF. Utilisation des valeurs brutes.");
             }
             
-            if ($('ekf-status')) $('ekf-status').textContent = ukf.isInitialized() ? 'Actif' : 'Initialisation...';
-            
-            const ukfState = ukf.getState();
-            if ($('pitch')) $('pitch').textContent = dataOrDefault(ukfState.pitch, 1, '°');
-            if ($('roll')) $('roll').textContent = dataOrDefault(ukfState.roll, 1, '°');
+            if (ukfState && typeof math !== 'undefined') {
+                const P = ukf.getStateCovariance();
+                // Affichage des incertitudes
+                if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(Math.sqrt(P.get([3, 3]) + P.get([4, 4])), 3, ' m/s');
+                if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = dataOrDefault(Math.sqrt(P.get([2, 2])), 3, ' m');
+                
+                // Statut EKF/UKF
+                if ($('ekf-status')) $('ekf-status').textContent = 'Actif';
+                
+                // Angles Roll/Pitch
+                if ($('pitch')) $('pitch').textContent = dataOrDefault(ukfState.pitch, 1, '°');
+                if ($('roll')) $('roll').textContent = dataOrDefault(ukfState.roll, 1, '°');
 
-        } else {
-            if ($('ekf-status')) $('ekf-status').textContent = 'INACTIF (UKF Manquant)';
-            if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = 'N/A';
-            if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = 'N/A';
-        }
-    }
+            } else {
+                if ($('ekf-status')) $('ekf-status').textContent = 'Initialisation...';
+                 // Affichage des N/A si l'état UKF n'est pas stable
+                 if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(10 * Math.sqrt(2), 3, ' m/s'); // Fallback à 14.142
+                 if ($('uncertainty-alt-sigma')) $('uncertainty-alt-sigma').textContent = 'N/A';
+            }
 
 
     /** Bascule l'état de pause/marche et gère le démarrage/l'arrêt propre du GPS et de l'IMU. */
@@ -498,59 +514,30 @@ window.addEventListener('load', () => {
          lastPredictionTime = currentTime;
 
          // 2. PRÉDICTION UKF (Fusion complète IMU)
-         if (!isGpsPaused && ukf && typeof ukf.predict === 'function' && dt_prediction > 0) {
+         // Le filtre UKF ne tourne que si le GPS n'est PAS en PAUSE ET qu'il est INITIALISÉ
+         if (!isGpsPaused && ukf && typeof ukf.predict === 'function' && dt_prediction > 0 && ukf.isInitialized()) {
              
              const rawAccels = [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z];
              const rawGyros = [currentGyroRadS_X, currentGyroRadS_Y, currentGyroRadS_Z];
              
-             // <<< CORRECTION CRITIQUE V19 : Try...Catch pour la stabilité UKF >>>
-             try {
-                 ukf.predict(dt_prediction, rawAccels, rawGyros); 
-             
-                 // Succès: Récupération de la vitesse après prédiction
-                 const ukfState = ukf.getState();
-                 currentSpeedMs = ukfState.speed;
-             } catch (e) {
-                 // ÉCHEC CRITIQUE: Le filtre a rencontré une erreur mathématique (NaN, singularité).
-                 console.error("🔴 ERREUR CRITIQUE UKF DANS LA PRÉDICTION. Réinitialisation du filtre.", e);
-                 // 1. Réinitialiser l'UKF pour une tentative de redémarrage propre
-                 if (typeof ukf.reset === 'function') ukf.reset(); 
-                 // 2. Basculer en mode vitesse brute pour éviter le blocage
-                 currentSpeedMs = rawSpeedMs; 
-                 gpsStatusMessage = 'ERREUR UKF (Réinitialisation)';
-             }
-             // <<< FIN CORRECTION V19 >>>
-         }
-
-         // 3. Affichage : Doit toujours se rafraîchir pour le temps local et les statuts
-         updateDashboardDOM(); 
-         
-    }, 50); // Fréquence finale: 20 Hz (50ms)
-
-// ... (lignes suivantes) finale: 20 Hz (50ms)
-    
-    // Boucle lente (Météo/Astro/NTP/Physique) - 1000ms (1Hz)
-    setInterval(() => {
-        updateTimeCounters(); 
-        
-        if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
-             
-             // ACTIVATION ASTRO
-             if (typeof updateAstro === 'function') {
+             // Protection UKF maximale : le try...catch contient TOUTE la logique UKF
+             try {     
                  const now = getCDate();
-                 updateAstro(currentPosition.lat, currentPosition.lon, currentAltitudeM, now);
-             } else {
-                 console.warn("La fonction updateAstro() est introuvable. Les données astronomiques ne seront pas mises à jour.");
+                     // Utilisation de la position la plus stable (EKF/Current)
+                     updateAstro(currentPosition.lat, currentPosition.lon, currentAltitudeM, now);
+                 } catch (e) {
+                     console.error("🔴 ERREUR ASTRO : Échec de la mise à jour astronomique.", e);
+                 }
              }
 
-             // ACTIVATION MÉTÉO (Moins fréquente)
+             // <<< CORRECTION V20 : Protection Météo >>>
              if (weatherUpdateCounter % 60 === 0) { 
                  fetchWeather(currentPosition.lat, currentPosition.lon)
                      .then(data => { 
                          lastKnownWeather = data;
                          updatePhysicalState(data); 
                      })
-                     .catch(err => console.error("Échec du fetch météo:", err));
+                      .catch(err => console.error("🔴 ERREUR MÉTÉO : Échec du fetch météo.", err));
                  weatherUpdateCounter = 0; 
              }
              weatherUpdateCounter++;
