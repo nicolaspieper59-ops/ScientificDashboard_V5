@@ -1,7 +1,6 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL STABLE V11
-// SYNCHRONISATION DÉFINITIVE DES IDs HTML (IMU, VITESSE, STATUT GPS)
-// AJOUT DE LA LOGIQUE "GROTTE" (IMU actif sans GPS)
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL STABLE V12 (CORRIGÉ)
+// CORRECTION CRITIQUE UKF + SYNCHRO TEMPS & VITESSE 5 DÉCIMALES
 // =================================================================
 
 ((window) => {
@@ -71,11 +70,13 @@
     const dataOrDefault = (val, decimals, suffix = '') => {
         // Condition ajoutée pour forcer 0.00 si c'est null ou N/A pour éviter le N/A dans les champs numériques critiques.
         if (val === undefined || val === null || isNaN(val)) {
-             return (decimals === 0 ? '0' : '0.00').padEnd(decimals + 2, '0') + suffix; 
+             // Utilisation d'une petite valeur pour 'val' lors du formatage si c'est N/A
+             val = 0.0;
         }
         if (typeof val === 'number') {
             return val.toFixed(decimals) + suffix;
         }
+        // Si la valeur est une chaîne (ex: 'N/A' explicite dans l'état initial), la retourner
         return val;
     };
     
@@ -131,6 +132,7 @@
             currentAirDensity = RHO_SEA_LEVEL;
         }
         
+        // Mettre à jour la vitesse du son locale et la gravité locale
         currentSpeedOfSound = getSpeedOfSound(T_K);
         currentG_Acc = window.getGravity(currentPosition.lat * D2R, currentAltitudeM);
     };
@@ -277,38 +279,42 @@
      * Met à jour les valeurs de l'interface du tableau de bord.
      */
     function updateDashboardDOM() {
-        // --- 1. Contrôles et Système ---
-        const now = getCDate(lServH, lLocH); // 'now' est maintenant la date locale corrigée
-if (now) {
-    if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString('fr-FR');
-    
-    // NOUVELLE LIGNE AJOUTÉE : Affichage UTC
-    if ($('utc-datetime')) {
-        const utcDate = now.toISOString().slice(0, 10); // Format YYYY-MM-DD
-        const utcTime = now.toUTCString().split(' ')[4]; // Heure UTC
-        $('utc-datetime').textContent = `${utcDate} ${utcTime} (UTC)`;
- }
-        
-        
+        // --- 1. Contrôles et Système (Correction Heure Locale/UTC) ---
+        const now = getCDate(lServH, lLocH); 
+        if (now) { 
+            if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString('fr-FR');
+            
+            // Affichage UTC/GMT
+            if ($('utc-datetime')) {
+                const utcTime = now.toUTCString().split(' ')[4];
+                $('utc-datetime').textContent = `${now.toISOString().slice(0, 10)} ${utcTime} (UTC)`;
+            }
+            
+            if ($('elapsed-time')) $('elapsed-time').textContent = dataOrDefault((now.getTime() - timeStartSession.getTime()) / 1000, 2, ' s');
+        }
+
         // --- 2. IMU (Accéléromètre/Gyroscope) ---
         if ($('imu-status')) $('imu-status').textContent = isIMUActive ? 'Actif' : 'Inactif';
         if ($('accel-x')) $('accel-x').textContent = dataOrDefault(currentAccelMs2_X, 3, ' m/s²');
         if ($('accel-y')) $('accel-y').textContent = dataOrDefault(currentAccelMs2_Y, 3, ' m/s²');
         if ($('accel-z')) $('accel-z').textContent = dataOrDefault(currentAccelMs2_Z, 3, ' m/s²');
 
-        // --- 3. Vitesse, Distance & Relativité ---
-        const speedKmh = currentSpeedMs * KMH_MS;
+        // --- 3. Vitesse, Distance & Relativité (Correction 5 Décimales) ---
+        const speedKmh = currentSpeedMs * KMH_MS; 
         
-        // Mise à jour du grand champ de vitesse (si vous l'avez gardé)
-        // Trouvez ces lignes (ou équivalentes) dans updateDashboardDOM() et ajustez les décimales
-const speedKmh = currentSpeedMs * KMH_MS;
+        // Mise à jour du grand champ de vitesse (supposant ID: speed-main-display)
+        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // 5 décimales
+        if ($('speed-status-text')) $('speed-status-text').textContent = gpsStatusMessage;
 
-// Grand affichage principal (si présent) :
-        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // Changé à 5 décimales
-        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // Changé à 5 décimales
-        if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 5, ' m/s'); // Changé à 5 décimales
-        if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 5, ' m/s'); // Changé à 5 décimales
+        // Vitesse Stable (km/h) : Application de 5 décimales
+        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 5, ' km/h'); 
+        
+        // Vitesse Stable (m/s) : Application de 5 décimales
+        if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 5, ' m/s'); 
+        
+        // Vitesse Brute (m/s) : Application de 5 décimales
         if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 5, ' m/s');
+        
         if ($('vmax-session')) $('vmax-session').textContent = dataOrDefault(maxSpeedMs * KMH_MS, 1, ' km/h');
         
         // Physique & Relativité
@@ -423,17 +429,17 @@ const speedKmh = currentSpeedMs * KMH_MS;
         }
     }
 
-    // --- INITIALISATION PRINCIPALE (ON LOAD) - NOUVELLE VERSION ---
+    // --- INITIALISATION PRINCIPALE (ON LOAD) ---
 
 window.addEventListener('load', () => {
     
     // 1. Initialisation des systèmes critiques
-    // On vérifie seulement si la classe UKF est définie pour forcer l'initialisation
-    if (typeof ProfessionalUKF !== 'undefined') {
+    // CORRECTION CRITIQUE: Vérifier la dépendance math avant d'instancier l'UKF.
+    if (typeof math !== 'undefined' && typeof ProfessionalUKF !== 'undefined') {
         ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
-        console.log("UKF instancié.");
+        console.log("UKF instancié et prêt pour la fusion.");
     } else {
-        console.error("Classe ProfessionalUKF introuvable. Veuillez vérifier le chargement de ukf-lib.js et math.min.js.");
+        console.error("CRITIQUE: UKF ou dépendances (math.js) introuvables. Fusion désactivée. Vérifiez les chemins dans l'HTML.");
     }
     
     syncH(); 
@@ -452,15 +458,15 @@ window.addEventListener('load', () => {
     // Boucle lente (Météo/Astro/NTP/Physique)
     setInterval(() => {
         if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
-             // ... (Logique de fetchWeather et updateAstro ici)
+             // fetchWeather et updateAstro ici
         }
          syncH(); 
          updatePhysicalState(); 
     }, 5000); 
 
     // 4. Afficher l'état initial
-    updateDashboardDOM();
-    
+    updateDashboardDOM();   
+
 });
 
-})(window);
+})(window);                        
