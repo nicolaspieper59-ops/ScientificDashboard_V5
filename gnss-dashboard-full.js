@@ -1,6 +1,8 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V16)
-// CORRECTION CRITIQUE: Réactivation de la boucle de rendu DOM (20ms / 50Hz)
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V17)
+// CORRECTION CRITIQUE: 
+// 1. UKF protégé par un check 'isGpsPaused' (Stabilité CPU/Navigateur).
+// 2. Activation des appels aux fonctions ASTRO et MÉTÉO (Fin des N/A).
 // =================================================================
 
 ((window) => {
@@ -69,6 +71,8 @@
     let netherMode = false;
     let linearAccel = [0.0, 0.0, 0.0]; 
     
+    // <<< CORRECTION V17 >>> 
+    let weatherUpdateCounter = 0; // Compteur pour mise à jour météo moins fréquente (toutes les 60s)
     // =================================================================
     // BLOC 2/4 : UTILITAIRES DE BASE, FORMATAGE ET PHYSIQUE
     // =================================================================
@@ -230,7 +234,7 @@
 
         // Calcul de la distance parcourue
         if (lastPosition && typeof turf !== 'undefined' && typeof turf.distance === 'function') {
-            const distanceKM = turf.distance(turf.point([lastPosition.lon, lastPosition.lon]), turf.point([longitude, latitude]), { units: 'kilometers' });
+            const distanceKM = turf.distance(turf.point([lastPosition.lon, lastPosition.lat]), turf.point([longitude, latitude]), { units: 'kilometers' });
             totalDistanceM += distanceKM * 1000;
         }
         lastPosition = { lat: latitude, lon: longitude };
@@ -352,9 +356,16 @@
         if ($('air-density')) $('air-density').textContent = dataOrDefault(currentAirDensity, 4, ' kg/m³');
         if (lastKnownWeather && lastKnownWeather.main) {
             if ($('weather-status')) $('weather-status').textContent = 'Actif';
-            // ... (Mises à jour Météo) ...
+            // Affichage des données météo si disponibles
+            if ($('air-temp')) $('air-temp').textContent = dataOrDefault(lastKnownWeather.main.temp, 1, '°C');
+            if ($('pressure')) $('pressure').textContent = dataOrDefault(lastKnownWeather.main.pressure, 0, ' hPa');
+            if ($('humidity')) $('humidity').textContent = dataOrDefault(lastKnownWeather.main.humidity, 0, '%');
         } else {
              if ($('weather-status')) $('weather-status').textContent = 'INACTIF';
+             // Réinitialisation ou fallback des champs météo
+             if ($('air-temp')) $('air-temp').textContent = 'N/A';
+             if ($('pressure')) $('pressure').textContent = 'N/A';
+             if ($('humidity')) $('humidity').textContent = 'N/A';
         }
 
         // --- 5. Dynamique & Forces ---
@@ -430,6 +441,8 @@
             if (timeStartSession === null) {
                 timeStartSession = new Date();
             }
+            // <<< CORRECTION V17 >>> : Réinitialisation du compteur météo au démarrage
+            weatherUpdateCounter = 0; 
         }
         
         updateDashboardDOM(); // Assurer une mise à jour immédiate au toggle
@@ -470,8 +483,8 @@
     // --- INITIALISATION PRINCIPALE (ON LOAD) ---
 
 window.addEventListener('load', () => {
-    
-    // 1. Initialisation des systèmes critiques
+
+      // 1. Initialisation des systèmes critiques
     if (typeof math !== 'undefined' && typeof ProfessionalUKF !== 'undefined') {
         ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
         console.log("UKF instancié et prêt pour la fusion.");
@@ -485,9 +498,9 @@ window.addEventListener('load', () => {
     // 2. Attacher les événements utilisateur
     setupEventListeners();
 
-    // 3. Boucles de rafraîchissement
-    
-    // Boucle rapide (Affichage/Prédiction UKF) - 20ms (50 Hz) <--- CORRECTION CRITIQUE APPLIQUÉE
+    // 3. Boucles de rafraîchissement   
+
+    // Boucle rapide (Affichage/Prédiction UKF) - 20ms (50 Hz) 
     setInterval(() => {
          // 1. Calculer le delta-t entre les ticks (dt)
          const currentTime = new Date().getTime();
@@ -495,18 +508,19 @@ window.addEventListener('load', () => {
          lastPredictionTime = currentTime;
 
          // 2. PRÉDICTION UKF (Fusion complète IMU)
-         if (!isGpsPaused && ukf && typeof ukf.predict === 'function' && dt_prediction > 0) { 
+         // <<< CORRECTION V17 >>> : Le filtre UKF ne tourne que si le GPS n'est PAS en PAUSE.
+         if (!isGpsPaused && ukf && typeof ukf.predict === 'function' && dt_prediction > 0) {
              
              const rawAccels = [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z];
              const rawGyros = [currentGyroRadS_X, currentGyroRadS_Y, currentGyroRadS_Z];
              
-             ukf.predict(dt_prediction, rawAccels, rawGyros); 
-             
+             ukf.predict(dt_prediction, rawAccels, rawGyros);  
+
              const ukfState = ukf.getState();
              currentSpeedMs = ukfState.speed;
          }
 
-         // 3. Affichage <--- CET APPEL GARANTIT LE RAFRAÎCHISSEMENT 50 FOIS PAR SECONDE
+         // 3. Affichage : Doit toujours se rafraîchir pour le temps local et les statuts
          updateDashboardDOM(); 
          
     }, 20); // Fréquence finale: 50 Hz (20ms)
@@ -516,7 +530,26 @@ window.addEventListener('load', () => {
         updateTimeCounters(); 
         
         if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
-             // fetchWeather et updateAstro ici
+             
+             // <<< CORRECTION V17 >>> : ACTIVATION ASTRO
+             if (typeof updateAstro === 'function') {
+                 // On passe la position actuelle et l'heure synchronisée
+                 const now = getCDate(lServH, lLocH);
+                 updateAstro(currentPosition.lat, currentPosition.lon, currentAltitudeM, now);
+             }
+
+             // <<< CORRECTION V17 >>> : ACTIVATION MÉTÉO (Moins fréquente)
+             if (weatherUpdateCounter % 60 === 0) { // Mise à jour toutes les 60 secondes
+                 fetchWeather(currentPosition.lat, currentPosition.lon)
+                     .then(data => { 
+                         lastKnownWeather = data;
+                         updatePhysicalState(data); // Met à jour la densité de l'air, etc.
+                     })
+                     .catch(err => console.error("Échec du fetch météo:", err));
+                 weatherUpdateCounter = 0; // Réinitialisation du compteur
+             }
+              weatherUpdateCounter++;
+
         }
          syncH(); // Synchronisation NTP (1 fois par seconde)
          updatePhysicalState(); 
