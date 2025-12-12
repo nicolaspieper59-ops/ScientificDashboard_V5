@@ -278,12 +278,17 @@
      */
     function updateDashboardDOM() {
         // --- 1. Contrôles et Système ---
-        const now = getCDate(lServH, lLocH);
-        if (now) {
-            if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString('fr-FR');
-            if ($('elapsed-time')) $('elapsed-time').textContent = dataOrDefault((now.getTime() - timeStartSession.getTime()) / 1000, 2, ' s');
-            // ... (Autres temps)
-        }
+        const now = getCDate(lServH, lLocH); // 'now' est maintenant la date locale corrigée
+if (now) {
+    if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString('fr-FR');
+    
+    // NOUVELLE LIGNE AJOUTÉE : Affichage UTC
+    if ($('utc-datetime')) {
+        const utcDate = now.toISOString().slice(0, 10); // Format YYYY-MM-DD
+        const utcTime = now.toUTCString().split(' ')[4]; // Heure UTC
+        $('utc-datetime').textContent = `${utcDate} ${utcTime} (UTC)`;
+ }
+        
         
         // --- 2. IMU (Accéléromètre/Gyroscope) ---
         if ($('imu-status')) $('imu-status').textContent = isIMUActive ? 'Actif' : 'Inactif';
@@ -300,16 +305,10 @@ const speedKmh = currentSpeedMs * KMH_MS;
 
 // Grand affichage principal (si présent) :
         if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // Changé à 5 décimales
-
-// Vitesse Stable (km/h) :
         if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 5, ' km/h'); // Changé à 5 décimales
-
-// Vitesse Stable (m/s) :
         if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 5, ' m/s'); // Changé à 5 décimales
-
-// Vitesse Brute (m/s) :
         if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 5, ' m/s'); // Changé à 5 décimales
-        if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 2, ' m/s');
+        if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 5, ' m/s');
         if ($('vmax-session')) $('vmax-session').textContent = dataOrDefault(maxSpeedMs * KMH_MS, 1, ' km/h');
         
         // Physique & Relativité
