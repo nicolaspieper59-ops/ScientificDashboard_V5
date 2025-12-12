@@ -37,6 +37,10 @@
     let lLocH = new Date();     // Heure locale
     let timeStartSession = new Date();
     let timeStartMovement = new Date();
+    // ...
+    let timeStartSession = null;
+    let timeMovementMs = 0; // Temps de mouvement en millisecondes
+// ...
     
     // Position/Vitesse/Altitude (Valeurs de Fallback - Marseille)
     let currentPosition = { lat: 43.296400, lon: 5.369700, acc: 10.0, spd: 0.0 };
@@ -294,6 +298,31 @@
         }
     };
 
+    // Dans gnss-dashboard-full.js (Bloc 3/4)
+
+// ...
+
+/** Calcule et affiche le temps écoulé (Session et Mouvement). */
+const updateTimeCounters = () => {
+    if (timeStartSession) {
+        const currentTime = new Date();
+        const elapsedTimeMs = currentTime - timeStartSession;
+
+        // Mise à jour du temps de mouvement (si la vitesse est supérieure à un seuil)
+        if (currentSpeedMs > 0.05) { // 0.05 m/s est un seuil de mouvement raisonnable
+            timeMovementMs += 1000; // Ajout d'une seconde (car cette fonction est dans le 1000ms interval)
+        }
+
+        // Affichage du temps de session
+        $('time-elapsed').textContent = dataOrDefault(elapsedTimeMs / 1000, 2, ' s');
+        
+        // Affichage du temps de mouvement
+        $('time-movement').textContent = dataOrDefault(timeMovementMs / 1000, 2, ' s');
+    }
+};
+
+// ...
+
 
     // =================================================================
     // BLOC 4/4 : CONTRÔLE, MISE À JOUR DOM ET INITIALISATION
@@ -484,18 +513,22 @@ setInterval(() => {
      dt_prediction = (currentTime - lastPredictionTime) / 1000.0;
      lastPredictionTime = currentTime;
 
-     // 2. PRÉDICTION UKF (Fluidité / Mode Grotte)
-     if (ukf && typeof ukf.predict === 'function' && ukf.isInitialized() && dt_prediction > 0) {
+     // ...
+     // 2. PRÉDICTION UKF (Fusion complète IMU)
+     // L'UKF doit être instancié, mais plus nécessairement initialisé par GPS.
+     if (ukf && typeof ukf.predict === 'function' && dt_prediction > 0) {
          
-         // Passer l'accélération BRUTE ET le Gyroscope à l'UKF
          const rawAccels = [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z];
          const rawGyros = [currentGyroRadS_X, currentGyroRadS_Y, currentGyroRadS_Z];
          
-         // Appel de la prédiction professionnelle
          ukf.predict(dt_prediction, rawAccels, rawGyros); 
          
          const ukfState = ukf.getState();
          currentSpeedMs = ukfState.speed;
+
+         // ... (Mise à jour Roll/Pitch) ...
+     
+// ...
          
          // Mise à jour de l'affichage Roll/Pitch
          $('pitch').textContent = dataOrDefault(ukfState.pitch, 1, '°');
@@ -503,17 +536,19 @@ setInterval(() => {
      }
 
      // 3. Affichage
-     updateDashboardDOM();
+     
 }, 100);
     
     // Boucle lente (Météo/Astro/NTP/Physique)
     setInterval(() => {
+        updateTimeCounters();
+        
         if (!isGpsPaused && currentPosition.lat !== 0.0 && currentPosition.lon !== 0.0) {
              // fetchWeather et updateAstro ici
         }
          syncH(); 
          updatePhysicalState(); 
-    }, 5000); 
+    }, 1000); 
 
     // 4. Afficher l'état initial
     updateDashboardDOM();   
