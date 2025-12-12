@@ -281,6 +281,9 @@
         // --- 3. Vitesse, Distance & Relativité ---
         const speedKmh = currentSpeedMs * KMH_MS;
         // 🎯 CIBLAGE DES NOUVEAUX IDs HTML CORRIGÉS
+        // A ajouter dans updateDashboardDOM() (vers la ligne 320 du JS V10)
+        if ($('speed-stable')) $('speed-stable').textContent = dataOrDefault(speedKmh, 1, ' km/h');
+        if ($('speed-status-text')) $('speed-status-text').textContent = gpsStatusMessage;
         if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 1, ' km/h');
         if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 2, ' m/s');
         if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(rawSpeedMs, 2, ' m/s');
