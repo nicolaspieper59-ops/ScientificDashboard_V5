@@ -29,6 +29,8 @@
     let gpsWatchID = null;      // ID de la surveillance GPS (null si inactif)
     let isIMUActive = false;    // État d'activité du capteur IMU
     let gpsStatusMessage = 'Attente du signal GPS...'; // Message affiché dans la section Vitesse
+    let dt_prediction = 0.0; 
+    let lastPredictionTime = new Date().getTime();
 
     // --- VARIABLES DE DONNÉES TEMPS RÉEL ---
     let lServH = new Date();    // Heure du serveur
@@ -91,8 +93,8 @@
 
     /** Formate une distance en m ou km. */
     const formatDistance = (m) => {
-        if (m === undefined || m === null || isNaN(m)) return '0.00 m';
-        if (m < 1000) return dataOrDefault(m, 2, ' m');
+        if (m === undefined || m === null || isNaN(m)) return '0.000 m'; // 3 décimales
+        if (m < 1000) return dataOrDefault(m, 3, ' m'); // Changé 2 à 3 décimales pour les mètres
         return dataOrDefault(m / 1000, 3, ' km');
     };
     
@@ -229,12 +231,19 @@
         lastPosition = { lat: latitude, lon: longitude };
 
         // Mise à jour de l'UKF/EKF - Le GPS domine l'IMU ici
+        // Dans gnss-dashboard-full.js (Bloc 3/4)
+
+// Dans la fonction handleGpsSuccess :
+// ...
+// Mise à jour de l'UKF/EKF - Le GPS corrige l'UKF (mais ne doit pas écraser la vitesse filtrée)
         if (ukf && typeof ukf.update === 'function') {
-             ukf.update(pos); 
-             currentSpeedMs = ukf.getState(4);
+            ukf.update(pos); 
+     // ON NE TOUCHE PLUS À currentSpeedMs ICI. Elle est mise à jour par la boucle rapide (100ms).
         } else {
+     // Mode Fallback (UKF désactivé)
              currentSpeedMs = rawSpeedMs;
-        }
+}
+// ...
 
         maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
         
@@ -451,9 +460,29 @@ window.addEventListener('load', () => {
     // 3. Boucles de rafraîchissement
     
     // Boucle rapide (Affichage/Prédiction UKF)
-    setInterval(() => {
-         updateDashboardDOM();
-    }, 100); 
+    // Dans gnss-dashboard-full.js (Bloc 4/4)
+
+// Boucle rapide (Affichage/Prédiction UKF)
+setInterval(() => {
+     // 1. Calculer le delta-t entre les ticks (dt)
+     const currentTime = new Date().getTime();
+     dt_prediction = (currentTime - lastPredictionTime) / 1000.0;
+     lastPredictionTime = currentTime;
+
+     // 2. PRÉDICTION UKF (Fluidité / Mode Grotte)
+     if (ukf && typeof ukf.predict === 'function' && ukf.isInitialized() && dt_prediction > 0) {
+         
+         // L'UKF prédit l'état en utilisant les dernières accélérations
+         // Si le GPS est perdu, l'état évolue uniquement avec l'IMU
+         ukf.predict(dt_prediction, [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z]); 
+         
+         // La VITESSE affichée vient maintenant TOUJOURS de l'état filtré UKF
+         currentSpeedMs = ukf.getState().speed;
+     }
+
+     // 3. Affichage
+     updateDashboardDOM();
+}, 100); 
     
     // Boucle lente (Météo/Astro/NTP/Physique)
     setInterval(() => {
