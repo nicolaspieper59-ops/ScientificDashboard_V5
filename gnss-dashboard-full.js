@@ -460,8 +460,8 @@
                 if ($('mass-display')) $('mass-display').textContent = `${currentMass.toFixed(3)} kg`;
             });
         }
-        
-        // Mode Nether
+
+         // Mode Nether
         if ($('nether-toggle-btn')) {
             $('nether-toggle-btn').addEventListener('click', () => {
                 netherMode = !netherMode;
@@ -528,4 +528,4 @@ window.addEventListener('load', () => {
 
 });
 
-})(window);                    
+})(window);                                                     
