@@ -509,8 +509,16 @@ window.addEventListener('load', () => {
 
          // 3. Affichage
          updateDashboardDOM(); 
+
+ // Dans gnss-dashboard-full.js (Bloc 4/4)
+setInterval(() => {
+     // ... Calcul UKF/Prédiction ...
+
+     // 3. Affichage <-- IL MANQUE L'APPEL ICI!
+
+}, 100);       
          
-    }, 20); // Fréquence finale: 50 Hz (20ms)
+
     
     // Boucle lente (Météo/Astro/NTP/Physique) - 1000ms (1Hz)
     setInterval(() => {
