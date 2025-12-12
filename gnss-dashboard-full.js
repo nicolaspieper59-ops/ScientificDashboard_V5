@@ -488,7 +488,9 @@ window.addEventListener('load', () => {
 
     // 3. Boucles de rafraîchissement
     
-    // Boucle rapide (Affichage/Prédiction UKF) - 50ms (20 Hz) 
+    // ... (lignes précédentes)
+
+    // Boucle rapide (Affichage/Prédiction UKF) - 50ms (20 Hz)
     setInterval(() => {
          // 1. Calculer le delta-t entre les ticks (dt)
          const currentTime = new Date().getTime();
@@ -501,16 +503,31 @@ window.addEventListener('load', () => {
              const rawAccels = [currentAccelMs2_X, currentAccelMs2_Y, currentAccelMs2_Z];
              const rawGyros = [currentGyroRadS_X, currentGyroRadS_Y, currentGyroRadS_Z];
              
-             ukf.predict(dt_prediction, rawAccels, rawGyros); 
+             // <<< CORRECTION CRITIQUE V19 : Try...Catch pour la stabilité UKF >>>
+             try {
+                 ukf.predict(dt_prediction, rawAccels, rawGyros); 
              
-             const ukfState = ukf.getState();
-             currentSpeedMs = ukfState.speed;
+                 // Succès: Récupération de la vitesse après prédiction
+                 const ukfState = ukf.getState();
+                 currentSpeedMs = ukfState.speed;
+             } catch (e) {
+                 // ÉCHEC CRITIQUE: Le filtre a rencontré une erreur mathématique (NaN, singularité).
+                 console.error("🔴 ERREUR CRITIQUE UKF DANS LA PRÉDICTION. Réinitialisation du filtre.", e);
+                 // 1. Réinitialiser l'UKF pour une tentative de redémarrage propre
+                 if (typeof ukf.reset === 'function') ukf.reset(); 
+                 // 2. Basculer en mode vitesse brute pour éviter le blocage
+                 currentSpeedMs = rawSpeedMs; 
+                 gpsStatusMessage = 'ERREUR UKF (Réinitialisation)';
+             }
+             // <<< FIN CORRECTION V19 >>>
          }
 
          // 3. Affichage : Doit toujours se rafraîchir pour le temps local et les statuts
          updateDashboardDOM(); 
          
     }, 50); // Fréquence finale: 20 Hz (50ms)
+
+// ... (lignes suivantes) finale: 20 Hz (50ms)
     
     // Boucle lente (Météo/Astro/NTP/Physique) - 1000ms (1Hz)
     setInterval(() => {
