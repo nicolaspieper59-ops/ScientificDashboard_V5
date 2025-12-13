@@ -1,6 +1,6 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V24 - 100%)
-// ARCHITECTURE 50 HZ (IMU/UKF) & GESTION BARO/MAG/CLOCK/ZUUV
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL PROFESSIONNEL STABLE (V25)
+// ARCHITECTURE 50 HZ (IMU/UKF), COMPATIBLE ASTRO.JS & INDEX (17).HTML
 // =================================================================
 
 ((window) => {
@@ -9,16 +9,16 @@
     // --- Vérification des dépendances critiques ---
     if (typeof math === 'undefined') console.warn("⚠️ ALERTE: math.js manquant. L'UKF sera désactivé.");
     if (typeof ProfessionalUKF === 'undefined') console.warn("⚠️ ALERTE: ProfessionalUKF n'est pas définie. Mode GPS/Capteur brut activé.");
-    
+    if (typeof updateAstro === 'undefined') console.warn("⚠️ ALERTE: astro.js manquant. Les calculs astronomiques seront désactivés.");
+
     // --- CONSTANTES SCIENTIFIQUES & MATH ---
     const D2R = Math.PI / 180, R2D = 180 / Math.PI;
-    const KMH_MS = 3.6;             
-    const P_SEA_LEVEL = 1013.25; // Pression standard au niveau de la mer (hPa)
-    const T_LAPSE = 0.0065;      // Taux de déperdition de température (K/m)
-    const R_AIR = 287.058;       // Constante gaz parfait air (J/(kg·K))
-    const G_ACC = 9.8067;        // Gravité standard (m/s²)
-    const ACCEL_THRESHOLD = 0.5; // m/s² (Seuil d'accélération pour ZUUV)
-    const GYRO_THRESHOLD = 0.05 * D2R; // rad/s (Seuil de rotation pour ZUUV)
+    const P_SEA_LEVEL = 1013.25; 
+    const T_LAPSE = 0.0065;      
+    const R_AIR = 287.058;       
+    const G_ACC = 9.8067;        
+    const ACCEL_THRESHOLD = 0.5; 
+    const GYRO_THRESHOLD = 0.05 * D2R; 
 
     // --- VARIABLES D'ÉTAT CRITIQUES ---
     let ukf = null;             
@@ -26,10 +26,10 @@
     let lastPredictionTime = new Date().getTime();
     let dt_prediction = 0.0;
     let gpsStatusMessage = 'Attente du signal GPS...'; 
-    let lastKnownTempK = 288.15; // Météo : Température de référence 15°C
+    let lastKnownTempK = 288.15; // Météo : Température de référence
+    let currentNTPOffsetMs = 0; // Décalage NTP (à implémenter via une requête externe)
+    
     let currentPosition = { lat: 0.0, lon: 0.0, alt: 0.0, acc: 10.0, spd: 0.0, time: 0 }; 
-
-    // --- DONNÉES CAPTEURS BRUTES (ENTRÉES UKF) ---
     let currentAccelMs2_X = 0.0, currentAccelMs2_Y = 0.0, currentAccelMs2_Z = G_ACC; 
     let currentGyroRadS_X = 0.0, currentGyroRadS_Y = 0.0, currentGyroRadS_Z = 0.0;
     let currentMagnetometer = { x: 0.0, y: 0.0, z: 0.0 };
@@ -39,15 +39,54 @@
     let currentSpeedMs = 0.0; 
     
     const $ = id => document.getElementById(id);
+    
+    // =========================================================
+    // UTILS MATH / TEMPS / AFFICHAGE
+    // =========================================================
+    
+    /** Renvoie la date corrigée par le biais NTP */
+    const getCDate = () => new Date(new Date().getTime() + currentNTPOffsetMs);
+
+    /** Formatage des données pour le DOM */
     const dataOrDefault = (val, decimals, suffix = '') => {
         if (val === undefined || val === null || isNaN(val)) {
-            return (decimals === 0 ? '0' : '0.00') + suffix;
+            return (decimals === 0 ? 'N/A' : 'N/A') + suffix;
         }
         return val.toFixed(decimals) + suffix;
     };
     
+    /** Mise à jour des compteurs de temps et de l'heure GPS/NTP */
+    const updateTimeCounters = () => {
+        const now = getCDate();
+        const now_local = new Date();
+        const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+        
+        if ($('time-local')) $('time-local').textContent = now_local.toLocaleTimeString('fr-FR', options);
+        if ($('time-ntp')) $('time-ntp').textContent = now.toLocaleTimeString('fr-FR', options);
+        if ($('time-gps')) {
+            // Afficher l'heure du dernier fix GPS + Clock Bias UKF pour le GPS fusionné
+            if (ukf && ukf.isInitialized()) {
+                const ukfBias = ukf.getState().clockBias; 
+                const timeMs = now_local.getTime() + ukfBias * 1000;
+                $('time-gps').textContent = new Date(timeMs).toLocaleTimeString('fr-FR', options);
+            } else {
+                $('time-gps').textContent = 'N/A (UKF)';
+            }
+        }
+        
+        // Affichage des biais/décalages (NTP n'est qu'un offset d'heure)
+        if ($('ntp-offset')) $('ntp-offset').textContent = dataOrDefault(currentNTPOffsetMs, 0, ' ms');
+    };
+    
+    /** Placeholder pour la synchronisation NTP (doit être implémenté via un service externe) */
+    const syncH = () => {
+        // Logique de requête NTP pour mettre à jour currentNTPOffsetMs
+        // Pour cette version, nous utilisons un décalage de 0ms par défaut.
+        // Exemple: currentNTPOffsetMs = fetch_ntp_offset(); 
+    };
+
     // =========================================================
-    // GESTIONNAIRES DE CAPTEURS BRUTS (IMU ÉTENDU)
+    // CAPTEURS ET LOGIQUE ZUUV/BARO
     // =========================================================
 
     /** Traite les données de l'Accéléromètre et du Gyroscope (Mouvement) */
@@ -58,7 +97,6 @@
         currentAccelMs2_Z = acc.z || 0.0;
 
         const gyro = event.rotationRate;
-        // Conversion de degrés/s vers radians/s pour l'UKF
         currentGyroRadS_X = (gyro.alpha || 0.0) * D2R; 
         currentGyroRadS_Y = (gyro.beta || 0.0) * D2R;
         currentGyroRadS_Z = (gyro.gamma || 0.0) * D2R;
@@ -66,7 +104,6 @@
     
     /** Traite les données du Magnétomètre (Yaw) */
     const handleMagnetometer = (event) => {
-        // En Android, on lirait les champs bruts (x, y, z)
         currentMagnetometer.x = event.magneticFieldX || 0.0; 
         currentMagnetometer.y = event.magneticFieldY || 0.0;
         currentMagnetometer.z = event.magneticFieldZ || 0.0;
@@ -81,17 +118,14 @@
 
     /** Calcule l'altitude barométrique corrigée (Modèle de l'atmosphère standard) */
     const calculateBarometricAltitude = () => {
-        const P_local = currentBarometerHpa * 100; // Pascal
-        const P_ref = P_SEA_LEVEL * 100; // Pascal
-        const T_ref = lastKnownTempK; // Kelvin
-        
-        // Formule de l'altitude :
+        const P_local = currentBarometerHpa * 100; 
+        const P_ref = P_SEA_LEVEL * 100; 
+        const T_ref = lastKnownTempK; 
         return ((T_ref / T_LAPSE) * (1 - Math.pow(P_local / P_ref, (R_AIR * T_LAPSE) / G_ACC)));
     };
     
     /** Détection heuristique ZUUV (Vitesse et Taux Angulaire Zéro) */
     const isZeroVelocityDetected = () => {
-        // Accélération linéaire nette (sans gravité)
         const accelMag = Math.sqrt(
             currentAccelMs2_X**2 + currentAccelMs2_Y**2 + 
             (currentAccelMs2_Z - G_ACC)**2 
@@ -99,7 +133,6 @@
         const gyroMag = Math.sqrt(
             currentGyroRadS_X**2 + currentGyroRadS_Y**2 + currentGyroRadS_Z**2
         );
-        // Condition : mouvement linéaire ET rotation doivent être sous le seuil
         return accelMag < ACCEL_THRESHOLD && gyroMag < GYRO_THRESHOLD;
     };
 
@@ -118,6 +151,7 @@
                 }
                 ukf.update(pos); 
                 gpsStatusMessage = `Fix: ${accuracy.toFixed(1)}m`;
+                isGpsPaused = false;
             } catch (e) {
                 console.error("🔴 ERREUR CRITIQUE UKF DANS LA CORRECTION GPS.", e);
                 gpsStatusMessage = 'ERREUR UKF (Correction)';
@@ -151,6 +185,7 @@
     // =========================================================
 
     function startFusionLoop() {
+        // Boucle rapide (Prediction UKF, IMU, Affichage) - 50 Hz
         setInterval(() => {
              const currentTime = new Date().getTime();
              dt_prediction = (currentTime - lastPredictionTime) / 1000.0;
@@ -164,12 +199,12 @@
                      // 1. PRÉDICTION UKF (INS)
                      ukf.predict(dt_prediction, rawAccels, rawGyros); 
 
-                     // 2. CORRECTIONS HAUTE FRÉQUENCE (GNSS-DENIED / Améliorations)
+                     // 2. CORRECTIONS HAUTE FRÉQUENCE
                      
-                     // ZUUV : Correction de la dérive de vitesse et de biais Gyro à l'arrêt (Spéléo/Souterrain)
+                     // ZUUV : Correction de la dérive de vitesse et de biais Gyro à l'arrêt
                      if (isZeroVelocityDetected()) {
                          ukf.updateZUUV();
-                         gpsStatusMessage = 'INS Souterrain (ZUUV)';
+                         gpsStatusMessage = isGpsPaused ? 'INS Souterrain (ZUUV)' : gpsStatusMessage;
                      } else if (isGpsPaused) {
                          gpsStatusMessage = 'INS Pur (Dérive)';
                      }
@@ -192,17 +227,36 @@
                      console.error("🔴 ERREUR CRITIQUE UKF:", e);
                      currentSpeedMs = currentPosition.spd; 
                  }
-             } else if (ukf && !ukf.isInitialized()) {
-                 currentSpeedMs = currentPosition.spd; // Fallback
+             } else {
+                 currentSpeedMs = currentPosition.spd; 
              }
 
              updateDashboardDOM(); 
         }, 20); // Fréquence finale: 50 Hz (20ms)
         
-        // Boucle lente (Météo/Temps)
+        // Boucle lente (Astro/Météo/Temps) - 1 Hz
         setInterval(() => {
-            // Logique Météo : mise à jour de lastKnownTempK (via API externe ou manuelle)
-            // La dérive temporelle est gérée par l'UKF et corrigée par l'update GPS.
+            syncH(); // Synchronisation NTP/Horloge
+            updateTimeCounters(); 
+            
+            // Mise à jour des données astronomiques (Compatible avec index (17).html)
+            if (typeof updateAstro === 'function' && !isGpsPaused) {
+                 try {
+                     const now = getCDate();
+                     const ukfState = ukf ? ukf.getState() : currentPosition;
+                     
+                     // Utilise l'altitude fusionnée si disponible, sinon l'altitude GPS brute
+                     const altToUse = ukf ? ukfState.alt : currentPosition.alt;
+
+                     // Appel à la fonction qui met à jour les éléments DOM astro (sun-alt, moon-phase, etc.)
+                     updateAstro(ukfState.lat, ukfState.lon, altToUse, now);
+                 } catch (e) {
+                     console.error("🔴 ERREUR ASTRO : Échec de la mise à jour astronomique (vérifiez astro.js).", e);
+                 }
+            }
+
+            // Météo/Baro (Optionnel, mais logique de lastKnownTempK dépend ici)
+            // (La mise à jour de lastKnownTempK devrait se faire ici via une API Météo si implémentée)
         }, 1000); 
     }
 
@@ -211,9 +265,12 @@
     // =========================================================
     
     function updateDashboardDOM() {
-        // ... (Affichage GPS brut/temps/distance - Dépend du HTML) ...
+        // --- Affichage GPS Brut ---
+        if ($('latitude-gps')) $('latitude-gps').textContent = dataOrDefault(currentPosition.lat, 6);
+        if ($('longitude-gps')) $('longitude-gps').textContent = dataOrDefault(currentPosition.lon, 6);
+        if ($('altitude-gps')) $('altitude-gps').textContent = dataOrDefault(currentPosition.alt, 3, ' m');
 
-        // --- UKF FUSION & DEBUG (Affichage V24) ---
+        // --- UKF FUSION & DEBUG ---
         if ($('gps-status-acquisition')) $('gps-status-acquisition').textContent = gpsStatusMessage;
 
         if (ukf && ukf.isInitialized()) {
