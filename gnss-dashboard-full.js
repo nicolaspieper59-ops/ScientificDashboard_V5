@@ -554,19 +554,29 @@ window.addEventListener('load', () => {
                  currentSpeedMs = ukfState.speed;
                  
              } catch (e) {
-                 console.error("🔴 ERREUR CRITIQUE UKF DANS LA PRÉDICTION. Réinitialisation complète...", e);
-                 
-                 // Tenter une réinitialisation
-                 if (typeof ukf.reset === 'function') {
-                      ukf.reset(currentPosition.lat, currentPosition.lon, currentAltitudeM);
-                 } else {
-                      // Solution de secours : réinstancier l'objet
-                      ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
-                 }
-                 
-                 currentSpeedMs = rawSpeedMs; // Basculer en mode vitesse brute
-                 gpsStatusMessage = 'ERREUR UKF (Réinitialisation)';
-             }
+                 // --- BLOC DANS LA FONCTION setInterval(..., 50) ---
+// ANCIENNE LOGIQUE dans le catch :
+// } catch (e) {
+//     console.error("🔴 ERREUR CRITIQUE UKF DANS LA PRÉDICTION. Réinitialisation complète...", e);
+//     if (typeof ukf.reset === 'function') {
+//          ukf.reset(currentPosition.lat, currentPosition.lon, currentAltitudeM);
+//     } else {
+//          ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentAltitudeM);
+//     }
+//     currentSpeedMs = rawSpeedMs; 
+//     gpsStatusMessage = 'ERREUR UKF (Réinitialisation)'; // <-- CECI EST L'ERREUR
+// }
+
+// NOUVELLE LOGIQUE (Tenter la reprise sans réinitialisation brutale):
+} catch (e) {
+     console.error("🔴 ERREUR CRITIQUE UKF DANS LA PRÉDICTION. Récupération en mode GPS brut...", e);
+     currentSpeedMs = rawSpeedMs; // Basculer en mode vitesse brute
+     // Conserver le statut EKF à 'Initialisation...' pour tenter de le sauver au prochain fix GPS
+     // Mettre à jour le message d'état GPS seulement si l'UKF n'est pas en train d'être corrigé
+     if (gpsStatusMessage.indexOf('Fix') === -1) {
+         gpsStatusMessage = 'Échec UKF (Mode GPS brut)';
+     }
+         }
          } else if (!isGpsPaused) {
              // Si l'UKF n'est pas initialisé, on utilise la vitesse brute GPS (pour l'affichage)
              currentSpeedMs = rawSpeedMs; 
