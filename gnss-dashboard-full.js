@@ -1,327 +1,308 @@
 // =================================================================
-// FICHIER COMPLET 1/2 : PROFESSIONAL UNSCENTED KALMAN FILTER (UKF) - 21 ÉTATS (V38-PRO)
-// INS (Inertial Navigation System) - Version Quaternion
-// DÉPENDANCE CRITIQUE: math.js
+// FICHIER COMPLET 2/2 : GNSS SPACETIME DASHBOARD - V38 INS PROFESSIONNEL
+// STRATÉGIE: Utilisation exclusive de l'UKF/INS à 50Hz pour la navigation (Position, Vitesse, Distance).
 // =================================================================
 
-class ProfessionalUKF {
-    constructor(lat = 0, lon = 0, alt = 0) {
-        if (typeof math === 'undefined') throw new Error("UKF Error: math.js is required.");
-        
-        this.initialized = false;
-        
-        // VECTEUR D'ÉTAT (21)
-        // [0-2: Pos(Lat, Lon, Alt)], [3-5: Vel(North, East, Down)], [6-9: Att(Quaternion)], 
-        // [10-12: GyroBias(3)], [13-15: AccBias(3)], [16-17: Clock(2)], [18-20: Réserves(3)]
-        this.n = 21; 
-        this.x = math.matrix(math.zeros([this.n, 1]));
-        
-        // 1. Initialisation Position & Quaternion
-        this.x.subset(math.index(0, 0), lat);
-        this.x.subset(math.index(1, 0), lon); 
-        this.x.subset(math.index(2, 0), alt); 
-        this.x.subset(math.index(6, 0), 1); // Quaternion: [1, 0, 0, 0]
+((window) => {
+    "use strict";
 
-        // --- PARAMÈTRES UKF ---
-        this.alpha = 1e-3; this.beta = 2; this.kappa = 0;
-        this.lambda = (this.alpha**2) * (this.n + this.kappa) - this.n;
+    // --- Vérification des dépendances critiques ---
+    if (typeof math === 'undefined') console.error("🔴 CRITIQUE: math.js manquant. La fusion UKF est désactivée.");
+    if (typeof ProfessionalUKF === 'undefined') console.error("🔴 CRITIQUE: ProfessionalUKF non définie. Mode GPS brut.");
+
+    // =================================================================
+    // BLOC 1/5 : CONFIGURATION, CONSTANTES ET ÉTAT GLOBAL
+    // =================================================================
+
+    const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+    const KMH_MS = 3.6;             
+    const C_L = 299792458;          
+    const G_ACC_STD = 9.8067;       
+    
+    let ukf = null;             
+    let isGpsPaused = true;     
+    let gpsWatchID = null;      
+    let isIMUActive = false;    
+    let gpsStatusMessage = 'Attente du signal GPS...'; 
+    let lastPredictionTime = Date.now();
+    let sessionStartTime = Date.now(); 
+    
+    // Variables de capteurs (entrées UKF)
+    let currentPosition = { lat: 0, lon: 0, alt: 0, acc: 0, speed: 0 };
+    let curAcc = {x: 0, y: 0, z: G_ACC_STD}, curGyro = {x: 0, y: 0, z: 0};
+    
+    // Variables de sortie UKF/Fusion (affichées)
+    let fusionState = null;
+    let currentSpeedMs = 0.0;   
+    let totalDistanceM = 0.0; 
+    let maxSpeedMs = 0.0; 
+    
+    const $ = id => document.getElementById(id);
+    
+    // --- Utilitaires d'Affichage ---
+    const dataOrDefault = (val, decimals, suffix = '', hideZero = false) => {
+        if (val === undefined || val === null || isNaN(val) || typeof val !== 'number') return 'N/A';
+        if (hideZero && val === 0) return 'N/A';
+        return val.toFixed(decimals) + suffix;
+    };
+    const formatDistance = (m) => {
+        if (m < 1000) return dataOrDefault(m, 2, ' m'); 
+        return dataOrDefault(m / 1000, 3, ' km');
+    };
+    
+    // =================================================================
+    // BLOC 2/5 : HANDLERS DE CAPTEURS (IMU & GPS)
+    // =================================================================
+
+    const handleDeviceMotion = (event) => {
+        isIMUActive = true;
+        const acc = event.accelerationIncludingGravity;
+        const rot = event.rotationRate;
         
-        // Poids (Wm, Wc)
-        const lambda_plus_n = this.n + this.lambda;
-        this.Wm = math.zeros([1, 2 * this.n + 1]);
-        this.Wc = math.zeros([1, 2 * this.n + 1]);
-        this.Wm.subset(math.index(0, 0), this.lambda / lambda_plus_n);
-        this.Wc.subset(math.index(0, 0), this.lambda / lambda_plus_n + (1 - this.alpha**2 + this.beta));
-        const weight = 1 / (2 * lambda_plus_n);
-        for (let i = 1; i <= 2 * this.n; i++) {
-            this.Wm.subset(math.index(0, i), weight);
-            this.Wc.subset(math.index(0, i), weight);
+        if (acc) {
+            curAcc.x = curAcc.x * 0.8 + (acc.x || 0.0) * 0.2;
+            curAcc.y = curAcc.y * 0.8 + (acc.y || 0.0) * 0.2;
+            curAcc.z = curAcc.z * 0.8 + (acc.z || G_ACC_STD) * 0.2; 
         }
+        if (rot) {
+            curGyro.x = (rot.alpha || 0.0) * D2R; 
+            curGyro.y = (rot.beta || 0.0) * D2R;  
+            curGyro.z = (rot.gamma || 0.0) * D2R; 
+        }
+    };
 
-        // Covariance P (Incertitude Initiale - Diagonale robuste)
-        this.P = math.diag([
-            100, 100, 100, // Pos [m²]
-            1, 1, 1,       // Vel [m²/s²]
-            1e-1, 1e-1, 1e-1, 1e-1, // Att (Quaternion)
-            1e-3, 1e-3, 1e-3, // Gyro Bias [rad²/s²]
-            1e-2, 1e-2, 1e-2, // Acc Bias [m²/s⁴]
-            1, 1, 1, 1, 1 // Reste
-        ]);
-
-        // Covariance Q (Bruit de Processus)
-        this.Q = math.diag([
-            0, 0, 0,      
-            1e-4, 1e-4, 1e-4, 
-            1e-5, 1e-5, 1e-5, 1e-5, 
-            1e-7, 1e-7, 1e-7, 
-            1e-6, 1e-6, 1e-6, 
-            0, 0, 0, 0, 0 
-        ]);
-        
-        // Constantes WGS84
-        this.G_E = 9.780327; this.R_MAJOR = 6378137.0; this.FLATTENING = 1/298.257223563;
-        this.E_SQUARED = (2 * this.FLATTENING) - (this.FLATTENING**2);
-        this.D2R = Math.PI / 180; this.R2D = 180 / Math.PI;
-    }
-
-    // --- UTILS MATHÉMATIQUES & WGS84 ---
-    getWGS84Parameters(latRad, alt) {
-        const sinLat = Math.sin(latRad);
-        const N = this.R_MAJOR / Math.sqrt(1 - this.E_SQUARED * sinLat**2);
-        const M = N * (1 - this.E_SQUARED) / (1 - this.E_SQUARED * sinLat**2);
-        const g_0 = this.G_E * (1 + 0.0053024 * sinLat**2);
-        const g = g_0 - 3.086e-6 * alt;
-        return { N, M, g };
-    }
-    quaternionToRotationMatrix(q) {
-        const w=q[0], x=q[1], y=q[2], z=q[3];
-        return math.matrix([
-            [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y],
-            [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x],
-            [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]
-        ]);
-    }
-    quaternionToEuler(q) {
-        const w=q[0], x=q[1], y=q[2], z=q[3];
-        const roll = Math.atan2(2*(w*x + y*z), 1 - 2*(x*x + y*y));
-        const pitch = Math.asin(2*(w*y - z*x));
-        const yaw = Math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z));
-        return {roll, pitch, yaw}; // En Radians
-    }
-    normalizeQuaternion(x) {
-        const q_vec = math.subset(x, math.index([6, 7, 8, 9], 0));
-        const norm = math.norm(q_vec);
-        if (norm > 0) {
-            const normalized_q = math.divide(q_vec, norm);
-            math.subset(x, math.index([6, 7, 8, 9], 0), normalized_q);
+    const requestMotionPermission = () => {
+         // ... (Logique de permission IMU) ...
+         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+                .then(state => {
+                    if (state === 'granted') {
+                        window.addEventListener('devicemotion', handleDeviceMotion);
+                        isIMUActive = true;
+                    }
+                })
+                .catch(console.error);
         } else {
-             math.subset(x, math.index([6, 7, 8, 9], 0), [1, 0, 0, 0]);
+            window.addEventListener('devicemotion', handleDeviceMotion);
+            isIMUActive = true;
         }
-    }
-    _quaternionProduct(q1, q2) {
-        const w1=q1[0], x1=q1[1], y1=q1[2], z1=q1[3];
-        const w2=q2[0], x2=q2[1], y2=q2[2], z2=q2[3];
-        return [
-            w1*w2 - x1*x2 - y1*y2 - z1*z2,
-            w1*x2 + x1*w2 + y1*z2 - z1*y2,
-            w1*y2 - x1*z2 + y1*w2 + z1*x2,
-            w1*z2 + x1*y2 - y1*x2 + z1*w2
-        ];
-    }
+    };
     
-    // --- FONCTION DE TRANSITION D'ÉTAT (Le cœur INS) ---
-    stateTransitionFunction(x_sigma, dt, rawAccels, rawGyros) {
-        const x_new = math.clone(x_sigma);
+    const handleGpsSuccess = (pos) => {
+        const c = pos.coords;
+        currentPosition = { lat: c.latitude, lon: c.longitude, alt: c.altitude || 0, acc: c.accuracy, speed: c.speed || 0 };
 
-        // 1. EXTRACTION
-        const lat = x_sigma.subset(math.index(0, 0)) * this.D2R;
-        const alt = x_sigma.subset(math.index(2, 0));
-        const V_E = math.subset(x_sigma, math.index([3, 4, 5], 0)); // Vitesse NED (North, East, Down)
-        const q_state = math.subset(x_sigma, math.index([6, 7, 8, 9], 0)).toArray();
-        const gyroBias = math.subset(x_sigma, math.index([10, 11, 12], 0));
-        const accBias = math.subset(x_sigma, math.index([13, 14, 15], 0));
-
-        const { N, M, g } = this.getWGS84Parameters(lat, alt);
-        const R_N = N + alt; 
-        const R_M = M + alt; 
-
-        // 2. CORRECTION DES MESURES BRUTES
-        const acc_meas = math.matrix([[rawAccels[0]], [rawAccels[1]], [rawAccels[2]]]);
-        const gyro_meas = math.matrix([[rawGyros[0]], [rawGyros[1]], [rawGyros[2]]]);
+        if (!ukf && typeof ProfessionalUKF !== 'undefined') {
+             ukf = new ProfessionalUKF(c.latitude, c.longitude, c.altitude || 0);
+             ukf.initialize(c.latitude, c.longitude, c.altitude || 0);
+             console.log("✅ UKF Démarré et initialisé.");
+        }
         
-        const acc_corr = math.subtract(acc_meas, accBias); // a_body = acc_meas - b_acc
-        const gyro_corr = math.subtract(gyro_meas, gyroBias); // w_body = gyro_meas - b_gyro
-
-        // 3. PROPAGATION DE L'ATTITUDE (QUATERNION)
-        const half_dt = dt / 2.0;
-        const omega_norm = math.norm(gyro_corr);
-        
-        let delta_q;
-        if (omega_norm > 1e-6) {
-             const angle = omega_norm * half_dt;
-             const sin_angle_over_norm = Math.sin(angle) / omega_norm;
-             const gyro_normalized = math.divide(gyro_corr, omega_norm);
-             delta_q = [
-                 Math.cos(angle),
-                 gyro_normalized.subset(math.index(0, 0)) * sin_angle_over_norm,
-                 gyro_normalized.subset(math.index(1, 0)) * sin_angle_over_norm,
-                 gyro_normalized.subset(math.index(2, 0)) * sin_angle_over_norm
-             ];
+        if (ukf && ukf.isInitialized()) {
+            try {
+                ukf.update(pos); 
+                gpsStatusMessage = `Fix: ${dataOrDefault(c.accuracy, 1)}m (UKF)`;
+            } catch (e) {
+                console.error("🔴 ERREUR CRITIQUE UKF DANS LA CORRECTION GPS.", e);
+                gpsStatusMessage = 'ERREUR UKF (Correction)';
+            }
+        }
+    };
+    
+    const startGpsTracking = () => {
+        if (gpsWatchID !== null) return;
+        if (navigator.geolocation) {
+            const options = { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }; 
+            gpsWatchID = navigator.geolocation.watchPosition(handleGpsSuccess, 
+                (error) => { gpsStatusMessage = `Erreur GPS: ${error.code}`; }, 
+                options);
+            gpsStatusMessage = 'Acquisition en cours...';
         } else {
-             delta_q = [1.0, half_dt * gyro_corr.subset(math.index(0, 0)), half_dt * gyro_corr.subset(math.index(1, 0)), half_dt * gyro_corr.subset(math.index(2, 0))];
+            gpsStatusMessage = 'GPS Non Supporté';
         }
+    };
 
-        const q_new_array = this._quaternionProduct(q_state, delta_q);
-        const q_new = math.matrix([[q_new_array[0]], [q_new_array[1]], [q_new_array[2]], [q_new_array[3]]]);
-        
-        x_new.subset(math.index([6, 7, 8, 9], 0), q_new);
-        this.normalizeQuaternion(x_new); 
+    const stopGpsTracking = () => {
+        if (gpsWatchID) navigator.geolocation.clearWatch(gpsWatchID);
+        gpsWatchID = null;
+        window.removeEventListener('devicemotion', handleDeviceMotion);
+        isIMUActive = false;
+        gpsStatusMessage = 'Arrêté (Pause)';
+    };
 
-        // 4. PROPAGATION DE LA VITESSE (VELOCITÉ)
-        const R_matrix = this.quaternionToRotationMatrix(q_new_array); 
-        const gravity_local = math.matrix([[0], [0], [g]]); 
-        const f_NED = math.subtract(math.multiply(R_matrix, acc_corr), gravity_local);
-        
-        const V_new = math.add(V_E, math.multiply(f_NED, dt)); 
-        x_new.subset(math.index([3, 4, 5], 0), V_new);
+    // =================================================================
+    // BLOC 3/5 : FONCTIONS D'AFFICHAGE ET UTILITAIRES
+    // =================================================================
 
-        // 5. PROPAGATION DE LA POSITION
-        const V_avg = math.divide(math.add(V_E, V_new), 2);
-        const V_N = V_avg.subset(math.index(0, 0));
-        const V_E_vel = V_avg.subset(math.index(1, 0));
-        const V_D = V_avg.subset(math.index(2, 0));
-
-        const dLat = (V_N / R_M) * this.R2D * dt;
-        const dLon = (V_E_vel / (R_N * Math.cos(lat))) * this.R2D * dt;
-        const dAlt = -V_D * dt; 
-        
-        x_new.subset(math.index(0, 0), x_sigma.subset(math.index(0, 0)) + dLat);
-        x_new.subset(math.index(1, 0), x_sigma.subset(math.index(1, 0)) + dLon);
-        x_new.subset(math.index(2, 0), alt + dAlt);
-
-        // 6. PROPAGATION DES BIAS (Constant pour la transition)
-
-        return x_new;
-    }
+    const updateTimeCounters = () => {
+        const now = new Date();
+        if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString();
+        if ($('utc-datetime')) $('utc-datetime').textContent = now.toISOString().replace('T', ' ').split('.')[0] + ' (UTC)';
+        if ($('elapsed-time')) $('elapsed-time').textContent = dataOrDefault((Date.now() - sessionStartTime)/1000, 2, ' s');
+    };
     
-    // --- FONCTIONS CORE UKF (Estimation et Correction) ---
-    
-    generateSigmaPoints(x, P) {
-         const X = [x];
-         const c = Math.sqrt(this.n + this.lambda);
-         
-         let S;
-         try {
-             S = math.multiply(c, math.cholesky(P)); // Racine carrée matricielle
-         } catch (e) {
-             // Fallback robuste
-             const diagP = math.diag(P);
-             const diagS = math.map(diagP, val => (val > 0) ? Math.sqrt(val * (this.n + this.lambda)) : 0);
-             S = math.diag(diagS);
-         }
-         
-         for(let i=0; i<this.n; i++) {
-             const S_col_i = math.column(S, i);
-             X.push(math.add(x, S_col_i));
-             X.push(math.subtract(x, S_col_i));
-         }
-         return X;
-    }
+    const updateSpiritLevel = (pitchRad, rollRad) => {
+        const MAX_OFFSET_PX = 40; 
+        const P_norm = Math.min(Math.max(pitchRad, -0.5), 0.5) / 0.5;
+        const R_norm = Math.min(Math.max(rollRad, -0.5), 0.5) / 0.5;
+        const dx = R_norm * MAX_OFFSET_PX * 1.5; 
+        const dy = P_norm * MAX_OFFSET_PX * -1.5; 
+        const bubble = $('bubble');
+        if (bubble) bubble.style.transform = `translate(${dx}px, ${dy}px)`;
+    };
 
-    predict(dt, rawAccels, rawGyros) {
-        if (!this.initialized) return;
+    const updateRelativityAndForces = (speed, mass = 70.0) => {
+        const beta = speed / C_L;
+        const betaSq = beta**2;
+        const lorentzFactor = (betaSq < 1) ? 1.0 / Math.sqrt(1.0 - betaSq) : 1.0; 
+        
+        if ($('%speed-of-light')) $('%speed-of-light').textContent = dataOrDefault(beta * 100, 2) + ' %';
+        if ($('lorentz-factor')) $('lorentz-factor').textContent = dataOrDefault(lorentzFactor, 9);
+        if ($('energy-kinetic')) $('energy-kinetic').textContent = dataOrDefault(0.5 * mass * speed**2, 2, ' J');
+        if ($('schwarzschild-radius')) $('schwarzschild-radius').textContent = dataOrDefault((2 * 6.67430e-11 * mass) / C_L**2, 2, ' m', true); 
+    };
 
-        // 1. Génération des Sigma Points
-        let X = this.generateSigmaPoints(this.x, math.add(this.P, math.multiply(this.Q, dt)));
-        let X_prime = []; // Sigma points propagés
+    function updateDashboardDOM(ukfState, isFusionActive) {
         
-        // 2. Propagation de chaque Sigma Point (INS)
-        for (let i = 0; i < X.length; i++) {
-            X_prime.push(this.stateTransitionFunction(X[i], dt, rawAccels, rawGyros));
-        }
+        // --- 1. Vitesse & Distance (UTILISATION UKF EXCLUSIVE) ---
+        const speedMs = ukfState ? ukfState.speed : currentPosition.speed;
+        const speedKmh = speedMs * KMH_MS;
+        
+        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speedKmh, 1, ' km/h'); 
+        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speedKmh, 5, ' km/h'); 
+        if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(speedMs, 5, ' m/s'); 
+        if ($('vitesse-brute-ms')) $('vitesse-brute-ms').textContent = dataOrDefault(currentPosition.speed, 2, ' m/s'); 
+        if ($('vmax-session')) $('vmax-session').textContent = dataOrDefault(maxSpeedMs * KMH_MS, 1, ' km/h');
+        if ($('distance-total-3d')) $('distance-total-3d').textContent = formatDistance(totalDistanceM); 
+        
+        // --- 2. Position & EKF/UKF (Coordonnées estimées INS) ---
+        const displayLat = ukfState ? ukfState.lat : currentPosition.lat;
+        const displayLon = ukfState ? ukfState.lon : currentPosition.lon;
+        const displayAlt = ukfState ? ukfState.alt : currentPosition.alt;
 
-        // 3. Récupération de la moyenne (Nouvel état x)
-        let x_new = math.zeros([this.n, 1]);
-        for (let i = 0; i < X_prime.length; i++) {
-            x_new = math.add(x_new, math.multiply(this.Wm.subset(math.index(0, i)), X_prime[i]));
-        }
-        
-        this.normalizeQuaternion(x_new);
-        this.x = x_new;
-        
-        // 4. Calcul de la nouvelle covariance P
-        let P_new = math.zeros([this.n, this.n]);
-        for (let i = 0; i < X_prime.length; i++) {
-            const diff = math.subtract(X_prime[i], this.x);
-            P_new = math.add(P_new, math.multiply(this.Wc.subset(math.index(0, i)), math.multiply(diff, math.transpose(diff))));
-        }
-        this.P = P_new;
-    }
-    
-    // --- FONCTION D'OBSERVATION (GPS) ---
-    h_GPS(x) {
-        // y = [Lat(0), Lon(1), Alt(2), Speed_Mag]
-        const V_N = x.subset(math.index(3, 0));
-        const V_E = x.subset(math.index(4, 0));
-        const V_D = x.subset(math.index(5, 0));
-        const speed_mag = Math.sqrt(V_N**2 + V_E**2 + V_D**2);
-        
-        return math.matrix([[x.subset(math.index(0, 0))], [x.subset(math.index(1, 0))], [x.subset(math.index(2, 0))], [speed_mag]]);
-    }
-    
-    UKF_Update_Core(m, R, y_meas, h_function) {
-        const X = this.generateSigmaPoints(this.x, this.P);
-        let Y = [];
-        for (let i = 0; i < X.length; i++) {
-            Y.push(h_function(X[i]));
-        }
+        if ($('lat-ekf')) $('lat-ekf').textContent = dataOrDefault(displayLat, 6);
+        if ($('lon-ekf')) $('lon-ekf').textContent = dataOrDefault(displayLon, 6);
+        if ($('alt-ekf')) $('alt-ekf').textContent = dataOrDefault(displayAlt, 2, ' m');
+        if ($('acc-gps')) $('acc-gps').textContent = dataOrDefault(currentPosition.acc, 2, ' m'); 
+        if ($('gps-status-acquisition')) $('gps-status-acquisition').textContent = gpsStatusMessage;
 
-        let y_hat = math.zeros([m, 1]);
-        for (let i = 0; i < Y.length; i++) {
-            y_hat = math.add(y_hat, math.multiply(this.Wm.subset(math.index(0, i)), Y[i]));
-        }
+        // --- 3. IMU/Attitude ---
+        if ($('accel-x')) $('accel-x').textContent = dataOrDefault(curAcc.x, 3, ' m/s²');
+        if ($('accel-y')) $('accel-y').textContent = dataOrDefault(curAcc.y, 3, ' m/s²');
+        if ($('accel-z')) $('accel-z').textContent = dataOrDefault(curAcc.z, 3, ' m/s²');
+        if ($('imu-status')) $('imu-status').textContent = isIMUActive ? 'Actif' : 'Inactif';
 
-        let P_yy = math.clone(R); 
-        let P_xy = math.zeros([this.n, m]); 
-        
-        for (let i = 0; i < X.length; i++) {
-            const y_diff = math.subtract(Y[i], y_hat);
-            const x_diff = math.subtract(X[i], this.x);
+        // 4. État Fusion et Niveau à Bulle
+        if (isFusionActive) {
+            $('ekf-status').textContent = 'Actif (INS 50Hz)';
+            const pitchDeg = ukfState.pitch * R2D;
+            const rollDeg = ukfState.roll * R2D;
             
-            P_yy = math.add(P_yy, math.multiply(this.Wc.subset(math.index(0, i)), math.multiply(y_diff, math.transpose(y_diff))));
-            P_xy = math.add(P_xy, math.multiply(this.Wc.subset(math.index(0, i)), math.multiply(x_diff, math.transpose(y_diff))));
+            if ($('inclinaison-pitch')) $('inclinaison-pitch').textContent = dataOrDefault(pitchDeg, 1, '°');
+            if ($('roulis-roll')) $('roulis-roll').textContent = dataOrDefault(rollDeg, 1, '°');
+            
+            // Forces G
+            // L'UKF fournit une accélération corrigée, ici on affiche la valeur brute/filtrée pour la force G
+            if ($('force-g-vert')) $('force-g-vert').textContent = dataOrDefault(curAcc.z / G_ACC_STD, 2, ' G');
+            
+            updateSpiritLevel(ukfState.pitch, ukfState.roll); 
+            if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(Math.sqrt(ukfState.cov_vel), 3, ' m/s');
+        } else {
+             $('ekf-status').textContent = 'Initialisation...';
+             // Fall back pour le niveau à bulle (IMU brut)
+             const roll = Math.atan2(curAcc.y, curAcc.z);
+             const pitch = Math.atan2(-curAcc.x, Math.sqrt(curAcc.y**2 + curAcc.z**2));
+             if ($('inclinaison-pitch')) $('inclinaison-pitch').textContent = dataOrDefault(pitch * R2D, 1, '°');
+             if ($('roulis-roll')) $('roulis-roll').textContent = dataOrDefault(roll * R2D, 1, '°');
+             updateSpiritLevel(pitch, roll); 
         }
 
-        const K = math.multiply(P_xy, math.inv(P_yy)); // Gain de Kalman
-        const y_diff_meas = math.subtract(y_meas, y_hat);
-        this.x = math.add(this.x, math.multiply(K, y_diff_meas));
-        this.P = math.subtract(this.P, math.multiply(K, math.multiply(P_yy, math.transpose(K))));
-        
-        this.normalizeQuaternion(this.x);
+        updateRelativityAndForces(speedMs);
     }
+    
+    // =================================================================
+    // BLOC 4/5 : BOUCLE PRINCIPALE (50 Hz)
+    // =================================================================
+    
+    setInterval(() => {
+         if (isGpsPaused) {
+             updateTimeCounters();
+             updateDashboardDOM(fusionState, false); 
+             return;
+         }
+         
+         const now = Date.now();
+         let dt_prediction = (now - lastPredictionTime) / 1000.0;
+         lastPredictionTime = now;
+         
+         let isFusionActive = ukf && ukf.isInitialized();
+         
+         // 1. PRÉDICTION UKF (INS - Propagation Inertielle)
+         if (isFusionActive && dt_prediction > 0) {
+             try {
+                 ukf.predict(dt_prediction, [curAcc.x, curAcc.y, curAcc.z], [curGyro.x, curGyro.y, curGyro.z]);
+                 fusionState = ukf.getState();
+                 currentSpeedMs = fusionState.speed; 
+                 
+                 // Intégration 3D de la distance
+                 if (currentSpeedMs > 0.05) {
+                    totalDistanceM += currentSpeedMs * dt_prediction;
+                 }
+                 
+             } catch (e) {
+                 console.error("🔴 ERREUR UKF CRITIQUE DANS LA PRÉDICTION.", e);
+                 isFusionActive = false; 
+                 fusionState = null;
+                 currentSpeedMs = currentPosition.speed;
+             }
+         } else {
+             // Mode Fall Back (GPS brut)
+             currentSpeedMs = currentPosition.speed;
+             fusionState = null;
+             if(currentSpeedMs > 0.05) totalDistanceM += currentSpeedMs * dt_prediction;
+         }
+         
+         maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
+         updateTimeCounters();
+         updateDashboardDOM(fusionState, isFusionActive); 
+         
+    }, 20); // 50 Hz
 
-    update(pos) { 
-        if (!this.initialized) return;
-        const acc = pos.coords.accuracy || 10;
-        const altAcc = pos.coords.altitudeAccuracy || acc * 1.5;
-        const R_dyn = math.diag([acc**2, acc**2, altAcc**2, 1.0]); 
-        const y = math.matrix([[pos.coords.latitude], [pos.coords.longitude], [pos.coords.altitude||0], [pos.coords.speed||0]]);
+    // =================================================================
+    // BLOC 5/5 : INITIALISATION ET CONTRÔLES (1 Hz)
+    // =================================================================
+    
+    setInterval(() => {
+        // (Logique de la boucle 1Hz : Météo, Astro, etc. doit être réintégrée ici)
+    }, 1000); 
+
+    const togglePause = () => {
+        isGpsPaused = !isGpsPaused;
+        const btn = $('gps-pause-toggle');
         
-        try {
-             this.UKF_Update_Core(4, R_dyn, y, this.h_GPS);
-        } catch(e) {
-            console.error("🔴 Échec de la mise à jour UKF. Matrice P_yy singulière?", e);
+        if (!isGpsPaused) {
+            btn.textContent = '⏸️ PAUSE GPS';
+            sessionStartTime = Date.now(); 
+            requestMotionPermission();
+            startGpsTracking();
+        } else {
+            btn.textContent = '▶️ MARCHE GPS';
+            stopGpsTracking();
         }
-    }
-    
-    // --- INTERFACE ---
-    initialize(lat, lon, alt) {
-        this.x.subset(math.index(0,0), lat);
-        this.x.subset(math.index(1,0), lon);
-        this.x.subset(math.index(2,0), alt);
-        this.P = math.multiply(this.P, 0.1); 
-        this.initialized = true;
-    }
-    reset(lat, lon, alt) { 
-        this.initialized = false;
-        this.initialize(lat, lon, alt);
-    }
-    isInitialized() { return this.initialized; }
-    
-    getState() {
-        const Vx=this.x.subset(math.index(3,0)), Vy=this.x.subset(math.index(4,0)), Vz=this.x.subset(math.index(5,0));
-        const q_state = math.subset(this.x, math.index([6, 7, 8, 9], 0)).toArray();
-        const euler = this.quaternionToEuler(q_state);
+    };
+
+    window.addEventListener('load', () => {
+        const btn = $('gps-pause-toggle');
+        if (btn) btn.addEventListener('click', togglePause);
         
-        return {
-            lat: this.x.subset(math.index(0,0)), lon: this.x.subset(math.index(1,0)), alt: this.x.subset(math.index(2,0)),
-            speed: Math.sqrt(Vx**2 + Vy**2 + Vz**2), // Vitesse 3D
-            vel_N: Vx, vel_E: Vy, vel_D: Vz,
-            pitch: euler.pitch, // En radians
-            roll: euler.roll,   // En radians
-            yaw: euler.yaw,     // En radians
-            cov_vel: this.P.subset(math.index(3,3)) 
-        };
-    }
-}
-window.ProfessionalUKF = ProfessionalUKF;
+        if($('reset-dist-btn')) $('reset-dist-btn').addEventListener('click', () => totalDistanceM = 0);
+        if($('reset-max-btn')) $('reset-max-btn').addEventListener('click', () => maxSpeedMs = 0);
+        if($('reset-all-btn')) $('reset-all-btn').addEventListener('click', () => { 
+             totalDistanceM = 0; maxSpeedMs = 0; fusionState = null; 
+             if(ukf) ukf.reset(currentPosition.lat, currentPosition.lon, currentPosition.alt);
+        });
+        
+        updateDashboardDOM(null, false); 
+    });
+
+})(window);
