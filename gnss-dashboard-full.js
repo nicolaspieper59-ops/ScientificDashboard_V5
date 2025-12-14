@@ -428,110 +428,211 @@
     // BLOC 5/5 : BOUCLES PRINCIPALES
     // =================================================================
     
-window.addEventListener('load', () => {
+    // =================================================================
+// BLOC 5/5 : FONCTIONS TEMPS, INITIALISATION ET BOUCLES PRINCIPALES
+// =================================================================
+
+// --- Variables de Temps ---
+let sessionStartTime = 0; // Sera initialisé au premier start
+let totalMovementTimeMs = 0;
+let lastUpdateTimestamp = Date.now();
+let weatherUpdateCounter = 0;
+
+function getCDate() {
+    return new Date();
+}
+
+function updateTimeCounters() {
+    const now = getCDate();
     
-    if (typeof ProfessionalUKF !== 'undefined' && typeof math !== 'undefined') {
-        ukf = new ProfessionalUKF(currentPosition.lat, currentPosition.lon, currentPosition.alt);
+    // Heure Locale (NTP)
+    const localTimeStr = now.toLocaleTimeString('fr-FR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    document.getElementById('local-time').textContent = localTimeStr;
+
+    // Date & Heure (UTC/GMT) - Affichage du GMT réel
+    const utcDateStr = now.toLocaleDateString('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' });
+    const utcTimeStr = now.toLocaleTimeString('fr-FR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' });
+    document.getElementById('utc-datetime').textContent = `${utcDateStr} ${utcTimeStr} (GMT)`;
+
+    // Temps écoulé (Session)
+    const elapsedSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+    const elapsedStr = new Date(elapsedSeconds * 1000).toISOString().substr(11, 8);
+    document.getElementById('elapsed-session').textContent = `${elapsedSeconds.toFixed(2)} s (${elapsedStr})`;
+
+    // Temps de Mouvement
+    const movementTimeStr = new Date(totalMovementTimeMs).toISOString().substr(11, 8);
+    document.getElementById('movement-time').textContent = `${(totalMovementTimeMs / 1000).toFixed(2)} s (${movementTimeStr})`;
+    
+    // Affichage de l'heure Minecraft
+    if (typeof updateMinecraftTime === 'function') {
+        updateMinecraftTime(document.getElementById('minecraft-time'), now);
+    }
+}
+
+function syncH() {
+    // Fonctionnalité pour synchronisation NTP externe si nécessaire.
+    // Pour l'instant, elle sert de déclencheur pour les mises à jour.
+}
+
+// =================================================================
+// BOUCLE RAPIDE (50 Hz - 20 ms) - PRÉDICTION UKF & CALCULS INERTIELS
+// =================================================================
+
+setInterval(() => {
+    
+    if (isGpsPaused || !ukf) {
+        // En mode pause ou avant initialisation, on ne fait rien.
+        updateDashboardDOM(null, false);
+        return;
+    }
+
+    const now = Date.now();
+    const dt = (now - lastUpdateTimestamp) / 1000; // Delta Time en secondes
+    
+    // Protection contre les erreurs de temps (ex: pause prolongée)
+    if (dt > 0.5) { 
+        lastUpdateTimestamp = now;
+        return; 
     }
     
-    setupEventListeners();
-
-    // Boucle rapide (50 Hz) - Cœur de la fusion/prédiction
-    setInterval(() => {
-         const now = Date.now();
-         dt_prediction = (now - lastPredictionTime) / 1000.0;
-         lastPredictionTime = now;
-         
-         let ukfState = { 
-             lat: currentPosition.lat, lon: currentPosition.lon, alt: currentPosition.alt, 
-             speed: rawSpeedMs, pitch:0, roll:0, 
-             q_w: 1, q_x: 0, q_y: 0, q_z: 0 
-         }; 
-         let isFusionActive = false;
-
-         // PRÉDICTION UKF (INS)
-         if (!isGpsPaused && ukf && typeof ukf.predict === 'function' && dt_prediction > 0 && ukf.isInitialized()) {
-             try {
-                 ukf.predict(dt_prediction, [curAcc.x, curAcc.y, curAcc.z], [curGyro.x, curGyro.y, curGyro.z]);
-                 
-                 // V36: Protection si l'état UKF est corrompu ou incomplet
-                 if (ukf.x && ukf.x.size[0] >= 10) { 
-                      const state = ukf.getState(); 
-                      ukfState = { 
-                          ...state,
-                          q_w: ukf.x.subset(math.index(6, 0)), 
-                          q_x: ukf.x.subset(math.index(7, 0)),
-                          q_y: ukf.x.subset(math.index(8, 0)),
-                          q_z: ukf.x.subset(math.index(9, 0)),
-                      };
-                      currentSpeedMs = ukfState.speed; 
-                      isFusionActive = true;
-                      
-                      calculateGForces(ukfState, [curAcc.x, curAcc.y, curAcc.z]);
-                 } else {
-                     console.warn("⚠️ UKF initialisé mais état incomplet. Utilisation de la vitesse brute.");
-                     currentSpeedMs = rawSpeedMs;
-                 }
-
-                 if ((now - lastGpsUpdateTime > 2000) || currentPosition.acc > 20) {
-                     if (currentSpeedMs < 0.2) {
-                          ukf.updateZUUV(); 
-                          gpsStatusMessage = "INS (ZUUV Actif)";
-                     } else {
-                          gpsStatusMessage = "⚠️ PERTE GPS - MODE INERTIEL";
-                     }
-                 } else {
-                     gpsStatusMessage = `Fix: ${dataOrDefault(currentPosition.acc, 1)}m (GPS/UKF)`;
-                 }
-                 
-             } catch (e) {
-                 console.error("🔴 ERREUR UKF CRITIQUE DANS LE THREAD HAUTE FRÉQUENCE. Arrêt de la fusion.", e);
-                 currentSpeedMs = rawSpeedMs; 
-                 gpsStatusMessage = 'ERREUR UKF (Arrêt Fusion)';
-             }
-         } else if (!isGpsPaused) {
-             currentSpeedMs = rawSpeedMs; 
-         }
-         
-         if (!isGpsPaused && currentSpeedMs > 0.05) { 
-            totalDistanceM += currentSpeedMs * dt_prediction;
-         }
-
-         updateRelativityAndForces(ukfState); 
-         maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
-         updateDashboardDOM(ukfState, isFusionActive); 
-         
-    }, 20); // 50 Hz
+    // --- 1. UKF PREDICTION (Le cœur du filtre) ---
+    let ukfState = null;
+    let isFusionActive = false;
     
-    // Boucle lente (1 Hz) - Météo/Astro/NTP/Physique
-    setInterval(() => {
-        updateTimeCounters(); 
-        
-        const fusionAlt = (ukf && ukf.isInitialized() ? ukf.getState().alt : currentPosition.alt);
-        const fusionLat = (ukf && ukf.isInitialized() ? ukf.getState().lat : currentPosition.lat);
-        
-        if (!isGpsPaused && fusionLat !== 0.0) {
-            if (weatherUpdateCounter % 60 === 0) { 
-                 fetchWeather(fusionLat, currentPosition.lon)
-                     .then(data => { 
-                         currentPressureHpa = data.pressure || P_SEA;
-                         currentTemperatureC = data.temp || 15.0;
-                         updatePhysicalState(fusionAlt, fusionLat); 
-                     })
-                     .catch(err => console.error("🔴 ERREUR MÉTÉO:", err));
-                 weatherUpdateCounter = 0; 
-             }
-             weatherUpdateCounter++;
+    try {
+        if (ukf.isInitialized()) {
+            // Utilisation des données IMU brutes pour la prédiction UKF
+            ukf.predict(dt, [curAcc.x, curAcc.y, curAcc.z], [curGyro.x, curGyro.y, curGyro.z]);
+            
+            // --- UKF UPDATE (Conditional) ---
+            if (isZUPTActive) { // Zero Velocity Update
+                 ukf.updateZUUV();
+            }
+            if (currentPosition.hasMag) { // Magnétomètre
+                 ukf.updateMag(curMag);
+            }
+            
+            ukfState = ukf.getState();
+            isFusionActive = true;
 
-             // Assurez-vous que le fichier astro.js a chargé la fonction updateAstro
-             if (typeof updateAstro === 'function') {
-                 // updateAstro(fusionLat, currentPosition.lon, fusionAlt, getCDate());
-             }
+            // Mise à jour du temps de mouvement
+            if (ukfState.speed > 0.1) {
+                totalMovementTimeMs += (dt * 1000);
+            }
         }
-         updatePhysicalState(fusionAlt, fusionLat); 
-    }, 1000); 
+    } catch (e) {
+        console.error("🔴 ERREUR CRITIQUE UKF (PREDICT/UPDATE) : Réinitialisation forcée.", e);
+        
+        // 🛑 LOGIQUE DE RÉINITIALISATION CRITIQUE 🛑
+        // Si l'UKF génère une erreur (NaN, singularité math.js, etc.), on le réinitialise.
+        if (ukf) {
+            ukf.reset(currentPosition.lat, currentPosition.lon, currentPosition.alt);
+        }
+        
+        // On bascule temporairement en mode GPS brut pour éviter le blocage du tableau.
+        isFusionActive = false;
+        ukfState = null;
+    }
     
-    toggleGpsPause(); // Démarrage par défaut en mode PAUSE
-});
+    lastUpdateTimestamp = now;
 
-})(window);
+    // --- 2. CALCULS DE VITESSE ET FORCES G ---
+    if (ukfState) {
+        currentSpeedMs = ukfState.speed;
+    } else {
+        currentSpeedMs = currentPosition.speed;
+    }
+    
+    // Mise à jour de la vitesse max (utilise la vitesse la plus récente, UKF ou GPS brut)
+    maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
+
+    // Mise à jour des forces dynamiques (doit être appelée avec un état valide)
+    if (typeof updateGyrForces === 'function') {
+        try {
+            updateGyrForces(ukfState, curAcc); 
+        } catch (e) {
+            console.error("🔴 ERREUR G-FORCES:", e);
+        }
+    }
+
+    // --- 3. MISE À JOUR DOM ---
+    updateDashboardDOM(ukfState, isFusionActive); 
+    
+}, 20); // 50 Hz
+
+// =================================================================
+// BOUCLE LENTE (1 Hz - 1000 ms) - MÉTÉO, ASTRO & ÉTAT PHYSIQUE
+// =================================================================
+
+setInterval(() => {
+    updateTimeCounters(); 
+    
+    // Détermination de la position à utiliser pour les calculs lents
+    const fusionAlt = (ukf && ukf.isInitialized() ? ukf.getState().alt : currentPosition.alt);
+    const fusionLat = (ukf && ukf.isInitialized() ? ukf.getState().lat : currentPosition.lat);
+    const fusionLon = (ukf && ukf.isInitialized() ? ukf.getState().lon : currentPosition.lon);
+    
+    if (!isGpsPaused && fusionLat !== 0.0) {
+        
+        // --- 1. GESTION MÉTÉO (Toutes les 60s) ---
+        if (weatherUpdateCounter % 60 === 0) { 
+             fetchWeather(fusionLat, fusionLon)
+                 .then(data => { 
+                     // Mémorisation des données météo pour les calculs physiques
+                     currentPressureHpa = data.pressure || P_SEA;
+                     currentTemperatureC = data.temp || 15.0;
+                     updatePhysicalState(fusionAlt, fusionLat); 
+                 })
+                 .catch(err => console.error("🔴 ERREUR MÉTÉO : Échec du fetch météo.", err));
+             weatherUpdateCounter = 0; 
+         }
+         weatherUpdateCounter++;
+
+         // --- 2. GESTION ASTRO (Si le fichier est chargé) ---
+         if (typeof updateAstro === 'function') {
+             try {
+                 updateAstro(fusionLat, fusionLon, fusionAlt, getCDate());
+             } catch (e) {
+                 console.error("🔴 ERREUR ASTRO : Échec de la mise à jour astronomique.", e);
+             }
+         }
+    }
+    
+    // --- 3. MISE À JOUR DE L'ÉTAT PHYSIQUE (toujours exécutée) ---
+    // Recalcule la densité de l'air, la vitesse du son, etc., avec les dernières valeurs.
+     updatePhysicalState(fusionAlt, fusionLat); 
+     
+}, 1000); 
+
+// =================================================================
+// INITIALISATION DES ÉVÉNEMENTS DOM
+// =================================================================
+
+window.addEventListener('load', () => {
+    // Définition de l'heure de début de session
+    sessionStartTime = Date.now();
+    
+    // 1. Initialisation de la carte (si la fonction est présente)
+    if (typeof initMap === 'function') {
+        initMap();
+    }
+    
+    // 2. Gestion du bouton de démarrage/pause GPS (CRITIQUE pour l'IMU)
+    document.getElementById('start-gps-btn').addEventListener('click', () => {
+        isGpsPaused = !isGpsPaused;
+        document.getElementById('start-gps-btn').textContent = isGpsPaused ? '▶️ MARCHE GPS' : '⏸ PAUSE GPS';
+        
+        if (!isGpsPaused) {
+            // Lancement des écouteurs IMU/Motion (Gère la permission iOS et Android)
+            requestMotionPermission(); 
+            startGpsTracking();
+        } else {
+            stopGpsTracking();
+        }
+    });
+
+    // 3. Afficher l'état initial
+    updateDashboardDOM(null, false);   
+});    
+
+})(window); 
