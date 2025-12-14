@@ -1,6 +1,9 @@
 // =================================================================
-// FICHIER COMPLET 2/2 : GNSS SPACETIME DASHBOARD - V38 INS PROFESSIONNEL
-// STRATÉGIE: Utilisation exclusive de l'UKF/INS à 50Hz pour la navigation (Position, Vitesse, Distance).
+// FICHIER COMPLET 2/2 : GNSS SPACETIME DASHBOARD - V38 INS PROFESSIONNEL (CORRIGÉ)
+// STRATÉGIE: Utilisation exclusive de l'UKF/INS à 50Hz pour la navigation.
+// CORRECTIONS:
+// 1. Initialisation UKF immédiate sur la position de référence (Correction Délai).
+// 2. Réintégration des calculs Astronomiques (Boucle 1Hz).
 // =================================================================
 
 ((window) => {
@@ -28,7 +31,8 @@
     let sessionStartTime = Date.now(); 
     
     // Variables de capteurs (entrées UKF)
-    let currentPosition = { lat: 0, lon: 0, alt: 0, acc: 0, speed: 0 };
+    // CORRECTION V38 : Initialisation avec les coordonnées de la station de référence
+    let currentPosition = { lat: 43.284585, lon: 5.358651, alt: 100.00, acc: 1000, speed: 0 }; 
     let curAcc = {x: 0, y: 0, z: G_ACC_STD}, curGyro = {x: 0, y: 0, z: 0};
     
     // Variables de sortie UKF/Fusion (affichées)
@@ -37,9 +41,14 @@
     let totalDistanceM = 0.0; 
     let maxSpeedMs = 0.0; 
     
+    // Variable pour l'Astro
+    let astroState = null;
+    
     const $ = id => document.getElementById(id);
     
     // --- Utilitaires d'Affichage ---
+    const getCDate = () => new Date();
+    
     const dataOrDefault = (val, decimals, suffix = '', hideZero = false) => {
         if (val === undefined || val === null || isNaN(val) || typeof val !== 'number') return 'N/A';
         if (hideZero && val === 0) return 'N/A';
@@ -50,6 +59,18 @@
         return dataOrDefault(m / 1000, 3, ' km');
     };
     
+    /**
+     * Formate un nombre d'heures (0-24) au format H:M:S. (Utilité Astro)
+     */
+    function formatHours(hours) {
+        if (isNaN(hours)) return 'N/A';
+        let h = hours % 24;
+        if (h < 0) h += 24;
+        const H = Math.floor(h).toString().padStart(2, '0');
+        const M = Math.floor((h % 1) * 60).toString().padStart(2, '0');
+        return `${H}h ${M}min`;
+    }
+
     // =================================================================
     // BLOC 2/5 : HANDLERS DE CAPTEURS (IMU & GPS)
     // =================================================================
@@ -92,12 +113,7 @@
         const c = pos.coords;
         currentPosition = { lat: c.latitude, lon: c.longitude, alt: c.altitude || 0, acc: c.accuracy, speed: c.speed || 0 };
 
-        if (!ukf && typeof ProfessionalUKF !== 'undefined') {
-             ukf = new ProfessionalUKF(c.latitude, c.longitude, c.altitude || 0);
-             ukf.initialize(c.latitude, c.longitude, c.altitude || 0);
-             console.log("✅ UKF Démarré et initialisé.");
-        }
-        
+        // CORRECTION V38 : L'initialisation se fait au chargement. Ici, on ne fait que la correction.
         if (ukf && ukf.isInitialized()) {
             try {
                 ukf.update(pos); 
@@ -106,12 +122,16 @@
                 console.error("🔴 ERREUR CRITIQUE UKF DANS LA CORRECTION GPS.", e);
                 gpsStatusMessage = 'ERREUR UKF (Correction)';
             }
+        } else {
+             // Si l'UKF est en attente (jamais initialisé malgré le load, cas d'erreur)
+             gpsStatusMessage = `Acquisition OK (Précision: ${dataOrDefault(c.accuracy, 1)}m)`;
         }
     };
     
     const startGpsTracking = () => {
         if (gpsWatchID !== null) return;
         if (navigator.geolocation) {
+            // NOTE : timeout: 5000 est court pour le premier fix. Le laisser ainsi pour tester la robustesse.
             const options = { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }; 
             gpsWatchID = navigator.geolocation.watchPosition(handleGpsSuccess, 
                 (error) => { gpsStatusMessage = `Erreur GPS: ${error.code}`; }, 
@@ -135,7 +155,7 @@
     // =================================================================
 
     const updateTimeCounters = () => {
-        const now = new Date();
+        const now = getCDate();
         if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString();
         if ($('utc-datetime')) $('utc-datetime').textContent = now.toISOString().replace('T', ' ').split('.')[0] + ' (UTC)';
         if ($('elapsed-time')) $('elapsed-time').textContent = dataOrDefault((Date.now() - sessionStartTime)/1000, 2, ' s');
@@ -160,6 +180,41 @@
         if ($('lorentz-factor')) $('lorentz-factor').textContent = dataOrDefault(lorentzFactor, 9);
         if ($('energy-kinetic')) $('energy-kinetic').textContent = dataOrDefault(0.5 * mass * speed**2, 2, ' J');
         if ($('schwarzschild-radius')) $('schwarzschild-radius').textContent = dataOrDefault((2 * 6.67430e-11 * mass) / C_L**2, 2, ' m', true); 
+    };
+
+    /**
+     * Mise à jour du panneau ASTRO avec les données calculées par astro.js
+     */
+    const updateAstroDOM = (astroData) => {
+        if (!astroData) return;
+
+        // --- Temps Solaire & Sidéral ---
+        if ($('date-astro')) $('date-astro').textContent = astroData.date_astro || 'N/A';
+        if ($('mean-solar-date')) $('mean-solar-date').textContent = astroData.MST_Date || 'N/A';
+        if ($('true-solar-date')) $('true-solar-date').textContent = astroData.TST_Date || 'N/A';
+        if ($('heure-solaire-vraie')) $('heure-solaire-vraie').textContent = dataOrDefault(astroData.TST_HRS, 4);
+        if ($('heure-solaire-moyenne')) $('heure-solaire-moyenne').textContent = dataOrDefault(astroData.MST_HRS, 4);
+        if ($('noon-solar-utc')) $('noon-solar-utc').textContent = astroData.NOON_SOLAR_UTC || 'N/A';
+        if ($('equation-of-time')) $('equation-of-time').textContent = dataOrDefault(astroData.EOT_MIN, 2, ' min');
+        if ($('true-sidereal-time')) $('true-sidereal-time').textContent = astroData.LST_DEG ? dataOrDefault(astroData.LST_DEG/15, 4) : 'N/A'; // LST_DEG en heures
+        if ($('ecliptic-longitude')) $('ecliptic-longitude').textContent = dataOrDefault(astroData.ECL_LONG, 2, '°');
+
+        // --- Soleil ---
+        if ($('sun-alt')) $('sun-alt').textContent = dataOrDefault(astroData.sun.altitude * R2D, 2, '°');
+        if ($('sun-azimuth')) $('sun-azimuth').textContent = dataOrDefault(astroData.sun.azimuth * R2D, 2, '°');
+        if ($('day-duration')) $('day-duration').textContent = astroData.sun.duration_hrs ? formatHours(astroData.sun.duration_hrs) : 'N/A';
+        if ($('sun-rise')) $('sun-rise').textContent = astroData.sun.rise_local || 'N/A'; 
+        if ($('sun-set')) $('sun-set').textContent = astroData.sun.set_local || 'N/A';
+
+        // --- Lune ---
+        if ($('moon-phase')) $('moon-phase').textContent = astroData.moon.illumination.phase_name || 'N/A';
+        if ($('moon-illumination')) $('moon-illumination').textContent = dataOrDefault(astroData.moon.illumination.fraction * 100, 1, ' %');
+        if ($('moon-alt')) $('moon-alt').textContent = dataOrDefault(astroData.moon.altitude * R2D, 2, '°');
+        if ($('moon-azimuth')) $('moon-azimuth').textContent = dataOrDefault(astroData.moon.azimuth * R2D, 2, '°');
+        // Affichage des heures de lever/coucher de la Lune
+        const moonTimes = (astroData.moon.times.rise_local && astroData.moon.times.set_local) ? `${astroData.moon.times.rise_local} / ${astroData.moon.times.set_local}` : 'N/A';
+        if ($('moon-times')) $('moon-times').textContent = moonTimes;
+        if ($('moon-distance')) $('moon-distance').textContent = dataOrDefault(astroData.moon.distance / 1000, 0, ' km');
     };
 
     function updateDashboardDOM(ukfState, isFusionActive) {
@@ -202,13 +257,12 @@
             if ($('roulis-roll')) $('roulis-roll').textContent = dataOrDefault(rollDeg, 1, '°');
             
             // Forces G
-            // L'UKF fournit une accélération corrigée, ici on affiche la valeur brute/filtrée pour la force G
             if ($('force-g-vert')) $('force-g-vert').textContent = dataOrDefault(curAcc.z / G_ACC_STD, 2, ' G');
             
             updateSpiritLevel(ukfState.pitch, ukfState.roll); 
             if ($('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(Math.sqrt(ukfState.cov_vel), 3, ' m/s');
         } else {
-             $('ekf-status').textContent = 'Initialisation...';
+             $('ekf-status').textContent = ukf ? 'Initialisation... (Attente GPS)' : 'Initialisation...';
              // Fall back pour le niveau à bulle (IMU brut)
              const roll = Math.atan2(curAcc.y, curAcc.z);
              const pitch = Math.atan2(-curAcc.x, Math.sqrt(curAcc.y**2 + curAcc.z**2));
@@ -221,13 +275,13 @@
     }
     
     // =================================================================
-    // BLOC 4/5 : BOUCLE PRINCIPALE (50 Hz)
+    // BLOC 4/5 : BOUCLE PRINCIPALE (50 Hz) - PRÉDICTION INS
     // =================================================================
     
     setInterval(() => {
          if (isGpsPaused) {
-             updateTimeCounters();
-             updateDashboardDOM(fusionState, false); 
+             // Afficher l'état de pause si l'UKF n'est pas actif
+             updateDashboardDOM(fusionState, ukf && ukf.isInitialized()); 
              return;
          }
          
@@ -263,7 +317,7 @@
          }
          
          maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
-         updateTimeCounters();
+         // updateTimeCounters(); // Déplacé dans la boucle 1Hz
          updateDashboardDOM(fusionState, isFusionActive); 
          
     }, 20); // 50 Hz
@@ -273,7 +327,30 @@
     // =================================================================
     
     setInterval(() => {
-        // (Logique de la boucle 1Hz : Météo, Astro, etc. doit être réintégrée ici)
+        updateTimeCounters(); // Mise à jour des compteurs (1 Hz)
+
+        // Récupérer la position la plus fiable (UKF ou GPS brut initial)
+        const fusionLat = ukf && ukf.isInitialized() ? ukf.getState().lat : currentPosition.lat;
+        const fusionLon = ukf && ukf.isInitialized() ? ukf.getState().lon : currentPosition.lon;
+        const fusionAlt = ukf && ukf.isInitialized() ? ukf.getState().alt : currentPosition.alt;
+
+        // --- Logique Astronomie ---
+        if (!isGpsPaused && fusionLat !== 0.0 && typeof updateAstro === 'function') {
+            try {
+                // Utilisation de la position fusionnée pour des calculs précis
+                astroState = updateAstro(fusionLat, fusionLon, fusionAlt, getCDate()); 
+                updateAstroDOM(astroState); // Mise à jour du DOM Astro
+            } catch (e) {
+                console.error("🔴 ERREUR ASTRO : Échec de la mise à jour astronomique.", e);
+            }
+        } else if (typeof updateAstro === 'function') {
+             // Mettre à jour si la pause est active pour ne pas afficher N/A en continu
+             // Exemple : astroState = updateAstro(fusionLat, fusionLon, fusionAlt, getCDate()); 
+             // updateAstroDOM(astroState);
+        }
+        
+        // (Logique Météo/Physique 1Hz ici)
+
     }, 1000); 
 
     const togglePause = () => {
@@ -295,6 +372,16 @@
         const btn = $('gps-pause-toggle');
         if (btn) btn.addEventListener('click', togglePause);
         
+        // --- CORRECTION CRITIQUE V38: INITIALISATION IMMÉDIATE DE L'UKF ---
+        if (typeof ProfessionalUKF !== 'undefined' && !ukf) {
+            const refPos = currentPosition; // Utiliser la position de référence du BLOC 1
+            ukf = new ProfessionalUKF(refPos.lat, refPos.lon, refPos.alt);
+            ukf.initialize(refPos.lat, refPos.lon, refPos.alt);
+            fusionState = ukf.getState(); 
+            console.log("✅ UKF (INS) créé et initialisé avec la position de référence.");
+        }
+        // ------------------------------------------------------------------
+
         if($('reset-dist-btn')) $('reset-dist-btn').addEventListener('click', () => totalDistanceM = 0);
         if($('reset-max-btn')) $('reset-max-btn').addEventListener('click', () => maxSpeedMs = 0);
         if($('reset-all-btn')) $('reset-all-btn').addEventListener('click', () => { 
@@ -302,7 +389,7 @@
              if(ukf) ukf.reset(currentPosition.lat, currentPosition.lon, currentPosition.alt);
         });
         
-        updateDashboardDOM(null, false); 
+        updateDashboardDOM(fusionState, ukf && ukf.isInitialized()); 
     });
 
 })(window);
