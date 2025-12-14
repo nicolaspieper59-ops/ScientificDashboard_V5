@@ -83,25 +83,33 @@
     const handleDeviceMotion = (event) => {
         isIMUActive = true;
         
-        // --- API Robuste: Accélération Incluant Gravité (Nécessaire pour l'UKF INS) ---
-        const acc = event.accelerationIncludingGravity;
-        const rot = event.rotationRate;
-        
-        // Mise à jour de l'état global avec les données brutes de l'IMU
-        curAcc = {
-            // X, Y, Z dans le référentiel du téléphone (Body Frame)
-            x: acc.x || 0.0,
-            y: acc.y || 0.0,
-            z: acc.z || G_ACC_STD 
-        };
-        curGyro = {
-            // Alpha, Beta, Gamma (Euler angles des taux de rotation)
-            x: rot.alpha * D2R || 0.0, // Convertir en Rad/s pour l'UKF
-            y: rot.beta * D2R || 0.0,  
-            z: rot.gamma * D2R || 0.0  
-        };
-        if ($('angular-speed')) $('angular-speed').textContent = dataOrDefault(Math.sqrt(curGyro.x**2 + curGyro.y**2 + curGyro.z**2), 3, ' rad/s');
+        // ... dans le BLOC 2/5 : HANDLERS DE CAPTEURS ...
+
+/** Handler pour les données IMU (Accéléromètre et Gyroscope) */
+const handleDeviceMotion = (event) => {
+    isIMUActive = true;
+    
+    // --- API Robuste: Accélération Incluant Gravité ---
+    const acc = event.accelerationIncludingGravity;
+    const rot = event.rotationRate;
+    
+    // Mise à jour de l'état global avec les données brutes de l'IMU
+    curAcc = {
+        // X: Latéral, Y: Longitudinal, Z: Vertical (avec gravité)
+        x: acc.x || 0.0,
+        y: acc.y || 0.0,
+        z: acc.z || G_ACC_STD // Utiliser G_ACC_STD comme valeur par défaut Z (immobile sur Terre)
     };
+    curGyro = {
+        // X, Y, Z (Taux de rotation autour des axes, convertis en Radians/seconde)
+        x: rot.alpha * D2R || 0.0, 
+        y: rot.beta * D2R || 0.0,  
+        z: rot.gamma * D2R || 0.0  
+    };
+    if ($('angular-speed')) $('angular-speed').textContent = dataOrDefault(Math.sqrt(curGyro.x**2 + curGyro.y**2 + curGyro.z**2), 3, ' rad/s');
+};
+
+// ...
     
     /** Handler de Succès GPS (API Geolocation Standard) */
     const handleGpsSuccess = (pos) => {
