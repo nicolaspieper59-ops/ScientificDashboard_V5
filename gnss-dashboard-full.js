@@ -438,39 +438,46 @@
     // BLOC 5/5 : INITIALISATION ET CONTRÔLES (1 Hz)
     // =================================================================
     
-    setInterval(() => {
-        updateTimeCounters(); 
+    // =================================================================
+// BLOC 5/5 : INITIALISATION ET CONTRÔLES (1 Hz)
+// =================================================================
 
-        const fusionLat = ukf && ukf.isInitialized() ? ukf.getState().lat : currentPosition.lat;
-        const fusionLon = ukf && ukf.isInitialized() ? ukf.getState().lon : currentPosition.lon;
-        const fusionAlt = ukf && ukf.isInitialized() ? ukf.getState().alt : currentPosition.alt;
+setInterval(() => {
+    updateTimeCounters(); 
 
-        // --- Logique Météo/Astro (CORRIGÉE) ---
-        // 🛑 CORRECTION #2: S'exécute dès le démarrage (si non pausé)
-        if (!isGpsPaused && ukf && ukf.isInitialized()) {
-            
-            // 1. MÉTÉO (Simulation d'appel API toutes les 60 secondes)
-            if (weatherUpdateCounter % 60 === 0) {
-                 // Votre fonction fetchWeather met à jour currentTemperatureC et currentPressureHpa
-                 console.log("Mise à jour météo simulée...");
-             }
-             weatherUpdateCounter = (weatherUpdateCounter + 1) % 60;
+    // Déterminer la position la plus fiable : UKF si initialisé, sinon GPS brut, sinon position par défaut.
+    const isUKFOperational = ukf && ukf.isInitialized();
+    const fusionLat = isUKFOperational ? ukf.getState().lat : currentPosition.lat;
+    const fusionLon = isUKFOperational ? ukf.getState().lon : currentPosition.lon;
+    const fusionAlt = isUKFOperational ? ukf.getState().alt : currentPosition.alt;
 
-             // 2. ASTRO (Calculs et Affichage)
-             if (typeof updateAstro === 'function') {
-                 try {
-                     const astroState = updateAstro(fusionLat, fusionLon, fusionAlt, getCDate()); 
-                     updateAstroDOM(astroState); 
-                 } catch (e) {
-                     console.error("🔴 ERREUR ASTRO : Échec de la mise à jour astronomique.", e);
-                 }
-             }
-        }
+    // --- Logique Météo/Astro (ROBUSTESSE) ---
+    // S'exécute si l'application n'est pas en pause, ET la position est jugée fiable (GPS fix ou UKF initialisé).
+    if (!isGpsPaused && (hasGpsFixOccurred || isUKFOperational)) {
         
-        // --- 3. MISE À JOUR DE L'ÉTAT PHYSIQUE (toujours exécutée) ---
-         updatePhysicalState(fusionAlt, fusionLat); 
+        // 1. MÉTÉO (Simulation d'appel API toutes les 60 secondes)
+        if (weatherUpdateCounter % 60 === 0) {
+             console.log("Mise à jour météo simulée...");
+         }
+         weatherUpdateCounter = (weatherUpdateCounter + 1) % 60;
 
-    }, 1000); 
+         // 2. ASTRO (Calculs et Affichage)
+         if (typeof calculateAstroDataHighPrec === 'function') { // Vérifie directement la fonction Astro
+             try {
+                 const astroState = calculateAstroDataHighPrec(getCDate(), fusionLat, fusionLon); 
+                 updateAstroDOM(astroState); 
+             } catch (e) {
+                 console.error("🔴 ERREUR ASTRO : Échec de la mise à jour astronomique.", e);
+             }
+         } else {
+             console.warn("La librairie astro.js n'est pas chargée correctement.");
+         }
+    }
+    
+    // --- 3. MISE À JOUR DE L'ÉTAT PHYSIQUE ---
+     updatePhysicalState(fusionAlt, fusionLat); 
+
+}, 1000);
 
     const togglePause = () => {
         isGpsPaused = !isGpsPaused;
