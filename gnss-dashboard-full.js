@@ -1,6 +1,6 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL UNIFIÉ (V42 - CORRIGÉ)
-// CORRECTIONS CRITIQUES: UKF initialisation immédiate, NTP Sync, LBS retiré.
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL UNIFIÉ (V44 - LOGIQUE INS/UKF STABILISÉE)
+// CORRECTIONS CRITIQUES: Découplage de l'exécution de l'UKF de l'état PAUSE GPS.
 // DÉPENDANCE REQUISE: math.js et ProfessionalUKF (classe UKF complète)
 // =================================================================
 
@@ -18,7 +18,8 @@
     const D2R = Math.PI / 180, R2D = 180 / Math.PI;
     const KMH_MS = 3.6;             
     const C_L = 299792458;          
-    const G_ACC_STD = 9.8067;       
+    const G_ACC_STD = 9.8067;       // Gravité de Base (Terre)
+    const G_CONST = 6.67430e-11;    // Constante de Gravitation Universelle
     const R_AIR = 287.058;          
     const GAMMA = 1.4;              
 
@@ -32,24 +33,25 @@
     let lastPredictionTime = Date.now();
     let sessionStartTime = Date.now(); 
     let hasGpsFixOccurred = false;
-    let isUKFOperational = false;
     let totalDistanceM = 0.0;
     let maxSpeedMs = 0.0;
     let timeInMotionMs = 0.0;
-    let lastKnownLat = 43.284611; // Position par défaut (Marseille)
+    
+    // Position par défaut (Marseille)
+    let lastKnownLat = 43.284611; 
     let lastKnownLon = 5.358715;
     let lastKnownAlt = 100.00;
 
     // --- NOUVEL ÉTAT NTP ---
-    let ntpOffsetMs = 0; // Différence (ms) entre l'horloge locale et l'heure NTP réelle
+    let ntpOffsetMs = 0; 
 
     // Variables de données brutes
     let currentPosition = {lat: lastKnownLat, lon: lastKnownLon, alt: lastKnownAlt, speed: 0.0, acc: 25.0};
     let currentSpeedMs = 0.0;
-    let curAcc = {x: 0, y: 0, z: 0}; // Accéléromètre corrigé (après compensation biais/rotation)
+    let curAcc = {x: 0, y: 0, z: 0}; // Accéléromètre corrigé 
     let curGyro = {x: 0, y: 0, z: 0};
     let curMag = {x: 0, y: 0, z: 0};
-    let fusionState = null; // État UKF fusionné
+    let fusionState = null; 
 
     // =================================================================
     // BLOC 2/5 : UTILITAIRES ET API DU NAVIGATEUR
@@ -63,14 +65,16 @@
         if (value === null || typeof value === 'undefined' || isNaN(value)) {
             return naText;
         }
+        if (precision > 5 && Math.abs(value) < 1e-4 && Math.abs(value) > 0) {
+             return `${value.toExponential(4)}${unit}`;
+        }
         return `${value.toFixed(precision)}${unit}`;
     };
 
     // Obtenir le temps brut (pour l'utilisation locale)
     const getCDate = () => new Date();
 
-    // --- Utilitaires de Temps (Corrigé pour UTC) ---
-    // Ces fonctions formatent une Date() en UTC (Heure de la Date passée)
+    // --- Utilitaires de Temps ---
     function formatTime(date) {
         const h = String(date.getUTCHours()).padStart(2, '0');
         const m = String(date.getUTCMinutes()).padStart(2, '0');
@@ -87,19 +91,16 @@
     // --- Synchronisation NTP (Atomic Clock Simulation) ---
     const updateNtpOffset = async () => {
         try {
-            const t0 = Date.now(); // Temps client avant l'appel
-            // Utilisation d'une API de temps publique pour la démonstration
+            const t0 = Date.now(); 
             const response = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC'); 
             const data = await response.json();
-            const t3 = Date.now(); // Temps client après la réponse
+            const t3 = Date.now(); 
 
             const serverTimeMs = data.unixtime * 1000;
             const roundTripTime = t3 - t0;
-            // Correction RTT simple
             const estimatedServerTime = serverTimeMs + (roundTripTime / 2); 
             
             ntpOffsetMs = estimatedServerTime - t3;
-            
             console.log(`✅ NTP Sync: Offset ${ntpOffsetMs.toFixed(2)} ms. RTT: ${roundTripTime} ms.`);
             
         } catch (e) {
@@ -107,8 +108,7 @@
         }
     };
 
-
-    // --- Logique d'accès aux capteurs IMU (Accéléromètre/Gyroscope) ---
+    // --- Logique d'accès aux capteurs IMU ---
     const requestMotionPermission = () => {
         if (typeof DeviceOrientationEvent.requestPermission === 'function') {
             DeviceOrientationEvent.requestPermission().then(permissionState => {
@@ -125,12 +125,10 @@
     
     const startMotionListeners = () => {
         if (!isIMUActive) {
-             // Listener pour Gyroscope/Accéléromètre (devicemotion)
              window.addEventListener('devicemotion', handleDeviceMotion);
              isIMUActive = true;
         }
         if (!isMagActive) {
-             // Listener pour Magnétomètre (deviceorientation)
              window.addEventListener('deviceorientation', handleDeviceOrientation);
              isMagActive = true;
         }
@@ -139,13 +137,11 @@
 
     const handleDeviceMotion = (event) => {
         if (event.accelerationIncludingGravity) {
-            // Accélération brute (en m/s²)
             curAcc.x = event.accelerationIncludingGravity.x || 0;
             curAcc.y = event.accelerationIncludingGravity.y || 0;
             curAcc.z = event.accelerationIncludingGravity.z || 0;
         }
         if (event.rotationRate) {
-            // Vitesse angulaire (en rad/s)
             curGyro.x = (event.rotationRate.alpha || 0) * D2R; 
             curGyro.y = (event.rotationRate.beta || 0) * D2R;
             curGyro.z = (event.rotationRate.gamma || 0) * D2R;
@@ -153,13 +149,10 @@
     };
     
     const handleDeviceOrientation = (event) => {
-        // En l'absence d'API Magnétomètre brutes (deviceorientation ne donne que des angles), 
-        // on simule des données mag. L'UKF les utilisera pour corriger le Yaw.
         if (event.alpha !== null) {
-            // Ces valeurs sont purement indicatives pour le filtre h_MAG
             curMag.x = Math.sin(event.alpha * D2R) * 10;
             curMag.y = Math.cos(event.alpha * D2R) * 10;
-            curMag.z = 45; // Composante Z typique (Nord France)
+            curMag.z = 45; 
         }
     };
     
@@ -169,34 +162,30 @@
         currentPosition.lon = pos.coords.longitude;
         currentPosition.alt = pos.coords.altitude || lastKnownAlt;
         currentPosition.speed = pos.coords.speed || 0.0;
-        currentPosition.acc = pos.coords.accuracy || 25.0; // Précision GPS
+        currentPosition.acc = pos.coords.accuracy || 25.0; 
 
         gpsStatusMessage = `Acquisition OK (Précision: ${currentPosition.acc.toFixed(1)}m)`;
         hasGpsFixOccurred = true;
         
-        // Initialisation UKF (doit être fait ici si le GPS est le premier à donner un fix)
+        // Initialisation UKF 
         if (ukf && !ukf.isInitialized()) {
              ukf.initialize(currentPosition.lat, currentPosition.lon, currentPosition.alt);
              fusionState = ukf.getState(); 
-             isUKFOperational = true;
-             console.log("UKF Initialisation complète via premier fix GPS.");
+             console.log("UKF Initialisation complète via fix GPS.");
         }
         
         // CORRECTION UKF (GPS)
         if (ukf && ukf.isInitialized()) {
             ukf.update(pos);
-            // Récupérer l'état fusionné après correction
             fusionState = ukf.getState();
-            isUKFOperational = true;
         }
     };
 
     const handleGpsError = (err) => {
         console.error("Erreur GPS:", err.code, err.message);
-        gpsStatusMessage = 'Erreur GPS (Signal perdu)';
+        gpsStatusMessage = `Erreur GPS ${err.code} (Signal perdu)`;
         hasGpsFixOccurred = false;
         
-        // Si l'UKF est actif, il continue en Dead Reckoning (Prédiction seule)
         if (ukf && ukf.isInitialized()) {
             gpsStatusMessage += ' / UKF Dead Reckoning';
         }
@@ -209,6 +198,7 @@
                 handleGpsError, 
                 { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
             );
+            gpsStatusMessage = 'Tracking GPS démarré...';
             console.log("GPS tracking démarré.");
         }
     };
@@ -224,7 +214,7 @@
 
 
     // =================================================================
-    // BLOC 3/5 : MISE À JOUR DU DOM (1 Hz)
+    // BLOC 3/5 : MISE À JOUR DU DOM (50 Hz)
     // =================================================================
 
     const updateDashboardDOM = (fusion, isCorrected) => {
@@ -233,23 +223,26 @@
         const lon = fusion ? fusion.lon : currentPosition.lon;
         const alt = fusion ? fusion.alt : currentPosition.alt;
         const speedStable = fusion ? fusion.speed : currentSpeedMs;
-        const roll = fusion ? fusion.roll : curGyro.x * R2D;
-        const pitch = fusion ? fusion.pitch : curGyro.y * R2D;
+        const roll = fusion ? fusion.roll : 0.0; 
+        const pitch = fusion ? fusion.pitch : 0.0;
         const accGPS = currentPosition.acc;
-
-        // --- Statuts ---
+        
+        if ($('vitesse-brute')) $('vitesse-brute').textContent = dataOrDefault(currentPosition.speed, 2, ' m/s');
         if ($('statut-gps')) $('statut-gps').textContent = gpsStatusMessage;
-        if ($('prec-gps')) $('prec-gps').textContent = dataOrDefault(accGPS, 2, ' m');
+        
+        // --- Statuts ---
+        if ($('prec-gps')) $('prec-gps').textContent = dataOrDefault(accGPS, 2, ' m', 'N/A');
 
         let ukfStatus = 'UKF Indisponible (Classe non chargée)';
         if (typeof ProfessionalUKF !== 'undefined' && ukf) {
             if (!ukf.isInitialized()) {
                 ukfStatus = 'UKF en attente du premier fix GPS...';
             } else {
+                // L'UKF est corrigé UNIQUEMENT si le GPS n'est pas en pause ET a eu un fix
                 ukfStatus = isCorrected ? 'UKF Actif (Corrigé GPS+MAG)' : 'INS Dead Reckoning (Prédiction)';
             }
         }
-        if ($('statut-ekf')) $('statut-ekf').textContent = ukfStatus;
+        if ($('statut-ekf')) $('statut-ekf').textContent = ukfStatus; 
 
         // --- Position & Vitesse ---
         if ($('lat-ekf')) $('lat-ekf').textContent = dataOrDefault(lat, 6);
@@ -259,12 +252,13 @@
         if ($('vitesse-stable-kmh')) $('vitesse-stable-kmh').textContent = dataOrDefault(speedStable * KMH_MS, 1, ' km/h');
         if ($('vitesse-stable-ms')) $('vitesse-stable-ms').textContent = dataOrDefault(speedStable, 3, ' m/s');
         if ($('vitesse-max')) $('vitesse-max').textContent = dataOrDefault(maxSpeedMs * KMH_MS, 1, ' km/h');
-        if ($('dist-totale')) $('dist-totale').textContent = dataOrDefault(totalDistanceM, 2, ' m');
+        
+        if ($('dist-totale')) $('dist-totale').textContent = totalDistanceM > 1000 ? 
+            dataOrDefault(totalDistanceM / 1000, 3, ' km') : dataOrDefault(totalDistanceM, 2, ' m');
 
         // --- IMU ---
         if ($('accel-x')) $('accel-x').textContent = dataOrDefault(curAcc.x, 2);
         if ($('accel-y')) $('accel-y').textContent = dataOrDefault(curAcc.y, 2);
-        // Z est souvent la gravité dans le repère du téléphone, peut être N/A si non exploité
         if ($('accel-z')) $('accel-z').textContent = dataOrDefault(curAcc.z, 2); 
 
         if ($('pitch-imu')) $('pitch-imu').textContent = dataOrDefault(pitch, 1, '°');
@@ -274,42 +268,32 @@
         if ($('%-vitesse-son')) $('%-vitesse-son').textContent = dataOrDefault(speedStable / 340.29 * 100, 2, ' %');
         if ($('nombre-mach')) $('nombre-mach').textContent = dataOrDefault(speedStable / 340.29, 4); 
         
-        // Facteur de Lorentz (simple: v/c)
         const v_sur_c = speedStable / C_L;
         if ($('facteur-lorentz')) $('facteur-lorentz').textContent = dataOrDefault(1 / Math.sqrt(1 - v_sur_c**2), 4);
         
-        // Énergie cinétique (avec la masse par défaut de 70kg)
         const masse = parseFloat($('masse-obj-kg').textContent || '70.0');
         if ($('energie-c')) $('energie-c').textContent = dataOrDefault(0.5 * masse * speedStable**2, 2, ' J');
 
-        // --- Vitesse de la lumière (c) et Gravitation Universelle (G) ---
         if ($('vitesse-lumiere')) $('vitesse-lumiere').textContent = `${C_L} m/s`;
-        if ($('gravitation-u')) $('gravitation-u').textContent = `${G_ACC_STD} m/s²`;
+        if ($('gravitation-u')) $('gravitation-u').textContent = `${dataOrDefault(G_CONST, 10, '')} m³/kg/s²`;
     };
 
-    // --- Fonction de Mise à Jour du Temps CORRIGÉE ---
+    // --- Fonction de Mise à Jour du Temps ---
     const updateTimeCounters = () => {
         
-        // Récupérer le temps local du client
         const now = getCDate(); 
-        
-        // Temps UTC CORRIGÉ par l'offset NTP (Utilisation du temps atomique)
         const correctedUTCTimestamp = now.getTime() + ntpOffsetMs;
         const utcDate = new Date(correctedUTCTimestamp);
 
-        // 1. Heure Locale (NTP)
         if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString('fr-FR', { hour12: false });
         
-        // 2. Date & Heure (UTC/GMT) - Utilise l'heure corrigée
         const utcTimeStr = formatTime(utcDate); 
         const utcDateStr = formatDate(utcDate); 
         
         if ($('utc-datetime')) $('utc-datetime').textContent = `${utcDateStr} ${utcTimeStr} (UTC)`;
 
-        // 3. Temps écoulé
         if ($('elapsed-time')) $('elapsed-time').textContent = dataOrDefault((Date.now() - sessionStartTime)/1000, 2, ' s');
         
-        // 4. Temps de Mouvement (basé sur la vitesse stable)
         if (currentSpeedMs * KMH_MS > 0.1) {
              timeInMotionMs += 1000;
         }
@@ -327,43 +311,39 @@
 
     setInterval(() => {
          
-         // 1. Mise à jour du temps (Fréquence 50Hz pour la prédiction UKF/INS)
          const now = Date.now();
          let dt_prediction = (now - lastPredictionTime) / 1000.0;
          lastPredictionTime = now;
          
          let isFusionActive = ukf && ukf.isInitialized();
-         let isCorrected = isFusionActive && hasGpsFixOccurred;
+         // 🛑 isCorrected est TRUE seulement si GPS n'est pas en pause ET un fix est disponible
+         let isCorrected = isFusionActive && hasGpsFixOccurred && !isGpsPaused; 
          
-         // 2. PRÉDICTION UKF (INS - Propagation Inertielle)
-         if (!isGpsPaused && isFusionActive && dt_prediction > 0) {
+         // 1. PRÉDICTION UKF (INS - Propagation Inertielle) - ROULE EN CONTINU (Dead Reckoning)
+         if (isFusionActive && dt_prediction > 0) {
              try {
-                 // 🛑 CORRECTION CRITIQUE: Passage des objets curAcc et curGyro
                  ukf.predict(dt_prediction, curAcc, curGyro);
                  fusionState = ukf.getState();
                  currentSpeedMs = fusionState.speed; 
                  
-                 // 3. CORRECTION UKF : MAGNÉTOMÈTRE (Fréquence arbitraire ou basé sur événement)
+                 // 2. CORRECTION UKF : MAGNÉTOMÈTRE (Toujours actif si disponible)
                  if (isMagActive) {
                      ukf.update_Mag(curMag); 
                  }
                  
              } catch (e) {
                  console.error("🔴 ERREUR UKF CRITIQUE DANS LA PRÉDICTION/CORRECTION.", e);
-                 // Fallback en cas d'erreur UKF
                  currentSpeedMs = currentPosition.speed;
                  fusionState = null;
                  isFusionActive = false;
-                 isUKFOperational = false;
              }
          } else {
-             // Mode Fall Back GPS brut / Pause GPS
+             // Mode Fall Back GPS brut (si UKF non initialisé)
              currentSpeedMs = currentPosition.speed;
              fusionState = null;
-             isUKFOperational = false;
          }
          
-         // 4. Mise à jour de la Distance/Vitesse Max (basé sur la vitesse courante)
+         // 3. Mise à jour de la Distance/Vitesse Max 
          if (!isGpsPaused) {
              if (currentSpeedMs * KMH_MS > 0.1) { 
                 totalDistanceM += currentSpeedMs * dt_prediction;
@@ -371,7 +351,7 @@
              maxSpeedMs = Math.max(maxSpeedMs, currentSpeedMs);
          }
          
-         // Mise à jour de l'affichage DOM (Utilisation de la vitesse de la boucle pour le rendu fluide)
+         // Mise à jour de l'affichage DOM
          updateDashboardDOM(fusionState, isCorrected); 
          
     }, 20); // 50 Hz
@@ -383,12 +363,6 @@
 
     setInterval(() => {
         updateTimeCounters(); 
-        
-        // --- MÉTÉO / ASTRO (simulé) ---
-        if (!isGpsPaused && (hasGpsFixOccurred || isUKFOperational)) {
-             // Logique pour les calculs astro ici (non inclus, car dans ephem.js)
-        }
-
     }, 1000); // 1 Hz
 
     const togglePause = () => {
@@ -398,13 +372,13 @@
         if (!isGpsPaused) {
             btn.textContent = '⏸️ PAUSE GPS';
             sessionStartTime = Date.now(); 
-            requestMotionPermission(); 
+            // L'IMU est déjà démarré au chargement, on démarre le GPS pour les corrections
             startGpsTracking();
-            // Réinitialisation de la prédiction après la pause
             lastPredictionTime = Date.now(); 
         } else {
             btn.textContent = '▶️ MARCHE GPS';
             stopGpsTracking();
+            gpsStatusMessage = 'PAUSE GPS (INS actif)';
         }
     };
 
@@ -412,22 +386,23 @@
         const btn = $('gps-pause-toggle');
         if (btn) btn.addEventListener('click', togglePause);
         
-        // --- Synchronisation NTP (Atomic Clock Simulation) ---
+        // --- 🛑 CORRECTION: Initialisation IMU/NTP/UKF immédiate ---
+        requestMotionPermission(); // Démarrage immédiat des capteurs pour Dead Reckoning
         updateNtpOffset();
-        // Re-synchroniser toutes les heures (3600000 ms) pour corriger la dérive
         setInterval(updateNtpOffset, 3600000); 
 
-        // --- Initialisation UKF ---
         if (typeof ProfessionalUKF !== 'undefined' && !ukf) {
             const refPos = currentPosition; 
             ukf = new ProfessionalUKF(refPos.lat, refPos.lon, refPos.alt);
             
-            // Initialisation immédiate pour permettre la Dead Reckoning (INS) avant le GPS
+            // Initialisation immédiate pour le Dead Reckoning
             ukf.initialize(refPos.lat, refPos.lon, refPos.alt);
             fusionState = ukf.getState(); 
-            isUKFOperational = true;
         }
         
+        // Premier appel pour afficher les statuts initiaux (N/A corrigé)
+        updateDashboardDOM(fusionState, false); 
+
         // --- Boutons de Réinitialisation ---
         if($('reset-dist-btn')) $('reset-dist-btn').addEventListener('click', () => totalDistanceM = 0);
         if($('reset-max-btn')) $('reset-max-btn').addEventListener('click', () => maxSpeedMs = 0);
