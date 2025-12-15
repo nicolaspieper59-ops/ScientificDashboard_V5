@@ -1,7 +1,8 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL UNIFIÉ (V45 - GOLD MASTER)
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL UNIFIÉ (V45 - GOLD MASTER ALIGNÉ)
 // CORRECTIONS: Alignement complet avec index (17).html (IDs DOM corrigés).
 // FIX CRITIQUE: Fonctionnement du bouton 'gps-pause-toggle' et affichage des données débloqué.
+// FIX D'ALIGNEMENT: Les IDs 'speed-stable-kmh' et 'speed-stable-ms' sont maintenant corrects.
 // DÉPENDANCES CRITIQUES: math.js, ProfessionalUKF (ukf-class.js), turf.js, calculateAstroDataHighPrec (astro.js)
 // =================================================================
 
@@ -152,7 +153,7 @@
         isGpsPaused = !isGpsPaused;
         const btn = $('gps-pause-toggle');
         
-        // FIX CRITIQUE: Le bouton 'gps-pause-toggle' est géré ici.
+        // Gère l'état et l'écoute du GPS
         if (!isGpsPaused) {
             btn.textContent = '⏸️ PAUSE GPS';
             btn.classList.remove('success');
@@ -208,60 +209,60 @@
         const lorentz = 1 / Math.sqrt(1 - (speed / C_L)**2);
 
 
-        // 1. Statuts & Debug UKF
-        if ($('gps-status-acquisition')) $('gps-status-acquisition').textContent = gpsStatusMessage; // ID corrigé
+        // 1. Statuts & Debug UKF (IDs vérifiés)
+        if ($('gps-status-acquisition')) $('gps-status-acquisition').textContent = gpsStatusMessage; 
         
         if (ukf && ukf.isInitialized()) {
              fusionStatusMessage = isGpsPaused || !hasGpsFixOccurred ? 'INS Dead Reckoning (Sans GPS)' : 'UKF Actif (Fusion)';
              if (fusion && $('uncertainty-vel-p')) $('uncertainty-vel-p').textContent = dataOrDefault(fusion.uncertainty_vel_rms, 6, ' m/s');
              if (fusion && $('ukf-alt-sigma')) $('ukf-alt-sigma').textContent = dataOrDefault(fusion.uncertainty_alt_sigma, 4, ' m');
-             if (ukf.getRFactor && $('ukf-r-noise')) $('ukf-r-noise').textContent = dataOrDefault(ukf.getRFactor(), 2); // ID corrigé
+             if (ukf.getRFactor && $('ukf-r-noise')) $('ukf-r-noise').textContent = dataOrDefault(ukf.getRFactor(), 2); 
         } else {
              fusionStatusMessage = 'Attente init. UKF...';
         }
-        if ($('ekf-status')) $('ekf-status').textContent = fusionStatusMessage; // ID corrigé
+        if ($('ekf-status')) $('ekf-status').textContent = fusionStatusMessage; 
         if ($('gps-accuracy-display')) $('gps-accuracy-display').textContent = dataOrDefault(currentPosition.acc, 1, ' m');
-        if ($('acc-gps')) $('acc-gps').textContent = dataOrDefault(currentPosition.acc, 1, ' m'); // Pour la carte
+        if ($('acc-gps')) $('acc-gps').textContent = dataOrDefault(currentPosition.acc, 1, ' m'); 
 
-        // 2. Position & Vitesse
+        // 2. Position & Vitesse (IDs vérifiés et corrigés)
         if ($('lat-ekf')) $('lat-ekf').textContent = dataOrDefault(lat, 6);
         if ($('lon-ekf')) $('lon-ekf').textContent = dataOrDefault(lon, 6);
         if ($('alt-ekf')) $('alt-ekf').textContent = dataOrDefault(alt, 2, ' m');
         if ($('heading-display')) $('heading-display').textContent = dataOrDefault(yaw, 1, '°');
 
         if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(speed * KMH_MS, 1, ' km/h'); // Affichage principal
-        if ($('vitesse-stable-kmh')) $('vitesse-stable-kmh').textContent = dataOrDefault(speed * KMH_MS, 3, ' km/h');
-        if ($('vitesse-stable-ms')) $('vitesse-stable-ms').textContent = dataOrDefault(speed, 3, ' m/s'); 
+        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speed * KMH_MS, 3, ' km/h'); // CORRECTION ID
+        if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(speed, 3, ' m/s'); // CORRECTION ID
         if ($('raw-speed-ms')) $('raw-speed-ms').textContent = dataOrDefault(currentPosition.speed, 2, ' m/s');
         if ($('vmax-session')) $('vmax-session').textContent = dataOrDefault(maxSpeedMs * KMH_MS, 1, ' km/h');
         
         const distKm = totalDistanceM / 1000;
-        if ($('distance-total-3d')) $('distance-total-3d').textContent = `${dataOrDefault(distKm, 3, ' km')} | ${dataOrDefault(totalDistanceM, 2, ' m')}`; // ID corrigé
-        if ($('movement-time')) $('movement-time').textContent = dataOrDefault(timeInMotionMs / 1000, 2, ' s'); // ID corrigé
-        if ($('vertical-speed')) $('vertical-speed').textContent = dataOrDefault(vD, 2, ' m/s'); // ID corrigé
+        if ($('distance-total-3d')) $('distance-total-3d').textContent = `${dataOrDefault(distKm, 3, ' km')} | ${dataOrDefault(totalDistanceM, 2, ' m')}`; 
+        if ($('movement-time')) $('movement-time').textContent = dataOrDefault(timeInMotionMs / 1000, 2, ' s'); 
+        if ($('vertical-speed')) $('vertical-speed').textContent = dataOrDefault(vD, 2, ' m/s'); 
 
-        // 3. IMU
+        // 3. IMU (IDs vérifiés)
         if ($('accel-x')) $('accel-x').textContent = dataOrDefault(curAcc.x, 2);
         if ($('accel-y')) $('accel-y').textContent = dataOrDefault(curAcc.y, 2);
         if ($('accel-z')) $('accel-z').textContent = dataOrDefault(curAcc.z, 2); 
-        if ($('inclinaison-pitch')) $('inclinaison-pitch').textContent = dataOrDefault(pitch, 1, '°'); // ID corrigé
-        if ($('roulis-roll')) $('roulis-roll').textContent = dataOrDefault(roll, 1, '°'); // ID corrigé
+        if ($('inclinaison-pitch')) $('inclinaison-pitch').textContent = dataOrDefault(pitch, 1, '°'); 
+        if ($('roulis-roll')) $('roulis-roll').textContent = dataOrDefault(roll, 1, '°'); 
         if ($('mag-x')) $('mag-x').textContent = dataOrDefault(curMag.x, 1);
         
-        if ($('local-gravity')) $('local-gravity').textContent = dataOrDefault(grav_mag, 4, ' m/s²'); // ID corrigé
-        if ($('acceleration-long')) $('acceleration-long').textContent = dataOrDefault(long_acc, 2, ' m/s²'); // ID corrigé
+        if ($('local-gravity')) $('local-gravity').textContent = dataOrDefault(grav_mag, 4, ' m/s²'); 
+        if ($('acceleration-long')) $('acceleration-long').textContent = dataOrDefault(long_acc, 2, ' m/s²'); 
         if ($('force-g-long')) $('force-g-long').textContent = dataOrDefault(long_acc / G_ACC_STD, 2, ' G');
         
-        // 4. Physique & Relativité
-        if ($('mach-number')) $('mach-number').textContent = dataOrDefault(speed / 340.29, 4); // ID corrigé
-        if ($('const-G')) $('const-G').textContent = `${dataOrDefault(G_CONST, 10, '')} m³/kg/s²`; // ID corrigé
-        if ($('const-c')) $('const-c').textContent = `${C_L} m/s`; // ID corrigé
+        // 4. Physique & Relativité (IDs vérifiés)
+        if ($('mach-number')) $('mach-number').textContent = dataOrDefault(speed / 340.29, 4); 
+        if ($('const-G')) $('const-G').textContent = `${dataOrDefault(G_CONST, 10, '')} m³/kg/s²`; 
+        if ($('const-c')) $('const-c').textContent = `${C_L} m/s`; 
         
         if ($('lorentz-factor')) $('lorentz-factor').textContent = dataOrDefault(lorentz, 4);
-        if ($('%speed-of-light')) $('%speed-of-light').textContent = dataOrDefault(speed / C_L * 100, 6, ' %'); // ID corrigé
+        if ($('%speed-of-light')) $('%speed-of-light').textContent = dataOrDefault(speed / C_L * 100, 6, ' %'); 
         
         if ($('mass-display')) $('mass-display').textContent = dataOrDefault(mass, 3, ' kg');
-        if ($('kinetic-energy')) $('kinetic-energy').textContent = dataOrDefault(0.5 * mass * speed**2, 2, ' J'); // ID corrigé
+        if ($('kinetic-energy')) $('kinetic-energy').textContent = dataOrDefault(0.5 * mass * speed**2, 2, ' J'); 
         
         // Niveau à bulle
         const bubble = $('bubble');
@@ -332,9 +333,9 @@
                 // Mises à jour DOM Astro (IDs alignés)
                 if ($('sun-alt')) $('sun-alt').textContent = dataOrDefault(ad.sun.altitude * R2D, 2, '°');
                 if ($('sun-azimuth')) $('sun-azimuth').textContent = dataOrDefault(ad.sun.azimuth * R2D, 1, '°');
-                if ($('clock-status')) $('clock-status').textContent = (ad.sun.altitude * R2D < -6) ? 'Nuit/Crépuscule (🌙)' : 'Jour/Aube (☀️)'; // ID corrigé
-                if ($('tst-time')) $('tst-time').textContent = ad.TST_HRS || 'N/A'; // ID corrigé
-                if ($('moon-phase-name')) $('moon-phase-name').textContent = ad.moon.phase_name || 'N/A'; // ID corrigé
+                if ($('clock-status')) $('clock-status').textContent = (ad.sun.altitude * R2D < -6) ? 'Nuit/Crépuscule (🌙)' : 'Jour/Aube (☀️)'; 
+                if ($('tst-time')) $('tst-time').textContent = ad.TST_HRS || 'N/A'; 
+                if ($('moon-phase-name')) $('moon-phase-name').textContent = ad.moon.phase_name || 'N/A'; 
                 if ($('moon-illuminated')) $('moon-illuminated').textContent = dataOrDefault(ad.illumination.fraction * 100, 1, ' %');
                 if ($('moon-alt')) $('moon-alt').textContent = dataOrDefault(ad.moon.altitude * R2D, 2, '°');
                 if ($('moon-distance')) $('moon-distance').textContent = dataOrDefault(ad.moon.distance / 1000, 0, ' km');
@@ -360,7 +361,7 @@
             fusionStatusMessage = 'INS Dead Reckoning (Prêt)';
         }
 
-        // Listener UI pour le bouton GPS (FIX DE L'ERREUR UTILISATEUR)
+        // Listener UI pour le bouton GPS (FIX CRITIQUE)
         const btnToggle = $('gps-pause-toggle');
         if (btnToggle) btnToggle.addEventListener('click', togglePause);
         
