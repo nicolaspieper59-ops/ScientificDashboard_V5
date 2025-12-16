@@ -1,1 +1,267 @@
- 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GNSS SpaceTime Dashboard • UKF 21 États Fusion (COMPLET)</title>
+    
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="leaflet.css" />
+    <link rel="stylesheet" href="fontawesome.min.css" />
+          
+    <style>
+        /* Styles CSS critiques intégrés pour éviter les erreurs de chargement */
+        :root {
+            --bg-dark: #121220; --panel-dark: #1e1e1e; --text-dark: #e0e0e0;
+            --border-dark: #333; --accent-color: #007bff; --error-color: #dc3545;
+        }
+        body { 
+            font-family: 'Arial', sans-serif; margin: 0; padding: 0; 
+            background-color: var(--bg-dark); color: var(--text-dark); 
+        }
+        .dashboard-container { 
+            display: grid; 
+            grid-template-columns: 1fr 1.5fr 1fr; 
+            gap: 15px; padding: 15px; max-width: 1800px; margin: auto;
+        }
+        @media (max-width: 1200px) { .dashboard-container { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 800px) { .dashboard-container { grid-template-columns: 1fr; } }
+
+        section.panel { 
+            background-color: var(--panel-dark); padding: 15px 20px; 
+            border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
+            display: flex; flex-direction: column;
+        }
+        h2 { 
+            margin-top: 0; border-bottom: 2px solid var(--border-dark); 
+            padding-bottom: 10px; font-size: 1.2em; color: var(--accent-color);
+        }
+        h3 { color: var(--accent-color); margin-top: 15px; margin-bottom: 5px; font-size: 1em; }
+        .data-point { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #2a2a2a; }
+        .data-point span:last-child { font-family: monospace; font-weight: bold; color: #99ccff; }
+        
+        .speed-display { text-align: center; background-color: #222; color: #00ff66; padding: 20px; border-radius: 12px; margin-bottom: 15px; }
+        #speed-main-display { font-size: 2.5em; font-weight: 700; display:block; }
+        
+        .controls-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+        .control-input-full { grid-column: 1 / -1; margin-top: 5px; }
+        button, select, input { 
+            width: 100%; padding: 10px; border: 1px solid #555; 
+            background-color: #333; color: white; border-radius: 5px; cursor: pointer; 
+        }
+        button:hover { background-color: #444; }
+        .btn-control.error { background-color: #6c1a1a; }
+        .btn-control.accent { background-color: #0056b3; }
+        
+        #map { height: 350px; width: 100%; border-radius: 8px; margin-top: 15px; background-color: #333; }
+        
+        /* Niveau à bulle */
+        .spirit-level-container {
+            position: relative; width: 100px; height: 100px; margin: 15px auto;
+            border: 2px solid var(--accent-color); border-radius: 50%; background: #000;
+        }
+        .spirit-level-bubble {
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+            background: rgba(255, 255, 255, 0.8); border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body class="dark-mode"> 
+    <header>
+        <h1 style="text-align: center; color: var(--accent-color);">GNSS SpaceTime Dashboard • UKF 21 États</h1>
+    </header>
+    
+    <main class="dashboard-container">
+        
+        <div class="column-1">
+            <section class="panel">
+                <h2><i class="fas fa-cog"></i> Contrôles & Système</h2>
+                <div class="data-point"><span>Heure Locale (NTP)</span><span id="local-time">N/A</span></div>
+                <div class="data-point"><span>Date & Heure (UTC)</span><span id="utc-datetime">N/A</span></div>
+                <div class="data-point"><span>Temps écoulé</span><span id="elapsed-time">0.00 s</span></div>
+                <div class="data-point"><span>Temps Mouvement</span><span id="time-motion">0.00 s</span></div>
+                <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">00:00</span></div>
+                <hr>
+                <div class="controls-grid">
+                    <button id="gps-pause-toggle" class="control-btn accent">▶️ DÉMARRER SYSTÈME</button>
+                    <button class="btn-control" id="reset-distance-btn">Réinit. Dist.</button>
+                    <button class="btn-control" id="reset-vmax-btn">Réinit. V-Max</button>
+                    <button class="btn-control" id="capture-data-btn">Capturer données</button>
+                    <button class="btn-control error" id="reset-all-btn" style="grid-column: 1 / -1;">TOUT RÉINITIALISER</button>
+                    
+                    <div class="control-input-full">
+                        <label>Forcer Précision GPS (m)</label>
+                        <input type="number" id="gps-accuracy-override" value="0" step="1">
+                    </div>
+                    <div class="control-input-full">
+                        <label>Environnement</label>
+                        <select id="environment-select">
+                            <option value="NORMAL">Normal (x1.0)</option>
+                            <option value="FOREST">Forêt (x2.5)</option>
+                            <option value="CONCRETE">Grotte/Tunnel (x7.0)</option>
+                        </select>
+                    </div>
+                    <div class="control-input-full">
+                        <label>Masse (kg)</label>
+                        <input type="number" id="mass-input" value="70">
+                    </div>
+                    <div class="control-input-full">
+                        <label>Corps Céleste</label>
+                        <select id="celestial-body-select">
+                            <option value="EARTH" selected>Terre</option>
+                            <option value="MOON">Lune</option>
+                            <option value="MARS">Mars</option>
+                            <option value="ROTATING">Station Spatiale</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <h2><i class="fas fa-microchip"></i> IMU</h2>
+                <div class="data-point"><span>Accélération X</span><span id="accel-x">0</span></div>
+                <div class="data-point"><span>Accélération Y</span><span id="accel-y">0</span></div>
+                <div class="data-point"><span>Accélération Z</span><span id="accel-z">0</span></div>
+                <div class="data-point"><span>Mag X</span><span id="mag-x">N/A</span></div>
+                <div class="data-point"><span>Mag Y</span><span id="mag-y">N/A</span></div>
+                <div class="data-point"><span>Mag Z</span><span id="mag-z">N/A</span></div>
+            </section>
+        </div>
+
+        <div class="column-2">
+            <section class="panel">
+                <h2><i class="fas fa-tachometer-alt"></i> Vitesse & Physique</h2>
+                <div class="speed-display">
+                    <span id="speed-main-display">0.0 km/h</span>
+                    <br><small id="gps-status-acquisition">Système en attente...</small>
+                </div>
+                <div class="data-point"><span>Vitesse Stable</span><span id="speed-stable-kmh">0.0 km/h</span></div>
+                <div class="data-point"><span>Vitesse (m/s)</span><span id="speed-stable-ms">0.00 m/s</span></div>
+                <div class="data-point"><span>Vitesse Brute</span><span id="raw-speed-ms">0.00 m/s</span></div>
+                <div class="data-point"><span>Vitesse Max</span><span id="vmax-session">0.0 km/h</span></div>
+                <div class="data-point"><span>Vit. Moy (Mvt)</span><span id="speed-avg-moving">0.0 km/h</span></div>
+                <div class="data-point"><span>Vit. Moy (Tot)</span><span id="speed-avg-total">0.0 km/h</span></div>
+                <hr>
+                <h3>Physique & Relativité</h3>
+                <div class="data-point"><span>Vitesse Son</span><span id="speed-of-sound-calc">N/A</span></div>
+                <div class="data-point"><span>% Vitesse Son</span><span id="perc-speed-sound">0.00 %</span></div>
+                <div class="data-point"><span>Mach</span><span id="mach-number">0.0000</span></div>
+                <div class="data-point"><span>% Vitesse Lumière</span><span id="pct-speed-of-light">0.00 %</span></div>
+                <div class="data-point"><span>Lorentz (γ)</span><span id="lorentz-factor">1.0000</span></div>
+                <div class="data-point"><span>Énergie Cin.</span><span id="kinetic-energy">0.00 J</span></div>
+                <div class="data-point"><span>Énergie Repos</span><span id="rest-mass-energy">N/A</span></div>
+                <div class="data-point"><span>Momentum</span><span id="momentum">N/A</span></div>
+                <div class="data-point"><span>Schwarzschild</span><span id="rs-object">N/A</span></div> <hr>
+                <h3>Distance (3D)</h3>
+                <div class="data-point"><span>Totale</span><span id="distance-total-3d">0.000 km</span></div>
+                <div class="data-point"><span>Lumière (s)</span><span id="distance-light-s">0.00 s</span></div>
+                <div class="data-point"><span>Lumière (min)</span><span id="distance-light-min">0.00 min</span></div>
+            </section>
+
+            <section class="panel">
+                <h2><i class="fas fa-map-marked-alt"></i> Carte & Globe</h2>
+                <div class="data-point"><span>Précision GPS</span><span id="acc-gps">N/A</span></div>
+                <div id="map-container">
+                    <div id="map">Chargement carte...</div>
+                </div>
+             </section>
+        </div>
+
+        <div class="column-3">
+            <section class="panel">
+                <h2><i class="fas fa-balance-scale-right"></i> Dynamique</h2>
+                <div class="data-point"><span>Gravité Locale</span><span id="local-gravity">N/A</span></div>                 
+                <div class="data-point"><span>Force G (Long.)</span><span id="force-g-long">N/A</span></div>
+                <div class="data-point"><span>Accel. Long.</span><span id="acceleration-long">N/A</span></div>
+                <div class="data-point"><span>Vit. Verticale</span><span id="vertical-speed">N/A</span></div>
+                <div class="data-point"><span>Accel. Vert. (IMU)</span><span id="acceleration-vert-imu">N/A</span></div>
+                <div class="data-point"><span>Force G (Vert.)</span><span id="force-g-vert">N/A</span></div>
+                <div class="data-point"><span>Vit. Angulaire</span><span id="angular-speed">N/A</span></div>
+                <hr>
+                <h3>Fluides & Forces</h3>
+                <div class="data-point"><span>Pression Dyn.</span><span id="dynamic-pressure">0.00 Pa</span></div>
+                <div class="data-point"><span>Traînée</span><span id="drag-force">0.00 N</span></div>
+                <div class="data-point"><span>Coriolis</span><span id="coriolis-force">0.00 N</span></div>
+            </section>
+
+            <section class="panel">
+                <h2><i class="fas fa-brain"></i> Filtre UKF</h2>
+                <div class="control-input-full">
+                    <label>Réactivité UKF</label>
+                    <select id="ukf-reactivity-mode">
+                        <option value="adaptive" selected>Automatique</option>
+                        <option value="normal">Normal</option>
+                        <option value="fast">Rapide</option>
+                    </select>
+                </div>
+                <div class="data-point"><span>Statut Fusion</span><span id="ekf-status">N/A</span></div>
+                <div class="data-point"><span>Incertitude Vit.</span><span id="uncertainty-vel-p">N/A</span></div>
+                <div class="data-point"><span>Incertitude Alt.</span><span id="ukf-alt-sigma">N/A</span></div>
+                <div class="data-point"><span>Bruit Mesure (R)</span><span id="ukf-r-noise">N/A</span></div>
+                <div class="data-point"><span>Bande Passante</span><span id="bande-passante">N/A</span></div>
+            </section>
+
+            <section class="panel">
+                <h2><i class="fas fa-compass"></i> Niveau (IMU)</h2>
+                <div class="spirit-level-container" id="spirit-level">
+                    <div class="spirit-level-bubble" id="bubble"></div>
+                </div>
+                <div class="data-point"><span>Pitch</span><span id="inclinaison-pitch">0.0°</span></div>
+                <div class="data-point"><span>Roll</span><span id="roulis-roll">0.0°</span></div>
+            </section>
+
+            <section class="panel">
+                <h2><i class="fas fa-globe-americas"></i> Astro</h2>
+                <div class="clock-display"><span id="clock-status">Nuit/Crépuscule</span></div>
+                <hr>
+                <h3>Position</h3>
+                <div class="data-point"><span>Lat</span><span id="lat-ekf">...</span></div>
+                <div class="data-point"><span>Lon</span><span id="lon-ekf">...</span></div>
+                <div class="data-point"><span>Alt</span><span id="alt-ekf">...</span></div>
+                <div class="data-point"><span>Cap</span><span id="heading-display">N/A</span></div>
+                <hr>
+                <h3>Temps</h3>
+                <div class="data-point"><span>Date</span><span id="date-display-astro">N/A</span></div>
+                <div class="data-point"><span>Date Moy.</span><span id="date-solar-mean">N/A</span></div>
+                <div class="data-point"><span>Date Vraie</span><span id="date-solar-true">N/A</span></div>
+                <div class="data-point"><span>Heure Vraie (TST)</span><span id="tst-time">N/A</span></div>
+                <div class="data-point"><span>Heure Moy. (MST)</span><span id="mst-time">N/A</span></div>
+                <div class="data-point"><span>Midi Solaire</span><span id="noon-solar">N/A</span></div>
+                <div class="data-point"><span>Équation Temps</span><span id="equation-of-time">N/A</span></div>
+                <div class="data-point"><span>Long. Écliptique</span><span id="ecl-long">N/A</span></div>
+                <hr>
+                <h3>Soleil</h3>
+                <div class="data-point"><span>Altitude</span><span id="sun-alt">N/A</span></div>
+                <div class="data-point"><span>Azimut</span><span id="sun-azimuth">N/A</span></div>
+                <div class="data-point"><span>Durée Jour</span><span id="day-duration">N/A</span></div>
+                <div class="data-point"><span>Lever</span><span id="sunrise-times">N/A</span></div>
+                <div class="data-point"><span>Coucher</span><span id="sunset-times">N/A</span></div>
+                <hr>
+                <h3>Lune</h3>
+                <div class="data-point"><span>Phase</span><span id="moon-phase-name">N/A</span></div>
+                <div class="data-point"><span>Illumination</span><span id="moon-illuminated">N/A</span></div>
+                <div class="data-point"><span>Altitude</span><span id="moon-alt">N/A</span></div>
+                <div class="data-point"><span>Azimut</span><span id="moon-azimuth">N/A</span></div>
+                <div class="data-point"><span>Lever/Coucher</span><span id="moon-times">N/A</span></div>
+                <div class="data-point"><span>Distance</span><span id="moon-distance">N/A</span></div>
+            </section>
+        </div>
+    </main> 
+
+    <script src="vendor/math.min.js"></script> 
+    <script src="vendor/leaflet.js"></script>
+    <script src="vendor/turf.min.js"></script>
+    
+    <script>
+        if (typeof math === 'undefined') console.error("⛔ math.js manquant.");
+        else console.log("✅ math.js chargé.");
+    </script> 
+    
+    <script src="lib/ukf-class.js"></script>      
+    <script src="lib/ephem.js"></script>
+    <script src="lib/astro.js"></script>
+    <script src="gnss-dashboard-full.js"></script>
+
+</body>
+     </html>
