@@ -169,9 +169,6 @@
                         <div class="select-wrapper">
                     </div>
                     <div class="control-input-full">
-                        <div class="data-point"><span>Facteur d'environnement</span><span id="env-factor">Normal (x1.0)</span></div>
-                    </div>
-                    <div class="control-input-full">
                         <label for="mass-input">Masse de l'objet (kg)</label>
                         <input type="number" id="mass-input" value="70" step="1" aria-labelledby="mass-display">
                         <div class="data-point"><span>Masse (kg)</span><span id="mass-display">70.000 kg</span></div>
@@ -342,7 +339,7 @@
                     </select>
                 </div>
                 <div class="data-point"><span>Statut GPS (Acquisition)</span><span id="gps-status-acquisition">N/A</span></div>
-                <div class="data-point"><span>Statut UKF (Fusion)</span><span id="ekf-status">N/A</span></div>
+                <div class="data-point"><span>Statut UKF (Fusion)</span><span id="ukf-status">N/A</span></div>
                 <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="uncertainty-vel-p">N/A</span></div>
                 <div class="data-point"><span>Incertitude Alt. (σ)</span><span id="ukf-alt-sigma">N/A</span></div>
                 <div class="data-point"><span>Bruit Mesure Vitesse (R)</span><span id="ukf-r-noise">N/A</span></div>
@@ -379,9 +376,9 @@
                 </div>
                 <hr>
                 <h3>Positionnement EKF</h3>
-                <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ekf">...</span></div>
-                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ekf">...</span></div>
-                <div class="data-point"><span>Altitude (UKF)</span><span id="alt-ekf">...</span></div>
+                <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">...</span></div>
+                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">...</span></div>
+                <div class="data-point"><span>Altitude (UKF)</span><span id="alt-ukf">...</span></div>
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">N/A</span></div>
                 <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">N/A</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">N/A</span></div>
