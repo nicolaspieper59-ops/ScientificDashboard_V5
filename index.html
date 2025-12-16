@@ -167,12 +167,6 @@
                             <option value="METAL">Métal/Bâtiment (x5.0)</option>
                         </select>
                         <div class="select-wrapper">
-    <select id="ukf-reactivity-mode">
-        <option value="adaptive" selected>Automatique (Adaptatif)</option>
-        <option value="high">Haute (x1.0)</option>
-        <option value="low">Basse (x0.1)</option>
-    </select>
-                    
                     </div>
                     <div class="control-input-full">
                         <div class="data-point"><span>Facteur d'environnement</span><span id="env-factor">Normal (x1.0)</span></div>
@@ -336,19 +330,19 @@
                 <div class="data-point"><span>Force de Coriolis</span><span id="coriolis-force">0.00 N</span></div>
             </section>
 
-            <section class="panel" aria-labelledby="ekf-heading">
-                <h2 id="ekf-heading"><i class="fas fa-brain"></i> Filtre EKF/UKF & Debug</h2>
+            <section class="panel" aria-labelledby="ukf-heading">
+                <h2 id="ukf-heading"><i class="fas fa-brain"></i> Filtre EKF/UKF & Debug</h2>
                 <div class="control-input-full" style="padding-bottom: 10px;">
                     <label for="ukf-reactivity-mode">Réactivité UKF (Facteur R)</label>
                     <select id="ukf-reactivity-mode" style="width: 100%;">
-                        <option value="AUTO">Automatique (Adaptatif)</option>
+                        <option value="adaptive" selected>Automatique (Adaptatif)</option>
                         <option value="NORMAL">Normal (x1.0)</option>
                         <option value="FAST">Rapide (x0.2)</option>
                         <option value="STABLE">Microscopique (x2.5)</option>
                     </select>
                 </div>
                 <div class="data-point"><span>Statut GPS (Acquisition)</span><span id="gps-status-acquisition">N/A</span></div>
-                <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ekf-status">N/A</span></div>
+                <div class="data-point"><span>Statut UKF (Fusion)</span><span id="ekf-status">N/A</span></div>
                 <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="uncertainty-vel-p">N/A</span></div>
                 <div class="data-point"><span>Incertitude Alt. (σ)</span><span id="ukf-alt-sigma">N/A</span></div>
                 <div class="data-point"><span>Bruit Mesure Vitesse (R)</span><span id="ukf-r-noise">N/A</span></div>
@@ -385,9 +379,9 @@
                 </div>
                 <hr>
                 <h3>Positionnement EKF</h3>
-                <div class="data-point"><span>Latitude (EKF)</span><span id="lat-ekf">...</span></div>
-                <div class="data-point"><span>Longitude (EKF)</span><span id="lon-ekf">...</span></div>
-                <div class="data-point"><span>Altitude (EKF)</span><span id="alt-ekf">...</span></div>
+                <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ekf">...</span></div>
+                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ekf">...</span></div>
+                <div class="data-point"><span>Altitude (UKF)</span><span id="alt-ekf">...</span></div>
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">N/A</span></div>
                 <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">N/A</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">N/A</span></div>
