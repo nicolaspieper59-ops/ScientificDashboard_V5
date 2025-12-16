@@ -90,13 +90,12 @@
     <div class="column-1">
         
         <section>
-            <h3><i class="fas fa-satellite-dish"></i> Contrôles & Système</h3>
             <div class="data-point"><span>Heure Locale (NTP)</span><span id="local-time">N/A</span></div>
             <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">N/A</span></div>
-            <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">N/A</span></div> <hr>
+            <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">N/A</span></div>        
             <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">0.00 s</span></div>
             <div class="data-point"><span>Temps de Mouvement</span><span id="time-motion">0.00 s</span></div>
-            <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">00:00</span></div>
+            <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">00:00:00</span></div>
             
             <div class="controls-group" style="margin-top: 15px;">
                 <button id="gps-pause-toggle" class="control-btn accent">▶️ DÉMARRER SYSTÈME</button>
@@ -169,14 +168,10 @@
             <div class="data-point"><span>Bande Passante (Nyquist)</span><span id="ukf-bande-passante">N/A</span></div>
             <div class="data-point"><span>Forcer Précision GPS (m)</span><span id="forced-gps-accuracy-display">0.000000 m</span></div>
             <hr>
-            <h3><i class="fas fa-hand-pointer"></i> Niveau à Bulle (IMU)</h3>
-            <div class="bubble-container" id="bubble-container">
-                <div id="bubble"></div> 
-            </div>
-            <div class="data-point"><span>Inclinaison (Pitch)</span><span id="inclinaison-pitch">0.0°</span></div>
-            <div class="data-point"><span>Roulis (Roll)</span><span id="roulis-roll">0.0°</span></div>
-        </section>
-
+            <h3>Niveau à Bulle (IMU)</h3>
+    <div class="data-group">
+        <div class="data-point"><span>Inclinaison (Pitch)</span><span id="inclinaison-pitch">0.0°</span></div>
+        <div class="data-point"><span>Roulis (Roll)</span><span id="roulis-roll">0.0°</span></div>
     </div>
 
     <div class="column-2">
@@ -235,7 +230,7 @@
             <h3><i class="fas fa-microchip"></i> IMU (Accéléromètre/Gyroscope)</h3>
             <div class="data-point"><span>Accélération X</span><span id="accel-x">0</span></div>
             <div class="data-point"><span>Accélération Y</span><span id="accel-y">0</span></div>
-            <div class="data-point"><span>Accélération Z</span><span id="accel-z">N/A</span></div> 
+            <div class="data-point"><span>Accélération Z</span><span id="accel-z">N/A</span></div>
             <div class="data-point"><span>Champ Magnétique X</span><span id="mag-x">N/A</span></div>
             <div class="data-point"><span>Champ Magnétique Y</span><span id="mag-y">N/A</span></div>
             <div class="data-point"><span>Champ Magnétique Z</span><span id="mag-z">N/A</span></div>
@@ -291,11 +286,11 @@
             <h3><i class="fas fa-bolt"></i> Dynamique & Forces</h3>
             <div class="data-point"><span>Gravité Locale (g)</span><span id="local-gravity">N/A</span></div>
             <div class="data-point"><span>Force G (Long.)</span><span id="force-g-long">N/A</span></div>
-            <div class="data-point"><span>Accélération Long.</span><span id="acceleration-long">N/A</span></div>
-            <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vertical-speed">N/A</span></div>
+            <div class="data-point"><span>Accélération Long.</span><span id="accel-long">N/A</span></div>
+            <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vitesse-verticale-ekf">N/A</span></div>
             <div class="data-point"><span>Accel. Verticale (IMU)</span><span id="accel-vert-imu">N/A</span></div>
             <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">N/A</span></div>
-            <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">N/A</span></div>
+            <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="vitesse-angulaire-gyro">N/A</span></div>
 
             <hr>
             
