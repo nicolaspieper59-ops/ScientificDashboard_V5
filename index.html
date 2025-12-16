@@ -149,10 +149,10 @@
                     </select>
                     <button id="emergency-stop-btn" title="Arrêt d'urgence" aria-live="polite">🛑 Arrêt d'urgence: INACTIF 🟢</button>
                     <button id="toggle-mode-btn" aria-label="Basculer mode jour/nuit"><i class="fas fa-moon"></i> Mode Nuit</button>
-                    <button id="reset-dist-btn"><i class="fas fa-route"></i> Réinit. Dist.</button>
-                    <button id="reset-max-btn"><i class="fas fa-tachometer-alt"></i> Réinit. V-Max</button>
-                    <button id="capture-data-btn" style="background-color: #ffc107; color: black;"><i class="fas fa-camera"></i> Capturer données</button>
-                    <button id="reset-all-btn" style="grid-column: 1 / -1;"><i class="fas fa-power-off"></i> TOUT RÉINITIALISER</button>
+                    <button class="btn-control" **id="reset-distance-btn"**>Réinit. Dist.</button>
+                    <button class="btn-control" **id="reset-vmax-btn"**>Réinit. V-Max</button>
+                    <button class="btn-control" **id="capture-data-btn"**>Capturer données</button>
+                    <button class="btn-control error" **id="reset-all-btn"**>TOUT RÉINITIALISER</button>
                     
                     <div class="control-input-full">
                         <label for="gps-accuracy-override">Forcer Précision GPS (m) [0=Auto]</label>
@@ -178,7 +178,7 @@
                     <div class="control-input-full">
                         <label for="celestial-body-select">Corps Céleste (Gravité)</label>
                         <select id="celestial-body-select">
-                            <option value="EARTH">Terre</option>
+                            <option value="Terre" selected>Terre</option>
                             <option value="MOON">Lune</option>
                             <option value="MARS">Mars</option>
                             <option value="ROTATING">Station Spatiale</option>
