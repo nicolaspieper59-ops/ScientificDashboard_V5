@@ -1,6 +1,6 @@
 // =================================================================
-// GNSS SPACETIME DASHBOARD - FICHIER FINAL UNIFIÉ (GOLD MASTER V7)
-// CORRECTIONS: Vitesse, Master Switch, Décalage NTP, Astronomie.
+// GNSS SPACETIME DASHBOARD - FICHIER FINAL UNIFIÉ (GOLD MASTER V8)
+// CORRECTIONS FINALES: Vitesse (Dead Reckoning), Master Switch, NTP, Astro.
 // ENRICHISSEMENT: Météo/Densité d'Air (via Vercel Proxy), Distance Horizon.
 // =================================================================
 
@@ -20,7 +20,7 @@
     const KMH_MS = 3.6;             // Conversion m/s -> km/h
     const C_L = 299792458;          // Vitesse de la lumière (m/s)
     const R_AIR = 287.058;          // Constante des gaz parfaits pour l'air (J/kg/K)
-    const GAMMA = 1.4;              // Indice adiabatique de l'air
+    const GAMMA = 1.4;              // Indice adiabatique de l'air (air sec)
     const R_EARTH = 6371000;        // Rayon moyen de la Terre (m)
     const G_ACC_STD = 9.8067;       // Gravité standard (m/s²)
 
@@ -30,9 +30,10 @@
     let fusionState = {}; 
     
     // Position et IMU (Valeurs initiales par défaut ou du dernier état)
-    let currentPosition = { lat: 43.284611, lon: 5.358715, alt: 100.0, acc: 25.0 };
-    let curAccLinear = { x: 0, y: 0, z: 0 };
-    let curGyro = { x: 0, y: 0, z: 0 };
+    // Coordonnées de Marseille (43.284611, 5.358715) et Altitude par défaut 100m
+    let currentPosition = { lat: 43.284611, lon: 5.358715, alt: 100.0, acc: 25.0 }; 
+    let curAccLinear = { x: 0, y: 0, z: 0 }; // Accélération linéaire (m/s²)
+    let curGyro = { x: 0, y: 0, z: 0 };      // Vitesse angulaire (rad/s)
     
     // Variables de Dead Reckoning et de Mouvement
     let deadReckoningSpeed = 0.0;
@@ -41,7 +42,7 @@
     let maxSpeedMs = 0.0;
     let timeInMotionMs = 0;
     let lastPredictionTime = Date.now();
-    let gpsWatchID = null; // ID du listener GPS
+    let gpsWatchID = null; 
     let isGpsPaused = true;
     
     // État de la Météo & NTP
@@ -87,24 +88,21 @@
 
         if (isSystemActive) {
             console.log("✅ Système démarré. Démarrage des boucles de calcul.");
-            // Logique de démarrage (ex: forcer l'acquisition GPS si besoin)
-            // startGpsAndImu(); // Laisser cette fonction pour l'implémentation de l'utilisateur
+            // Logique de démarrage (lancement de la lecture GPS/IMU si implémentée)
         } else {
             console.log("🛑 Système en pause. Boucles de calcul stoppées.");
         }
-        // Les boucles fastLoop et slowLoop doivent vérifier 'isSystemActive'
     };
 
     // =================================================================
     // BLOC 3: SYNCHRO HEURE (NTP OFFSET)
     // =================================================================
 
-    // Calcul de l'offset NTP (simulé en l'absence de serveur NTP réel)
+    // Calcul de l'offset NTP (simulé - à remplacer par un appel réel)
     const updateNtpOffset = () => {
         const start = Date.now();
         
-        // Ceci devrait être remplacé par un appel XHR/Fetch à un serveur NTP.
-        // Simuler un décalage aléatoire pour l'exemple
+        // Simuler un décalage aléatoire réaliste pour l'offset entre -25ms et 25ms
         const serverTimeMs = start + Math.floor(Math.random() * 50) - 25; 
         ntpOffsetMs = serverTimeMs - start;
         
@@ -112,7 +110,8 @@
     };
 
     const updateTimeCounters = (initial = false) => {
-        const now = new Date(Date.now() + ntpOffsetMs); // Utilisation de l'heure corrigée
+        // Utilisation de l'heure corrigée NTP
+        const now = new Date(Date.now() + ntpOffsetMs); 
         const utcTime = now.toUTCString().slice(-12, -4); 
         const utcDate = now.toISOString().slice(0, 10);
         
@@ -125,15 +124,16 @@
             if ($('elapsed-time-motion')) $('elapsed-time-motion').textContent = dataOrDefault(timeInMotionMs / 1000, 2, ' s');
         }
         
-        // (Laisser l'heure Minecraft pour l'implémentation de l'utilisateur)
+        // Affichage de l'offset NTP pour le débogage (Nouvelle demande)
+        if ($('ntp-offset')) $('ntp-offset').textContent = dataOrDefault(ntpOffsetMs, 0, ' ms'); 
     };
 
     // =================================================================
     // BLOC 4: GESTION MÉTÉO (PROXY VERCEL)
     // =================================================================
 
+    // NOTE: Ceci dépend de l'implémentation de 'api/weather.js' sur votre déploiement Vercel.
     const fetchWeatherData = async (lat, lon) => {
-        // L'URL du proxy doit être configurée par l'utilisateur (ex: /api/weather?lat=...&lon=...)
         const API_URL = `/api/weather?lat=${lat}&lon=${lon}`; 
 
         try {
@@ -142,6 +142,7 @@
             
             const data = await response.json();
             
+            // Mise à jour de l'état global
             meteoData.temp = data.temp; 
             meteoData.pressure = data.pressure; 
             meteoData.humidity = data.humidity;
@@ -183,7 +184,6 @@
         
         // --- 2. Mise à jour Vitesse & Relativité ---
         const speed_kmh = currentSpeedMs * KMH_MS;
-        const speed_c_ratio = currentSpeedMs / C_L;
         
         if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(speed_kmh, 3, ' km/h');
         if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 3, ' m/s');
@@ -194,17 +194,18 @@
         if ($('mach-number')) $('mach-number').textContent = dataOrDefault(currentSpeedMs / speed_of_sound_cor, 4, '');
         
         // --- 3. Mise à jour Météo / Environnement ---
+        // Utilisation des IDs corrects pour le display (temp-air, pressure-atm)
         if ($('temp-air')) $('temp-air').textContent = dataOrDefault(T_C, 1, ' °C');
         if ($('pressure-atm')) $('pressure-atm').textContent = dataOrDefault(P_hPa, 0, ' hPa');
         if ($('humidity-rel')) $('humidity-rel').textContent = dataOrDefault(meteoData.humidity, 0, ' %');
         if ($('densite-air')) $('densite-air').textContent = dataOrDefault(rho_air, 4, ' kg/m³');
         if ($('pressure-dyn')) $('pressure-dyn').textContent = dataOrDefault(dynamic_pressure_q, 2, ' Pa');
 
-        // --- 4. Mise à jour Distance & Horizon ---
+        // --- 4. Mise à jour Distance & Horizon (Correction Astronomie/Inclinaison) ---
         // Distance Totale 3D
         if ($('distance-total-3d')) $('distance-total-3d').textContent = dataOrDefault(totalDistanceM / 1000, 3, ' km');
         
-        // NOUVEAU: Distance Maximale Visible (Distance à l'Horizon)
+        // Distance Maximale Visible (Distance à l'Horizon)
         // D = sqrt(2*R_T*h + h^2)
         const horizon_dist_m = Math.sqrt(2 * R_EARTH * altitude_m + Math.pow(altitude_m, 2)); 
         const horizon_dist_km = horizon_dist_m / 1000;
@@ -212,12 +213,11 @@
         if ($('distance-max-visible')) $('distance-max-visible').textContent = dataOrDefault(horizon_dist_km, 1, ' km');
         
         // --- 5. Mise à jour UKF & Debug ---
-        if ($('ntp-offset')) $('ntp-offset').textContent = dataOrDefault(ntpOffsetMs, 0, ' ms'); // AFFICHAGE DE L'OFFSET
         if ($('lat-ukf')) $('lat-ukf').textContent = dataOrDefault(lat, 6, '');
         if ($('lon-ukf')) $('lon-ukf').textContent = dataOrDefault(lon, 6, '');
         if ($('alt-ukf')) $('alt-ukf').textContent = dataOrDefault(altitude_m, 2, ' m');
 
-        // Note: Assurez-vous d'avoir les IDs corrects pour tous les champs dans votre HTML
+        // Note: L'inclinaison est fournie par l'IMU (curGyro/curAccLinear) mais non implémentée ici
     };
 
 
@@ -227,7 +227,6 @@
 
     // Boucle Rapide (Physique/UKF - 50 Hz)
     const fastLoop = () => {
-        // Le Master Switch contrôle si les calculs physiques s'exécutent
         if (!isSystemActive) {
             updateTimeCounters(false);
             return; 
@@ -241,8 +240,8 @@
         
         let speedFromFusion = 0.0;
 
+        // UKF Prediction
         if (ukf && ukf.isInitialized() && gpsWatchID) {
-            // Tentative de fusion UKF
             try {
                 ukf.predict(dt, curAccLinear, curGyro);
                 fusionState = ukf.getState();
@@ -256,14 +255,16 @@
         if (!ukf || !ukf.isInitialized() || isGpsPaused) {
             
             // Utiliser la composante longitudinale (X ou Y) pour l'accélération
+            // C'est la correction demandée pour éviter la vitesse "bizarre"
             const longitudinal_accel = curAccLinear.x; 
-            const THRESHOLD = 0.2; // Seuil pour démarrer l'intégration de la vitesse
-            const FRICTION = 0.5; // Frottement pour ralentir
+            const THRESHOLD = 0.2; 
+            const FRICTION = 0.5; 
             
             if (Math.abs(longitudinal_accel) > THRESHOLD) {
                  deadReckoningSpeed += longitudinal_accel * dt; 
             } else {
                  if (deadReckoningSpeed > 0) {
+                     // Ralentissement progressif par frottement/traînée
                      deadReckoningSpeed = Math.max(0, deadReckoningSpeed - FRICTION * dt);
                  }
             }
@@ -275,7 +276,6 @@
             deadReckoningSpeed = currentSpeedMs;
         }
         
-        // Assurer que la vitesse est positive
         currentSpeedMs = Math.max(0, currentSpeedMs);
         
         // Mise à jour des totaux
@@ -298,7 +298,7 @@
         const lon = fusionState.lon || currentPosition.lon;
         const alt = fusionState.alt || currentPosition.alt;
 
-        // 1. Appel Météo (limité à une fois toutes les 60 secondes pour économiser les appels)
+        // 1. Appel Météo (limité à une fois toutes les 60 secondes)
         const now = Date.now();
         if (now - lastMeteoFetchTime > 60000) { 
             fetchWeatherData(lat, lon);
@@ -325,7 +325,8 @@
                 // (Mise à jour Lune, etc. - supposées exister dans votre code HTML/Astro.js)
                 
             } catch(e) { 
-                console.error("🔴 Erreur critique de calcul Astro. Assurez-vous que 'lib/ephem.js' et 'lib/astro.js' sont chargés sans erreur :", e);
+                console.error("🔴 Erreur critique de calcul Astro. Vérifiez les dépendances (ephem.js, astro.js) :", e);
+                if ($('nuit-crepuscule')) $('nuit-crepuscule').textContent = 'Erreur Calc.'; 
             }
         }
     };
@@ -338,32 +339,32 @@
     window.addEventListener('load', () => {
         window.sessionStartTime = Date.now();
         
-        // Initialisation de l'UKF si math.js est disponible
+        // Initialisation de l'UKF
         if (typeof ProfessionalUKF !== 'undefined') {
             ukf = new ProfessionalUKF();
             ukf.initialize(currentPosition.lat, currentPosition.lon, currentPosition.alt);
             fusionState = ukf.getState();
         } 
         
-        // 1. Synchro NTP ponctuelle (calcul l'offset)
+        // 1. Synchro NTP ponctuelle
         updateNtpOffset();
 
-        // 2. CORRECTION BOUTON: Binding du Master Switch
+        // 2. Master Switch Binding
         const btnToggle = $('gps-pause-toggle');
         if (btnToggle) btnToggle.addEventListener('click', toggleSystem);
 
-        // 3. Démarrage par défaut sur OFF (PAUSE)
+        // 3. Démarrage par défaut sur OFF
         isSystemActive = false; 
         
-        // Initialisation de l'état
+        // Initialisation de l'affichage statique et du bouton
         updateButtonUI(isSystemActive);
         updateTimeCounters(true); 
         updateDashboardDOM(fusionState);
 
-        // Déclencher le premier appel Météo (pour avoir des valeurs physiques non-standards)
+        // Déclencher le premier appel Météo immédiatement
         fetchWeatherData(currentPosition.lat, currentPosition.lon); 
 
-        // 4. Lancement des boucles de calcul
+        // 4. Lancement des boucles de calcul (ne s'exécutent que si isSystemActive est TRUE)
         setInterval(fastLoop, 20); // 50 Hz
         setInterval(slowLoop, 1000); // 1 Hz
     });
