@@ -396,9 +396,19 @@
                 <div class="data-point"><span>Distance à la Terre</span><span id="moon-distance">N/A</span></div>
             </section>
         </div>
-    </main> 
-
+    </main>
     <script src="vendor/math.min.js"></script> 
+    
+    <script>
+        if (typeof math === 'undefined') {
+            console.error("⛔ ÉCHEC CRITIQUE: math.min.js n'a pas réussi à définir l'objet 'math' !");
+            // Arrêter l'exécution du reste du code si possible
+            window.ukfFailedToLoad = true; 
+        } else {
+            console.log("✅ math.js est défini et prêt.");
+        }
+    </script>
+    
     <script src="vendor/leaflet.js"></script>
     <script src="vendor/turf.min.js"></script>
 
@@ -407,13 +417,3 @@
     <script src="lib/astro.js"></script>
 
     <script src="gnss-dashboard-full.js"></script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Service Worker Enregistré'))
-                .catch(err => console.error('Erreur Service Worker:', err));
-        }
-    </script>
-</body>
-     </html>
