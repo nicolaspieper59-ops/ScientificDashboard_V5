@@ -265,7 +265,7 @@
         
         // Mise à jour du bouton Nether
         const netherBtn = $('nether-toggle-btn');
-        if (netherBtn) netherBtn.textContent = `DÉSACTIVÉ (1:1)`; // Sera mis à jour correctement par la boucle lente si l'ID est trouvé
+        if (netherBtn) netherBtn.textContent = netherMode ? 'ACTIVÉ (1:8)' : 'DÉSACTIVÉ (1:1)';
     };
 
 
@@ -296,7 +296,7 @@
         if (isSystemActive) {
             if (btn) btn.textContent = '⏸️ PAUSE SYSTÈME';
             startGpsTracking();
-            // Demande de permission IMU pour les mobiles
+            // Demande de permission IMU pour les mobiles (doit être appelée par une action utilisateur)
             if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission().then(permissionState => {
                     if (permissionState === 'granted') {
@@ -333,11 +333,9 @@
 
         // Gérer les inputs (Rotation Radius / Angular Velocity)
         if ($('rotation-radius')) $('rotation-radius').addEventListener('input', (e) => { 
-            // Ici, vous ajouterez la logique de mise à jour de la Force de Coriolis dans l'UKF
             console.log("Rayon de rotation mis à jour:", e.target.value);
         });
         if ($('angular-velocity')) $('angular-velocity').addEventListener('input', (e) => {
-            // Ici, vous ajouterez la logique de mise à jour de la Force de Coriolis dans l'UKF
             console.log("Vitesse angulaire mise à jour:", e.target.value);
         });
     };
@@ -375,10 +373,6 @@
         // Mettre à jour le temps écoulé
         const elapsed = (Date.now() - sessionStartTime) / 1000;
         if ($('elapsed-time')) $('elapsed-time').textContent = dataOrDefault(elapsed, 2, ' s');
-        
-        // Mettre à jour le bouton Nether
-        const netherBtn = $('nether-toggle-btn');
-        if (netherBtn) netherBtn.textContent = netherMode ? 'ACTIVÉ (1:8)' : 'DÉSACTIVÉ (1:1)';
         
         // Lancer Astro uniquement si la position est non nulle
         if (currentPosition.lat !== 0.0) {
