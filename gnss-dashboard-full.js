@@ -280,7 +280,7 @@
             
             // On utilise linAccX (l'axe X du téléphone est généralement l'axe longitudinal en mode portrait)
             // Seuil de bruit (Noise Gate) pour éviter la dérive à l'arrêt
-            const NOISE_THRESHOLD = 0.3; // m/s²
+            const NOISE_THRESHOLD = 0.1; // m/s²
             
             if (Math.abs(linAccX) > NOISE_THRESHOLD) {
                 // Intégration : Vitesse = Vitesse + Accélération * Temps
@@ -351,11 +351,11 @@
     const updateDashboardDOM = () => {
         // --- 1. Vitesse & Distance ---
         const spdKmh = currentSpeedMs * 3.6;
-        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(spdKmh, 1, ' km/h');
-        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(spdKmh, 2, ' km/h');
+        if ($('speed-main-display')) $('speed-main-display').textContent = dataOrDefault(spdKmh, 3, ' km/h');
+        if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = dataOrDefault(spdKmh, 3, ' km/h');
         if ($('speed-stable-ms')) $('speed-stable-ms').textContent = dataOrDefault(currentSpeedMs, 2, ' m/s');
         if ($('speed-raw-ms')) $('speed-raw-ms').textContent = dataOrDefault(currentPosition.speed, 2, ' m/s');
-        if ($('speed-max-session')) $('speed-max-session').textContent = dataOrDefault(maxSpeedMs * 3.6, 1, ' km/h');
+        if ($('speed-max-session')) $('speed-max-session').textContent = dataOrDefault(maxSpeedMs * 3.6, 3, ' km/h');
         
         const distKm = totalDistanceM / 1000;
         if ($('total-distance')) $('total-distance').textContent = `${dataOrDefault(distKm, 3, ' km')} | ${dataOrDefault(totalDistanceM, 1, ' m')}`;
