@@ -227,7 +227,11 @@
 
     // --- 6. BOUCLES DE CALCUL & AFFICHAGE ---
 
-    // A. Boucle Rapide (50 Hz) - Physique & UKF
+// =================================================================
+    // CORRECTION PHYSIQUE : Compensation de Gravité (Vitesse / Inclinaison)
+    // =================================================================
+
+    // Boucle Rapide (50 Hz) - Physique & UKF
     const fastLoop = () => {
         if (!isSystemActive) return;
         
@@ -236,22 +240,64 @@
         lastPredictionTime = now;
         if (dt <= 0) return;
 
-        // Prédiction UKF
+        // 1. Calcul précis de l'Inclinaison (Pitch/Roll)
+        // Nécessaire pour savoir dans quelle direction tire la gravité
+        const rollRad = Math.atan2(curAcc.y, curAcc.z);
+        const pitchRad = Math.atan2(-curAcc.x, Math.sqrt(curAcc.y*curAcc.y + curAcc.z*curAcc.z));
+
+        // 2. Calcul du vecteur Gravité théorique selon l'inclinaison
+        // C'est ce que l'accéléromètre "voit" juste parce qu'il est penché
+        const gravX = -Math.sin(pitchRad) * G_ACC_STD;
+        const gravY = Math.sin(rollRad) * Math.cos(pitchRad) * G_ACC_STD;
+        const gravZ = Math.cos(rollRad) * Math.cos(pitchRad) * G_ACC_STD;
+
+        // 3. Soustraction de la gravité pour obtenir l'ACCÉLÉRATION LINÉAIRE PURE
+        // C'est le "Vrai Mouvement" sans l'effet de pente
+        const linAccX = curAcc.x - gravX; // Accélération Longitudinale (Avant/Arrière) corrigée
+        const linAccY = curAcc.y - gravY; // Accélération Latérale corrigée
+        const linAccZ = curAcc.z - gravZ; // Accélération Verticale corrigée
+
+        // Mise à jour des variables globales pour l'affichage
+        // On stocke ces valeurs "propres" pour l'affichage dynamique
+        if (fusionState) {
+            fusionState.accel_long = linAccX; // Mettre à jour l'état fusionné pour l'affichage
+            fusionState.accel_z_compensated = linAccZ;
+        }
+
+        // 4. Prédiction de Vitesse
         let speed = 0;
-        if (ukf && ukf.isInitialized()) {
+        
+        if (ukf && ukf.isInitialized() && hasGpsFixOccurred) {
+            // Si UKF Actif : On lui envoie les données BRUTES (il gère sa propre gravité interne)
             try {
                 ukf.predict(dt, curAcc, curGyro);
                 fusionState = ukf.getState();
                 speed = fusionState.speed;
             } catch(e) { speed = 0; }
         } else {
-            // Dead Reckoning très simple si pas d'UKF
-            const accMag = Math.sqrt(curAcc.x**2 + curAcc.y**2 + curAcc.z**2) - G_ACC_STD;
-            if (Math.abs(accMag) > 0.5) deadReckoningSpeed += accMag * dt;
-            else deadReckoningSpeed *= 0.95; // Friction
+            // --- MODE DEAD RECKONING (Sans GPS) ---
+            // C'est ici que la correction d'inclinaison est CRITIQUE
+            
+            // On utilise linAccX (l'axe X du téléphone est généralement l'axe longitudinal en mode portrait)
+            // Seuil de bruit (Noise Gate) pour éviter la dérive à l'arrêt
+            const NOISE_THRESHOLD = 0.3; // m/s²
+            
+            if (Math.abs(linAccX) > NOISE_THRESHOLD) {
+                // Intégration : Vitesse = Vitesse + Accélération * Temps
+                deadReckoningSpeed += linAccX * dt;
+            } else {
+                // Friction virtuelle pour s'arrêter doucement si pas de mouvement
+                deadReckoningSpeed *= 0.98;
+                if (Math.abs(deadReckoningSpeed) < 0.1) deadReckoningSpeed = 0;
+            }
+            
+            // Sécurité : Pas de vitesse négative en marche avant simple
+            // (Sauf si vous voulez gérer la marche arrière, retirez cette ligne)
             if (deadReckoningSpeed < 0) deadReckoningSpeed = 0;
+            
             speed = deadReckoningSpeed;
         }
+
         currentSpeedMs = speed;
         maxSpeedMs = Math.max(maxSpeedMs, speed);
         
