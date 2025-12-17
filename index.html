@@ -216,8 +216,17 @@
             </section>
         </div>
     </main> 
-
+</main>
     <script src="vendor/math.min.js"></script> 
+    <script>
+        if (typeof math === 'undefined') {
+            // 🛑 SI VOUS VOYEZ CECI, C'EST LA CAUSE DU PROBLÈME ! 🛑
+            console.error("⛔ CRITIQUE: La librairie 'math.js' n'a pas chargé la variable 'math'.");
+            alert("Erreur Critique: math.min.js manquant ou corrompu !");
+        } else {
+            console.log("✅ math.js chargé avec succès.");
+        }
+    </script> 
     <script src="vendor/leaflet.js"></script>
     <script src="vendor/turf.min.js"></script>
     <script src="lib/ukf-class.js"></script>      
@@ -236,4 +245,4 @@
         }
     </script>
 </body>
-    </html>
+</html>
