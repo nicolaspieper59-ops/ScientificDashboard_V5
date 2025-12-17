@@ -171,6 +171,7 @@
         // Nécessite que astro.js soit chargé ET une position de base (48.8566 / 2.3522 par défaut)
         if (typeof calculateAstroDataHighPrec === 'function' && currentPosition.lat !== 0.0) {
             try {
+                // V42.2 utilise la position UKF ou la position par défaut
                 const ad = calculateAstroDataHighPrec(currentPosition.lat, currentPosition.lon, new Date());
                 
                 // Affichage du Soleil
@@ -388,6 +389,7 @@
     window.addEventListener('load', () => {
         
         // --- 1. Initialisation UKF CRITIQUE ---
+        // Vérifiez que la classe ProfessionalUKF est définie (ukf-class.js chargé)
         if (typeof ProfessionalUKF !== 'undefined' && !ukf) {
             const refPos = currentPosition; 
             
@@ -398,18 +400,19 @@
             
             console.log("UKF instancié et initialisé avec la position par défaut.");
         } else if (typeof ProfessionalUKF === 'undefined') {
+            // Cette erreur est critique et sera visible dans la console
             console.error("🔴 CRITIQUE: ProfessionalUKF non défini. Vérifiez ukf-class.js et math.min.js.");
         }
 
         // --- 2. Configuration et Affichage Initial (Garantie d'affichage immédiat) ---
         setupEventListeners();
-        syncH(); // Premier appel NTP
+        syncH(); // Premier appel NTP (Affiche l'heure locale)
         updateAstroData(); // Premier appel Astro (avec position par défaut)
         updateDashboardDOM(); // Afficher toutes les valeurs par défaut (y compris Pitch/Roll = 0.0°)
 
         // --- 3. Démarrage des Boucles d'Intervalles ---
-        setInterval(fastLoop, 20); // 50 Hz
-        setInterval(slowLoop, 1000); // 1 Hz
+        setInterval(fastLoop, 20); // 50 Hz (Met à jour le Pitch/Roll et la vitesse)
+        setInterval(slowLoop, 1000); // 1 Hz (Met à jour l'heure et l'Astro)
         
         // Démarrage initial en mode PAUSE 
         const btn = $('gps-pause-toggle');
