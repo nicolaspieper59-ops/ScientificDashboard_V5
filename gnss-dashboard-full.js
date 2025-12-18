@@ -288,7 +288,7 @@
             } else {
                 // Friction virtuelle pour s'arrêter doucement si pas de mouvement
                 deadReckoningSpeed *= 0.98;
-                if (Math.abs(deadReckoningSpeed) < 0.1) deadReckoningSpeed = 0;
+                if (Math.abs(deadReckoningSpeed) < 0.001) deadReckoningSpeed = 0;
             }
             
             // Sécurité : Pas de vitesse négative en marche avant simple
@@ -301,7 +301,7 @@
         currentSpeedMs = speed;
         maxSpeedMs = Math.max(maxSpeedMs, speed);
         
-        if (speed > 0.1) timeInMotionMs += dt * 1000;
+        if (speed > 0.001) timeInMotionMs += dt * 1000;
 
         updateDashboardDOM();
     };
