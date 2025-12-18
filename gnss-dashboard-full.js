@@ -301,7 +301,7 @@
         currentSpeedMs = speed;
         maxSpeedMs = Math.max(maxSpeedMs, speed);
         
-        if (speed > 0.001) timeInMotionMs += dt * 1000;
+        if (speed > 1.0) timeInMotionMs += dt * 1000;
 
         updateDashboardDOM();
     };
