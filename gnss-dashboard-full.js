@@ -280,7 +280,7 @@
             
             // On utilise linAccX (l'axe X du téléphone est généralement l'axe longitudinal en mode portrait)
             // Seuil de bruit (Noise Gate) pour éviter la dérive à l'arrêt
-            const NOISE_THRESHOLD = 0.1; // m/s²
+            const NOISE_THRESHOLD = 0.001; // m/s²
             
             if (Math.abs(linAccX) > NOISE_THRESHOLD) {
                 // Intégration : Vitesse = Vitesse + Accélération * Temps
