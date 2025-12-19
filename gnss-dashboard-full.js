@@ -1,137 +1,199 @@
 /**
- * GNSS SpaceTime Dashboard - ULTIMATE UNIFIED ENGINE
- * Version Finale : Correction Supersonique & Liaison Totale
+ * GNSS SpaceTime Dashboard - MOTEUR MASTER V6.0 (FINAL)
+ * Intégrant: ZUPT Anti-Drift, Modèle ISA, et Permissions W3C
  */
 
 ((window) => {
     "use strict";
     const $ = id => document.getElementById(id);
 
-    // --- CONFIGURATION & CONSTANTES ---
+    // --- CONSTANTES PHYSIQUES (Modèle ISA & WGS84) ---
     const PHYS = {
-        C: 299792458, G: 6.67430e-11, G_STD: 9.80665,
-        SOUND: 340.29, RHO_0: 1.225, VISCOSITY: 1.48e-5
+        C: 299792458,           // Vitesse lumière (m/s)
+        G: 6.67430e-11,         // Constante grav.
+        G_STD: 9.80665,         // Gravité standard
+        R_GAS: 287.05,          // Constante gaz air sec (J/kg·K)
+        P0: 101325,             // Pression niveau mer (Pa)
+        T0: 288.15,             // Temp standard (K)
+        L_RATE: 0.0065,         // Gradient thermique (K/m)
+        VISCOSITY: 1.48e-5      // Viscosité cinématique
     };
 
+    // --- ÉTAT DU SYSTÈME ---
     const state = {
-        isRunning: true, // État du bouton
-        vMs: 0, vMax: 0, dist: 0,
-        pos: { lat: 43.2844, lon: 5.3585, alt: 100 },
-        acc: { x: 0, y: 0, z: 9.81 },
-        lastT: performance.now(),
-        moveTime: 0
+        running: false,
+        v: 0, vMax: 0, dist: 0,
+        moveTime: 0, lastT: 0,
+        pos: { lat: 0, lon: 0, alt: 0, acc: 0 }, // Position par défaut (Null Island)
+        acc: { x:0, y:0, z:9.81 },
+        gpsLock: false
     };
 
-    // --- 1. GESTION DES BOUTONS (HTML IDs) ---
-    const setupControls = () => {
+    // --- 1. GESTION DES PERMISSIONS & DÉMARRAGE ---
+    const initSystem = async () => {
         const btn = $('gps-pause-toggle');
-        if (btn) {
-            btn.onclick = () => {
-                state.isRunning = !state.isRunning;
-                btn.textContent = state.isRunning ? "⏸️ PAUSE GPS" : "▶️ MARCHE GPS";
-                btn.className = state.isRunning ? "btn-danger" : "btn-success";
-            };
+        
+        // Demande de permission pour iOS 13+
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const response = await DeviceMotionEvent.requestPermission();
+                if (response !== 'granted') {
+                    alert("Permission capteurs refusée. Le dashboard restera en mode simulation.");
+                }
+            } catch (e) { console.warn(e); }
         }
-        const resetBtn = $('reset-vmax');
-        if (resetBtn) resetBtn.onclick = () => { state.vMax = 0; };
+
+        // Bascule de l'état
+        state.running = !state.running;
+        
+        if (state.running) {
+            btn.textContent = "⏸️ PAUSE SYSTÈME";
+            btn.style.backgroundColor = "#dc3545";
+            btn.classList.add('pulse-active');
+            state.lastT = performance.now();
+            
+            // Démarrage GPS explicite
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (p) => {
+                        state.gpsLock = true;
+                        state.pos.lat = p.coords.latitude;
+                        state.pos.lon = p.coords.longitude;
+                        state.pos.alt = p.coords.altitude || 0;
+                        state.pos.acc = p.coords.accuracy;
+                        // Correction de vitesse si GPS précis
+                        if (p.coords.speed !== null && p.coords.accuracy < 20) {
+                            state.v = p.coords.speed; 
+                        }
+                    },
+                    (err) => console.warn("Erreur GPS:", err.message),
+                    { enableHighAccuracy: true, maximumAge: 0 }
+                );
+            }
+            requestAnimationFrame(physicsLoop);
+        } else {
+            btn.textContent = "▶️ DÉMARRER SYSTÈME";
+            btn.style.backgroundColor = "#28a745";
+            btn.classList.remove('pulse-active');
+            state.gpsLock = false;
+        }
     };
 
-    // --- 2. MOTEUR DE CALCUL (LA PHYSIQUE) ---
-    function computePhysics(dt) {
+    // Liaison du bouton (Impératif pour les navigateurs)
+    const startBtn = $('gps-pause-toggle');
+    if(startBtn) startBtn.onclick = initSystem;
+
+
+    // --- 2. CALCULS PHYSIQUES & MODÈLE ATMOSPHÉRIQUE ---
+    function updatePhysics(dt) {
         const mass = parseFloat($('mass-input')?.value) || 70;
-        
-        // A. Calcul de l'accélération nette (IMU - Gravité)
-        const netAcc = Math.sqrt(state.acc.x**2 + state.acc.y**2 + (state.acc.z - PHYS.G_STD)**2);
-        
-        // B. Friction Aérodynamique (Le correcteur)
-        const rho = PHYS.RHO_0 * Math.exp(-state.pos.alt / 8500);
-        const dragForce = 0.5 * rho * Math.pow(state.vMs, 2) * 0.47 * 0.7;
-        const dragDecel = dragForce / mass;
 
-        // C. Intégration avec ZUPT (Zero Velocity Update)
-        if (netAcc < 0.15 && !state.gpsActive) {
-            state.vMs *= 0.9; // Freinage rapide si immobile
-            if (state.vMs < 0.01) state.vMs = 0;
+        // A. Modèle ISA (International Standard Atmosphere)
+        // Calcule la densité même sans capteur de pression
+        const temp = PHYS.T0 - (PHYS.L_RATE * state.pos.alt);
+        const press = PHYS.P0 * Math.pow((1 - (PHYS.L_RATE * state.pos.alt) / PHYS.T0), 5.255);
+        const rho = press / (PHYS.R_GAS * temp); // Densité calculée (kg/m³)
+
+        // B. Accélération Nette & ZUPT (Anti-Drift)
+        // On retire la gravité (9.81) pour obtenir le mouvement pur
+        const rawAcc = Math.sqrt(state.acc.x**2 + state.acc.y**2 + (state.acc.z - 9.81)**2);
+        
+        // ZUPT : Si accélération faible (< 0.2 m/s²) ET pas de mouvement GPS, on force l'arrêt.
+        if (rawAcc < 0.25 && !state.gpsLock) {
+            state.v *= 0.9; // Freinage exponentiel
+            if (state.v < 0.05) state.v = 0;
         } else {
-            state.vMs += (netAcc - dragDecel) * dt;
+            // Intégration
+            state.v += rawAcc * dt;
         }
-        
-        if (state.vMs < 0) state.vMs = 0;
-        if (state.vMs > 0.1) state.moveTime += dt;
-        
-        const vKmh = state.vMs * 3.6;
-        if (vKmh > state.vMax) state.vMax = vKmh;
 
-        // --- 3. INJECTION DANS LE HTML (ZÉRO N/A) ---
+        // C. Aérodynamique (Traînée)
+        const q = 0.5 * rho * state.v**2; // Pression dynamique
+        const drag = q * 0.47 * 0.7;      // F = 1/2 rho v² Cd A
+        state.v -= (drag / mass) * dt;    // La traînée ralentit l'objet
+
+        // Sécurités
+        if (state.v < 0) state.v = 0;
+        if (state.v > state.vMax) state.vMax = state.v;
+        if (state.v > 0.1) state.moveTime += dt;
+        state.dist += state.v * dt;
+
+        return { rho, press, q, drag, mass, temp };
+    }
+
+
+    // --- 3. BOUCLE D'AFFICHAGE (60 FPS) ---
+    function physicsLoop() {
+        if (!state.running) return;
         
-        // Vitesse & Relativité
-        if($('speed-main-display')) $('speed-main-display').textContent = vKmh.toFixed(3) + " km/h";
+        const now = performance.now();
+        const dt = (now - state.lastT) / 1000; // Delta temps en secondes
+        state.lastT = now;
+
+        const phys = updatePhysics(dt);
+        const vKmh = state.v * 3.6;
+
+        // --- INJECTION DANS LE HTML (ZÉRO N/A) ---
+
+        // 1. Vitesse & Mouvement
+        if($('speed-main-display')) $('speed-main-display').textContent = vKmh.toFixed(1) + " km/h";
         if($('speed-stable-kmh')) $('speed-stable-kmh').textContent = vKmh.toFixed(1) + " km/h";
-        if($('speed-max-session')) $('speed-max-session').textContent = state.vMax.toFixed(1) + " km/h";
-        if($('movement-time')) $('movement-time').textContent = state.moveTime.toFixed(1) + " s";
+        if($('speed-raw-ms')) $('speed-raw-ms').textContent = state.v.toFixed(2) + " m/s";
+        if($('total-distance')) $('total-distance').textContent = (state.dist / 1000).toFixed(3) + " km";
+        
+        // 2. Fluides & Atmosphère (Fixe les N/A)
+        if($('air-density')) $('air-density').textContent = phys.rho.toFixed(3) + " kg/m³";
+        if($('pressure-hpa')) $('pressure-hpa').textContent = (phys.press / 100).toFixed(1) + " hPa";
+        if($('dynamic-pressure')) $('dynamic-pressure').textContent = phys.q.toFixed(2) + " Pa";
+        if($('drag-force')) $('drag-force').textContent = phys.drag.toFixed(2) + " N";
+        if($('air-temp-c')) $('air-temp-c').textContent = (phys.temp - 273.15).toFixed(1) + " °C";
 
-        const gamma = 1 / Math.sqrt(1 - Math.pow(state.vMs / PHYS.C, 2));
+        // 3. Relativité & Énergie
+        const gamma = 1 / Math.sqrt(1 - (state.v**2 / PHYS.C**2));
+        if($('kinetic-energy')) $('kinetic-energy').textContent = (0.5 * phys.mass * state.v**2).toExponential(2) + " J";
         if($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(14);
-        if($('schwarzschild-radius')) $('schwarzschild-radius').textContent = ((2 * PHYS.G * mass) / Math.pow(PHYS.C, 2)).toExponential(4) + " m";
-        if($('kinetic-energy')) $('kinetic-energy').textContent = (0.5 * mass * state.vMs**2).toExponential(2) + " J";
-        if($('momentum')) $('momentum').textContent = (gamma * mass * state.vMs).toFixed(4) + " kg·m/s";
+        if($('momentum')) $('momentum').textContent = (gamma * phys.mass * state.v).toFixed(2) + " kg·m/s";
 
-        // Fluides
-        if($('air-density')) $('air-density').textContent = rho.toFixed(4) + " kg/m³";
-        if($('drag-force')) $('drag-force').textContent = dragForce.toFixed(4) + " N";
-        if($('reynolds-number')) $('reynolds-number').textContent = ((state.vMs * 1.7) / PHYS.VISCOSITY).toExponential(2);
-        if($('mach-number')) $('mach-number').textContent = (state.vMs / PHYS.SOUND).toFixed(4);
+        // 4. Astro (Basé sur Lat/Lon ou par défaut)
+        updateAstro(state.pos.lat, state.pos.lon);
 
-        // Forces
-        if($('force-g-vert')) $('force-g-vert').textContent = (state.acc.z / PHYS.G_STD).toFixed(3) + " G";
-        if($('accel-long')) $('accel-long').textContent = state.acc.x.toFixed(3) + " m/s²";
+        // 5. Statut GPS
+        const statusText = state.gpsLock ? 
+            `LOCK (${state.pos.acc.toFixed(1)}m)` : 
+            "ESTIMATION INERTIELLE (ATTENTE GPS)";
+        if($('speed-status-text')) $('speed-status-text').textContent = statusText;
+        if($('gps-accuracy-display')) $('gps-accuracy-display').textContent = state.pos.acc ? state.pos.acc + " m" : "N/A";
+
+        requestAnimationFrame(physicsLoop);
     }
 
-    // --- 4. NAVIGATION ASTRONOMIQUE ---
-    function computeAstro() {
+    // --- 4. CALCULS ASTRONOMIQUES ---
+    function updateAstro(lat, lon) {
+        if (!lat && !lon) return; // Pas de calcul si pas de coords
+        
         const now = new Date();
-        const d = (now.getTime() / 86400000) - 2451550.1;
-        const phase = (d / 29.5305) % 1;
-        const illum = (1 - Math.cos(2 * Math.PI * phase)) / 2 * 100;
+        // Calcul simplifié Azimut/Altitude solaire
+        // (Nécessite normalement une librairie lourde, ici approx pour performance)
+        const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+        const declination = 23.45 * Math.sin((2 * Math.PI / 365) * (dayOfYear - 81));
         
-        if($('moon-illuminated')) $('moon-illuminated').textContent = illum.toFixed(1) + " %";
-        if($('moon-phase-name')) $('moon-phase-name').textContent = phase < 0.5 ? "Croissante" : "Décroissante";
+        if($('sun-altitude')) $('sun-altitude').textContent = (90 - Math.abs(lat - declination)).toFixed(1) + "°";
         if($('local-time')) $('local-time').textContent = now.toLocaleTimeString();
-        
-        // Equation du temps
-        const b = (360/365) * (new Date().getDate() - 81);
-        const eot = 9.87 * Math.sin(2*b*Math.PI/180) - 7.53 * Math.cos(b*Math.PI/180);
-        if($('equation-of-time')) $('equation-of-time').textContent = eot.toFixed(2) + " min";
+        if($('utc-datetime')) $('utc-datetime').textContent = now.toUTCString();
     }
 
-    // --- BOUCLE PRINCIPALE ---
-    function ticTac() {
-        if (state.isRunning) {
-            const now = performance.now();
-            const dt = (now - state.lastT) / 1000;
-            state.lastT = now;
-
-            computePhysics(dt);
-            computeAstro();
-        }
-        requestAnimationFrame(ticTac);
-    }
-
-    // --- CAPTEURS ---
+    // --- 5. ÉCOUTEURS PASSIFS ---
     window.addEventListener('devicemotion', (e) => {
         state.acc.x = e.accelerationIncludingGravity.x || 0;
         state.acc.y = e.accelerationIncludingGravity.y || 0;
         state.acc.z = e.accelerationIncludingGravity.z || 9.81;
+        
+        // Niveau à bulle
+        const pitch = Math.atan2(-state.acc.x, state.acc.z) * 57.29;
+        const roll = Math.atan2(state.acc.y, state.acc.z) * 57.29;
+        if($('pitch')) $('pitch').textContent = pitch.toFixed(1) + "°";
+        if($('roll')) $('roll').textContent = roll.toFixed(1) + "°";
+        if($('accel-long')) $('accel-long').textContent = state.acc.x.toFixed(2);
     });
-
-    navigator.geolocation.watchPosition((p) => {
-        state.pos.lat = p.coords.latitude;
-        state.pos.lon = p.coords.longitude;
-        state.pos.alt = p.coords.altitude || 100;
-        state.gpsActive = true;
-    }, null, { enableHighAccuracy: true });
-
-    setupControls();
-    ticTac();
 
 })(window);
