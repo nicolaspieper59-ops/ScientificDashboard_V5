@@ -1,8 +1,6 @@
 /**
- * GNSS SpaceTime Dashboard - FINAL MASTER VERSION
- * - Correction de Dérive (Zupt Algorithm)
- * - Synchro GMT/UTC Haute Précision (0.001s)
- * - Compensation Gravité 3D
+ * GNSS SpaceTime Dashboard - RECTIFICATION "COLD START"
+ * Force la vitesse à 0 au démarrage et élimine les vitesses fantômes.
  */
 
 ((window) => {
@@ -11,84 +9,65 @@
 
     const state = {
         running: false,
-        v: 105.9697,         // Reprise de votre vitesse brute (m/s)
-        dist: 5788.272,      // Reprise de votre distance (m)
-        vMax: 105.9697,
+        v: 0,              // FORCÉ À 0 AU DÉMARRAGE
+        dist: 0,           // FORCÉ À 0
+        vMax: 0,
         lastT: Date.now() / 1000,
-        pitch: 0,
-        accelY: 0,
-        accelZ: 9.81,
-        biasY: 0.8455 / 9.81 // Correction du biais détecté dans votre analyse
+        biasY: 0.1549      // On neutralise le biais de 0.1549 mesuré sur votre dashboard
     };
 
-    // --- SYNCHRO GMT 0.001s ---
-    const updateTime = () => {
-        const now = new Date();
-        if($('local-time')) $('local-time').textContent = now.toLocaleTimeString() + "." + now.getMilliseconds().toString().padStart(3, '0');
-        if($('utc-datetime')) $('utc-datetime').textContent = now.toUTCString();
+    // --- FONCTION DE RÉINITIALISATION TOTALE ---
+    const resetToZero = () => {
+        state.v = 0;
+        state.dist = 0;
+        state.vMax = 0;
+        if($('speed-main-display')) $('speed-main-display').textContent = "0.00 km/h";
+        if($('speed-raw-ms')) $('speed-raw-ms').textContent = "0.0000 m/s";
+        if($('total-distance')) $('total-distance').textContent = "0.000 m";
+        console.log("✅ Système réinitialisé : Vitesse = 0");
     };
 
-    // --- MOTEUR DE NAVIGATION INERTIELLE ---
-    function runPhysics() {
+    function physicsLoop() {
         if (!state.running) return;
 
         const now = Date.now() / 1000;
-        const dt = Math.min(now - state.lastT, 0.1); // Cap à 100ms max pour éviter les sauts
+        const dt = Math.min(now - state.lastT, 0.1);
         state.lastT = now;
 
-        // 1. Calcul de l'inclinaison (Pitch)
-        state.pitch = Math.atan2(-state.accelY, state.accelZ) * (180 / Math.PI);
-        const pitchRad = state.pitch * (Math.PI / 180);
+        // Récupération accélération brute Y
+        const ay = parseFloat($('accel-y')?.textContent) || 0;
+        
+        // CORRECTION : On retire le biais et on ignore les bruits < 0.02
+        let realA = ay - state.biasY;
+        if (Math.abs(realA) < 0.02) realA = 0; 
 
-        // 2. Compensation de Gravité + Correction du Biais (Offset)
-        // On soustrait le biais de 0.8455 m/s2 que nous avons identifié
-        let rawA = state.accelY + (Math.sin(pitchRad) * 9.80665);
-        let correctedA = rawA - (state.biasY * 9.80665);
+        // Intégration Newtonienne
+        state.v += realA * dt;
+        if (state.v < 0.01) state.v = 0; // Seuil d'arrêt forcé
 
-        // 3. Algorithme de Stabilité (Zupt)
-        // Si l'accélération est minuscule, on considère que c'est du bruit
-        if (Math.abs(correctedA) < 0.015) correctedA = 0;
-
-        // 4. Intégration (Vitesse et Distance)
-        state.v += correctedA * dt;
-        if (state.v < 0) state.v = 0; // Sécurité anti-recul
-        state.dist += state.v * dt;
-
-        // 5. Mise à jour de l'interface (Correction des N/A)
+        // Mise à jour interface
         const vKmh = state.v * 3.6;
         if($('speed-main-display')) $('speed-main-display').textContent = vKmh.toFixed(2) + " km/h";
-        if($('speed-stable-kmh')) $('speed-stable-kmh').textContent = vKmh.toFixed(1) + " km/h";
         if($('speed-raw-ms')) $('speed-raw-ms').textContent = state.v.toFixed(4) + " m/s";
-        if($('accel-long')) $('accel-long').textContent = correctedA.toFixed(4);
-        if($('total-distance')) $('total-distance').textContent = state.dist.toFixed(3) + " m";
-        if($('force-g-long')) $('force-g-long').textContent = (correctedA / 9.80665).toFixed(3) + " G";
         
-        const mass = parseFloat($('mass-input')?.value) || 70;
-        if($('kinetic-energy')) $('kinetic-energy').textContent = (0.5 * mass * state.v**2).toFixed(0) + " J";
-        if($('pitch')) $('pitch').textContent = state.pitch.toFixed(1) + "°";
+        // Remplissage des N/A par des calculs théoriques (Aérodynamique)
+        const density = 1.225; // kg/m3
+        if($('dynamic-pressure')) $('dynamic-pressure').textContent = (0.5 * density * state.v**2).toFixed(1) + " Pa";
 
-        updateTime();
-        requestAnimationFrame(runPhysics);
+        requestAnimationFrame(physicsLoop);
     }
 
-    // Capture des mouvements
-    window.addEventListener('devicemotion', (e) => {
-        const ag = e.accelerationIncludingGravity;
-        if (ag) {
-            state.accelY = ag.y || 0;
-            state.accelZ = ag.z || 0;
-        }
-    });
-
-    // Contrôles
+    // Assignation des boutons
     $('gps-pause-toggle').onclick = () => {
+        if (!state.running) resetToZero(); // On remet à zéro AVANT de démarrer
         state.running = !state.running;
         state.lastT = Date.now() / 1000;
-        if(state.running) runPhysics();
+        physicsLoop();
     };
 
-    $('reset-all-btn').onclick = () => {
-        state.v = 0; state.dist = 0; state.vMax = 0;
-    };
+    $('reset-all-btn').onclick = resetToZero;
+
+    // Initialisation au chargement
+    window.onload = resetToZero;
 
 })(window);
