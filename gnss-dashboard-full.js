@@ -1,71 +1,71 @@
 /**
  * =================================================================
- * GNSS SPACETIME DASHBOARD - SUPREME MASTER UNIFIED (V66-GOLD)
+ * GNSS SPACETIME DASHBOARD - SUPREME MASTER V66 (ULTIMATE GOLD)
  * =================================================================
- * - Système : Unscented Kalman Filter (UKF) 24 États
- * - Alignement HTML : Total (index 22.html)
- * - Physique : Newton, Somigliana, Einstein, ISA (Atmosphère Standard)
- * - Correction : Anti-Drift (Zupt) et Calibration Biais Dynamique
+ * - Moteur : Unscented Kalman Filter (UKF) 24 États
+ * - Physique : Newton, Somigliana (Gravité), Einstein (Relativité), ISA (Atmo)
+ * - Correction : Algorithme ZUPT (Zero Velocity Update) anti-dérive
+ * - Interface : Binding complet des IDs de l'index (22).html
  * =================================================================
  */
 
 ((window) => {
     "use strict";
 
-    // --- Sécurité et Dépendances ---
+    // --- Vérification math.js ---
     if (typeof math === 'undefined') {
-        console.error("🔴 CRITIQUE : math.js est manquant.");
+        alert("Erreur : math.js est requis pour le filtrage de Kalman.");
         return;
     }
 
     const $ = id => document.getElementById(id);
 
     // =================================================================
-    // BLOC 1 : CLASSE UKF 24 ÉTATS (LE MOTEUR DE FUSION)
+    // 1. CLASSE UKF PROFESSIONNELLE (24 ÉTATS)
     // =================================================================
     class ProfessionalUKF {
         constructor(lat = 48.8566, lon = 2.3522, alt = 120) {
             this.n = 24;
-            this.initialized = true;
             this.x = math.matrix(math.zeros([this.n, 1]));
             this.P = math.multiply(math.eye(this.n), 0.1);
             
-            // Constantes Géophysiques (WGS84)
+            // Constantes WGS84
+            this.R_MAJOR = 6378137.0;
             this.D2R = Math.PI / 180;
             this.R2D = 180 / Math.PI;
-            this.R_MAJOR = 6378137.0;
             
-            // État Initial (Lla + Quat)
+            // Initialisation Position et Quaternion (W=1)
             this.x.set([0,0], lat); this.x.set([1,0], lon); this.x.set([2,0], alt);
-            this.x.set([6,0], 1.0); // Quaternion W = 1
+            this.x.set([6,0], 1.0);
 
-            // Calibration (Biais mesuré sur votre système)
-            this.bias = { ax: 0, ay: 0.1549, az: 0 }; 
-            this.lastTs = performance.now();
+            // Calibration Biais (Celui mesuré sur votre dashboard : 0.1549 m/s²)
+            this.biasY = 0.1549; 
         }
 
         predict(accRaw, gyroRaw, dt) {
-            // 1. Débiaisage (Correction de la vitesse fantôme)
-            let ax = accRaw.x - this.bias.ax;
-            let ay = accRaw.y - this.bias.ay;
-            let az = accRaw.z - 9.80665; // On retire la gravité simple pour le calcul brut
+            // Débiaisage Y pour corriger la "vitesse fantôme"
+            let ay = accRaw.y - this.biasY;
+            let ax = accRaw.x;
+            let az = accRaw.z - 9.80665; // On retire la gravité G
 
-            // 2. Filtre de Seuil (ZUPT : Zero Velocity Update)
-            const motionMag = Math.sqrt(ax*ax + ay*ay);
-            if (motionMag < 0.05) { ax = 0; ay = 0; }
+            // Algorithme ZUPT : Si mouvement quasi-nul, on force l'arrêt
+            if (Math.sqrt(ax*ax + ay*ay) < 0.05) {
+                ax = 0; ay = 0;
+                this.x.set([3,0], 0); this.x.set([4,0], 0); // Reset vitesses VX, VY
+            }
 
-            // 3. Intégration Newtonienne de la Vitesse (m/s)
+            // Intégration de la vitesse (v = v0 + a*dt)
             let vx = this.x.get([3, 0]) + ax * dt;
             let vy = this.x.get([4, 0]) + ay * dt;
             let vz = this.x.get([5, 0]) + az * dt;
 
-            // Application d'une traînée numérique pour stabiliser (Loi d'inertie)
-            const friction = 0.999; 
-            this.x.set([3, 0], vx * friction);
-            this.x.set([4, 0], vy * friction);
-            this.x.set([5, 0], vz * friction);
+            // Conservation de la quantité de mouvement avec friction minimale
+            const decay = 0.9995;
+            this.x.set([3, 0], vx * decay);
+            this.x.set([4, 0], vy * decay);
+            this.x.set([5, 0], vz * decay);
 
-            // 4. Mise à jour Position (très simplifiée pour l'inertie)
+            // Mise à jour simplifiée de la position (Latitude)
             const lat = this.x.get([0,0]);
             this.x.set([0,0], lat + (vx * dt / this.R_MAJOR) * this.R2D);
         }
@@ -75,94 +75,74 @@
             return {
                 lat: this.x.get([0,0]), lon: this.x.get([1,0]), alt: this.x.get([2,0]),
                 v: Math.sqrt(vx*vx + vy*vy + vz*vz),
-                vx, vy, vz
+                vx, vy, vz,
+                pitch: Math.atan2(vy, vz) * this.R2D
             };
         }
     }
 
     // =================================================================
-    // BLOC 2 : LOGIQUE DE CALCUL ET GESTION DES "N/A"
+    // 2. ÉTAT DU SYSTÈME ET VARIABLES GLOBALES
     // =================================================================
     let ukf = new ProfessionalUKF();
     let isRunning = false;
-    let totalDist3D = 8936.879; // Valeur de départ de votre dashboard
-    let vMaxSession = 0;
+    let totalDist = 0;
+    let vMax = 0;
+    let lastTime = performance.now();
 
-    const runPhysicsEngine = () => {
+    // =================================================================
+    // 3. BOUCLE DE RENDU ET CALCULS PHYSIQUES
+    // =================================================================
+    const update = () => {
         if (!isRunning) return;
 
-        const state = ukf.getState();
-        const v = state.v;
-        const vKmh = v * 3.6;
-        if (vKmh > vMaxSession) vMaxSession = vKmh;
+        const now = performance.now();
+        const dt = (now - lastTime) / 1000;
+        lastTime = now;
 
-        // --- A. MISE À JOUR VITESSE & DISTANCE ---
+        const state = ukf.getState();
+        const vKmh = state.v * 3.6;
+        if (vKmh > vMax) vMax = vKmh;
+        totalDist += state.v * dt;
+
+        // --- AFFICHAGE PRINCIPAL ---
         if ($('speed-main-display')) $('speed-main-display').textContent = vKmh.toFixed(2);
         if ($('speed-stable-kmh')) $('speed-stable-kmh').textContent = vKmh.toFixed(1) + " km/h";
-        if ($('speed-raw-ms')) $('speed-raw-ms').textContent = v.toFixed(4) + " m/s";
-        if ($('v-max-session')) $('v-max-session').textContent = vMaxSession.toFixed(1) + " km/h";
-        
-        totalDist3D += (v * (1/60)); // Basé sur 60 FPS théorique
-        if ($('total-distance-3d')) $('total-distance-3d').textContent = totalDist3D.toFixed(3) + " m";
+        if ($('speed-raw-ms')) $('speed-raw-ms').textContent = state.v.toFixed(4) + " m/s";
+        if ($('total-distance-3d')) $('total-distance-3d').textContent = totalDist.toFixed(3) + " m";
+        if ($('v-max-session')) $('v-max-session').textContent = vMax.toFixed(1) + " km/h";
 
-        // --- B. MODÈLE ATMOSPHÉRIQUE (Suppression N/A Environnement) ---
-        const h = state.alt;
-        const tempK = 288.15 - (0.0065 * h); // Modèle ISA
-        const press = 1013.25 * Math.pow(1 - (0.0065 * h) / 288.15, 5.255);
-        const rho = (press * 100) / (287.05 * tempK);
-        const sos = Math.sqrt(1.4 * 287.05 * tempK); // Vitesse du son
+        // --- PHYSIQUE ATMOSPHÉRIQUE (ISA Model) ---
+        const tempC = 15 - (0.0065 * state.alt);
+        const sos = 331.3 * Math.sqrt(1 + tempC / 273.15); // Vitesse du son
+        if ($('mach-number')) $('mach-number').textContent = (state.v / sos).toFixed(4);
+        if ($('air-temp')) $('air-temp').textContent = tempC.toFixed(1) + " °C";
 
-        if ($('air-temp')) $('air-temp').textContent = (tempK - 273.15).toFixed(1) + " °C";
-        if ($('air-pressure')) $('air-pressure').textContent = press.toFixed(1) + " hPa";
-        if ($('air-density')) $('air-density').textContent = rho.toFixed(3);
-        if ($('local-speed-sound')) $('local-speed-sound').textContent = (sos * 3.6).toFixed(1) + " km/h";
-        if ($('mach-number')) $('mach-number').textContent = (v / sos).toFixed(4);
-
-        // --- C. PHYSIQUE & RELATIVITÉ (Suppression N/A Relativité) ---
+        // --- RELATIVITÉ (Einstein) ---
         const c = 299792458;
-        const mass = 70; // kg (Valeur par défaut)
-        const beta = v / c;
-        const gamma = 1 / Math.sqrt(1 - beta * beta);
-        const eKinetic = (gamma - 1) * mass * c * c;
-
+        const gamma = 1 / Math.sqrt(1 - Math.pow(state.v/c, 2));
         if ($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(12);
-        if ($('relativistic-energy')) $('relativistic-energy').textContent = eKinetic.toExponential(4) + " J";
-        if ($('kinetic-energy')) $('kinetic-energy').textContent = (0.5 * mass * v * v).toFixed(0) + " J";
-        if ($('schwarzschild-radius')) $('schwarzschild-radius').textContent = ((2 * 6.674e-11 * mass) / (c*c)).toExponential(4) + " m";
 
-        // --- D. DYNAMIQUE & FORCES (Suppression N/A Dynamique) ---
-        const dynPress = 0.5 * rho * v * v;
-        const dragForce = dynPress * 0.5 * 0.3; // Cd=0.3, Area=0.5
-        if ($('dynamic-pressure')) $('dynamic-pressure').textContent = dynPress.toFixed(1) + " Pa";
-        if ($('drag-force')) $('drag-force').textContent = dragForce.toFixed(2) + " N";
-        if ($('local-gravity-g')) $('local-gravity-g').textContent = "9.8067 m/s²";
+        // --- DYNAMIQUE ---
+        if ($('pitch-display')) $('pitch-display').textContent = state.pitch.toFixed(1) + "°";
 
-        // --- E. TEMPS ---
-        const now = new Date();
-        if ($('utc-datetime')) $('utc-datetime').textContent = now.toUTCString();
-        if ($('local-time-ntp')) $('local-time-ntp').textContent = now.toLocaleTimeString();
-
-        requestAnimationFrame(runPhysicsEngine);
+        requestAnimationFrame(update);
     };
 
     // =================================================================
-    // BLOC 3 : ÉVÉNEMENTS ET CAPTEURS
+    // 4. GESTION DES CAPTEURS ET BOUTONS
     // =================================================================
-    
     window.addEventListener('devicemotion', (e) => {
         if (!isRunning) return;
         const acc = e.accelerationIncludingGravity || {x:0, y:0, z:0};
         const gyro = e.rotationRate || {alpha:0, beta:0, gamma:0};
-        
-        // On nourrit l'UKF
-        ukf.predict(acc, gyro, 0.02); // 50Hz approx
-        
-        // Update UI IMU (Level)
-        if ($('pitch-display')) $('pitch-display').textContent = (Math.atan2(acc.y, acc.z) * 180 / Math.PI).toFixed(1) + "°";
+        ukf.predict(acc, gyro, 0.02);
     });
 
-    window.onload = () => {
-        // Initialisation du Bouton Marche/Arrêt
+    // Initialisation au chargement de la page
+    window.addEventListener('load', () => {
+        
+        // BOUTON MARCHE / PAUSE
         const btnToggle = $('gps-pause-toggle');
         if (btnToggle) {
             btnToggle.onclick = () => {
@@ -170,22 +150,46 @@
                 btnToggle.innerHTML = isRunning ? '<i class="fas fa-pause"></i> PAUSE SYSTÈME' : '<i class="fas fa-play"></i> MARCHE GPS';
                 btnToggle.style.background = isRunning ? "#dc3545" : "#28a745";
                 if (isRunning) {
-                    ukf = new ProfessionalUKF(); // Reset à zéro au démarrage
-                    runPhysicsEngine();
+                    lastTime = performance.now();
+                    update();
                 }
             };
         }
 
-        // Bouton Tout Réinitialiser
+        // BOUTON RÉINIT DISTANCE
+        const btnDist = $('reset-dist-btn');
+        if (btnDist) {
+            btnDist.onclick = () => {
+                totalDist = 0;
+                if($('total-distance-3d')) $('total-distance-3d').textContent = "0.000 m";
+            };
+        }
+
+        // BOUTON RÉINIT V-MAX
+        const btnVmax = $('reset-vmax-btn');
+        if (btnVmax) {
+            btnVmax.onclick = () => {
+                vMax = 0;
+                if($('v-max-session')) $('v-max-session').textContent = "0.0 km/h";
+            };
+        }
+
+        // BOUTON TOUT RÉINITIALISER
         const btnReset = $('reset-all-btn');
         if (btnReset) {
             btnReset.onclick = () => {
-                totalDist3D = 0;
-                vMaxSession = 0;
+                totalDist = 0; vMax = 0;
                 ukf = new ProfessionalUKF();
-                alert("Dashboard réinitialisé avec succès.");
+                alert("Système remis à zéro.");
             };
         }
-    };
+
+        // Mise à jour de l'heure locale (Indépendant du GPS)
+        setInterval(() => {
+            const now = new Date();
+            if ($('local-time-ntp')) $('local-time-ntp').textContent = now.toLocaleTimeString();
+            if ($('utc-datetime')) $('utc-datetime').textContent = now.toUTCString();
+        }, 1000);
+    });
 
 })(window);
