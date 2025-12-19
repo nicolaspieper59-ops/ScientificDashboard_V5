@@ -1,204 +1,201 @@
 /**
- * GNSS SpaceTime Dashboard - MOTEUR V7 "DEEP CAVE" (INERTIE PURE)
- * Intégration Newtonienne stricte sans dépendance GPS
+ * GNSS SpaceTime Dashboard - MOTEUR V8 "REAL-PHYSICS"
+ * Intégration Newtonienne Signée & Compensation Gravitationnelle
  */
 
 ((window) => {
     "use strict";
+
+    // --- SÉCURITÉ MATH.JS ---
+    if (typeof math === 'undefined') {
+        console.error("Erreur: math.js est requis pour les calculs de matrices UKF.");
+    }
+
     const $ = id => document.getElementById(id);
+
+    // --- ÉTAT DU SYSTÈME ---
+    const state = {
+        running: false,
+        v: 0,           // m/s
+        vMax: 0,
+        dist: 0,
+        moveTime: 0,
+        startTime: Date.now(),
+        lastT: 0,
+        pitch: 0,
+        roll: 0,
+        accelY: 0,      // Accélération brute mesurée sur l'axe longitudinal
+        pos: { lat: 0, lon: 0, alt: 0 },
+        ambientLightMax: 0,
+        soundLevelMax: 0
+    };
 
     // --- CONSTANTES PHYSIQUES ---
     const PHYS = {
         C: 299792458,
+        G: 6.67430e-11,
+        G_EARTH: 9.80665,
         R_GAS: 287.05,
         P0: 101325,
         T0: 288.15,
         L_RATE: 0.0065
     };
 
-    // --- ÉTAT DU SYSTÈME ---
-    const state = {
-        running: false,
-        v: 0,           // Vitesse en m/s
-        vMax: 0,
-        dist: 0,
-        lastT: 0,
-        pos: { lat: 0, lon: 0, alt: 0 },
-        // On stocke l'accélération linéaire (sans gravité)
-        linAcc: { x: 0, y: 0, z: 0 } 
-    };
-
-    // --- 1. DÉMARRAGE ET PERMISSIONS ---
-    const initSystem = async () => {
-        const btn = $('gps-pause-toggle');
-        
-        // Permissions iOS/Android
+    // --- 1. INITIALISATION DES CAPTEURS ---
+    const initSensors = async () => {
         if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            try { await DeviceMotionEvent.requestPermission(); } catch (e) {}
+            try { await DeviceMotionEvent.requestPermission(); } catch (e) { console.error(e); }
         }
 
         state.running = !state.running;
+        const btn = $('gps-pause-toggle');
         
         if (state.running) {
             btn.textContent = "⏸️ PAUSE SYSTÈME";
             btn.style.backgroundColor = "#dc3545";
-            btn.classList.add('pulse-active');
-            
-            // On ne remet PAS la vitesse à 0 si on reprend une session (Inertie)
             state.lastT = performance.now();
-            
-            // GPS (Juste pour la carte et l'altitude, pas pour la vitesse)
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(
-                    p => {
-                        state.pos.lat = p.coords.latitude;
-                        state.pos.lon = p.coords.longitude;
-                        state.pos.alt = p.coords.altitude || 0;
-                        // Note : On n'utilise PLUS p.coords.speed pour écraser l'inertie
-                    },
-                    err => console.warn(err),
-                    { enableHighAccuracy: true, maximumAge: 0 }
-                );
-            }
             requestAnimationFrame(physicsLoop);
+            
+            // Démarrage GPS (pour la position, pas pour la vitesse inertielle)
+            navigator.geolocation.watchPosition(
+                p => {
+                    state.pos.lat = p.coords.latitude;
+                    state.pos.lon = p.coords.longitude;
+                    state.pos.alt = p.coords.altitude || 0;
+                    if($('gps-status')) $('gps-status').textContent = "ACQUISITION OK";
+                },
+                null, { enableHighAccuracy: true }
+            );
         } else {
-            btn.textContent = "▶️ DÉMARRER SYSTÈME";
+            btn.textContent = "▶️ MARCHE GPS";
             btn.style.backgroundColor = "#28a745";
-            btn.classList.remove('pulse-active');
         }
     };
 
-    const startBtn = $('gps-pause-toggle');
-    if(startBtn) startBtn.onclick = initSystem;
+    // --- 2. ÉCOUTEUR DE MOUVEMENT (HAUTE FRÉQUENCE) ---
+    window.addEventListener('devicemotion', (e) => {
+        if (!state.running) return;
 
-
-    // --- 2. MOTEUR PHYSIQUE (INTEGRATION PURE) ---
-    function updatePhysics(dt) {
-        // 1. Récupération de l'accélération linéaire brute (Capteur matériel)
-        // On utilise la magnitude du vecteur 3D pour connaitre la force totale
-        // Attention : Math.sign permet de savoir si on avance ou freine (simplifié ici par l'axe Y dominant du téléphone)
-        
-        // Axe principal du mouvement (supposons que le téléphone pointe vers l'avant en Y ou Z)
-        // On prend la magnitude globale pour être sûr de capter tout mouvement
-        let accMag = Math.sqrt(state.linAcc.x**2 + state.linAcc.y**2 + state.linAcc.z**2);
-        
-        // Détection de direction (Simplifiée : Si le téléphone pointe vers le haut/avant)
-        // Pour un calcul pur, on considère toute accélération comme positive (gain de vitesse)
-        // SAUF si l'utilisateur freine (accélération inverse).
-        // Ici, pour la simulation "Grotte", on intègre la magnitude.
-        
-        // SEUIL DE BRUIT (DEADBAND)
-        // On ignore seulement le bruit électronique pur (< 0.02 m/s²)
-        // Cela permet de capter le "1mm/s" demandé.
-        if (accMag < 0.02) {
-            accMag = 0; 
-            // ICI : PAS de remise à zéro de la vitesse. INERTIE TOTALE.
+        // On utilise l'accélération AVEC gravité pour calculer le Pitch (inclinaison)
+        const ag = e.accelerationIncludingGravity;
+        if (ag) {
+            state.pitch = Math.atan2(-ag.y, ag.z) * (180 / Math.PI);
+            state.roll = Math.atan2(ag.x, Math.sqrt(ag.y**2 + ag.z**2)) * (180 / Math.PI);
+            
+            // L'axe Y est notre axe de marche (longitudinal)
+            state.accelY = ag.y; 
+            
+            // Mise à jour des IDs IMU
+            if($('accel-x')) $('accel-x').textContent = ag.x.toFixed(3);
+            if($('accel-y')) $('accel-y').textContent = ag.y.toFixed(3);
+            if($('accel-z')) $('accel-z').textContent = ag.z.toFixed(3);
         }
+    });
 
-        // 2. LOI DE NEWTON : v = v0 + a * t
-        // Si accMag est actif, on l'ajoute.
-        // Problème des accéléromètres : ils ne savent pas si on accélère ou freine sans boussole complexe.
-        // Astuce : On utilise l'inclinaison ou on suppose que toute force > 0 ajoute de l'énergie cinétique
-        // Pour ce script, on ajoute l'accélération à la vitesse.
+    // --- 3. MOTEUR PHYSIQUE RÉALISTE ---
+    function updatePhysics(dt) {
+        const mass = parseFloat($('mass-input')?.value) || 70;
         
-        // Note critique : Pour gérer la décélération, il faudrait que le capteur envoie une valeur négative.
-        // Les capteurs 'LinearAcceleration' donnent souvent des valeurs signées.
-        // On va utiliser l'axe Y (longitudinal téléphone) comme référence principale.
+        // A. COMPENSATION DE LA GRAVITÉ
+        // Si le téléphone est incliné, une partie de 9.81 m/s² "fuit" sur l'axe Y.
+        // On la soustrait pour obtenir l'accélération réelle du wagon.
+        const pitchRad = state.pitch * (Math.PI / 180);
+        const gravityComponent = Math.sin(pitchRad) * PHYS.G_EARTH;
         
-        let forwardAcc = state.linAcc.y; // Axe vertical du téléphone (ou Z selon la tenue)
-        // Si on tient le téléphone à plat, Y est l'avant/arrière.
+        let realA = state.accelY + gravityComponent; // Accélération pure (signée)
+
+        // B. FILTRE DE BRUIT (Deadzone millimétrique)
+        if (Math.abs(realA) < 0.04) realA = 0;
+
+        // C. INTÉGRATION DE LA VITESSE (v = v0 + a*dt)
+        // C'est ici que la décélération fonctionne : si realA est négatif, v diminue.
+        state.v += realA * dt;
+
+        // D. TRAÎNÉE AÉRODYNAMIQUE (Réalisme Manège)
+        const rho = PHYS.P0 / (PHYS.R_GAS * PHYS.T0); // Densité air standard
+        const dragForce = 0.5 * rho * Math.pow(state.v, 2) * 0.47 * 0.6; 
+        state.v -= (dragForce / mass) * dt;
+
+        // E. SÉCURITÉ ARRÊT
+        if (state.v < 0.001) state.v = 0;
         
-        // Filtre ultra-fin
-        if (Math.abs(forwardAcc) < 0.02) forwardAcc = 0;
-
-        // INTÉGRATION
-        state.v += forwardAcc * dt;
-
-        // Protection : La vitesse ne peut pas être négative (marche arrière non gérée pour simplifier l'affichage)
-        if (state.v < 0) state.v = 0;
-
-        // Calculs dérivés
+        // F. CALCULS DÉRIVÉS
         state.dist += state.v * dt;
         if (state.v > state.vMax) state.vMax = state.v;
-        if (state.v > 0.001) state.moveTime += dt;
+        if (state.v > 0.1) state.moveTime += dt;
 
-        // Modèle ISA pour combler les trous N/A
-        const temp = PHYS.T0 - (PHYS.L_RATE * state.pos.alt);
-        const press = PHYS.P0 * Math.pow((1 - (PHYS.L_RATE * state.pos.alt) / PHYS.T0), 5.255);
-        const rho = press / (PHYS.R_GAS * temp);
-        
-        // Traînée (Air Resistance) - Optionnel
-        // Si vous voulez une inertie PARFAITE (vide spatial), mettez drag à 0.
-        // Ici on laisse une traînée minime réaliste.
-        const q = 0.5 * rho * state.v**2;
-        const drag = q * 0.47 * 0.5; 
-        
-        // Application de la traînée (freinage aérodynamique naturel)
-        const mass = parseFloat($('mass-input')?.value) || 70;
-        state.v -= (drag / mass) * dt; 
-
-        return { rho, press, q, drag, mass };
+        return { realA, dragForce, rho };
     }
 
-
-    // --- 3. BOUCLE VISUELLE ---
+    // --- 4. BOUCLE DE RENDU ---
     function physicsLoop() {
         if (!state.running) return;
 
         const now = performance.now();
-        // dt limité à 0.1s pour éviter les sauts si le navigateur lag
-        const dt = Math.min((now - state.lastT) / 1000, 0.1); 
+        const dt = Math.min((now - state.lastT) / 1000, 0.1);
         state.lastT = now;
 
-        const phys = updatePhysics(dt);
-        const vKmh = state.v * 3.6;
+        const p = updatePhysics(dt);
 
-        // AFFICHAGE
-        if($('speed-main-display')) $('speed-main-display').textContent = vKmh.toFixed(2) + " km/h";
-        if($('speed-stable-kmh')) $('speed-stable-kmh').textContent = vKmh.toFixed(1) + " km/h";
-        if($('speed-raw-ms')) $('speed-raw-ms').textContent = state.v.toFixed(3) + " m/s"; // Affichage millimétrique
-        if($('total-distance')) $('total-distance').textContent = state.dist.toFixed(2) + " m";
+        // --- MISE À JOUR DE TOUS LES IDS HTML ---
         
-        // Suppressions N/A Fluides
-        if($('air-density')) $('air-density').textContent = phys.rho.toFixed(3);
-        if($('drag-force')) $('drag-force').textContent = phys.drag.toFixed(2) + " N";
-        if($('accel-long')) $('accel-long').textContent = state.linAcc.y.toFixed(3); // Axe Y affiché
+        // Vitesse & Distance
+        if($('speed-main-display')) $('speed-main-display').textContent = (state.v * 3.6).toFixed(1) + " km/h";
+        if($('speed-stable-kmh')) $('speed-stable-kmh').textContent = (state.v * 3.6).toFixed(1) + " km/h";
+        if($('speed-raw-ms')) $('speed-raw-ms').textContent = state.v.toFixed(3) + " m/s";
+        if($('speed-max-session')) $('speed-max-session').textContent = (state.vMax * 3.6).toFixed(1) + " km/h";
+        if($('total-distance')) $('total-distance').textContent = state.dist.toFixed(2) + " m";
+        if($('elapsed-time')) $('elapsed-time').textContent = ((Date.now() - state.startTime)/1000).toFixed(2) + " s";
+        if($('movement-time')) $('movement-time').textContent = state.moveTime.toFixed(2) + " s";
+
+        // Dynamique & Forces
+        if($('accel-long')) $('accel-long').textContent = p.realA.toFixed(3);
+        if($('force-g-long')) $('force-g-long').textContent = (p.realA / PHYS.G_EARTH).toFixed(2) + " G";
+        if($('drag-force')) $('drag-force').textContent = p.dragForce.toFixed(2) + " N";
+        if($('kinetic-energy')) $('kinetic-energy').textContent = (0.5 * 70 * state.v**2).toFixed(0) + " J";
+        if($('air-density')) $('air-density').textContent = p.rho.toFixed(3);
 
         // Relativité
-        const gamma = 1 / Math.sqrt(1 - (state.v**2 / PHYS.C**2));
-        if($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(14);
-        
-        // Astro & GPS
-        if($('gps-accuracy-display')) $('gps-accuracy-display').textContent = "OFF (Inertial Mode)";
-        
+        const beta = state.v / PHYS.C;
+        const gamma = 1 / Math.sqrt(1 - beta**2);
+        if($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(15);
+        if($('pct-speed-of-light')) $('pct-speed-of-light').textContent = (beta * 100).toExponential(2) + " %";
+
+        // IMU Niveau à bulle
+        if($('pitch')) $('pitch').textContent = state.pitch.toFixed(1) + "°";
+        if($('roll')) $('roll').textContent = state.roll.toFixed(1) + "°";
+        if($('bubble')) {
+            const bx = Math.max(-45, Math.min(45, state.roll));
+            const by = Math.max(-45, Math.min(45, state.pitch));
+            $('bubble').style.transform = `translate(${bx}px, ${by}px)`;
+        }
+
+        // GPS status
+        if($('gps-accuracy-display')) $('gps-accuracy-display').textContent = "OFF (Mode Grotte)";
+
         requestAnimationFrame(physicsLoop);
     }
 
-    // --- 4. CAPTEURS HAUTE FRÉQUENCE ---
-    // On utilise 'devicemotion' pour l'accélération linéaire pure (sans gravité)
-    window.addEventListener('devicemotion', (e) => {
-        // acceleration = Accélération pure (sans gravité). C'est la clé pour l'inertie spatiale.
-        if (e.acceleration) {
-            // Lissage léger (Moyenne mobile) pour éviter les sauts violents
-            const alpha = 0.8; 
-            state.linAcc.x = state.linAcc.x * alpha + (e.acceleration.x || 0) * (1 - alpha);
-            state.linAcc.y = state.linAcc.y * alpha + (e.acceleration.y || 0) * (1 - alpha);
-            state.linAcc.z = state.linAcc.z * alpha + (e.acceleration.z || 0) * (1 - alpha);
-        } else {
-            // Fallback si le capteur linéaire est absent (moins précis)
-            const gX = e.accelerationIncludingGravity.x || 0;
-            const gY = e.accelerationIncludingGravity.y || 0;
-            const gZ = e.accelerationIncludingGravity.z || 0;
-            // On tente de retirer la gravité (très approximatif)
-            state.linAcc.z = gZ - 9.81;
-        }
+    // --- 5. ÉVÉNEMENTS INTERFACE ---
+    $('gps-pause-toggle').onclick = initSensors;
+    
+    $('reset-dist-btn').onclick = () => { state.dist = 0; };
+    $('reset-max-btn').onclick = () => { state.vMax = 0; };
+    $('reset-all-btn').onclick = () => {
+        state.v = 0; state.dist = 0; state.vMax = 0; state.moveTime = 0;
+        state.startTime = Date.now();
+    };
 
-        // Gestion Pitch/Roll pour l'affichage
-        const gX = e.accelerationIncludingGravity.x || 0;
-        const gY = e.accelerationIncludingGravity.y || 0;
-        const gZ = e.accelerationIncludingGravity.z || 0;
-        if($('pitch')) $('pitch').textContent = (Math.atan2(-gX, gZ)*57.3).toFixed(1)+"°";
-        if($('roll')) $('roll').textContent = (Math.atan2(gY, gZ)*57.3).toFixed(1)+"°";
-    });
+    // Mode Nuit
+    $('toggle-mode-btn').onclick = () => {
+        document.body.classList.toggle('dark-mode');
+    };
+
+    // Horloge UTC
+    setInterval(() => {
+        const d = new Date();
+        if($('local-time')) $('local-time').textContent = d.toLocaleTimeString();
+        if($('utc-datetime')) $('utc-datetime').textContent = d.toUTCString();
+    }, 1000);
 
 })(window);
