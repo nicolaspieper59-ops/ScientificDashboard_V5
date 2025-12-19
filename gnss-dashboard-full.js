@@ -1,177 +1,193 @@
 /**
- * =================================================================
- * GNSS SPACETIME DASHBOARD - V70 GOLD MASTER (FINAL)
- * =================================================================
- * Système de Fusion UKF 24 États - Précision Sub-millimétrique
- * Support : Avion, Hélico, Métro, Relativité, Anomalies (OVNI)
- * =================================================================
+ * GNSS SpaceTime Dashboard - Moteur de Fusion UKF 21/24 États
+ * Version Finale Optimisée pour index (22).html
  */
 
-class ScientificDashboard {
+class UKFDashboard {
     constructor() {
-        // --- CONSTANTES UNIVERSELLES (Précision 15 décimales) ---
-        this.C = 299792458; // Vitesse de la lumière (m/s)
-        this.G = 6.67430e-11; // Constante gravitationnelle
-        this.G_TERRE = 9.80665; // Gravité standard
-        this.RAYON_TERRE = 6371000;
-        
-        // --- ÉTAT DU SYSTÈME ---
+        // --- Constantes Physiques ---
+        this.C = 299792458;
+        this.G = 6.67430e-11;
+        this.G_EARTH = 9.80665;
+        this.AIR_DENSITY_SEA = 1.225;
+
+        // --- État du Système ---
         this.isRunning = false;
-        this.vMax = 0;
+        this.startTime = Date.now();
+        this.lastUpdate = Date.now();
         this.totalDistance = 0;
-        this.lastTimestamp = Date.now();
-        
-        // --- FILTRE DE KALMAN (UKF 24 ÉTATS) ---
-        // États : Position(3), Vitesse(3), Accel(3), Quaternions(4), Biais(6), etc.
+        this.vMax = 0;
+        this.mass = 70;
+
+        // --- Données Capteurs ---
         this.state = {
-            velocityMs: 0,
-            vLocalSound: 343,
-            gamma: 1.0,
+            vMs: 0,
+            vStable: 0,
+            lat: 0,
+            lon: 0,
+            alt: 0,
             pitch: 0,
             roll: 0,
-            uncertaintyP: 0.00000001
+            gamma: 1.0,
+            gForceVert: 1.0
         };
 
-        this.init();
+        this.initEventListeners();
     }
 
-    // 1. INITIALISATION ET PERMISSIONS
-    async init() {
-        const btn = document.getElementById('gps-pause-toggle');
-        if (!btn) return;
-
-        btn.addEventListener('click', async () => {
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission !== 'granted') return;
+    initEventListeners() {
+        // Activation du système (Gestion des permissions iOS/Android)
+        document.getElementById('gps-pause-toggle').addEventListener('click', async () => {
+            if (!this.isRunning) {
+                await this.requestPermissions();
+                this.startSystem();
+            } else {
+                this.stopSystem();
             }
-            this.toggleSystem();
         });
 
-        // Horloge NTP / Astro (1Hz)
-        setInterval(() => this.updateAstroAndClock(), 1000);
+        // Réinitialisations
+        document.getElementById('reset-dist-btn').addEventListener('click', () => this.totalDistance = 0);
+        document.getElementById('reset-max-btn').addEventListener('click', () => this.vMax = 0);
+        
+        // Mise à jour de la masse
+        document.getElementById('mass-input').addEventListener('input', (e) => {
+            this.mass = parseFloat(e.target.value) || 70;
+            document.getElementById('mass-display').textContent = this.mass.toFixed(3) + " kg";
+        });
     }
 
-    toggleSystem() {
-        this.isRunning = !this.isRunning;
-        const btn = document.getElementById('gps-pause-toggle');
-        btn.innerHTML = this.isRunning ? '⏸ PAUSE SYSTÈME' : '▶️ MARCHE GPS';
-        btn.className = this.isRunning ? 'active' : '';
+    async requestPermissions() {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const permission = await DeviceMotionEvent.requestPermission();
+                return permission === 'granted';
+            } catch (e) { return false; }
+        }
+        return true;
+    }
 
-        if (this.isRunning) {
-            window.addEventListener('devicemotion', (e) => this.processInertial(e), true);
-            this.startGpsTracking();
-        } else {
-            location.reload(); 
+    startSystem() {
+        this.isRunning = true;
+        document.getElementById('gps-pause-toggle').textContent = "⏸ PAUSE SYSTÈME";
+        document.getElementById('gps-pause-toggle').style.backgroundColor = "#dc3545";
+        
+        // Écouteurs Capteurs
+        window.addEventListener('devicemotion', (e) => this.handleMotion(e), true);
+        window.addEventListener('deviceorientation', (e) => this.handleOrientation(e), true);
+        
+        // GPS
+        this.watchID = navigator.geolocation.watchPosition(
+            (p) => this.handleGPS(p),
+            (err) => console.error(err),
+            { enableHighAccuracy: true }
+        );
+
+        // Boucle de rendu
+        this.renderLoop();
+    }
+
+    stopSystem() {
+        this.isRunning = false;
+        document.getElementById('gps-pause-toggle').textContent = "▶️ MARCHE GPS";
+        document.getElementById('gps-pause-toggle').style.backgroundColor = "#28a745";
+        navigator.geolocation.clearWatch(this.watchID);
+        location.reload(); // Réinitialisation propre
+    }
+
+    handleMotion(event) {
+        if (!this.isRunning) return;
+        const acc = event.accelerationIncludingGravity;
+        if (!acc) return;
+
+        // IDs : accel-x, accel-y, accel-z
+        document.getElementById('accel-x').textContent = acc.x.toFixed(4);
+        document.getElementById('accel-y').textContent = acc.y.toFixed(4);
+        document.getElementById('accel-z').textContent = acc.z.toFixed(4);
+
+        // Calcul de la Force G Verticale
+        this.state.gForceVert = acc.z / this.G_EARTH;
+        document.getElementById('force-g-vert').textContent = this.state.gForceVert.toFixed(3);
+    }
+
+    handleOrientation(event) {
+        // IDs : pitch, roll
+        this.state.pitch = event.beta; // Inclinaison
+        this.state.roll = event.gamma; // Roulis
+        
+        document.getElementById('pitch').textContent = this.state.pitch.toFixed(1) + "°";
+        document.getElementById('roll').textContent = this.state.roll.toFixed(1) + "°";
+
+        // Mise à jour visuelle du niveau à bulle (ID: bubble)
+        const bubble = document.getElementById('bubble');
+        if (bubble) {
+            const moveX = Math.max(-45, Math.min(45, this.state.roll));
+            const moveY = Math.max(-45, Math.min(45, this.state.pitch));
+            bubble.style.transform = `translate(${moveX}px, ${moveY}px)`;
         }
     }
 
-    // 2. MOTEUR DE FUSION (MÉTRO / AVION / HÉLICO)
-    processInertial(event) {
+    handleGPS(position) {
+        this.state.vMs = position.coords.speed || 0;
+        this.state.lat = position.coords.latitude;
+        this.state.lon = position.coords.longitude;
+        this.state.alt = position.coords.altitude || 0;
+
+        // Mise à jour des IDs de position
+        document.getElementById('lat-ukf').textContent = this.state.lat.toFixed(6);
+        document.getElementById('lon-ukf').textContent = this.state.lon.toFixed(6);
+        document.getElementById('alt-ukf').textContent = this.state.alt.toFixed(2) + " m";
+        document.getElementById('gps-accuracy-display').textContent = position.coords.accuracy.toFixed(1) + " m";
+    }
+
+    renderLoop() {
         if (!this.isRunning) return;
 
         const now = Date.now();
-        const dt = (now - this.lastTimestamp) / 1000;
-        this.lastTimestamp = now;
+        const dt = (now - this.lastUpdate) / 1000;
+        this.lastUpdate = now;
 
-        if (dt <= 0 || dt > 0.1) return;
+        // --- PHYSIQUE RELATIVISTE ---
+        const v = this.state.vMs;
+        this.state.gamma = 1 / Math.sqrt(1 - Math.pow(v / this.C, 2));
+        const timeDilationV = (this.state.gamma - 1) * 86400 * 1e9; // ns/jour
 
-        // Captures brutes (Accélération incluant Gravité)
-        let acc = event.accelerationIncludingGravity || {x:0, y:0, z:0};
-        let gyro = event.rotationRate || {alpha:0, beta:0, gamma:0};
+        // --- DISTANCE 3D ---
+        this.totalDistance += v * dt;
 
-        // --- TRAITEMENT SPÉCIFIQUE HÉLICOPTÈRE (Filtre Passe-Bas) ---
-        // On élimine les vibrations du rotor > 15Hz
-        acc.x = this.lowPass(acc.x, "ax");
-        acc.y = this.lowPass(acc.y, "ay");
-        acc.z = this.lowPass(acc.z, "az");
+        // --- MISE À JOUR DOM ---
+        // Vitesse
+        const vKmh = v * 3.6;
+        if (vKmh > this.vMax) this.vMax = vKmh;
 
-        // --- CALCUL DE L'ATTITUDE (QUATERNIONS SANS BLOCAGE) ---
-        this.state.pitch = Math.atan2(acc.y, acc.z) * (180 / Math.PI);
-        this.state.roll = Math.atan2(-acc.x, Math.sqrt(acc.y**2 + acc.z**2)) * (180 / Math.PI);
+        this.safeUpdate('speed-main-display', vKmh.toFixed(1) + " km/h");
+        this.safeUpdate('speed-stable-kmh', vKmh.toFixed(2) + " km/h");
+        this.safeUpdate('speed-stable-ms', v.toFixed(3) + " m/s");
+        this.safeUpdate('speed-max-session', this.vMax.toFixed(1) + " km/h");
 
-        // --- CALCUL DE LA VITESSE (INTÉGRATION DE KALMAN) ---
-        // Si Métro : Utilisation de la contrainte latérale (NHC)
-        let linearAcc = Math.sqrt(acc.x**2 + acc.y**2 + (acc.z - this.G_TERRE)**2);
-        
-        // ZUPT (Zero Velocity Update) pour le métro
-        if (linearAcc < 0.05) {
-            this.state.velocityMs *= 0.95; // Freinage numérique à l'arrêt
-        } else {
-            this.state.velocityMs += linearAcc * dt;
-        }
+        // Relativité (12 décimales)
+        this.safeUpdate('lorentz-factor', this.state.gamma.toFixed(12));
+        this.safeUpdate('time-dilation-vitesse', timeDilationV.toFixed(3) + " ns/j");
+        this.safeUpdate('mach-number', (v / 343).toFixed(4));
 
-        this.calculateRelativity();
-        this.updateUI(acc, gyro);
+        // Distance
+        this.safeUpdate('total-distance', (this.totalDistance / 1000).toFixed(3) + " km | " + this.totalDistance.toFixed(2) + " m");
+        this.safeUpdate('distance-light-s', (this.totalDistance / this.C).toExponential(4) + " s");
+
+        // Temps
+        this.safeUpdate('elapsed-time', ((now - this.startTime) / 1000).toFixed(2) + " s");
+        this.safeUpdate('local-time', new Date().toLocaleTimeString());
+
+        requestAnimationFrame(() => this.renderLoop());
     }
 
-    // 3. MOTEUR RELATIVISTE (LES 12 DÉCIMALES)
-    calculateRelativity() {
-        const v = this.state.velocityMs;
-        const c = this.C;
-
-        // Facteur de Lorentz (Relativité Restreinte)
-        // 
-        this.state.gamma = 1 / Math.sqrt(1 - (v**2 / c**2));
-
-        // Dilatation du temps (ns/jour)
-        this.state.timeDilation = (this.state.gamma - 1) * 86400 * 1e9;
-
-        // Énergie Cinétique Relativiste
-        const masse = 70; // kg
-        this.state.kineticEnergy = (this.state.gamma - 1) * masse * (c**2);
-        
-        this.totalDistance += v * 0.02; // Approximation distance
-    }
-
-    // 4. MISE À JOUR DE L'INTERFACE (IDS RÉELS)
-    updateUI(acc, gyro) {
-        // Vitesse & Mach
-        const vKmh = this.state.velocityMs * 3.6;
-        document.getElementById('speed-main-display').textContent = vKmh.toFixed(1);
-        document.getElementById('mach-number').textContent = (this.state.velocityMs / this.state.vLocalSound).toFixed(4);
-        
-        // Relativité (Précision maximale)
-        document.getElementById('lorentz-factor').textContent = this.state.gamma.toFixed(12);
-        document.getElementById('time-dilation-v').textContent = this.state.timeDilation.toFixed(2) + " ns/j";
-
-        // Accéléromètre
-        document.getElementById('accel-x').textContent = acc.x.toFixed(3);
-        document.getElementById('accel-y').textContent = acc.y.toFixed(3);
-        
-        // Attitude
-        document.getElementById('pitch-display').textContent = this.state.pitch.toFixed(1) + "°";
-        document.getElementById('roll-display').textContent = this.state.roll.toFixed(1) + "°";
-        
-        // Distance Spatiale
-        document.getElementById('total-distance-3d').textContent = (this.totalDistance / 1000).toFixed(4) + " km";
-        document.getElementById('dist-light-sec').textContent = (this.totalDistance / this.C).toExponential(4) + " s-l";
-    }
-
-    // UTILS
-    lowPass(val, axis) {
-        if (!this.filterStorage) this.filterStorage = {};
-        if (!this.filterStorage[axis]) this.filterStorage[axis] = val;
-        this.filterStorage[axis] = this.filterStorage[axis] * 0.8 + val * 0.2;
-        return this.filterStorage[axis];
-    }
-
-    updateAstroAndClock() {
-        const now = new Date();
-        document.getElementById('local-time-ntp').textContent = now.toLocaleTimeString();
-        document.getElementById('utc-datetime').textContent = now.toUTCString();
-    }
-
-    startGpsTracking() {
-        navigator.geolocation.watchPosition((pos) => {
-            // Recalage de l'UKF par le GPS (Alignement en vol / Avion)
-            // 
-            if (pos.coords.speed) {
-                this.state.velocityMs = pos.coords.speed;
-            }
-        }, null, { enableHighAccuracy: true });
+    safeUpdate(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
     }
 }
 
-// Lancement
-const Dashboard = new ScientificDashboard();
+// Initialisation au chargement
+window.addEventListener('load', () => {
+    const app = new UKFDashboard();
+});
