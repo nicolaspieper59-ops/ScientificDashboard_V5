@@ -1,140 +1,93 @@
 /**
- * GNSS SpaceTime Dashboard - MOTEUR ULTRA-PRÉCISION V9
- * - Synchro GMT/UTC Haute Fréquence (0.001s)
- * - Correction d'Inclinaison par Projection de Gravité
- * - Conservation d'Élan Newtonienne Stricte
+ * GNSS SpaceTime Dashboard - FINAL MASTER VERSION
+ * - Correction de Dérive (Zupt Algorithm)
+ * - Synchro GMT/UTC Haute Précision (0.001s)
+ * - Compensation Gravité 3D
  */
 
 ((window) => {
     "use strict";
     const $ = id => document.getElementById(id);
 
-    // --- ÉTAT DU SYSTÈME ---
     const state = {
         running: false,
-        v: 54.6023,         // On repart de votre valeur actuelle (m/s)
-        vMax: 196.6 / 3.6,
-        dist: 527.689,      // On repart de votre distance actuelle (m)
-        lastTimestamp: 0,
-        pitch: 25.9,
-        accelY: -1.700,     // Valeur IMU brute
-        pos: { lat: 0, lon: 0, alt: 0 }
+        v: 105.9697,         // Reprise de votre vitesse brute (m/s)
+        dist: 5788.272,      // Reprise de votre distance (m)
+        vMax: 105.9697,
+        lastT: Date.now() / 1000,
+        pitch: 0,
+        accelY: 0,
+        accelZ: 9.81,
+        biasY: 0.8455 / 9.81 // Correction du biais détecté dans votre analyse
     };
 
-    const PHYS = {
-        C: 299792458,
-        G_EARTH: 9.80665
+    // --- SYNCHRO GMT 0.001s ---
+    const updateTime = () => {
+        const now = new Date();
+        if($('local-time')) $('local-time').textContent = now.toLocaleTimeString() + "." + now.getMilliseconds().toString().padStart(3, '0');
+        if($('utc-datetime')) $('utc-datetime').textContent = now.toUTCString();
     };
 
-    // --- 1. SYNCHRONISATION TEMPORELLE GMT (0.001s) ---
-    // Utilisation de performance.now() synchronisé sur le temps Unix GMT
-    const getGMTTimestamp = () => {
-        return Date.now() / 1000; // Précision à la milliseconde
-    };
-
-    // --- 2. INITIALISATION ---
-    const initSystem = async () => {
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            try { await DeviceMotionEvent.requestPermission(); } catch (e) {}
-        }
-
-        state.running = !state.running;
-        const btn = $('gps-pause-toggle');
-        
-        if (state.running) {
-            btn.textContent = "⏸️ PAUSE SYSTÈME";
-            state.lastTimestamp = getGMTTimestamp();
-            requestAnimationFrame(physicsLoop);
-        } else {
-            btn.textContent = "▶️ MARCHE GPS";
-        }
-    };
-
-    // --- 3. CAPTEURS & INCLINAISON ---
-    window.addEventListener('devicemotion', (e) => {
+    // --- MOTEUR DE NAVIGATION INERTIELLE ---
+    function runPhysics() {
         if (!state.running) return;
+
+        const now = Date.now() / 1000;
+        const dt = Math.min(now - state.lastT, 0.1); // Cap à 100ms max pour éviter les sauts
+        state.lastT = now;
+
+        // 1. Calcul de l'inclinaison (Pitch)
+        state.pitch = Math.atan2(-state.accelY, state.accelZ) * (180 / Math.PI);
+        const pitchRad = state.pitch * (Math.PI / 180);
+
+        // 2. Compensation de Gravité + Correction du Biais (Offset)
+        // On soustrait le biais de 0.8455 m/s2 que nous avons identifié
+        let rawA = state.accelY + (Math.sin(pitchRad) * 9.80665);
+        let correctedA = rawA - (state.biasY * 9.80665);
+
+        // 3. Algorithme de Stabilité (Zupt)
+        // Si l'accélération est minuscule, on considère que c'est du bruit
+        if (Math.abs(correctedA) < 0.015) correctedA = 0;
+
+        // 4. Intégration (Vitesse et Distance)
+        state.v += correctedA * dt;
+        if (state.v < 0) state.v = 0; // Sécurité anti-recul
+        state.dist += state.v * dt;
+
+        // 5. Mise à jour de l'interface (Correction des N/A)
+        const vKmh = state.v * 3.6;
+        if($('speed-main-display')) $('speed-main-display').textContent = vKmh.toFixed(2) + " km/h";
+        if($('speed-stable-kmh')) $('speed-stable-kmh').textContent = vKmh.toFixed(1) + " km/h";
+        if($('speed-raw-ms')) $('speed-raw-ms').textContent = state.v.toFixed(4) + " m/s";
+        if($('accel-long')) $('accel-long').textContent = correctedA.toFixed(4);
+        if($('total-distance')) $('total-distance').textContent = state.dist.toFixed(3) + " m";
+        if($('force-g-long')) $('force-g-long').textContent = (correctedA / 9.80665).toFixed(3) + " G";
+        
+        const mass = parseFloat($('mass-input')?.value) || 70;
+        if($('kinetic-energy')) $('kinetic-energy').textContent = (0.5 * mass * state.v**2).toFixed(0) + " J";
+        if($('pitch')) $('pitch').textContent = state.pitch.toFixed(1) + "°";
+
+        updateTime();
+        requestAnimationFrame(runPhysics);
+    }
+
+    // Capture des mouvements
+    window.addEventListener('devicemotion', (e) => {
         const ag = e.accelerationIncludingGravity;
         if (ag) {
-            // Mise à jour des accélérations brutes
             state.accelY = ag.y || 0;
             state.accelZ = ag.z || 0;
-
-            // Recalcul du Pitch en temps réel pour compenser l'inclinaison
-            // On utilise la projection atan2 pour une stabilité totale
-            state.pitch = Math.atan2(-state.accelY, state.accelZ) * (180 / Math.PI);
         }
     });
 
-    // --- 4. MOTEUR DE FUSION ET ÉLAN ---
-    function updatePhysics() {
-        // Synchronisation GMT 0.001s
-        const now = getGMTTimestamp();
-        const dt = now - state.lastTimestamp;
-        state.lastTimestamp = now;
+    // Contrôles
+    $('gps-pause-toggle').onclick = () => {
+        state.running = !state.running;
+        state.lastT = Date.now() / 1000;
+        if(state.running) runPhysics();
+    };
 
-        if (dt <= 0) return;
-
-        // A. CORRECTION PAR RAPPORT À L'INCLINAISON
-        // La gravité s'exerce sur l'axe Y selon le sinus de l'inclinaison (Pitch)
-        const pitchRad = state.pitch * (Math.PI / 180);
-        const gravityEffect = Math.sin(pitchRad) * PHYS.G_EARTH;
-        
-        // Accélération Longitudinale réelle (Libérée de la gravité)
-        let realA = state.accelY + gravityEffect;
-
-        // B. FILTRE MICROSCOPIQUE (Seuil de bruit ultra-fin)
-        if (Math.abs(realA) < 0.005) realA = 0;
-
-        // C. INTÉGRATION DE NEWTON (Conservation de l'élan)
-        // v_finale = v_initiale + (accélération * temps)
-        state.v += realA * dt;
-
-        // D. SÉCURITÉ (Pas de vitesse négative)
-        if (state.v < 0) state.v = 0;
-
-        // E. CALCULS DÉRIVÉS
-        state.dist += state.v * dt;
-        if (state.v > state.vMax) state.vMax = state.v;
-
-        // F. SYNCHRONISATION HTML
-        updateUI(realA, dt);
-    }
-
-    // --- 5. INTERFACE ET SYNCHRONISATION ---
-    function updateUI(realA, dt) {
-        const vKmh = state.v * 3.6;
-        const mass = parseFloat($('mass-input')?.value) || 70;
-
-        // Affichage Vitesse (Signée et proportionnelle)
-        if($('speed-main-display')) $('speed-main-display').textContent = vKmh.toFixed(2) + " km/h";
-        if($('speed-raw-ms')) $('speed-raw-ms').textContent = state.v.toFixed(4) + " m/s";
-        if($('accel-long')) $('accel-long').textContent = realA.toFixed(4);
-        if($('total-distance')) $('total-distance').textContent = state.dist.toFixed(3) + " m";
-        
-        // Force G
-        if($('force-g-long')) $('force-g-long').textContent = (realA / PHYS.G_EARTH).toFixed(3) + " G";
-        
-        // Énergie Cinétique
-        if($('kinetic-energy')) $('kinetic-energy').textContent = (0.5 * mass * state.v**2).toFixed(1) + " J";
-
-        // Relativité
-        const beta = state.v / PHYS.C;
-        const gamma = 1 / Math.sqrt(1 - beta**2);
-        if($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(16);
-
-        // Debug Temps
-        if($('local-time')) $('local-time').textContent = new Date().toLocaleTimeString() + "." + new Date().getMilliseconds();
-    }
-
-    function physicsLoop() {
-        if (!state.running) return;
-        updatePhysics();
-        requestAnimationFrame(physicsLoop);
-    }
-
-    // Assignation des boutons
-    if($('gps-pause-toggle')) $('gps-pause-toggle').onclick = initSystem;
-    if($('reset-all-btn')) $('reset-all-btn').onclick = () => {
+    $('reset-all-btn').onclick = () => {
         state.v = 0; state.dist = 0; state.vMax = 0;
     };
 
