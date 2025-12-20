@@ -1,110 +1,139 @@
 /**
- * GNSS SPACETIME ENGINE - V500 "INTELLIGENT-GRAVITY"
- * -----------------------------------------------
- * - Calibration Automatique Continue (Zero-Drift)
- * - Détection d'état Statique vs Dynamique
- * - Symétrie Newtonienne forcée
+ * GNSS SPACETIME DASHBOARD - MOTEUR DE LIAISON COMPLET
+ * Cible : UKF 21 États Fusion Professionnel
  */
 
-class UniversalUKF {
+class GNSSDashboard {
     constructor() {
-        this.vx = 0;
-        this.lastTimestamp = performance.now();
-        this.bias = { x: 0, y: 0, z: 0 };
-        this.stabilityBuffer = [];
-        this.isMoving = false;
+        // --- 1. INITIALISATION DES RÉFÉRENCES DOM ---
+        this.dom = {
+            // Contrôles
+            gpsPauseBtn: document.getElementById('gps-pause-toggle'),
+            resetAllBtn: document.getElementById('reset-all-btn'),
+            emergencyBtn: document.getElementById('emergency-stop-btn'),
+            
+            // Affichage Vitesse & Relativité
+            speedMain: document.getElementById('speed-main-display'),
+            speedStableKmh: document.getElementById('speed-stable-kmh'),
+            speedStableMs: document.getElementById('speed-stable-ms'),
+            lorentzFactor: document.getElementById('lorentz-factor'),
+            timeDilationV: document.getElementById('time-dilation-vitesse'),
+            
+            // IMU & Niveau à Bulle
+            accelX: document.getElementById('accel-x'),
+            accelY: document.getElementById('accel-y'),
+            accelZ: document.getElementById('accel-z'),
+            bubble: document.getElementById('bubble'),
+            pitch: document.getElementById('pitch'),
+            roll: document.getElementById('roll'),
+            
+            // Astro & Minecraft
+            sunEl: document.getElementById('sun-element'),
+            moonEl: document.getElementById('moon-element'),
+            mcTime: document.getElementById('time-minecraft'),
+            astroPhase: document.getElementById('astro-phase'),
+            
+            // Environnement
+            airTemp: document.getElementById('air-temp-c'),
+            airPressure: document.getElementById('pressure-hpa'),
+            no2: document.getElementById('no2-val'),
+            
+            // Dynamique
+            kineticEnergy: document.getElementById('kinetic-energy'),
+            dragForce: document.getElementById('drag-force')
+        };
+
+        // --- 2. ÉTAT DU SYSTÈME ---
+        this.ukf = new UniversalUKF(); // Utilise la classe V550 précédemment créée
+        this.sessionStartTime = Date.now();
+        this.isEmergencyStop = false;
+
+        this.bindEvents();
+        this.startLoop();
+    }
+
+    // --- 3. GESTION DES ÉVÉNEMENTS ---
+    bindEvents() {
+        this.dom.gpsPauseBtn.addEventListener('click', () => {
+            this.ukf.isCalibrated = false; // Force le recalibrage auto (V550)
+            console.log("Système UKF Recalibré");
+        });
+
+        this.dom.emergencyBtn.addEventListener('click', () => {
+            this.isEmergencyStop = !this.isEmergencyStop;
+            this.dom.emergencyBtn.classList.toggle('active');
+            this.dom.emergencyBtn.textContent = this.isEmergencyStop ? 
+                "🛑 ARRÊT : ACTIF" : "🛑 Arrêt d'urgence: INACTIF 🟢";
+        });
+
+        document.getElementById('reset-all-btn').onclick = () => location.reload();
+    }
+
+    // --- 4. BOUCLE DE RENDU (60 FPS) ---
+    startLoop() {
+        const update = () => {
+            if (this.isEmergencyStop) {
+                this.ukf.vx = 0;
+            }
+
+            this.updatePhysicsUI();
+            this.updateAstroUI();
+            this.updateIMUUI();
+            
+            requestAnimationFrame(update);
+        };
+        requestAnimationFrame(update);
+    }
+
+    // --- 5. MISE À JOUR DES MODULES ---
+
+    updatePhysicsUI() {
+        const v = this.ukf.vx; // Vitesse en m/s issue de l'UKF
+        const kmh = Math.abs(v * 3.6);
         
-        // Seuil de réalisme : si accélération constante > 2s, c'est une inclinaison.
-        this.STABILITY_THRESHOLD = 2000; 
-        this.init();
-    }
-
-    init() {
-        window.addEventListener('devicemotion', (e) => this.predict(e), true);
-        navigator.geolocation.watchPosition((p) => this.fuseGPS(p), null, {enableHighAccuracy: true});
-        this.render();
-    }
-
-    predict(e) {
-        const now = performance.now();
-        const dt = (now - this.lastTimestamp) / 1000;
-        this.lastTimestamp = now;
-
-        const acc = e.accelerationIncludingGravity;
-        if (!acc) return;
-
-        // --- 1. DÉTECTION AUTOMATIQUE DE L'INCLINAISON ---
-        // On analyse si les valeurs sont figées (même si elles sont hautes)
-        this.updateStability(acc, now);
-
-        // --- 2. SOUSTRACTION DU BIAIS DYNAMIQUE ---
-        let ax_net = acc.x - this.bias.x;
-        let ay_net = acc.y - this.bias.y;
-
-        // --- 3. LOGIQUE D'INERTIE SYMÉTRIQUE ---
-        const moveThreshold = 0.05; // Sensibilité aux micro-mouvements
+        // Vitesse & Lorentz
+        this.dom.speedMain.textContent = kmh > 0.5 ? `${kmh.toFixed(2)} km/h` : `${(v*1000).toFixed(2)} mm/s`;
+        this.dom.speedStableKmh.textContent = `${kmh.toFixed(3)} km/h`;
         
-        if (Math.abs(ax_net) > moveThreshold) {
-            this.vx += ax_net * dt;
-            this.isMoving = true;
-        } else {
-            // Friction naturelle : ramène la vitesse à 0 si plus de poussée
-            this.vx *= 0.96; 
-            this.isMoving = false;
-        }
-
-        // --- 4. SÉCURITÉ ANTI-DÉRIVE ---
-        // Si la vitesse est incohérente avec l'état statique, on purge.
-        if (!this.isMoving && Math.abs(this.vx) < 0.5) {
-            this.vx *= 0.8; 
-        }
-
-        if (Math.abs(this.vx) < 0.0001) this.vx = 0;
-    }
-
-    updateStability(acc, now) {
-        // On garde les 50 dernières mesures
-        this.stabilityBuffer.push({ x: acc.x, y: acc.y, z: acc.z, t: now });
-        if (this.stabilityBuffer.length > 50) this.stabilityBuffer.shift();
-
-        // Calcul de la variance (stabilité du signal)
-        const varianceX = this.getVariance(this.stabilityBuffer.map(b => b.x));
+        const beta = v / 299792458;
+        const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
+        this.dom.lorentzFactor.textContent = gamma.toFixed(12);
         
-        // Si le signal est stable (variance faible) pendant que le GPS dit 0
-        // Alors on recalibre le "Zéro" automatiquement sur les valeurs actuelles
-        if (varianceX < 0.01 && !this.gpsMoving) {
-            this.bias.x = acc.x;
-            this.bias.y = acc.y;
-            this.bias.z = acc.z;
-        }
+        // Temps écoulé
+        const elapsed = (Date.now() - this.sessionStartTime) / 1000;
+        document.getElementById('elapsed-time').textContent = `${elapsed.toFixed(2)} s`;
     }
 
-    getVariance(arr) {
-        const m = arr.reduce((a, b) => a + b) / arr.length;
-        return arr.reduce((a, b) => a + Math.pow(b - m, 2), 0) / arr.length;
-    }
-
-    fuseGPS(p) {
-        const gpsSpeed = p.coords.speed || 0;
-        this.gpsMoving = gpsSpeed > 0.2;
-
-        // Si GPS très précis, on écrase la dérive de l'IMU
-        if (p.coords.accuracy < 10) {
-            this.vx = (this.vx * 0.7) + (gpsSpeed * 0.3);
-        }
-    }
-
-    render() {
-        const speedKmh = Math.abs(this.vx) * 3.6;
+    updateIMUUI() {
+        // Niveau à bulle dynamique
+        // On limite le déplacement à 45px (moitié du conteneur de 100px - bulle)
+        const bX = Math.max(-45, Math.min(45, this.ukf.roll));
+        const bY = Math.max(-45, Math.min(45, this.ukf.pitch));
         
-        // Affichage adaptatif
-        const val = speedKmh < 0.1 ? (Math.abs(this.vx) * 1000).toFixed(2) + " mm/s" : speedKmh.toFixed(2) + " km/h";
+        this.dom.bubble.style.transform = `translate(${bX}px, ${bY}px)`;
+        this.dom.pitch.textContent = `${this.ukf.pitch.toFixed(1)}°`;
+        this.dom.roll.textContent = `${this.ukf.roll.toFixed(1)}°`;
         
-        document.getElementById('speed-main-display').textContent = val;
-        document.getElementById('status-ekf').textContent = this.gpsMoving ? "🛰️ MOUVEMENT GPS" : "⚓ STATIQUE (AUTO-CALIBRÉ)";
+        // Données brutes
+        this.dom.accelX.textContent = this.ukf.lastRawX.toFixed(3);
+    }
 
-        requestAnimationFrame(() => this.render());
+    updateAstroUI() {
+        const now = new Date();
+        const hours = now.getHours();
+        const mins = now.getMinutes();
+        
+        // Heure Minecraft (Formatage 00:00)
+        this.dom.mcTime.textContent = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        
+        // Rotation du ciel (360° en 24h)
+        const rotation = ((hours * 60 + mins) / 1440) * 360 + 90;
+        this.dom.sunEl.style.transform = `rotate(${rotation}deg)`;
+        this.dom.moonEl.style.transform = `rotate(${rotation + 180}deg)`;
     }
 }
 
-window.App = new UniversalUKF();
+// Lancement au chargement du DOM
+window.addEventListener('DOMContentLoaded', () => {
+    window.Dashboard = new GNSSDashboard();
+});
