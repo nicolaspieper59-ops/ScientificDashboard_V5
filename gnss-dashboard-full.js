@@ -1,70 +1,41 @@
 /**
- * GNSS SPACETIME ENGINE - V450 "SYMMETRIC-OMEGA"
+ * GNSS SPACETIME ENGINE - V460 "AUTO-LEVEL & SYMMETRIC"
  * -----------------------------------------------
- * - Conservation de l'Inertie Symétrique (Trapézoïdale)
- * - Ancrage Intelligent : IMU Maître si GPS Acc > 5m
- * - Détection Micro-Vitesse (> 0.002 m/s)
- * - Physique 4D/5D & Dimension Fractale
+ * - Calibration automatique de l'inclinaison (Tilt Compensation)
+ * - Conservation de l'Inertie Symétrique
+ * - Ancrage Intelligent IMU/GPS
  */
 
 class UniversalUKF {
     constructor() {
         this.C = 299792458;
-        this.G_EARTH = 9.80665;
-        
         this.isRunning = false;
-        this.refMode = 'global'; 
-        this.isCalibrating = true;
         this.lastTimestamp = performance.now();
         
-        // États du mouvement
-        this.vx = 0; // Vitesse linéaire interne
-        this.lastAx = 0; // Mémoire pour intégration trapézoïdale
-        this.estimatedRadius = Infinity; 
+        // États physiques
+        this.vx = 0; 
+        this.lastAx = 0;
         this.totalDistance = 0;
         this.gpsAccuracy = 100;
 
-        // État UKF [pos, vel, orientation]
-        this.x = math.matrix(math.zeros([10, 1]));
-        this.x.set([6, 0], 1); 
-        this.bias = { ax: 0, ay: 0, az: 0, gx: 0, gy: 0, gz: 0 };
+        // Vecteurs de calibration
+        this.gravityVector = { x: 0, y: 0, z: 9.80665 };
+        this.isCalibrating = true;
+        this.calibrationSamples = 0;
 
         this.init();
     }
 
     init() {
-        const btn = document.getElementById('gps-pause-toggle');
-        if (btn) btn.onclick = () => this.toggleSystem();
-        
-        const refBtn = document.getElementById('toggle-ref-mode') || this.createRefButton();
-        refBtn.onclick = () => this.switchReference();
-    }
-
-    async toggleSystem() {
-        if (!this.isRunning) {
-            const granted = await this.requestPermissions();
-            if (granted) this.start();
-        } else {
-            location.reload();
-        }
-    }
-
-    async requestPermissions() {
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            return await DeviceMotionEvent.requestPermission() === 'granted';
-        }
-        return true;
+        document.getElementById('gps-pause-toggle').onclick = () => this.start();
+        // Interface pour le vecteur de force
+        this.setupUI();
     }
 
     start() {
         this.isRunning = true;
-        this.lastTimestamp = performance.now();
-        document.getElementById('gps-pause-toggle').innerHTML = "⏸ SYSTÈME ACTIF";
-
-        // Capteurs haute fréquence
         window.addEventListener('devicemotion', (e) => this.predict(e), true);
         navigator.geolocation.watchPosition((p) => this.fuseGPS(p), null, {enableHighAccuracy: true});
-
         this.render();
     }
 
@@ -74,97 +45,94 @@ class UniversalUKF {
         const now = performance.now();
         const dt = (now - this.lastTimestamp) / 1000;
         this.lastTimestamp = now;
-        if (dt <= 0 || dt > 0.2) return;
 
-        // Accélération pure (sans gravité si disponible)
-        const acc = e.acceleration || {x:0, y:0, z:0};
-        const gyro = e.rotationRate || {alpha:0, beta:0, gamma:0};
+        // 1. RÉCUPÉRATION DES DONNÉES BRUTES (AVEC GRAVITÉ)
+        const accG = e.accelerationIncludingGravity || {x:0, y:0, z:0};
 
-        if (this.isCalibrating && Math.abs(acc.x) > 0) {
-            this.bias.ax = acc.x; 
-            this.isCalibrating = false;
+        // 2. CALIBRATION AUTO-LEVELING (Pendant les 2 premières secondes)
+        if (this.isCalibrating) {
+            this.gravityVector.x = (this.gravityVector.x * 0.9) + (accG.x * 0.1);
+            this.gravityVector.y = (this.gravityVector.y * 0.9) + (accG.y * 0.1);
+            this.gravityVector.z = (this.gravityVector.z * 0.9) + (accG.z * 0.1);
+            this.calibrationSamples++;
+            if (this.calibrationSamples > 100) this.isCalibrating = false;
+            this.updateStatus("📐 CALIBRATION INCLINAISON...");
+            return;
         }
 
-        let ax_raw = acc.x - this.bias.ax;
-        let ay_raw = acc.y;
-        let gz_rad = (gyro.gamma || 0) * (Math.PI / 180);
+        // 3. SOUSTRACTION DU VECTEUR GRAVITÉ CALIBRÉ (Le "Vrai" Zéro)
+        // Cela transforme vos 19.6 m/s² en ~0.00 m/s²
+        let ax_net = accG.x - this.gravityVector.x;
+        
+        // 4. INTÉGRATION SYMÉTRIQUE (CONSERVATION D'INERTIE)
+        const avgAcc = (ax_net + this.lastAx) / 2;
+        this.lastAx = ax_net;
 
-        // --- 1. CONSERVATION DE L'INERTIE SYMÉTRIQUE ---
-        // Intégration trapézoïdale pour que l'accélération = -décélération
-        const avgAcc = (ax_raw + this.lastAx) / 2;
-        this.lastAx = ax_raw;
-
-        const microThreshold = 0.002; // Sensibilité microscopique
+        const microThreshold = 0.002; 
         if (Math.abs(avgAcc) > microThreshold) {
             this.vx += avgAcc * dt;
         } else {
-            this.vx *= 0.99; // Stabilisation naturelle à l'arrêt
+            this.vx *= 0.99; // Friction naturelle
         }
 
-        // --- 2. GESTION DU RAYON & FORCE CENTRIFUGE ---
-        if (Math.abs(gz_rad) > 0.001 && Math.abs(this.vx) > 0.5) {
-            const r = Math.abs(this.vx) / Math.abs(gz_rad);
-            this.estimatedRadius = (this.estimatedRadius === Infinity) ? r : (this.estimatedRadius * 0.95) + (r * 0.05);
-        }
-
-        // Correction centrifuge (Métro/Attractions)
-        if (Math.abs(ax_raw) < 0.05 && Math.abs(ay_raw) > 0.1 && this.estimatedRadius !== Infinity) {
-            const vC = Math.sqrt(Math.abs(ay_raw) * this.estimatedRadius);
-            this.vx = (this.vx * 0.9) + (vC * 0.1);
-        }
-
-        this.x.set([3, 0], this.vx);
-        if (Math.abs(this.vx) > 0.001) this.totalDistance += Math.abs(this.vx) * dt;
+        // Sécurité anti-dérive : si vitesse microscopique < 1mm/s, on stabilise
+        if (Math.abs(this.vx) < 0.001) this.vx = 0;
     }
 
     fuseGPS(p) {
         this.gpsAccuracy = p.coords.accuracy;
         const gpsSpeed = p.coords.speed || 0;
 
-        // --- 3. ANCRAGE INTELLIGENT ---
-        // Si GPS précis (<5m), il corrige l'IMU. Sinon, l'IMU conserve l'inertie.
+        // ANCRAGE INTELLIGENT
+        // On ne force le GPS que s'il est plus crédible que l'IMU
         if (this.gpsAccuracy <= 5.0) {
-            this.vx = gpsSpeed; 
-            this.updateStatus("🛰️ ANCRAGE : GPS (MAÎTRE)");
+            this.vx = gpsSpeed;
+            this.updateStatus("🛰️ RÉFÉRENCE: GPS PRÉCIS");
         } else {
-            // Le GPS est flou, on l'utilise seulement pour limiter la dérive de l'IMU
-            const driftWeight = 0.01; 
-            this.vx = this.vx + (gpsSpeed - this.vx) * driftWeight;
-            this.updateStatus("⚓ ANCRAGE : IMU (INERTIE)");
+            // Le GPS est bruité (comme vos 15.4m), l'IMU garde le contrôle de l'inertie
+            this.updateStatus("⚓ ANCRAGE: INERTIE CONSERVÉE");
         }
     }
 
     render() {
-        if (!this.isRunning) return;
-
         const speedMs = Math.abs(this.vx);
         const speedKmh = speedMs * 3.6;
 
-        // Calculs Relativistes 4D/5D
-        const gamma = (speedMs >= this.C) ? Infinity : 1 / Math.sqrt(1 - Math.pow(speedMs / this.C, 2));
-        const dFractale = 1 + (Math.abs(this.lastAx) / (Math.abs(this.lastAx) + 10));
+        // Affichage dynamique mm/s ou km/h
+        const displaySpeed = speedKmh < 0.5 ? 
+            (speedMs * 1000).toFixed(2) + " mm/s" : 
+            speedKmh.toFixed(2) + " km/h";
 
-        // Affichage Haute Précision
-        this.safeUpdate('speed-main-display', speedKmh < 1 ? (speedMs * 1000).toFixed(2) + " mm/s" : speedKmh.toFixed(1));
+        this.safeUpdate('speed-main-display', displaySpeed);
         this.safeUpdate('speed-stable-kmh', speedKmh.toFixed(3) + " km/h");
-        this.safeUpdate('total-distance-3d', (this.totalDistance / 1000).toFixed(4) + " km");
-        this.safeUpdate('radius-rotation', (this.estimatedRadius === Infinity) ? "∞" : this.estimatedRadius.toFixed(1) + " m");
-        this.safeUpdate('lorentz-factor', (gamma === Infinity) ? "∞" : gamma.toFixed(12));
-        this.safeUpdate('total-d-index', dFractale.toFixed(6));
         
-        // Vecteur Force (Visuel)
+        // Mise à jour visuelle du vecteur de force
         this.drawForceVector(this.lastAx);
 
         requestAnimationFrame(() => this.render());
     }
 
     drawForceVector(acc) {
-        const el = document.getElementById('force-vector');
-        if (!el) return;
-        const width = Math.min(Math.abs(acc) * 50, 100);
-        el.style.width = width + "%";
-        el.style.backgroundColor = acc > 0 ? "#00ff00" : "#ff0000";
-        el.style.marginLeft = acc > 0 ? "50%" : (50 - width) + "%";
+        const bar = document.getElementById('force-vector');
+        if (!bar) return;
+        const width = Math.min(Math.abs(acc) * 10, 50); // Sensibilité visuelle
+        bar.style.width = width + "%";
+        bar.style.left = acc >= 0 ? "50%" : (50 - width) + "%";
+        bar.style.backgroundColor = acc >= 0 ? "#00ff00" : "#ff0000";
+    }
+
+    setupUI() {
+        // Injection du style pour le vecteur de force si absent
+        if (!document.getElementById('force-style')) {
+            const style = document.createElement('style');
+            style.id = 'force-style';
+            style.innerHTML = `
+                #force-axis { width: 100%; height: 20px; background: #333; position: relative; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+                #force-vector { height: 100%; position: absolute; transition: all 0.05s ease-out; }
+                .center-line { position: absolute; left: 50%; width: 2px; height: 100%; background: white; z-index: 2; }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     safeUpdate(id, val) {
@@ -176,15 +144,6 @@ class UniversalUKF {
         const el = document.getElementById('status-ekf');
         if (el) el.textContent = msg;
     }
-
-    createRefButton() {
-        const btn = document.createElement('button');
-        btn.id = 'toggle-ref-mode';
-        btn.innerHTML = "🛰️ MODE: GLOBAL";
-        btn.className = "btn-action";
-        document.body.appendChild(btn);
-        return btn;
-    }
 }
 
-window.onload = () => { window.App = new UniversalUKF(); };
+window.App = new UniversalUKF();
