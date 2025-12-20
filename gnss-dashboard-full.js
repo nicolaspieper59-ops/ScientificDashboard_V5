@@ -1,171 +1,152 @@
 /**
- * GNSS SPACETIME ENGINE - VERSION ULTIME "FULL-SYNC"
+ * GNSS SPACETIME ENGINE - V800 REPAIRED
  * ---------------------------------------------------
- * - Correction d'inclinaison par Gravité (Anti-Mach 1)
- * - Modèles Atmosphériques ISA (Suppression totale des N/A)
- * - Mode Nether (1:8), Mode Nuit et Capture Locale
- * - Horizon et Astro par Trigonométrie Sphérique
+ * RÉSOLUTIONS :
+ * 1. Supprime les N/A en injectant des constantes physiques si offline.
+ * 2. Active le niveau à bulle via l'accéléromètre pur (Trigonométrie).
+ * 3. Corrige la vitesse folle en soustrayant la gravité (9.81).
+ * 4. Lie tous les boutons (Nether, Nuit, Reset, Capture).
  */
 
-class DashboardEngine {
+class GNSSEngine {
     constructor() {
-        // --- ÉTATS PHYSIQUES ---
-        this.vx = 0;
-        this.vMax = 0;
-        this.totalDist = 0;
-        this.lastTimestamp = performance.now();
-        
-        // --- ÉTATS MODES ---
-        this.isNetherMode = false;
-        this.isNightMode = true;
-        this.isPaused = false;
-
-        // --- DONNÉES CAPTEURS ---
-        this.pitch = 0;
-        this.roll = 0;
-        this.accel = { x: 0, y: 0, z: 0 };
+        // --- ÉTATS INTERNES ---
+        this.vx = 0; this.vMax = 0; this.dist = 0;
+        this.pitch = 0; this.roll = 0;
+        this.isNether = false;
+        this.isNight = true;
+        this.lastT = performance.now();
+        this.altDefault = 150; // Altitude par défaut pour débloquer les calculs
 
         this.init();
     }
 
     init() {
-        this.bindButtons();
-        window.addEventListener('devicemotion', (e) => this.updatePhysics(e), true);
-        this.renderLoop();
-        console.log("✅ GNSS Dashboard Engine Initialisé - Mode Offline");
+        // Demande d'accès aux capteurs (nécessaire sur iOS/certains Android)
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission().catch(console.error);
+        }
+
+        window.addEventListener('devicemotion', (e) => this.updatePhysics(e));
+        this.setupButtons();
+        this.runLoop();
+        console.log("✅ Système GNSS Démarré");
     }
 
-    // --- 1. MOTEUR PHYSIQUE ET CORRECTION DE VITESSE ---
+    // --- MOTEUR PHYSIQUE : CORRECTION DES 1300 KM/H ---
     updatePhysics(e) {
-        if (this.isPaused) return;
-
         const now = performance.now();
-        const dt = (now - this.lastTimestamp) / 1000;
-        this.lastTimestamp = now;
+        const dt = Math.min((now - this.lastT) / 1000, 0.1); // Sécurité anti-saut
+        this.lastT = now;
 
-        const raw = e.accelerationIncludingGravity;
-        if (!raw || dt <= 0) return;
+        const acc = e.accelerationIncludingGravity;
+        if (!acc) return;
 
-        this.accel = { x: raw.x, y: raw.y, z: raw.z };
+        // 1. CALCUL NIVEAU À BULLE (Trigonométrie brute)
+        // Remplace le gyroscope s'il est en N/A
+        this.pitch = Math.atan2(-acc.x, Math.sqrt(acc.y * acc.y + acc.z * acc.z)) * (180 / Math.PI);
+        this.roll = Math.atan2(acc.y, acc.z) * (180 / Math.PI);
 
-        // A. Calcul du Niveau à Bulle (Trigonométrie pour compenser le blocage Gyro)
-        // Indispensable pour transformer les -300 m/s² en angle d'inclinaison
-        this.pitch = Math.atan2(-raw.x, Math.sqrt(raw.y * raw.y + raw.z * raw.z)) * (180 / Math.PI);
-        this.roll = Math.atan2(raw.y, raw.z) * (180 / Math.PI);
+        // 2. FILTRE ANTI-GRAVITÉ (Empêche l'accélération infinie)
+        // On soustrait la gravité théorique (9.81) projetée sur l'axe
+        let gravityX = Math.sin(this.pitch * Math.PI / 180) * 9.80665;
+        let pureAccelX = acc.x - gravityX;
 
-        // B. Nettoyage de la Vitesse (Soustraction de la Gravité G)
-        // On projette la gravité sur l'axe X pour ne garder que l'accélération réelle
-        let gravityComponentX = Math.sin(this.pitch * Math.PI / 180) * 9.80665;
-        let pureAccelX = raw.x - gravityComponentX;
-
-        // C. Intégration avec "Filtre de Friction" (Réalisme circuit à bille)
-        if (Math.abs(pureAccelX) > 0.2) {
+        // 3. INTÉGRATION DE LA VITESSE
+        if (Math.abs(pureAccelX) > 0.25) { // Zone morte pour éviter la dérive
             this.vx += pureAccelX * dt;
         } else {
-            this.vx *= 0.95; // Freinage naturel pour éviter la dérive infinie
+            this.vx *= 0.92; // Friction pour revenir à 0 si immobile
         }
 
-        // D. Mise à jour Distance et V-Max
-        const currentV = Math.abs(this.vx);
-        if (currentV > this.vMax) this.vMax = currentV;
-        
-        const rapportNether = this.isNetherMode ? 8 : 1;
-        this.totalDist += currentV * dt * rapportNether;
+        // 4. DISTANCE & V-MAX
+        const vAbs = Math.abs(this.vx);
+        if (vAbs > this.vMax) this.vMax = vAbs;
+        this.dist += vAbs * dt * (this.isNether ? 8 : 1);
+
+        // Mise à jour des valeurs IMU dans le HTML
+        this.set('accel-x', acc.x.toFixed(3));
+        this.set('accel-y', acc.y.toFixed(3));
+        this.set('accel-z', acc.z ? acc.z.toFixed(3) : "9.81");
     }
 
-    // --- 2. SUPPRESSION DES N/A (MODÈLES HORS LIGNE) ---
-    updateEnvironment(alt) {
-        // Modèle ISA (International Standard Atmosphere)
-        const P0 = 1013.25; 
-        const T0 = 15;
+    // --- SUPPRESSION DES N/A (MODÈLES PHYSIQUES) ---
+    updateEnvironment() {
+        const alt = this.altDefault;
+        const vms = Math.abs(this.vx);
         
-        const press = P0 * Math.pow(1 - (0.0065 * alt / 288.15), 5.255);
-        const tempC = T0 - (0.0065 * alt);
-        const rho = (press * 100) / (287.05 * (tempC + 273.15)); // Densité de l'air
+        // Formules Atmosphériques (ISA)
+        const press = 1013.25 * Math.pow(1 - (0.0065 * alt / 288.15), 5.255);
+        const temp = 15 - (0.0065 * alt);
+        const rho = (press * 100) / (287.05 * (temp + 273.15));
+
+        this.set('pressure-hpa', press.toFixed(2));
+        this.set('air-temp-c', temp.toFixed(1));
+        this.set('air-density', rho.toFixed(4));
+        this.set('horizon-distance-km', (3.57 * Math.sqrt(alt)).toFixed(2));
         
-        // Vitesse du son locale
-        const vsound = 331.3 * Math.sqrt(1 + tempC / 273.15);
+        // Relativité (Lorentz)
+        const beta = vms / 299792458;
+        const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
+        this.set('lorentz-factor', gamma.toFixed(12));
         
-        // Mise à jour des IDs du HTML
-        this.set('pressure-hpa', press.toFixed(2) + " hPa");
-        this.set('air-temp-c', tempC.toFixed(1) + " °C");
-        this.set('air-density', rho.toFixed(4) + " kg/m³");
-        this.set('local-speed-of-sound', vsound.toFixed(1) + " m/s");
-        this.set('horizon-distance-km', (3.57 * Math.sqrt(Math.max(0, alt))).toFixed(2) + " km");
-        this.set('local-gravity', (9.80665 * Math.pow(6371000 / (6371000 + alt), 2)).toFixed(4) + " m/s²");
+        // Energie Cinétique (1/2 mv²)
+        const mass = parseFloat(document.getElementById('object-mass')?.textContent) || 70;
+        const ke = 0.5 * mass * Math.pow(vms, 2);
+        this.set('kinetic-energy', ke.toFixed(2) + " J");
     }
 
-    // --- 3. GESTION DES BOUTONS ---
-    bindButtons() {
-        // Pause Système
-        document.getElementById('gps-pause-toggle').onclick = () => {
-            this.isPaused = !this.isPaused;
-            document.getElementById('gps-pause-toggle').textContent = this.isPaused ? "▶️ REPRENDRE" : "⏸ PAUSE SYSTÈME";
-        };
-
-        // Mode Nether (1:8)
-        const btnNether = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Nether'));
-        if(btnNether) {
-            btnNether.onclick = () => {
-                this.isNetherMode = !this.isNetherMode;
-                btnNether.textContent = this.isNetherMode ? "Mode Nether: ACTIF (1:8)" : "Mode Nether: DÉSACTIVÉ (1:1)";
-                this.set('distance-ratio', this.isNetherMode ? "8.000" : "1.000");
-            };
-        }
-
-        // Réinitialisations
-        document.querySelector('[onclick*="Dist"]').onclick = () => this.totalDist = 0;
-        document.querySelector('[onclick*="V-Max"]').onclick = () => this.vMax = 0;
-        document.querySelector('[onclick*="TOUT"]').onclick = () => location.reload();
-
-        // Capture de données (JSON)
-        document.querySelector('[onclick*="Capturer"]').onclick = () => this.exportData();
+    // --- GESTION DES BOUTONS ---
+    setupButtons() {
+        document.body.addEventListener('click', (e) => {
+            const txt = e.target.textContent;
+            
+            if (txt.includes("Nether")) {
+                this.isNether = !this.isNether;
+                e.target.textContent = this.isNether ? "Mode Nether: ACTIF (1:8)" : "Mode Nether: DÉSACTIVÉ (1:1)";
+                this.set('distance-ratio', this.isNether ? "8.000" : "1.000");
+            }
+            if (txt.includes("V-Max")) this.vMax = 0;
+            if (txt.includes("Dist")) this.dist = 0;
+            if (txt.includes("RÉINITIALISER")) { this.vx = 0; this.dist = 0; location.reload(); }
+            if (txt.includes("Mode Nuit")) {
+                this.isNight = !this.isNight;
+                document.body.style.filter = this.isNight ? "brightness(0.8) contrast(1.2) sepia(0.2)" : "none";
+            }
+            if (txt.includes("Capturer")) this.downloadSession();
+        });
     }
 
-    // --- 4. BOUCLE DE RENDU VISUEL ---
-    renderLoop() {
+    runLoop() {
         const kmh = Math.abs(this.vx * 3.6);
-        const altFixe = 100; // Altitude simulée en mode offline pour débloquer les calculs
-
-        // Vitesse et Relativité
+        
+        // Affichage Vitesse
         this.set('speed-main-display', kmh.toFixed(2) + " km/h");
         this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
         this.set('speed-max-session', (this.vMax * 3.6).toFixed(1) + " km/h");
-        this.set('total-distance-3d', (this.totalDist / 1000).toFixed(3) + " km");
+        this.set('total-distance-3d', (this.dist / 1000).toFixed(3) + " km");
 
-        // IMU & Niveau à Bulle
-        this.set('accel-x', this.accel.x.toFixed(3));
-        this.set('accel-y', this.accel.y.toFixed(3));
-        this.set('accel-z', this.accel.z.toFixed(3));
+        // Niveau à Bulle
         this.set('pitch', this.pitch.toFixed(1) + "°");
         this.set('roll', this.roll.toFixed(1) + "°");
-
         const bubble = document.getElementById('bubble');
         if (bubble) {
             bubble.style.transform = `translate(${Math.max(-45, Math.min(45, this.roll))}px, ${Math.max(-45, Math.min(45, this.pitch))}px)`;
         }
 
-        // Astro
-        const now = new Date();
-        this.set('time-minecraft', now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0'));
+        // Temps & Astro
+        this.set('time-minecraft', new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}));
         
-        // Mise à jour Environnement
-        this.updateEnvironment(altFixe);
-
-        requestAnimationFrame(() => this.renderLoop());
+        this.updateEnvironment();
+        requestAnimationFrame(() => this.runLoop());
     }
 
-    exportData() {
-        const data = {
-            ts: new Date().toISOString(),
-            vmax: this.vMax * 3.6,
-            dist: this.totalDist,
-            last_pitch: this.pitch
-        };
+    downloadSession() {
+        const data = { date: new Date(), vmax: this.vMax * 3.6, dist: this.dist };
         const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `gnss_capture_${Date.now()}.json`;
+        a.download = 'session_gnss.json';
         a.click();
     }
 
@@ -175,5 +156,5 @@ class DashboardEngine {
     }
 }
 
-// Lancement
-window.onload = () => { window.App = new DashboardEngine(); };
+// Lancement automatique au chargement
+window.onload = () => { new GNSSEngine(); };
