@@ -62,7 +62,7 @@
             // 2. FILTRE DE SYMÉTRIE (La Force Opposée)
             // On applique un "Schmitt Trigger" pour ignorer les micro-variations d'inclinaison
             // qui polluent la décélération.
-            const noiseFloor = 0.0; 
+            const noiseFloor = 0.001; 
             nax = (Math.abs(nax) < noiseFloor) ? 0 : nax;
             nay = (Math.abs(nay) < noiseFloor) ? 0 : nay;
             naz = (Math.abs(naz) < noiseFloor) ? 0 : naz;
