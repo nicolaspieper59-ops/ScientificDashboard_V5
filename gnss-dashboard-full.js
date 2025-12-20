@@ -1,34 +1,46 @@
 /**
- * GNSS SPACETIME - RÉALISME NEWTONIEN (CORRECTION PERSISTANCE)
- * ----------------------------------------------------------
- * Logique : L'objet conserve sa vitesse (Inertie)
+ * GNSS SPACETIME - NOYAU DE FUSION V4.5 (ZÉRO INITIAL)
+ * --------------------------------------------------
+ * - Physique : Newton pur sans friction.
+ * - Initialisation : Vitesse forcée à 0.00 au démarrage.
+ * - Calibration : Capture du biais au clic "MARCHE".
  */
 
 class ScientificGNSS {
     constructor() {
-        this.vx = 0; 
+        // --- ÉTATS PHYSIQUES ---
+        this.vx = 0; // Toujours 0 au départ
         this.ax = 0; 
         this.totalDist = 0;
         this.vMax = 0;
         this.lastT = performance.now();
         this.isPaused = true;
         
-        // Paramètres
+        // --- CALIBRATION ---
+        this.biasX = 0;
+        this.isCalibrated = false;
+        this.thresholdInertie = 0.10; // Filtre les micro-vibrations au repos
+
+        // --- PARAMÈTRES ---
         this.mass = 70;
         this.coords = { lat: 43.2844, lon: 5.3590, alt: 150 };
         this.C = 299792458;
-        
-        // --- FACTEUR DE RÉALISME ---
-        this.frictionAir = 0.005; // Très faible résistance pour ne pas couper la vitesse
-        this.thresholdInertie = 0.05; // Sensibilité aux secousses
 
         this.init();
     }
 
     init() {
         this.setupUI();
+        this.resetDisplay(); // Force l'affichage à 0
         this.startSyncLoop();
         this.runPhysicsLoop();
+    }
+
+    // Mise à zéro visuelle immédiate
+    resetDisplay() {
+        this.set('speed-main-display', "0.00 km/h");
+        this.set('speed-stable-kmh', "0.000 km/h");
+        this.set('total-distance', "0.000 km");
     }
 
     updatePhysics(e) {
@@ -41,24 +53,26 @@ class ScientificGNSS {
         const acc = e.acceleration; 
         if (!acc) return;
 
-        // 1. Capture de l'accélération brute (Newton)
-        // On utilise la magnitude pour être réaliste : peu importe le sens du mouvement
-        let rawAx = acc.x || 0;
+        // 1. CALIBRATION AU DÉMARRAGE
+        // On mémorise la valeur de l'accéléromètre au repos pour l'annuler
+        if (!this.isCalibrated) {
+            this.biasX = acc.x || 0;
+            this.isCalibrated = true;
+            return;
+        }
 
-        // 2. Filtre de bruit (si trop faible, on ne change rien à la vitesse)
+        // 2. ACCÉLÉRATION NETTE (Newton)
+        let rawAx = (acc.x || 0) - this.biasX;
+
+        // 3. SEUIL D'INERTIE
+        // Si le mouvement est trop faible, on considère qu'on est au repos
         if (Math.abs(rawAx) > this.thresholdInertie) {
             this.ax = rawAx;
-            // Loi de Newton : v = v + a*dt
+            // v = v + a*dt (Zéro friction)
             this.vx += this.ax * dt;
         } else {
             this.ax = 0;
-            // 3. DÉCÉLÉRATION RÉALISTE (Friction passive)
-            // Au lieu de tomber à 0, la vitesse baisse très lentement
-            this.vx *= (1 - this.frictionAir * dt);
         }
-
-        // Sécurité pour l'arrêt total
-        if (Math.abs(this.vx) < 0.01) this.vx = 0;
     }
 
     runPhysicsLoop() {
@@ -66,20 +80,16 @@ class ScientificGNSS {
         const kmh = v * 3.6;
         if (kmh > this.vMax) this.vMax = kmh;
 
-        // Mise à jour de l'affichage (Persistance de la vitesse)
+        // Mise à jour de l'affichage
         this.set('speed-main-display', kmh.toFixed(2) + " km/h");
-        this.set('speed-stable-kmh', kmh.toFixed(3));
+        this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
         this.set('speed-max-session', this.vMax.toFixed(1) + " km/h");
 
-        // Calculs Relativistes et Environnement (Inchangés pour rester fidèles)
-        const gamma = 1 / Math.sqrt(1 - Math.pow(v/this.C, 2));
-        this.set('lorentz-factor', gamma.toFixed(15));
-        
-        // Distance cumulée
-        if (v > 0.02) {
+        // Distance (Uniquement si on a commencé à bouger)
+        if (v > 0.05) {
             this.totalDist += (v * 0.016);
+            this.set('total-distance', (this.totalDist/1000).toFixed(3) + " km");
         }
-        this.set('total-distance', (this.totalDist/1000).toFixed(3) + " km");
 
         requestAnimationFrame(() => this.runPhysicsLoop());
     }
@@ -89,7 +99,7 @@ class ScientificGNSS {
             const now = new Date();
             this.set('local-time', now.toLocaleTimeString());
             
-            // Liaison Astro pour éviter les N/A
+            // Astro & Environnement (Pas de N/A)
             if (typeof window.calculateAstroDataHighPrec === 'function') {
                 const astro = window.calculateAstroDataHighPrec(now, this.coords.lat, this.coords.lon);
                 this.set('sun-alt', (astro.sun.altitude * 57.3).toFixed(2) + "°");
@@ -102,9 +112,16 @@ class ScientificGNSS {
         const btn = document.getElementById('gps-pause-toggle');
         btn.onclick = async () => {
             if (this.isPaused) {
+                // Demande de permission si nécessaire
                 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                     await DeviceMotionEvent.requestPermission();
                 }
+                
+                // RÉINITIALISATION TOTALE AVANT DE PARTIR
+                this.vx = 0;
+                this.isCalibrated = false; // Forcer une nouvelle calibration
+                this.lastT = performance.now();
+                
                 window.addEventListener('devicemotion', (e) => this.updatePhysics(e));
                 this.isPaused = false;
                 btn.textContent = "⏸ PAUSE SYSTÈME";
@@ -112,6 +129,13 @@ class ScientificGNSS {
                 this.isPaused = true;
                 btn.textContent = "▶️ MARCHE GPS";
             }
+        };
+
+        document.getElementById('reset-all-btn').onclick = () => {
+            this.vx = 0;
+            this.vMax = 0;
+            this.totalDist = 0;
+            this.resetDisplay();
         };
     }
 
