@@ -1,48 +1,42 @@
 /**
- * GNSS SPACETIME - NOYAU DE FUSION V4.5 (ZÉRO INITIAL)
- * --------------------------------------------------
- * - Physique : Newton pur sans friction.
- * - Initialisation : Vitesse forcée à 0.00 au démarrage.
- * - Calibration : Capture du biais au clic "MARCHE".
+ * GNSS SPACETIME - MOTEUR NEWTONIEN V4.0
+ * --------------------------------------
+ * - Physique : Intégration de forces (F = ma)
+ * - Décélération : Force de trainée aérodynamique + Friction cinétique
+ * - Stabilité : Filtrage des bruits de capteur par seuil d'énergie
  */
 
 class ScientificGNSS {
     constructor() {
-        // --- ÉTATS PHYSIQUES ---
-        this.vx = 0; // Toujours 0 au départ
-        this.ax = 0; 
+        // --- ÉTATS VECTEURS ---
+        this.vx = 0; // Vitesse actuelle (m/s)
+        this.ax = 0; // Accélération nette (m/s²)
         this.totalDist = 0;
         this.vMax = 0;
         this.lastT = performance.now();
         this.isPaused = true;
         
-        // --- CALIBRATION ---
+        // --- CONSTANTES PHYSIQUES ---
+        this.mass = 70;      // Masse en kg
+        this.C_DRAG = 0.5;   // Coefficient de traînée (forme humaine/véhicule)
+        this.AREA = 0.6;     // Surface frontale (m²)
+        this.RHO = 1.225;    // Densité de l'air au niveau de la mer
+        this.FRICTION_COEFF = 0.05; // Friction au sol
+        
+        // --- FILTRES ---
         this.biasX = 0;
         this.isCalibrated = false;
-        this.thresholdInertie = 0.10; // Filtre les micro-vibrations au repos
-
-        // --- PARAMÈTRES ---
-        this.mass = 70;
-        this.coords = { lat: 43.2844, lon: 5.3590, alt: 150 };
-        this.C = 299792458;
+        this.accelThreshold = 0.15; // Seuil pour vaincre l'inertie statique
 
         this.init();
     }
 
     init() {
         this.setupUI();
-        this.resetDisplay(); // Force l'affichage à 0
-        this.startSyncLoop();
-        this.runPhysicsLoop();
+        this.startLoops();
     }
 
-    // Mise à zéro visuelle immédiate
-    resetDisplay() {
-        this.set('speed-main-display', "0.00 km/h");
-        this.set('speed-stable-kmh', "0.000 km/h");
-        this.set('total-distance', "0.000 km");
-    }
-
+    // --- MOTEUR DE FORCES NEWTONIENNES ---
     updatePhysics(e) {
         if (this.isPaused) return;
 
@@ -50,29 +44,47 @@ class ScientificGNSS {
         const dt = Math.min((now - this.lastT) / 1000, 0.1);
         this.lastT = now;
 
-        const acc = e.acceleration; 
+        const acc = e.acceleration; // Accélération linéaire sans gravité
         if (!acc) return;
 
-        // 1. CALIBRATION AU DÉMARRAGE
-        // On mémorise la valeur de l'accéléromètre au repos pour l'annuler
+        // 1. Calibration du "Zéro"
         if (!this.isCalibrated) {
             this.biasX = acc.x || 0;
             this.isCalibrated = true;
             return;
         }
 
-        // 2. ACCÉLÉRATION NETTE (Newton)
-        let rawAx = (acc.x || 0) - this.biasX;
+        // 2. Force de Poussée (Input du capteur)
+        let inputAccel = (acc.x || 0) - this.biasX;
+        if (Math.abs(inputAccel) < this.accelThreshold) inputAccel = 0;
+        
+        let forcePush = this.mass * inputAccel;
 
-        // 3. SEUIL D'INERTIE
-        // Si le mouvement est trop faible, on considère qu'on est au repos
-        if (Math.abs(rawAx) > this.thresholdInertie) {
-            this.ax = rawAx;
-            // v = v + a*dt (Zéro friction)
-            this.vx += this.ax * dt;
-        } else {
-            this.ax = 0;
-        }
+        // 3. Forces de Résistance (Décélération inversée)
+        // F_drag = 1/2 * rho * v² * Cd * A
+        let forceDrag = 0.5 * this.RHO * Math.pow(this.vx, 2) * this.C_DRAG * this.AREA;
+        
+        // F_friction = m * g * Cr
+        let forceFriction = this.vx !== 0 ? (this.mass * 9.81 * this.FRICTION_COEFF) : 0;
+
+        // La force de résistance s'oppose TOUJOURS au signe de la vitesse
+        let resistance = (forceDrag + forceFriction) * (this.vx > 0 ? 1 : -1);
+
+        // 4. Seconde Loi de Newton : a = F_nette / m
+        let netForce = forcePush - resistance;
+        let netAccel = netForce / this.mass;
+
+        // 5. Intégration de la vitesse
+        this.vx += netAccel * dt;
+
+        // Arrêt complet si la vitesse est infime (évite le flottement infini)
+        if (Math.abs(this.vx) < 0.02 && inputAccel === 0) this.vx = 0;
+
+        this.ax = netAccel;
+
+        // Affichage IMU
+        this.set('accel-long', this.ax.toFixed(3) + " m/s²");
+        this.set('force-g-long', (this.ax / 9.81).toFixed(3));
     }
 
     runPhysicsLoop() {
@@ -80,28 +92,32 @@ class ScientificGNSS {
         const kmh = v * 3.6;
         if (kmh > this.vMax) this.vMax = kmh;
 
-        // Mise à jour de l'affichage
+        // Mise à jour de la vitesse et des énergies
         this.set('speed-main-display', kmh.toFixed(2) + " km/h");
         this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
-        this.set('speed-max-session', this.vMax.toFixed(1) + " km/h");
+        this.set('kinetic-energy', (0.5 * this.mass * v**2).toFixed(2) + " J");
+        
+        // Décélération affichée (Inversée par rapport à l'accélération)
+        let decel = this.ax < 0 ? Math.abs(this.ax) : 0;
+        this.set('deceleration-val', decel.toFixed(3) + " m/s²");
 
-        // Distance (Uniquement si on a commencé à bouger)
-        if (v > 0.05) {
+        // Distance
+        if (v > 0.01) {
             this.totalDist += (v * 0.016);
-            this.set('total-distance', (this.totalDist/1000).toFixed(3) + " km");
         }
+        this.set('total-distance', (this.totalDist/1000).toFixed(3) + " km");
 
         requestAnimationFrame(() => this.runPhysicsLoop());
     }
 
-    startSyncLoop() {
+    startLoops() {
+        this.runPhysicsLoop();
         setInterval(() => {
             const now = new Date();
             this.set('local-time', now.toLocaleTimeString());
-            
-            // Astro & Environnement (Pas de N/A)
-            if (typeof window.calculateAstroDataHighPrec === 'function') {
-                const astro = window.calculateAstroDataHighPrec(now, this.coords.lat, this.coords.lon);
+            // Intégration Astro pour remplir les N/A
+            if (window.calculateAstroDataHighPrec) {
+                const astro = window.calculateAstroDataHighPrec(now, 43.28, 5.35);
                 this.set('sun-alt', (astro.sun.altitude * 57.3).toFixed(2) + "°");
                 this.set('moon-phase-name', window.getMoonPhaseName(astro.moon.illumination.phase));
             }
@@ -112,30 +128,15 @@ class ScientificGNSS {
         const btn = document.getElementById('gps-pause-toggle');
         btn.onclick = async () => {
             if (this.isPaused) {
-                // Demande de permission si nécessaire
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    await DeviceMotionEvent.requestPermission();
-                }
-                
-                // RÉINITIALISATION TOTALE AVANT DE PARTIR
-                this.vx = 0;
-                this.isCalibrated = false; // Forcer une nouvelle calibration
-                this.lastT = performance.now();
-                
+                if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
                 window.addEventListener('devicemotion', (e) => this.updatePhysics(e));
                 this.isPaused = false;
+                this.isCalibrated = false;
                 btn.textContent = "⏸ PAUSE SYSTÈME";
             } else {
                 this.isPaused = true;
                 btn.textContent = "▶️ MARCHE GPS";
             }
-        };
-
-        document.getElementById('reset-all-btn').onclick = () => {
-            this.vx = 0;
-            this.vMax = 0;
-            this.totalDist = 0;
-            this.resetDisplay();
         };
     }
 
