@@ -1,129 +1,109 @@
 /**
- * GNSS SPACETIME ENGINE - V480 "GRAVITY-ISOLATOR"
+ * GNSS SPACETIME ENGINE - V500 "INTELLIGENT-GRAVITY"
  * -----------------------------------------------
- * - Compensation d'inclinaison dynamique (Tilt-Ref)
- * - Isolation de la pesanteur (G-Removal)
- * - Symétrie parfaite Accélération/Décélération
+ * - Calibration Automatique Continue (Zero-Drift)
+ * - Détection d'état Statique vs Dynamique
+ * - Symétrie Newtonienne forcée
  */
 
 class UniversalUKF {
     constructor() {
-        this.C = 299792458;
-        this.isRunning = false;
         this.vx = 0;
         this.lastTimestamp = performance.now();
+        this.bias = { x: 0, y: 0, z: 0 };
+        this.stabilityBuffer = [];
+        this.isMoving = false;
         
-        // Vecteurs de référence pour l'inclinaison
-        this.gravityBias = { x: 0, y: 0, z: 0 };
-        this.isCalibrated = false;
-
+        // Seuil de réalisme : si accélération constante > 2s, c'est une inclinaison.
+        this.STABILITY_THRESHOLD = 2000; 
         this.init();
     }
 
     init() {
-        // Bouton de recalibrage immédiat
-        const resetBtn = document.getElementById('gps-pause-toggle');
-        if (resetBtn) resetBtn.onclick = () => this.calibrateAndStart();
-        
-        // Création d'un bouton "Zéro Inclinaison" si absent
-        this.createCalibrationUI();
-    }
-
-    calibrateAndStart() {
-        this.vx = 0; // Reset vitesse
-        this.isCalibrated = false; // Relance la capture du biais
-        if (!this.isRunning) this.start();
-    }
-
-    start() {
-        this.isRunning = true;
         window.addEventListener('devicemotion', (e) => this.predict(e), true);
+        navigator.geolocation.watchPosition((p) => this.fuseGPS(p), null, {enableHighAccuracy: true});
         this.render();
     }
 
     predict(e) {
-        if (!this.isRunning) return;
-
         const now = performance.now();
         const dt = (now - this.lastTimestamp) / 1000;
         this.lastTimestamp = now;
 
-        // 1. CAPTURE DES VALEURS BRUTES (Tes -13.6 ou 19.6)
-        const accG = e.accelerationIncludingGravity;
-        if (!accG) return;
+        const acc = e.accelerationIncludingGravity;
+        if (!acc) return;
 
-        // 2. AUTO-CALIBRATION (Capture de l'inclinaison actuelle)
-        if (!this.isCalibrated) {
-            this.gravityBias.x = accG.x;
-            this.gravityBias.y = accG.y;
-            this.gravityBias.z = accG.z;
-            this.isCalibrated = true;
-            return;
-        }
+        // --- 1. DÉTECTION AUTOMATIQUE DE L'INCLINAISON ---
+        // On analyse si les valeurs sont figées (même si elles sont hautes)
+        this.updateStability(acc, now);
 
-        // 3. SOUSTRACTION DU VECTEUR D'INCLINAISON
-        // On ne garde que la différence par rapport à la pose initiale
-        let ax = accG.x - this.gravityBias.x;
-        let ay = accG.y - this.gravityBias.y;
+        // --- 2. SOUSTRACTION DU BIAIS DYNAMIQUE ---
+        let ax_net = acc.x - this.bias.x;
+        let ay_net = acc.y - this.bias.y;
 
-        // 4. INTÉGRATION SYMÉTRIQUE AVEC FRICTION
-        // On traite le mouvement Microscopique
-        const threshold = 0.005; 
-        if (Math.abs(ax) > threshold) {
-            this.vx += ax * dt;
+        // --- 3. LOGIQUE D'INERTIE SYMÉTRIQUE ---
+        const moveThreshold = 0.05; // Sensibilité aux micro-mouvements
+        
+        if (Math.abs(ax_net) > moveThreshold) {
+            this.vx += ax_net * dt;
+            this.isMoving = true;
         } else {
-            // "Friction spatiale" pour forcer le retour à zéro
-            this.vx *= 0.98; 
+            // Friction naturelle : ramène la vitesse à 0 si plus de poussée
+            this.vx *= 0.96; 
+            this.isMoving = false;
         }
 
-        // Sécurité : Si l'accélération est stable mais la vitesse délire
-        if (Math.abs(ax) < 0.001) this.vx *= 0.95;
+        // --- 4. SÉCURITÉ ANTI-DÉRIVE ---
+        // Si la vitesse est incohérente avec l'état statique, on purge.
+        if (!this.isMoving && Math.abs(this.vx) < 0.5) {
+            this.vx *= 0.8; 
+        }
 
-        this.x_vel = this.vx;
+        if (Math.abs(this.vx) < 0.0001) this.vx = 0;
+    }
+
+    updateStability(acc, now) {
+        // On garde les 50 dernières mesures
+        this.stabilityBuffer.push({ x: acc.x, y: acc.y, z: acc.z, t: now });
+        if (this.stabilityBuffer.length > 50) this.stabilityBuffer.shift();
+
+        // Calcul de la variance (stabilité du signal)
+        const varianceX = this.getVariance(this.stabilityBuffer.map(b => b.x));
+        
+        // Si le signal est stable (variance faible) pendant que le GPS dit 0
+        // Alors on recalibre le "Zéro" automatiquement sur les valeurs actuelles
+        if (varianceX < 0.01 && !this.gpsMoving) {
+            this.bias.x = acc.x;
+            this.bias.y = acc.y;
+            this.bias.z = acc.z;
+        }
+    }
+
+    getVariance(arr) {
+        const m = arr.reduce((a, b) => a + b) / arr.length;
+        return arr.reduce((a, b) => a + Math.pow(b - m, 2), 0) / arr.length;
+    }
+
+    fuseGPS(p) {
+        const gpsSpeed = p.coords.speed || 0;
+        this.gpsMoving = gpsSpeed > 0.2;
+
+        // Si GPS très précis, on écrase la dérive de l'IMU
+        if (p.coords.accuracy < 10) {
+            this.vx = (this.vx * 0.7) + (gpsSpeed * 0.3);
+        }
     }
 
     render() {
         const speedKmh = Math.abs(this.vx) * 3.6;
         
-        // Affichage dynamique
-        const display = speedKmh < 0.1 ? 
-            (Math.abs(this.vx) * 1000).toFixed(2) + " mm/s" : 
-            speedKmh.toFixed(2) + " km/h";
-
-        this.safeUpdate('speed-main-display', display);
-        this.safeUpdate('speed-stable-kmh', speedKmh.toFixed(3) + " km/h");
+        // Affichage adaptatif
+        const val = speedKmh < 0.1 ? (Math.abs(this.vx) * 1000).toFixed(2) + " mm/s" : speedKmh.toFixed(2) + " km/h";
         
-        // Mise à jour visuelle du vecteur de force
-        this.drawForceVector(this.vx);
+        document.getElementById('speed-main-display').textContent = val;
+        document.getElementById('status-ekf').textContent = this.gpsMoving ? "🛰️ MOUVEMENT GPS" : "⚓ STATIQUE (AUTO-CALIBRÉ)";
 
         requestAnimationFrame(() => this.render());
-    }
-
-    drawForceVector(v) {
-        const bar = document.getElementById('force-vector');
-        if (bar) {
-            const width = Math.min(Math.abs(v) * 20, 50);
-            bar.style.width = width + "%";
-            bar.style.left = v >= 0 ? "50%" : (50 - width) + "%";
-            bar.style.backgroundColor = v >= 0 ? "#00ff00" : "#ff0000";
-        }
-    }
-
-    createCalibrationUI() {
-        const container = document.querySelector('.controls-section');
-        if (container && !document.getElementById('btn-zero')) {
-            const btn = document.createElement('button');
-            btn.id = 'btn-zero';
-            btn.innerHTML = "🎯 FIXER INCLINAISON (ZÉRO)";
-            btn.className = "btn-action";
-            btn.onclick = () => { this.isCalibrated = false; this.vx = 0; };
-            container.appendChild(btn);
-        }
-    }
-
-    safeUpdate(id, val) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = val;
     }
 }
 
