@@ -83,7 +83,7 @@
             // ZUPT (Zero-Velocity Update) : Stabilité à l'arrêt
             if (nax === 0 && Math.abs(gyro.alpha || 0) < 0.1) {
                 vx *= 0.98; // Ralentissement fluide vers le zéro réel
-                if (Math.abs(vx) < 0.05) vx = 0;
+                if (Math.abs(vx) < 0.001) vx = 0;
             }
 
             this.x.set([3, 0], vx);
