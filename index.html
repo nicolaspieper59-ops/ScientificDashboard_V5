@@ -131,7 +131,7 @@
     border-radius: 50%;
     position: relative;
     transform-style: preserve-3d;
-    transition: transform 0.1s ease-out; /* Pour la fluidité du mouvement */
+    transition: transform 0.1s ease-out; 
     background: radial-gradient(circle at 30% 30%, #2c3e50, #000);
     box-shadow: 0 0 50px rgba(0, 123, 255, 0.4), inset 0 0 30px rgba(0, 123, 255, 0.2);
     border: 1px solid rgba(0, 123, 255, 0.3);
@@ -238,10 +238,13 @@
             
             <section class="panel" aria-labelledby="env-sensors-heading">
                 <h2 id="env-sensors-heading"><i class="fas fa-camera-retro"></i> Capteurs Environnementaux </h2>
-                <div class="data-point"><span>Lumière Ambiante (Lux)</span><span id="ambient-light">N/A</span></div>
+                <div class="data-point"><span>Luminosité (Lux/Poche)</span><span id="env-lux">N/A</span></div>
+                <div class="data-point"><span>Lumière Ambiante (API)</span><span id="ambient-light">N/A</span></div>
                 <div class="data-point"><span>Lumière (Max)</span><span id="ambient-light-max">0 Lux</span></div>
+                <div class="data-point"><span>Niveau Sonore / Vibration</span><span id="env-noise">N/A</span></div>
                 <div class="data-point"><span>Niveau Sonore (dB)</span><span id="sound-level">N/A</span></div>
                 <div class="data-point"><span>Son (Max)</span><span id="sound-level-max">0 dB</span></div>
+                <div class="data-point"><span>Statut Thermique CPU</span><span id="status-thermal">STABLE</span></div>
             </section>
         </div>
 
@@ -271,7 +274,9 @@
                 
                 <hr>
                 <h3>Distance (3D)</h3>
-                <div class="data-point"><span>Distance Totale (3D)</span><span id="total-distance">0.000 km | 0.00 m</span></div> <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">1.000</span></div>
+                <div class="data-point"><span>Distance Totale (3D)</span><span id="total-distance">0.000 km | 0.00 m</span></div>
+                <div class="data-point"><span>Distance 3D Précise (UKF)</span><span id="total-distance-3d">0.0000 km</span></div>
+                <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">1.000</span></div>
                 <span id="nether-mode-status" style="display:none;">1.000</span>
                 
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">0.00e+00 s</span></div>
@@ -328,7 +333,7 @@
                 <div class="data-point"><span>Gravité Locale (g)</span><span id="local-gravity">N/A</span></div>                 
                 <div class="data-point"><span>Force G (Long.)</span><span id="force-g-long">N/A</span></div>
                 <div class="data-point"><span>Accélération Long.</span><span id="accel-long">N/A</span></div> <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vertical-speed">N/A</span></div>
-                <div class="data-point"><span>Accel. Verticale (IMU)</span><span id="acceleration-vert-imu">N/A</span></div>
+                <div class="data-point"><span>Accel. Verticale (IMU)</span><span id="accel-verticale-imu">N/A</span></div>
                 <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">N/A</span></div>
                 <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">N/A</span></div>
                 <hr>
@@ -356,15 +361,14 @@
                         <option value="STABLE">Microscopique (x2.5)</option>
                     </select>
                 </div>
-                <div class="data-point"><span>Statut GPS (Acquisition)</span><span id="gps-status">N/A</span></div> <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ukf-status">N/A</span></div> <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="ukf-velocity-uncertainty">N/A</span></div> <div class="data-point"><span>Incertitude Alt. (σ)</span><span id="ukf-alt-uncertainty">N/A</span></div> <div class="data-point"><span>Bruit Mesure Vitesse (R)</span><span id="ukf-r-noise">N/A</span></div>
+                <div class="data-point"><span>Statut GPS (Acquisition)</span><span id="gps-status">N/A</span></div> 
+                <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ukf-status">N/A</span></div> 
+                <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="ukf-velocity-uncertainty">N/A</span></div> 
+                <div class="data-point"><span>Incertitude Alt. (σ)</span><span id="ukf-alt-uncertainty">N/A</span></div> 
+                <div class="data-point"><span>Bruit Mesure Vitesse (R)</span><span id="ukf-r-noise">N/A</span></div>
                 <div class="data-point"><span>Bande Passante (Nyquist)</span><span id="bande-passante">N/A</span></div>
-                <div class="data-point"><span>Forcer Précision GPS</span><span id="gps-accuracy-display">0.000000 m</span></div>
-                <div class="data-point"><span>Statut Physique</span><span id="status-physique">En attente...</span>
-                <div class="data-point"><span>Mode Dynamique :</span><span id="status-physique" style="color: #00ff00;">Initialisation...</span>    
-                <div class="data-point"><span>Fréquence d'Échantillonnage :</span><span id="nyquist-limit">-- Hz</span>
-                <div class="data-point"><span>Fréquence Capteurs</span><span id="nyquist-limit">0 Hz</span>
-                </div>  
-                    
+                <div class="data-point"><span>Mode Dynamique Master</span><span id="status-physique" style="color: #00ff00;">Initialisation...</span></div>    
+                <div class="data-point"><span>Fréquence d'Échantillonnage</span><span id="nyquist-limit">-- Hz</span></div>
             </section>
 
             <section class="panel" aria-labelledby="bubble-heading">
@@ -430,7 +434,6 @@
     <script>
         if (typeof math === 'undefined') {
             console.error("⛔ ÉCHEC CRITIQUE: math.min.js n'a pas réussi à définir l'objet 'math' !");
-            // Arrêter l'exécution du reste du code si possible
             window.ukfFailedToLoad = true; 
         } else {
             console.log("✅ math.js est défini et prêt.");
@@ -440,8 +443,11 @@
     <script src="vendor/leaflet.js"></script>
     <script src="vendor/turf.min.js"></script>
 
-    <script src="lib/ukf-class.js"></script>      
+    <script src="lib/ukf-master.js"></script>      
     <script src="lib/ephem.js"></script>
     <script src="lib/astro.js"></script>
 
     <script src="gnss-dashboard-full.js"></script>
+
+</body>
+                                                                                                                               </html>
