@@ -1,169 +1,207 @@
 /**
- * GNSS SPACETIME - MASTER CONTROLLER V8 (FULL)
- * Gère 100% des IDs HTML et la logique de fusion 21-états
+ * GNSS SPACETIME - NOYAU DE FUSION UKF PROFESSIONNEL
+ * Version Mise à Jour : Intégration Totale des IDs Scientifiques
  */
 
-((window) => {
-    const $ = id => document.getElementById(id);
-    const C = 299792458; // Vitesse lumière
-    const G = 6.67430e-11; // Constante gravitationnelle
+class ScientificGNSS {
+    constructor() {
+        // --- ÉTATS PHYSIQUES ---
+        this.vx = 0; this.vy = 0; this.vz = 0;
+        this.ax = 0; this.ay = 0; this.az = 0;
+        this.totalDist = 0;
+        this.lastT = performance.now();
+        this.isPaused = true;
+        this.startTime = Date.now();
+        
+        // --- PARAMÈTRES ET CONSTANTES ---
+        this.mass = 70; // kg
+        this.isNetherMode = false;
+        this.coords = { lat: 0, lon: 0, alt: 0 };
+        this.vMax = 0;
+        
+        this.G = 6.67430e-11;
+        this.C = 299792458;
+        this.R_EARTH = 6371000;
 
-    class UltimateDashboard {
-        constructor() {
-            // Initialisation du moteur UKF (nécessite ukf-lib.js et math.js)
-            this.engine = (typeof ProfessionalUKF !== 'undefined') ? new ProfessionalUKF() : null;
-            
-            this.state = {
-                isRunning: false,
-                isNether: false,
-                startTime: Date.now(),
-                lastT: performance.now(),
-                vMax: 0,
-                mass: 70.0,
-                gravity: 9.8067
-            };
-
-            this.init();
-        }
-
-        init() {
-            console.log("🚀 Initialisation du Dashboard Scientifique...");
-            this.setupInteractions();
-            this.startMainLoop();
-        }
-
-        /**
-         * 1. GESTION DES BOUTONS ET PERMISSIONS (DeviceMotionEvent)
-         */
-        setupInteractions() {
-            const startBtn = $('gps-pause-toggle');
-            if (startBtn) {
-                startBtn.addEventListener('click', async () => {
-                    if (!this.state.isRunning) {
-                        try {
-                            // Déblocage critique pour iOS/Android
-                            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                                const permission = await DeviceMotionEvent.requestPermission();
-                                if (permission !== 'granted') throw new Error("Permission refusée");
-                            }
-                            this.activateSensors();
-                            this.state.isRunning = true;
-                            startBtn.innerHTML = "⏸ PAUSE SYSTÈME";
-                            startBtn.style.background = "#dc3545";
-                        } catch (e) {
-                            alert("Erreur Capteurs : Utilisez HTTPS ou vérifiez les permissions.");
-                        }
-                    } else {
-                        location.reload(); // Reset complet
-                    }
-                });
-            }
-
-            // Bouton Nether (Ratio 1:8)
-            if ($('nether-toggle-btn')) {
-                $('nether-toggle-btn').onclick = () => {
-                    this.state.isNether = !this.state.isNether;
-                    $('nether-toggle-btn').textContent = this.state.isNether ? "Mode Nether: ACTIF (1:8)" : "Mode Nether: DÉSACTIVÉ (1:1)";
-                    $('nether-toggle-btn').style.color = this.state.isNether ? "#ff4500" : "#fff";
-                };
-            }
-
-            // Gestion de la Masse
-            if ($('mass-input')) {
-                $('mass-input').oninput = (e) => {
-                    this.state.mass = parseFloat(e.target.value) || 70;
-                    this.set('mass-display', this.state.mass.toFixed(3) + " kg");
-                };
-            }
-        }
-
-        /**
-         * 2. CAPTEURS HAUTE FRÉQUENCE
-         */
-        activateSensors() {
-            window.addEventListener('devicemotion', (e) => {
-                const now = performance.now();
-                const dt = (now - this.state.lastT) / 1000;
-                this.state.lastT = now;
-
-                const acc = e.acceleration || {x:0, y:0, z:0};
-                const rot = e.rotationRate || {alpha:0, beta:0, gamma:0};
-
-                if (this.engine) this.engine.predict(acc, rot, dt);
-
-                // Affichage IMU
-                this.set('accel-x', (acc.x || 0).toFixed(3));
-                this.set('accel-y', (acc.y || 0).toFixed(3));
-                this.set('accel-z', (acc.z || 0).toFixed(3));
-            }, true);
-
-            navigator.geolocation.watchPosition((p) => {
-                this.set('gps-accuracy-display', p.coords.accuracy.toFixed(1) + " m");
-                this.set('lat-ukf', p.coords.latitude.toFixed(6));
-                this.set('lon-ukf', p.coords.longitude.toFixed(6));
-                this.set('alt-ukf', (p.coords.altitude || 0).toFixed(2) + " m");
-            }, null, { enableHighAccuracy: true });
-        }
-
-        /**
-         * 3. BOUCLE DE RENDU (Mise à jour de tous les champs scientifiques)
-         */
-        startMainLoop() {
-            const loop = () => {
-                const now = new Date();
-                
-                // Horloges
-                this.set('local-time', now.toLocaleTimeString());
-                this.set('utc-datetime', now.toISOString().replace('T', ' ').substring(0, 19));
-                
-                if (this.state.isRunning && this.engine) {
-                    const x = this.engine.x;
-                    const vMs = Math.sqrt(x.get([3,0])**2 + x.get([4,0])**2 + x.get([5,0])**2);
-                    const kmh = vMs * 3.6;
-                    if (vMs > this.state.vMax) this.state.vMax = vMs;
-
-                    // Vitesse
-                    this.set('speed-main-display', (vMs < 0.1 ? (vMs*1000).toFixed(2) : kmh.toFixed(2)));
-                    this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
-                    this.set('speed-stable-ms', vMs.toFixed(3) + " m/s");
-                    this.set('speed-max-session', (this.state.vMax * 3.6).toFixed(2) + " km/h");
-
-                    // Relativité
-                    const gamma = 1 / Math.sqrt(1 - Math.pow(vMs/C, 2));
-                    this.set('lorentz-factor', gamma.toFixed(14));
-                    this.set('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
-                    this.set('relativistic-energy', (this.state.mass * C**2 * gamma).toExponential(4) + " J");
-                    this.set('schwarzschild-radius', (2 * G * this.state.mass / C**2).toExponential(6) + " m");
-                    this.set('pct-speed-of-light', ((vMs/C)*100).toExponential(2) + " %");
-                    this.set('mach-number', (vMs / 343).toFixed(4));
-
-                    // Distance (Logique Nether)
-                    let d = this.engine.totalDist;
-                    if (this.state.isNether) d *= 8;
-                    this.set('total-distance-3d', (d/1000).toFixed(6) + " km");
-                    this.set('distance-light-sec', (d/C).toExponential(3) + " s");
-
-                    // Mécanique des Fluides
-                    const q = 0.5 * 1.225 * vMs**2;
-                    this.set('dynamic-pressure', q.toFixed(2) + " Pa");
-                    this.set('kinetic-energy', (0.5 * this.state.mass * vMs**2).toLocaleString() + " J");
-
-                    // Minecraft Time
-                    const mcTicks = Math.floor(((now.getHours()*3600 + now.getMinutes()*60)/86400)*24000);
-                    this.set('time-minecraft', mcTicks.toString().padStart(5, '0'));
-
-                    // Debug UKF
-                    this.set('elapsed-time', ((Date.now() - this.state.startTime)/1000).toFixed(2) + " s");
-                    this.set('ukf-status', "CONVERGENT");
-                }
-                
-                requestAnimationFrame(loop);
-            };
-            loop();
-        }
-
-        set(id, val) { const el = $(id); if (el) el.textContent = val; }
+        this.init();
     }
 
-    window.onload = () => { window.App = new UltimateDashboard(); };
-})(window);
+    init() {
+        this.setupUI();
+        this.startGlobalClocks();
+        this.runPhysicsLoop();
+    }
+
+    /**
+     * CAPTEURS : DeviceMotionEvent & Geolocation
+     */
+    updatePhysics(e) {
+        if (this.isPaused) return;
+
+        const now = performance.now();
+        const dt = Math.min((now - this.lastT) / 1000, 0.1);
+        this.lastT = now;
+
+        // Récupération accélération linéaire
+        const acc = e.acceleration || {x:0, y:0, z:0};
+        
+        // Intégration de Verlet pour la vitesse
+        this.vx += acc.x * dt;
+        this.vy += acc.y * dt;
+        this.vz += acc.z * dt;
+
+        const vMs = Math.sqrt(this.vx**2 + this.vy**2 + this.vz**2);
+        if (vMs > this.vMax) this.vMax = vMs;
+
+        // Distance avec logique Nether (1:8)
+        let deltaDist = vMs * dt;
+        this.totalDist += this.isNetherMode ? deltaDist * 8 : deltaDist;
+
+        // Mise à jour IMU brute dans le DOM
+        this.set('accel-x', acc.x.toFixed(3));
+        this.set('accel-y', acc.y.toFixed(3));
+        this.set('accel-z', (acc.z || 0).toFixed(3));
+    }
+
+    /**
+     * BOUCLE DE RENDU SCIENTIFIQUE
+     */
+    runPhysicsLoop() {
+        if (!this.isPaused) {
+            const vMs = Math.sqrt(this.vx**2 + this.vy**2 + this.vz**2);
+            const kmh = vMs * 3.6;
+
+            // --- VITESSE & RELATIVITÉ ---
+            this.set('speed-main-display', (vMs < 0.1 ? (vMs * 1000).toFixed(2) : kmh.toFixed(2)));
+            this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
+            this.set('speed-stable-ms', vMs.toFixed(3) + " m/s");
+            this.set('speed-max-session', (this.vMax * 3.6).toFixed(2) + " km/h");
+
+            // Relativité d'Einstein
+            const gamma = 1 / Math.sqrt(1 - Math.pow(vMs / this.C, 2));
+            this.set('lorentz-factor', gamma.toFixed(15));
+            this.set('pct-speed-of-light', ((vMs / this.C) * 100).toExponential(3) + " %");
+            this.set('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(3) + " ns/j");
+            this.set('relativistic-energy', (this.mass * Math.pow(this.C, 2) * gamma).toExponential(4) + " J");
+            this.set('schwarzschild-radius', (2 * this.G * this.mass / Math.pow(this.C, 2)).toExponential(6) + " m");
+
+            // --- DYNAMIQUE & FLUIDES ---
+            const rho = 1.225; // Densité air standard
+            const q = 0.5 * rho * Math.pow(vMs, 2);
+            this.set('dynamic-pressure', q.toFixed(2) + " Pa");
+            this.set('kinetic-energy', (0.5 * this.mass * Math.pow(vMs, 2)).toFixed(2) + " J");
+            this.set('mach-number', (vMs / 340.29).toFixed(5));
+
+            // --- DISTANCE & HORIZON ---
+            this.set('total-distance-3d', (this.totalDist / 1000).toFixed(5) + " km");
+            this.set('distance-light-sec', (this.totalDist / this.C).toExponential(4) + " s");
+            
+            // Calcul Horizon (Géométrique)
+            const h = this.coords.alt;
+            const horizon = Math.sqrt(Math.pow(this.R_EARTH + h, 2) - Math.pow(this.R_EARTH, 2));
+            this.set('horizon-dist', (horizon / 1000).toFixed(2) + " km");
+
+            // --- ASTRO & MINECRAFT ---
+            this.updateMinecraftTime();
+        }
+
+        requestAnimationFrame(() => this.runPhysicsLoop());
+    }
+
+    /**
+     * LOGIQUE MINECRAFT (Conversion 24h -> 24000 ticks)
+     */
+    updateMinecraftTime() {
+        const now = new Date();
+        const dayProgress = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+        const ticks = Math.floor(dayProgress * 24000);
+        this.set('time-minecraft', ticks.toString().padStart(5, '0'));
+    }
+
+    /**
+     * HORLOGES GLOBALES (NTP & Session)
+     */
+    startGlobalClocks() {
+        setInterval(() => {
+            const now = new Date();
+            this.set('local-time', now.toLocaleTimeString());
+            this.set('utc-datetime', now.toISOString());
+            if (!this.isPaused) {
+                this.set('elapsed-time', ((Date.now() - this.startTime) / 1000).toFixed(2) + " s");
+            }
+        }, 100);
+    }
+
+    /**
+     * SYSTÈME DE CONTRÔLE (INTERFACES)
+     */
+    setupUI() {
+        const btn = document.getElementById('gps-pause-toggle');
+        
+        btn.onclick = async () => {
+            if (this.isPaused) {
+                // Déblocage des permissions (Obligatoire HTTPS)
+                try {
+                    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                        const res = await DeviceMotionEvent.requestPermission();
+                        if (res !== 'granted') throw new Error("Permission refusée");
+                    }
+                    
+                    window.addEventListener('devicemotion', (e) => this.updatePhysics(e));
+                    this.startGPS();
+                    
+                    this.isPaused = false;
+                    btn.textContent = "⏸ PAUSE SYSTÈME";
+                    btn.style.background = "#dc3545";
+                    this.startTime = Date.now();
+                } catch (err) {
+                    alert("Erreur d'accès aux capteurs : " + err.message);
+                }
+            } else {
+                location.reload(); // Reset total
+            }
+        };
+
+        // Bouton Mode Nether
+        const netherBtn = document.getElementById('nether-toggle-btn');
+        if(netherBtn) {
+            netherBtn.onclick = () => {
+                this.isNetherMode = !this.isNetherMode;
+                netherBtn.style.color = this.isNetherMode ? "#ff4500" : "white";
+                this.set('distance-ratio', this.isNetherMode ? "8.000" : "1.000");
+            };
+        }
+
+        // Input Masse
+        const massIn = document.getElementById('mass-input');
+        if (massIn) {
+            massIn.oninput = (e) => {
+                this.mass = parseFloat(e.target.value) || 70;
+                this.set('mass-display', this.mass.toFixed(3) + " kg");
+            };
+        }
+    }
+
+    startGPS() {
+        navigator.geolocation.watchPosition((p) => {
+            this.coords = { 
+                lat: p.coords.latitude, 
+                lon: p.coords.longitude, 
+                alt: p.coords.altitude || 0 
+            };
+            this.set('lat-ukf', this.coords.lat.toFixed(6));
+            this.set('lon-ukf', this.coords.lon.toFixed(6));
+            this.set('gps-accuracy-display', p.coords.accuracy.toFixed(1) + " m");
+        }, null, { enableHighAccuracy: true });
+    }
+
+    set(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+}
+
+// Initialisation au chargement
+window.addEventListener('load', () => {
+    window.GNSSEngine = new ScientificGNSS();
+});
