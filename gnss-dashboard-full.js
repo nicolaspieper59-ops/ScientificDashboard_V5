@@ -1,150 +1,146 @@
 /**
- * GNSS SPACETIME - MOTEUR DE FUSION MONOLITHIQUE 21 ÉTATS
- * Spécial : Stabilité en Rotation Haute Fréquence (Saltos/Pivots)
+ * GNSS SPACETIME - MAIN CONTROLLER (FINAL MASTER)
+ * Liaison entre l'UKF 21-états, l'Astro-physique et l'UI
  */
 
 ((window) => {
     const $ = id => document.getElementById(id);
-    const C = 299792458;
 
-    class ProfessionalUKF21 {
+    class MainController {
         constructor() {
-            // --- VECTEUR D'ÉTAT 21 ÉTATS (ESKF) ---
-            // [0-2] Pos, [3-5] Vel, [6-9] Quat, [10-12] AccBias, [13-15] GyroBias, [16-18] Mag, [19-20] Clock
-            this.x = math.matrix(math.zeros([21, 1]));
-            this.x.set([6, 0], 1); // Quaternion Neutre
-            this.P = math.multiply(math.identity(21), 0.01); // Covariance
+            // 1. Initialisation du moteur de fusion défini dans ukf-lib.js
+            this.engine = new window.ProfessionalUKF();
             
-            this.isRunning = false;
-            this.isCalibrating = true;
-            this.calibSamples = [];
-            this.lastT = performance.now();
-            this.totalDist = 0;
-            this.vMax = 0;
-
-            // Paramètres Environnement (Source: index 22)
-            this.mass = 70.0;
-            this.coords = { lat: 48.8566, lon: 2.3522, alt: 0 }; // Default
+            this.uiUpdateRate = 60; // fps
+            this.isTracking = false;
             
             this.init();
         }
 
         init() {
-            this.setupUI();
-            this.runScientificLoop();
+            console.log("💎 Dashboard Principal : Prêt pour le déploiement scientifique.");
+            this.bindControls();
+            this.startUIRenderLoop();
         }
 
-        // --- GESTION DES MOUVEMENTS EXTRÊMES (SALTOS) ---
-        processMotion(e) {
-            if (!this.isRunning) return;
-
-            const now = performance.now();
-            const dt = Math.min((now - this.lastT) / 1000, 0.05);
-            this.lastT = now;
-
-            const acc = e.acceleration || { x: 0, y: 0, z: 0 };
-            const gyro = e.rotationRate || { alpha: 0, beta: 0, gamma: 0 };
-
-            if (this.isCalibrating) {
-                this.doCalibration(acc, gyro);
-                return;
+        /**
+         * ÉCOUTEURS D'ÉVÉNEMENTS (CONTRÔLES UI)
+         */
+        bindControls() {
+            const startBtn = $('gps-pause-toggle');
+            if (startBtn) {
+                startBtn.onclick = async () => {
+                    if (!this.isTracking) {
+                        await this.requestPermissions();
+                        this.startSensors();
+                        this.isTracking = true;
+                        startBtn.textContent = "⏸ PAUSE SYSTÈME";
+                        startBtn.style.background = "var(--danger)";
+                    } else {
+                        location.reload(); // Hard Reset pour sécurité scientifique
+                    }
+                };
             }
 
-            // 1. DÉTECTION DE ROTATION CRITIQUE (Anti-Explosion)
-            // Si la rotation (salto) dépasse 300°/s, on ignore l'accélération linéaire
-            const rotationMagnitude = Math.sqrt(gyro.alpha**2 + gyro.beta**2 + gyro.gamma**2);
-            let isSpinning = rotationMagnitude > 300; 
+            // Mise à jour de la masse en temps réel
+            if ($('mass-input')) {
+                $('mass-input').oninput = (e) => {
+                    this.engine.mass = parseFloat(e.target.value) || 70.0;
+                    if($('mass-display')) $('mass-display').textContent = this.engine.mass.toFixed(2) + " kg";
+                };
+            }
+        }
 
-            // 2. FILTRE DE BIAIS DYNAMIQUE (21 ÉTATS)
-            let nax = acc.x - this.x.get([10, 0]);
-            let nay = acc.y - this.x.get([11, 0]);
-            let naz = acc.z - this.x.get([12, 0]);
+        async requestPermissions() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                await DeviceMotionEvent.requestPermission();
+            }
+        }
 
-            // 3. INTÉGRATION NEWTONIENNE (Sans friction, symétrie pure)
-            // On n'intègre que si le mouvement n'est pas une pure rotation centrifuge
-            if (!isSpinning) {
-                const vx = this.x.get([3, 0]) + (nax * dt);
-                const vy = this.x.get([4, 0]) + (nay * dt);
-                const vz = this.x.get([5, 0]) + (naz * dt);
+        startSensors() {
+            // A. Accéléromètre & Gyroscope (Fusion IMU)
+            window.addEventListener('devicemotion', (e) => {
+                const now = performance.now();
+                const dt = (now - this.engine.lastT) / 1000;
                 
-                this.x.set([3, 0], vx);
-                this.x.set([4, 0], vy);
-                this.x.set([5, 0], vz);
-            }
+                // Appel du moteur de prédiction (UKF)
+                this.engine.predict(
+                    e.acceleration || {x:0, y:0, z:0}, 
+                    e.rotationRate || {alpha:0, beta:0, gamma:0},
+                    dt
+                );
+            });
 
-            // 4. STABILISATION (ZUPT)
-            const vMs = Math.sqrt(this.x.get([3, 0])**2 + this.x.get([4, 0])**2);
-            if (vMs < 0.05 && !isSpinning) {
-                this.x.set([3, 0], 0); this.x.set([4, 0], 0);
-            }
-
-            this.totalDist += (vMs * dt);
-            if (vMs > this.vMax) this.vMax = vMs;
+            // B. GPS (Correction de position)
+            navigator.geolocation.watchPosition((pos) => {
+                // Ici, on injecterait la mesure GPS dans l'UKF (Update step)
+                // Pour l'instant, on met à jour les coordonnées du moteur
+                this.engine.coords.lat = pos.coords.latitude;
+                this.engine.coords.lon = pos.coords.longitude;
+                this.engine.coords.alt = pos.coords.altitude || 0;
+                
+                if($('gps-accuracy-display')) $('gps-accuracy-display').textContent = pos.coords.accuracy.toFixed(1) + " m";
+            }, null, { enableHighAccuracy: true });
         }
 
-        doCalibration(acc, gyro) {
-            if (this.calibSamples.length < 200) {
-                this.calibSamples.push({ acc, gyro });
-                this.set('status-physique', `CALIBRAGE UKF... ${Math.round(this.calibSamples.length/2)}%`);
-                return;
-            }
-            const avgAx = this.calibSamples.reduce((a, b) => a + b.acc.x, 0) / 200;
-            const avgAy = this.calibSamples.reduce((a, b) => a + b.acc.y, 0) / 200;
-            this.x.set([10, 0], avgAx); // Stockage dans le vecteur d'état
-            this.x.set([11, 0], avgAy);
-            this.isCalibrating = false;
-            this.set('status-physique', "21-ÉTATS STABLE");
-        }
-
-        runScientificLoop() {
-            const update = () => {
-                const vx = this.x.get([3, 0]);
-                const vy = this.x.get([4, 0]);
-                const vMs = Math.sqrt(vx**2 + vy**2);
+        /**
+         * BOUCLE DE RENDU VISUEL (60 FPS)
+         */
+        startUIRenderLoop() {
+            const render = () => {
+                const x = this.engine.x;
+                const rel = this.engine.getRelativityData();
+                
+                // --- VITESSE & PHYSIQUE ---
+                const vx = x.get([3, 0]), vy = x.get([4, 0]), vz = x.get([5, 0]);
+                const vMs = Math.sqrt(vx**2 + vy**2 + vz**2);
                 const kmh = vMs * 3.6;
 
-                // Relativité (Source: ukf-class 11)
-                const gamma = 1 / Math.sqrt(1 - Math.pow(vMs/C, 2));
-                this.set('lorentz-factor', gamma.toFixed(15));
-                this.set('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(3) + " ns/j");
-
-                // Astronomie (Liaison astro.js)
-                if (window.calculateAstroDataHighPrec) {
-                    const astro = window.calculateAstroDataHighPrec(new Date(), this.coords.lat, this.coords.lon);
-                    this.set('sun-altitude', (astro.sun.altitude * 57.3).toFixed(2) + "°");
-                    this.set('moon-phase-name', window.getMoonPhaseName(astro.moon.illumination.phase));
-                    this.set('tst-time', astro.TST_HRS);
-                }
-
-                // Dashboard principal
-                this.set('speed-main-display', kmh.toFixed(2));
-                this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
-                this.set('total-distance-3d', (this.totalDist / 1000).toFixed(4) + " km");
-                this.set('incertitude-vitesse-p', this.P.get([3, 3]).toExponential(2));
-                this.set('schwarzschild-radius', (2 * 6.674e-11 * this.mass / C**2).toExponential(4));
-
-                requestAnimationFrame(update);
-            };
-            update();
-        }
-
-        setupUI() {
-            $('gps-pause-toggle').onclick = async () => {
-                if (!this.isRunning) {
-                    if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                        await DeviceMotionEvent.requestPermission();
-                    }
-                    window.addEventListener('devicemotion', (e) => this.processMotion(e));
-                    this.isRunning = true;
-                    $('gps-pause-toggle').textContent = "⏸ PAUSE SYSTÈME";
+                // Affichage intelligent (micro vs macro)
+                if (vMs < 0.05) { // Moins de 5cm/s
+                    this.set('speed-main-display', (vMs * 1000).toFixed(2));
+                    this.set('speed-status-text', "DÉTECTION SUB-MM (mm/s)");
                 } else {
-                    location.reload();
+                    this.set('speed-main-display', kmh.toFixed(2));
+                    this.set('speed-status-text', "VITESSE DE CROISIÈRE (km/h)");
                 }
+
+                this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
+                this.set('vertical-speed', vz.toFixed(2) + " m/s");
+                this.set('total-distance-3d', (this.engine.totalDist / 1000).toFixed(6) + " km");
+
+                // --- RELATIVITÉ ---
+                this.set('lorentz-factor', rel.gamma.toFixed(15));
+                this.set('time-dilation-vitesse', rel.dilation.toFixed(4) + " ns/j");
+                this.set('relativistic-energy', rel.energy.toExponential(3) + " J");
+                this.set('schwarzschild-radius', rel.schwarzschild.toExponential(5) + " m");
+
+                // --- ASTRONOMIE (Si astro.js est chargé) ---
+                if (window.calculateAstroDataHighPrec) {
+                    const astro = window.calculateAstroDataHighPrec(new Date(), this.engine.coords.lat, this.engine.coords.lon);
+                    this.set('sun-alt', (astro.sun.altitude * 57.29).toFixed(2) + "°");
+                    this.set('moon-phase-name', astro.moon.phaseName || "N/A");
+                    this.set('tst-time', astro.TST_HRS || "--:--");
+                }
+
+                // --- DIAGNOSTIC ---
+                this.set('nyquist-limit', Math.round(1000 / (performance.now() - this.engine.lastT)) + " Hz");
+                this.set('ukf-velocity-uncertainty', this.engine.P.get([3, 3]).toExponential(2));
+
+                requestAnimationFrame(render);
             };
+            render();
         }
 
-        set(id, val) { if($(id)) $(id).textContent = val; }
+        set(id, val) {
+            const el = $(id);
+            if (el) el.textContent = val;
+        }
     }
 
-    window.onload = () => { window.App = new ProfessionalUKF21(); };
+    // Lancement
+    window.addEventListener('load', () => {
+        window.MainApp = new MainController();
+    });
+
 })(window);
