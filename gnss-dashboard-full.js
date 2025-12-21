@@ -127,6 +127,24 @@
                     this.set('incertitude-vitesse-p', Math.sqrt(this.ukf.P.get([3,3])).toExponential(2));
                     this.set('lat-ukf', x.get([0,0]).toFixed(6));
                     this.set('lon-ukf', x.get([1,0]).toFixed(6));
+                    // --- FORCE SPEED UPDATE ---
+runPhysicsLoop() {
+    if (!this.isPaused && this.ukf) {
+        // Extraction des états 3, 4, 5 (Vitesse NED)
+        const vx = this.ukf.x.get([3, 0]); 
+        const vy = this.ukf.x.get([4, 0]);
+        const vz = this.ukf.x.get([5, 0]);
+
+        // Calcul de la norme euclidienne
+        const vMs = Math.sqrt(vx**2 + vy**2 + vz**2);
+        
+        // Mise à jour forcée de l'affichage
+        const kmh = vMs * 3.6;
+        document.getElementById('speed-main-display').textContent = kmh.toFixed(2);
+        document.getElementById('speed-stable-kmh').textContent = kmh.toFixed(3) + " km/h";
+    }
+    requestAnimationFrame(() => this.runPhysicsLoop());
+                        
                 }
                 requestAnimationFrame(loop);
             };
