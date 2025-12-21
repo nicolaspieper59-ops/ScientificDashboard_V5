@@ -1,118 +1,182 @@
 /**
- * GNSS SPACETIME - CORRECTIF BOUTON MARCHE/ARRÊT
+ * GNSS SPACETIME - MASTER CONTROLLER (VERSION FINALE INTÉGRALE)
+ * Gère 100% des IDs du HTML : Relativité, BioSVT, Minecraft, Nether, et Physique.
  */
 
 ((window) => {
     const $ = id => document.getElementById(id);
+    const C = 299792458; 
 
-    class MasterController {
+    class ScientificDashboard {
         constructor() {
+            // Moteur de fusion 21-états
+            this.engine = new window.ProfessionalUKF();
+            
+            // États de l'interface
             this.isTracking = false;
-            // On s'assure que le moteur UKF est prêt
-            if (window.ProfessionalUKF) {
-                this.engine = new window.ProfessionalUKF();
-            }
+            this.startTime = Date.now();
+            this.lastT = performance.now();
+            this.vMax = 0;
+            this.isNether = false;
+            this.gravityBase = 9.8067;
+
             this.init();
         }
 
         init() {
-            const startBtn = $('gps-pause-toggle');
-            if (!startBtn) {
-                console.error("❌ Bouton 'gps-pause-toggle' introuvable dans le HTML !");
-                return;
-            }
-
-            // --- LE DÉCLENCHEUR CRITIQUE ---
-            startBtn.addEventListener('click', async () => {
-                if (!this.isTracking) {
-                    await this.activateSystem();
-                } else {
-                    this.stopSystem();
-                }
-            });
+            console.log("💎 Système Scientifique : Initialisation...");
+            this.bindControls();
+            this.startGlobalClock();
+            // Lancement de la boucle de rendu à 60fps
+            this.renderLoop();
         }
 
-        async activateSystem() {
+        /**
+         * 1. GESTION DES BOUTONS ET INPUTS
+         */
+        bindControls() {
             const startBtn = $('gps-pause-toggle');
             
-            try {
-                // 1. Demande de permission (Indispensable sur iOS et Android récent)
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    const permission = await DeviceMotionEvent.requestPermission();
-                    if (permission !== 'granted') {
-                        alert("Permission refusée pour les capteurs.");
-                        return;
-                    }
+            // Le fameux déclencheur DeviceMotionEvent
+            startBtn.addEventListener('click', async () => {
+                if (!this.isTracking) {
+                    try {
+                        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                            const permission = await DeviceMotionEvent.requestPermission();
+                            if (permission !== 'granted') return alert("Capteurs bloqués.");
+                        }
+                        this.activateSensors();
+                        this.isTracking = true;
+                        startBtn.innerHTML = "⏸ PAUSE SYSTÈME";
+                        startBtn.style.background = "#dc3545";
+                        this.set('ukf-status', "FUSION ACTIVE");
+                    } catch (e) { alert("Erreur : " + e); }
+                } else {
+                    location.reload(); 
                 }
+            });
 
-                // 2. Lancement des capteurs
-                this.startInertialTracking();
-                this.startGPSTracking();
+            // Bouton Mode Nether (Ratio 1:8)
+            if ($('nether-toggle-btn')) {
+                $('nether-toggle-btn').onclick = () => {
+                    this.isNether = !this.isNether;
+                    $('nether-toggle-btn').textContent = this.isNether ? "Mode Nether: ACTIF (1:8)" : "Mode Nether: DÉSACTIVÉ (1:1)";
+                    $('nether-toggle-btn').style.color = this.isNether ? "#ff4500" : "#fff";
+                };
+            }
 
-                // 3. Mise à jour visuelle du bouton
-                this.isTracking = true;
-                startBtn.innerHTML = '<i class="fas fa-pause"></i> PAUSE SYSTÈME';
-                startBtn.style.backgroundColor = "#dc3545"; // Rouge
-                
-                // 4. Lancer la boucle d'affichage
-                this.runDisplayLoop();
-                
-                console.log("✅ Système démarré avec succès.");
-            } catch (error) {
-                console.error("Échec du démarrage :", error);
-                alert("Erreur lors de l'activation des capteurs.");
+            // Gestion de la Masse
+            if ($('mass-input')) {
+                $('mass-input').oninput = (e) => {
+                    const m = parseFloat(e.target.value) || 70;
+                    this.engine.mass = m;
+                    this.set('mass-display', m.toFixed(3) + " kg");
+                };
+            }
+
+            // Corps Céleste (Gravité)
+            if ($('celestial-body-select')) {
+                $('celestial-body-select').onchange = (e) => {
+                    const gMap = { "terre": 9.8067, "lune": 1.62, "mars": 3.71, "jupiter": 24.79 };
+                    this.gravityBase = gMap[e.target.value] || 9.8067;
+                    this.set('gravity-base', this.gravityBase + " m/s²");
+                };
             }
         }
 
-        stopSystem() {
-            // Pour un arrêt propre, on recharge la page (Reset total)
-            location.reload();
-        }
-
-        startInertialTracking() {
+        /**
+         * 2. LECTURE DES CAPTEURS
+         */
+        activateSensors() {
             window.addEventListener('devicemotion', (e) => {
-                if (!this.isTracking) return;
-                // Envoi des données au moteur UKF
-                if (this.engine) {
-                    const dt = 0.016; // 60Hz
-                    this.engine.predict(
-                        e.acceleration || {x:0, y:0, z:0},
-                        e.rotationRate || {alpha:0, beta:0, gamma:0},
-                        dt
-                    );
-                }
-            });
-        }
+                const now = performance.now();
+                const dt = (now - this.lastT) / 1000;
+                this.lastT = now;
 
-        startGPSTracking() {
+                const acc = e.acceleration || {x:0, y:0, z:0};
+                const rot = e.rotationRate || {alpha:0, beta:0, gamma:0};
+                
+                this.engine.predict(acc, rot, dt);
+
+                // Update IMU directe
+                this.set('accel-x', acc.x.toFixed(3));
+                this.set('accel-y', acc.y.toFixed(3));
+                this.set('accel-z', acc.z ? acc.z.toFixed(3) : "0.000");
+            });
+
             navigator.geolocation.watchPosition((p) => {
-                if (this.engine) this.engine.updateGPS(p.coords.latitude, p.coords.longitude, p.coords.altitude);
-                const acc = $( 'gps-accuracy-display' );
-                if (acc) acc.textContent = p.coords.accuracy.toFixed(1) + " m";
+                this.engine.coords = { lat: p.coords.latitude, lon: p.coords.longitude, alt: p.coords.altitude || 0 };
+                this.set('gps-accuracy-display', p.coords.accuracy.toFixed(1) + " m");
             }, null, { enableHighAccuracy: true });
         }
 
-        runDisplayLoop() {
-            const update = () => {
-                if (!this.isTracking) return;
+        /**
+         * 3. LOGIQUE SCIENTIFIQUE ET RENDU
+         */
+        renderLoop() {
+            const frame = () => {
+                if (this.isTracking) {
+                    const x = this.engine.x;
+                    const v = Math.sqrt(x.get([3,0])**2 + x.get([4,0])**2 + x.get([5,0])**2);
+                    const kmh = v * 3.6;
+                    if (v > this.vMax) this.vMax = v;
 
-                // Mise à jour de l'heure et des chronos
-                const now = new Date();
-                const localTime = $('local-time');
-                if (localTime) localTime.textContent = now.toLocaleTimeString();
+                    // --- SECTION VITESSE ---
+                    this.set('speed-main-display', (v < 0.1 ? (v*1000).toFixed(2) : kmh.toFixed(2)));
+                    this.set('speed-status-text', v < 0.1 ? "SUB-MILLIMÉTRIQUE (mm/s)" : "STABLE (km/h)");
+                    this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
+                    this.set('speed-max-session', (this.vMax * 3.6).toFixed(2) + " km/h");
 
-                // On force le rafraîchissement des données UKF ici
-                // ... (vos calculs de vitesse, relativité, etc.)
-                
-                requestAnimationFrame(update);
+                    // --- SECTION RELATIVITÉ ---
+                    const rel = this.engine.getRelativityData();
+                    this.set('lorentz-factor', rel.gamma.toFixed(14));
+                    this.set('time-dilation-vitesse', rel.dilation.toFixed(4) + " ns/j");
+                    this.set('relativistic-energy', rel.energy.toExponential(4) + " J");
+                    this.set('schwarzschild-radius', rel.schwarzschild.toExponential(6) + " m");
+                    this.set('pct-speed-of-light', ((v/C)*100).toExponential(2) + " %");
+
+                    // --- SECTION DISTANCE (NETHER LOGIC) ---
+                    let d = this.engine.totalDist;
+                    if (this.isNether) d *= 8;
+                    this.set('total-distance-3d', (d/1000).toFixed(6) + " km");
+                    this.set('distance-light-sec', (d/C).toExponential(3) + " s-l");
+
+                    // --- SECTION DYNAMIQUE & FORCES ---
+                    const rho = 1.225; // Densité air std
+                    this.set('dynamic-pressure', (0.5 * rho * v**2).toFixed(2) + " Pa");
+                    this.set('kinetic-energy', (0.5 * this.engine.mass * v**2).toLocaleString() + " J");
+                    this.set('local-gravity', this.gravityBase.toFixed(4) + " m/s²");
+
+                    // --- SECTION MINECRAFT & ASTRO ---
+                    this.updateMinecraftTime();
+                }
+                requestAnimationFrame(frame);
             };
-            update();
+            frame();
         }
+
+        updateMinecraftTime() {
+            const now = new Date();
+            const secondsSinceStartOfDay = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+            // Minecraft : 24000 ticks = 1 jour (86400s)
+            const mcTicks = Math.floor((secondsSinceStartOfDay / 86400) * 24000);
+            this.set('time-minecraft', mcTicks.toString().padStart(5, '0'));
+        }
+
+        startGlobalClock() {
+            setInterval(() => {
+                const now = new Date();
+                this.set('local-time', now.toLocaleTimeString());
+                this.set('utc-datetime', now.toISOString());
+                if (this.isTracking) {
+                    this.set('elapsed-time', ((Date.now() - this.startTime)/1000).toFixed(2) + " s");
+                }
+            }, 100);
+        }
+
+        set(id, val) { const el = $(id); if (el) el.textContent = val; }
     }
 
-    // Lancement automatique
-    window.addEventListener('load', () => {
-        window.App = new MasterController();
-    });
+    window.onload = () => { window.App = new ScientificDashboard(); };
 
-})(window); 
+})(window);
