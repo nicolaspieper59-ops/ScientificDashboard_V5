@@ -1,98 +1,98 @@
 /**
- * GNSS SPACETIME - ORCHESTRATEUR FINAL (V102 PRO)
- * Fix : Forçage du bouton et synchronisation par Offset.
+ * GNSS SPACETIME - ORCHESTRATEUR CENTRAL (V105)
+ * Gère la synchronisation 1ms par Offset et le moteur UKF.
  */
 
 (function(window) {
     const $ = id => document.getElementById(id);
 
-    class MasterSystem {
+    class MasterController {
         constructor() {
             this.isRunning = false;
             this.engine = null;
-            this.timeOffset = 0; // Mode autonome
+            this.timeOffset = 0; // Calculé par rapport à l'heure système
             this.init();
         }
 
         init() {
-            console.log("💎 MasterSystem: Initialisation...");
+            console.log("💎 Dashboard Spacetime : Initialisation du Master...");
             
-            // 1. Préparer la carte
+            // 1. Initialisation de la carte Leaflet
+            this.setupMap();
+
+            // 2. Branchement du bouton Marche/Arrêt
+            const btn = $('gps-pause-toggle');
+            if (btn) {
+                // On utilise addEventListener pour ne pas interférer avec d'autres scripts
+                btn.addEventListener('click', (e) => this.toggleSystem(e));
+            }
+
+            // 3. Lancement de la boucle de synchronisation (Haute Fréquence)
+            this.startClockLoop();
+        }
+
+        setupMap() {
             if (typeof L !== 'undefined' && $('map-container')) {
                 this.map = L.map('map-container').setView([43.2965, 5.3698], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
             }
-
-            // 2. Attacher le bouton (On écrase les anciens événements pour éviter les conflits)
-            const btn = $('gps-pause-toggle');
-            if (btn) {
-                btn.onclick = (e) => this.handleStartStop(e);
-            }
-
-            // 3. Lancer la boucle de temps (0.001s)
-            this.startClock();
         }
 
-        async handleStartStop(e) {
-            e.preventDefault();
+        async toggleSystem(e) {
             const btn = $('gps-pause-toggle');
-
             if (!this.isRunning) {
-                console.log("📡 Démarrage du moteur UKF...");
                 try {
-                    // Permission Capteurs (Impératif)
+                    // SÉCURITÉ : Demande de permission pour les capteurs (iOS/Android/Chrome)
                     if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
-                        await DeviceMotionEvent.requestPermission();
+                        const permission = await DeviceMotionEvent.requestPermission();
+                        if (permission !== 'granted') throw new Error("Permission refusée");
                     }
 
-                    // Initialiser le moteur de ukf-class (13).js
-                    if (typeof UltimateUKFEngine !== 'undefined') {
-                        this.engine = new UltimateUKFEngine();
-                        window.AppUKF = this.engine;
-                        
-                        // Forcer l'activation
+                    // INITIALISATION DU MOTEUR
+                    // On vérifie si la classe existe (chargée via ukf-lib.js ou ukf-class.js)
+                    const EngineClass = window.UltimateUKFEngine || window.UKFEngine;
+                    if (EngineClass) {
+                        this.engine = new EngineClass();
+                        window.AppUKF = this.engine; // Pour le debug console
                         this.engine.isRunning = true;
-                        if (this.engine.setupUI) this.engine.setupUI(); 
-                        
-                        this.isRunning = true;
-                        this.startTime = performance.now();
-                        
-                        // UI Update
-                        btn.innerHTML = "🛑 ARRÊT GPS";
-                        btn.style.background = "#dc3545";
-                        btn.style.boxShadow = "0 0 20px rgba(220, 53, 69, 0.6)";
-                    } else {
-                        alert("Erreur: Moteur UKF introuvable. Vérifiez l'ordre des scripts.");
+                        if (this.engine.setupUI) this.engine.setupUI();
                     }
+
+                    this.isRunning = true;
+                    btn.innerHTML = "🛑 ARRÊT GPS";
+                    btn.style.background = "#dc3545";
+                    console.log("📡 Moteur activé : Acquisition GNSS en cours...");
+
                 } catch (err) {
-                    console.error("Échec initialisation:", err);
+                    alert("Erreur d'activation des capteurs : " + err.message);
                 }
             } else {
-                // Reset complet pour éviter les mémoires tampons polluées
+                // Arrêt : On recharge la page pour vider les matrices UKF proprement
                 location.reload();
             }
         }
 
-        startClock() {
+        startClockLoop() {
             const loop = () => {
+                // Synchronisation par Offset
                 const now = new Date(Date.now() + this.timeOffset);
                 const ms = now.getMilliseconds().toString().padStart(3, '0');
                 
-                // Affichage Heure Pro (GMT/UTC)
+                // Affichage Heure Pro
                 if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString() + "." + ms;
                 if ($('utc-datetime')) $('utc-datetime').textContent = now.toISOString().replace('T', ' ').substring(0, 23);
 
+                // Si le moteur tourne, on injecte les données dans le Dashboard
                 if (this.isRunning && this.engine) {
-                    this.updateData(now);
+                    this.updateDashboard(now);
                 }
                 requestAnimationFrame(loop);
             };
             loop();
         }
 
-        updateData(now) {
-            // 1. Extraire les données du vecteur d'état (x) du fichier ukf-class
-            // Indices: 0=lat, 1=lon, 2=alt, 3=vx, 4=vy
+        updateDashboard(now) {
+            // 1. Extraction des états depuis l'UKF (indices standards)
             const lat = this.engine.x.get([0, 0]);
             const lon = this.engine.x.get([1, 0]);
             const vx = this.engine.x.get([3, 0]);
@@ -106,29 +106,25 @@
                 // 2. Suture Astro (Appel de astro.js)
                 if (typeof computeAstroAll === 'function') {
                     const astro = computeAstroAll(now, lat, lon);
-                    this.setAstroUI(astro);
+                    this.refreshAstroUI(astro);
                 }
             }
 
-            // 3. Calculs Physiques (Relativité / Mach)
-            this.setPhysicsUI(v_stable);
+            // 3. Physique Relativiste
+            const c = 299792458;
+            const beta = v_stable / c;
+            const gamma = 1 / Math.sqrt(1 - beta**2);
+            if ($('mach-number')) $('mach-number').textContent = (v_stable / 340.29).toFixed(5);
+            if ($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(14);
         }
 
-        setAstroUI(a) {
+        refreshAstroUI(a) {
             if ($('sun-alt')) $('sun-alt').textContent = a.sun.altitude.toFixed(4) + "°";
             if ($('moon-phase-name')) $('moon-phase-name').textContent = a.moon.illumination.phase_name;
             if ($('moon-distance')) $('moon-distance').textContent = (a.moon.distance / 1000).toFixed(0) + " km";
         }
-
-        setPhysicsUI(v) {
-            const beta = v / 299792458;
-            const gamma = 1 / Math.sqrt(1 - beta**2);
-            if ($('mach-number')) $('mach-number').textContent = (v / 340.29).toFixed(5);
-            if ($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(14);
-            if ($('dynamic-pressure')) $('dynamic-pressure').textContent = (0.5 * 1.225 * v**2).toFixed(4) + " Pa";
-        }
     }
 
-    // Lancement
-    window.addEventListener('load', () => { window.Master = new MasterSystem(); });
+    // Démarrage auto
+    window.addEventListener('load', () => { window.Master = new MasterController(); });
 })(window);
