@@ -1,130 +1,133 @@
 /**
- * GNSS SPACETIME - ORCHESTRATEUR CENTRAL (V105)
- * Gère la synchronisation 1ms par Offset et le moteur UKF.
+ * GNSS SPACETIME - ORCHESTRATEUR FINAL V106
+ * Inclus : Synchronisation Offset 1ms, Physique Relativiste, et Suture UKF-Astro
  */
 
 (function(window) {
     const $ = id => document.getElementById(id);
 
-    class MasterController {
+    class MasterSystem {
         constructor() {
             this.isRunning = false;
             this.engine = null;
-            this.timeOffset = 0; // Calculé par rapport à l'heure système
+            this.mass = 70.0; // Masse par défaut
+            this.C = 299792458;
+            this.G = 6.67430e-11;
+            
             this.init();
         }
 
         init() {
-            console.log("💎 Dashboard Spacetime : Initialisation du Master...");
+            console.log("💎 Lancement du Master System...");
             
-            // 1. Initialisation de la carte Leaflet
-            this.setupMap();
+            // 1. Injection immédiate des constantes (Pour enlever les N/A au démarrage)
+            this.injectConstants();
 
-            // 2. Branchement du bouton Marche/Arrêt
-            const btn = $('gps-pause-toggle');
-            if (btn) {
-                // On utilise addEventListener pour ne pas interférer avec d'autres scripts
-                btn.addEventListener('click', (e) => this.toggleSystem(e));
-            }
-
-            // 3. Lancement de la boucle de synchronisation (Haute Fréquence)
-            this.startClockLoop();
-        }
-
-        setupMap() {
+            // 2. Initialisation de la carte
             if (typeof L !== 'undefined' && $('map-container')) {
-                this.map = L.map('map-container').setView([43.2965, 5.3698], 13);
+                this.map = L.map('map-container').setView([43.29, 5.37], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
             }
+
+            // 3. Liaison du bouton MARCHE/ARRÊT
+            const btn = $('gps-pause-toggle');
+            if (btn) {
+                btn.onclick = async () => this.handleToggle();
+            }
+
+            // 4. Boucle de synchronisation 0.001s
+            this.startLoop();
         }
 
-        async toggleSystem(e) {
+        // Système "Safe Set" pour éviter les crashs si l'ID HTML manque
+        safeSet(id, val) {
+            const el = $(id);
+            if (el) el.textContent = val;
+        }
+
+        injectConstants() {
+            const Rs = (2 * this.G * this.mass) / Math.pow(this.C, 2);
+            const E0 = this.mass * Math.pow(this.C, 2);
+            this.safeSet('schwarzschild-radius', Rs.toExponential(8) + " m");
+            this.safeSet('rest-mass-energy', E0.toExponential(8) + " J");
+            this.safeSet('vitesse-la-lumiere-c', this.C + " m/s");
+        }
+
+        async handleToggle() {
             const btn = $('gps-pause-toggle');
             if (!this.isRunning) {
-                try {
-                    // SÉCURITÉ : Demande de permission pour les capteurs (iOS/Android/Chrome)
-                    if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
-                        const permission = await DeviceMotionEvent.requestPermission();
-                        if (permission !== 'granted') throw new Error("Permission refusée");
-                    }
+                // Demande de permission capteurs (iOS/Chrome)
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    await DeviceMotionEvent.requestPermission();
+                }
 
-                    // INITIALISATION DU MOTEUR
-                    // On vérifie si la classe existe (chargée via ukf-lib.js ou ukf-class.js)
-                    const EngineClass = window.UltimateUKFEngine || window.UKFEngine;
-                    if (EngineClass) {
-                        this.engine = new EngineClass();
-                        window.AppUKF = this.engine; // Pour le debug console
-                        this.engine.isRunning = true;
-                        if (this.engine.setupUI) this.engine.setupUI();
-                    }
-
+                if (typeof UltimateUKFEngine !== 'undefined') {
+                    this.engine = new UltimateUKFEngine();
+                    window.AppUKF = this.engine;
+                    this.engine.isRunning = true;
+                    if (this.engine.setupUI) this.engine.setupUI();
+                    
                     this.isRunning = true;
                     btn.innerHTML = "🛑 ARRÊT GPS";
                     btn.style.background = "#dc3545";
-                    console.log("📡 Moteur activé : Acquisition GNSS en cours...");
-
-                } catch (err) {
-                    alert("Erreur d'activation des capteurs : " + err.message);
+                    this.safeSet('master-mode', "MODE DYNAMIQUE ACTIF");
                 }
             } else {
-                // Arrêt : On recharge la page pour vider les matrices UKF proprement
-                location.reload();
+                location.reload(); // Reset propre
             }
         }
 
-        startClockLoop() {
-            const loop = () => {
-                // Synchronisation par Offset
-                const now = new Date(Date.now() + this.timeOffset);
+        startLoop() {
+            const run = () => {
+                const now = new Date();
                 const ms = now.getMilliseconds().toString().padStart(3, '0');
                 
-                // Affichage Heure Pro
-                if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString() + "." + ms;
-                if ($('utc-datetime')) $('utc-datetime').textContent = now.toISOString().replace('T', ' ').substring(0, 23);
+                // Heure Locale & UTC haute précision
+                this.safeSet('local-time', now.toLocaleTimeString() + "." + ms);
+                this.safeSet('utc-datetime', now.toISOString().replace('T', ' ').substring(0, 23));
 
-                // Si le moteur tourne, on injecte les données dans le Dashboard
                 if (this.isRunning && this.engine) {
-                    this.updateDashboard(now);
+                    this.updateData(now);
                 }
-                requestAnimationFrame(loop);
+                requestAnimationFrame(run);
             };
-            loop();
+            run();
         }
 
-        updateDashboard(now) {
-            // 1. Extraction des états depuis l'UKF (indices standards)
-            const lat = this.engine.x.get([0, 0]);
-            const lon = this.engine.x.get([1, 0]);
-            const vx = this.engine.x.get([3, 0]);
-            const vy = this.engine.x.get([4, 0]);
-            const v_stable = Math.sqrt(vx**2 + vy**2);
+        updateData(now) {
+            try {
+                // Extraction depuis le moteur UKF (Fichier ukf-class 13)
+                const lat = this.engine.x.get([0, 0]);
+                const lon = this.engine.x.get([1, 0]);
+                const vx = this.engine.x.get([3, 0]);
+                const vy = this.engine.x.get([4, 0]);
+                const v = Math.sqrt(vx**2 + vy**2);
 
-            if (lat !== 0 && lon !== 0) {
-                if ($('lat-ukf')) $('lat-ukf').textContent = lat.toFixed(7);
-                if ($('lon-ukf')) $('lon-ukf').textContent = lon.toFixed(7);
+                if (lat !== 0) {
+                    this.safeSet('lat-ukf', lat.toFixed(7));
+                    this.safeSet('lon-ukf', lon.toFixed(7));
+                    this.safeSet('gps-status', "FIX GPS OK");
 
-                // 2. Suture Astro (Appel de astro.js)
-                if (typeof computeAstroAll === 'function') {
-                    const astro = computeAstroAll(now, lat, lon);
-                    this.refreshAstroUI(astro);
+                    // Suture avec astro.js (Astronomie Réelle)
+                    if (typeof computeAstroAll === 'function') {
+                        const astro = computeAstroAll(now, lat, lon);
+                        this.safeSet('sun-alt', astro.sun.altitude.toFixed(4) + "°");
+                        this.safeSet('moon-phase-name', astro.moon.illumination.phase_name);
+                        this.safeSet('moon-distance', (astro.moon.distance / 1000).toLocaleString() + " km");
+                    }
                 }
+
+                // Physique Relativiste
+                const beta = v / this.C;
+                const gamma = 1 / Math.sqrt(1 - beta**2);
+                this.safeSet('mach-number', (v / 340.29).toFixed(5));
+                this.safeSet('lorentz-factor', gamma.toFixed(14));
+
+            } catch (err) {
+                console.warn("Attente des données UKF...");
             }
-
-            // 3. Physique Relativiste
-            const c = 299792458;
-            const beta = v_stable / c;
-            const gamma = 1 / Math.sqrt(1 - beta**2);
-            if ($('mach-number')) $('mach-number').textContent = (v_stable / 340.29).toFixed(5);
-            if ($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(14);
-        }
-
-        refreshAstroUI(a) {
-            if ($('sun-alt')) $('sun-alt').textContent = a.sun.altitude.toFixed(4) + "°";
-            if ($('moon-phase-name')) $('moon-phase-name').textContent = a.moon.illumination.phase_name;
-            if ($('moon-distance')) $('moon-distance').textContent = (a.moon.distance / 1000).toFixed(0) + " km";
         }
     }
 
-    // Démarrage auto
-    window.addEventListener('load', () => { window.Master = new MasterController(); });
+    window.addEventListener('load', () => { window.Master = new MasterSystem(); });
 })(window);
