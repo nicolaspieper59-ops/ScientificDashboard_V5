@@ -1,82 +1,95 @@
 (function(window) {
     const $ = id => document.getElementById(id);
 
-    class MasterSystem {
+    class MasterFlightSystem {
         constructor() {
             this.isRunning = false;
             this.engine = null;
             this.C = 299792458;
+            this.lastTick = 0;
             this.init();
         }
 
         init() {
+            // Liaison bouton
             const btn = $('gps-pause-toggle');
-            if (btn) btn.onclick = () => this.handleStart();
+            if (btn) btn.onclick = () => this.bootSystem();
             
-            // Autres boutons
-            if ($('reset-all-btn')) $('reset-all-btn').onclick = () => location.reload();
-            
-            this.updateLoop();
+            // Calculs de physique relativiste au repos
+            this.updateStaticPhysics();
+            this.renderLoop();
         }
 
-        async handleStart() {
+        updateStaticPhysics() {
+            const m = 70.0; 
+            const G = 6.67430e-11;
+            this.safeSet('rest-mass-energy', (m * this.C**2).toExponential(6) + " J");
+            this.safeSet('schwarzschild-radius', ((2*G*m)/this.C**2).toExponential(6) + " m");
+        }
+
+        async bootSystem() {
             if (this.isRunning) { location.reload(); return; }
 
-            // Vérification de la présence du moteur
-            if (typeof window.UltimateUKFEngine !== 'function') {
-                alert("Erreur fatale : Le moteur UKF n'est pas chargé. Vérifiez l'ordre des scripts.");
-                return;
-            }
-
             try {
-                // Permission iOS/Android
+                if (typeof window.UltimateUKFEngine === 'undefined') throw new Error("Moteur non chargé.");
+
+                // Déblocage capteurs iOS/Android
                 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                     await DeviceMotionEvent.requestPermission();
                 }
 
                 this.engine = new window.UltimateUKFEngine();
                 this.isRunning = true;
+                this.lastTick = performance.now();
 
-                // Démarrage Capteurs
+                // 1. GNSS (1Hz)
                 navigator.geolocation.watchPosition(p => {
                     this.engine.updateGPS(p.coords.latitude, p.coords.longitude, p.coords.altitude);
-                }, null, {enableHighAccuracy: true});
+                }, null, { enableHighAccuracy: true });
 
+                // 2. IMU (Haute Fréquence)
                 window.ondevicemotion = (e) => {
-                    if (this.isRunning) this.engine.predict(e.accelerationIncludingGravity, e.rotationRate, 0.02);
+                    const now = performance.now();
+                    const dt = (now - this.lastTick) / 1000;
+                    this.lastTick = now;
+                    this.engine.predict(e.accelerationIncludingGravity, e.rotationRate, dt);
                 };
 
-                $('gps-pause-toggle').textContent = "🛑 ARRÊT DU SYSTÈME";
+                $('gps-pause-toggle').textContent = "🛑 TERMINATE SESSION";
                 $('gps-pause-toggle').style.background = "#dc3545";
 
             } catch (err) {
-                alert("Erreur : " + err.message);
+                alert("SYSTEM FAILURE: " + err.message);
             }
         }
 
-        updateLoop() {
-            const tick = () => {
+        renderLoop() {
+            const frame = () => {
                 const now = new Date();
-                const elTime = $('local-time');
-                if (elTime) elTime.textContent = now.toLocaleTimeString() + "." + now.getMilliseconds();
+                this.safeSet('local-time', now.toLocaleTimeString() + "." + now.getMilliseconds());
 
                 if (this.isRunning && this.engine) {
                     const lat = this.engine.x.get([0, 0]);
                     const lon = this.engine.x.get([1, 0]);
+                    const v = Math.sqrt(this.engine.x.get([3,0])**2 + this.engine.x.get([4,0])**2 + this.engine.x.get([5,0])**2);
+
+                    this.safeSet('lat-ukf', lat.toFixed(8));
+                    this.safeSet('lon-ukf', lon.toFixed(8));
+                    this.safeSet('vitesse-stable-kmh', (v * 3.6).toFixed(2));
                     
-                    if ($('lat-ukf')) $('lat-ukf').textContent = lat.toFixed(7);
-                    if ($('lon-ukf')) $('lon-ukf').textContent = lon.toFixed(7);
-                    
-                    // Calcul Relativiste
-                    const v = Math.sqrt(this.engine.x.get([3,0])**2 + this.engine.x.get([4,0])**2);
+                    // Facteur de Lorentz
                     const gamma = 1 / Math.sqrt(1 - (v/this.C)**2);
-                    if ($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(14);
+                    this.safeSet('lorentz-factor', gamma.toFixed(15));
                 }
-                requestAnimationFrame(tick);
+                requestAnimationFrame(frame);
             };
-            tick();
+            frame();
+        }
+
+        safeSet(id, val) {
+            const el = $(id);
+            if (el) el.textContent = val;
         }
     }
-
-    window.addEventListener('load', () => { window.Master = new MasterSystem(); });
+    window.addEventListener('load', () => new MasterFlightSystem());
 })(window);
