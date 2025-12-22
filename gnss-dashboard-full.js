@@ -1,7 +1,6 @@
 /**
- * GNSS SPACETIME - ORCHESTRATEUR SUPRÊME (V101 PRO)
- * Synchronisation : Offset local haute fidélité (0.001s)
- * Autonomie : Totale (Pas de dépendance serveur NTP en continu)
+ * GNSS SPACETIME - ORCHESTRATEUR FINAL (V102 PRO)
+ * Fix : Forçage du bouton et synchronisation par Offset.
  */
 
 (function(window) {
@@ -9,155 +8,127 @@
 
     class MasterSystem {
         constructor() {
-            this.C = 299792458;
-            this.G = 6.67430e-11;
-            this.mass = 70.0;
-            
             this.isRunning = false;
-            this.startTime = null;
-            this.engine = null; 
-
-            // GESTION DE L'OFFSET (Pour éviter les appels serveurs)
-            this.timeOffset = 0; 
-            
+            this.engine = null;
+            this.timeOffset = 0; // Mode autonome
             this.init();
         }
 
         init() {
-            console.log("💎 Système Spacetime : Activation du Pilote (Mode Offset Local)...");
-            this.setupMap();
-            this.injectConstants();
-            this.bindControls();
+            console.log("💎 MasterSystem: Initialisation...");
             
-            // Calcul initial de l'offset si une source externe est dispo (optionnel)
-            // Sinon, l'offset reste à 0 et on utilise l'horloge système haute précision
-            this.startSyncLoop();
-        }
+            // 1. Préparer la carte
+            if (typeof L !== 'undefined' && $('map-container')) {
+                this.map = L.map('map-container').setView([43.2965, 5.3698], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+            }
 
-        injectConstants() {
-            const Rs = (2 * this.G * this.mass) / Math.pow(this.C, 2);
-            const E0 = this.mass * Math.pow(this.C, 2);
-            this.set('schwarzschild-radius', Rs.toExponential(8) + " m");
-            this.set('rest-mass-energy', E0.toExponential(8) + " J");
-            this.set('vitesse-la-lumiere-c', this.C + " m/s");
-            this.set('gravitational-constant', this.G.toExponential(5));
-        }
-
-        bindControls() {
+            // 2. Attacher le bouton (On écrase les anciens événements pour éviter les conflits)
             const btn = $('gps-pause-toggle');
-            if (!btn) return;
+            if (btn) {
+                btn.onclick = (e) => this.handleStartStop(e);
+            }
 
-            btn.onclick = async () => {
-                if (!this.isRunning) {
-                    try {
-                        // Déblocage des permissions IMU (Standard Pro)
-                        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                            await DeviceMotionEvent.requestPermission();
-                        }
-
-                        if (typeof UltimateUKFEngine !== 'undefined') {
-                            this.engine = new UltimateUKFEngine();
-                            window.AppUKF = this.engine;
-                            
-                            // Démarrage du moteur UKF
-                            this.engine.isRunning = true;
-                            if (this.engine.setupUI) this.engine.setupUI(); 
-                            
-                            this.isRunning = true;
-                            this.startTime = performance.now(); // Utilisation de performance.now pour l'offset
-                            btn.innerHTML = "🛑 ARRÊT GPS";
-                            btn.style.background = "#dc3545";
-                            btn.style.boxShadow = "0 0 20px rgba(220, 53, 69, 0.6)";
-                            console.log("📡 Moteur UKF & GNSS Verrouillés.");
-                        }
-                    } catch (e) {
-                        console.error("Erreur de démarrage:", e);
-                    }
-                } else {
-                    location.reload(); 
-                }
-            };
+            // 3. Lancer la boucle de temps (0.001s)
+            this.startClock();
         }
 
-        startSyncLoop() {
-            const run = () => {
-                // Utilisation de l'heure système + offset pour simuler un temps atomique stable
+        async handleStartStop(e) {
+            e.preventDefault();
+            const btn = $('gps-pause-toggle');
+
+            if (!this.isRunning) {
+                console.log("📡 Démarrage du moteur UKF...");
+                try {
+                    // Permission Capteurs (Impératif)
+                    if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
+                        await DeviceMotionEvent.requestPermission();
+                    }
+
+                    // Initialiser le moteur de ukf-class (13).js
+                    if (typeof UltimateUKFEngine !== 'undefined') {
+                        this.engine = new UltimateUKFEngine();
+                        window.AppUKF = this.engine;
+                        
+                        // Forcer l'activation
+                        this.engine.isRunning = true;
+                        if (this.engine.setupUI) this.engine.setupUI(); 
+                        
+                        this.isRunning = true;
+                        this.startTime = performance.now();
+                        
+                        // UI Update
+                        btn.innerHTML = "🛑 ARRÊT GPS";
+                        btn.style.background = "#dc3545";
+                        btn.style.boxShadow = "0 0 20px rgba(220, 53, 69, 0.6)";
+                    } else {
+                        alert("Erreur: Moteur UKF introuvable. Vérifiez l'ordre des scripts.");
+                    }
+                } catch (err) {
+                    console.error("Échec initialisation:", err);
+                }
+            } else {
+                // Reset complet pour éviter les mémoires tampons polluées
+                location.reload();
+            }
+        }
+
+        startClock() {
+            const loop = () => {
                 const now = new Date(Date.now() + this.timeOffset);
-                
-                // Formatage 0.001s (Précision milliseconde)
                 const ms = now.getMilliseconds().toString().padStart(3, '0');
-                this.set('local-time', now.toLocaleTimeString() + "." + ms);
-                this.set('utc-datetime', now.toISOString().replace('T', ' ').substring(0, 23));
+                
+                // Affichage Heure Pro (GMT/UTC)
+                if ($('local-time')) $('local-time').textContent = now.toLocaleTimeString() + "." + ms;
+                if ($('utc-datetime')) $('utc-datetime').textContent = now.toISOString().replace('T', ' ').substring(0, 23);
 
                 if (this.isRunning && this.engine) {
-                    this.syncData(now);
+                    this.updateData(now);
                 }
-                requestAnimationFrame(run);
+                requestAnimationFrame(loop);
             };
-            run();
+            loop();
         }
 
-        syncData(now) {
-            // Extraction des états filtrés du moteur UKF (24 états)
+        updateData(now) {
+            // 1. Extraire les données du vecteur d'état (x) du fichier ukf-class
+            // Indices: 0=lat, 1=lon, 2=alt, 3=vx, 4=vy
             const lat = this.engine.x.get([0, 0]);
             const lon = this.engine.x.get([1, 0]);
             const vx = this.engine.x.get([3, 0]);
             const vy = this.engine.x.get([4, 0]);
-            const v_ms = Math.sqrt(vx**2 + vy**2);
+            const v_stable = Math.sqrt(vx**2 + vy**2);
 
-            // Suture Position -> Astro
             if (lat !== 0 && lon !== 0) {
-                this.set('lat-ukf', lat.toFixed(7));
-                this.set('lon-ukf', lon.toFixed(7));
-                
-                // Appel du moteur Astro.js avec le temps "offseté"
+                if ($('lat-ukf')) $('lat-ukf').textContent = lat.toFixed(7);
+                if ($('lon-ukf')) $('lon-ukf').textContent = lon.toFixed(7);
+
+                // 2. Suture Astro (Appel de astro.js)
                 if (typeof computeAstroAll === 'function') {
                     const astro = computeAstroAll(now, lat, lon);
-                    this.updateAstroUI(astro);
+                    this.setAstroUI(astro);
                 }
             }
 
-            // Mise à jour Relativité & Mach
-            this.updatePhysics(v_ms);
-
-            // Temps de session précis
-            const elapsed = (performance.now() - this.startTime) / 1000;
-            this.set('session-duration', elapsed.toFixed(3) + " s");
+            // 3. Calculs Physiques (Relativité / Mach)
+            this.setPhysicsUI(v_stable);
         }
 
-        updateAstroUI(astro) {
-            this.set('sun-alt', astro.sun.altitude.toFixed(4) + "°");
-            this.set('moon-phase-name', astro.moon.illumination.phase_name);
-            this.set('moon-distance', (astro.moon.distance / 1000).toFixed(0) + " km");
-            
-            // Calcul marée lunaire (Newtonien)
-            const dM = astro.moon.distance || 384400000;
-            const tideForce = (this.G * 7.342e22 * this.mass * 6371000) / Math.pow(dM, 3);
-            this.set('lunar-tide-force', tideForce.toExponential(6) + " N");
+        setAstroUI(a) {
+            if ($('sun-alt')) $('sun-alt').textContent = a.sun.altitude.toFixed(4) + "°";
+            if ($('moon-phase-name')) $('moon-phase-name').textContent = a.moon.illumination.phase_name;
+            if ($('moon-distance')) $('moon-distance').textContent = (a.moon.distance / 1000).toFixed(0) + " km";
         }
 
-        updatePhysics(v) {
-            const beta = v / this.C;
+        setPhysicsUI(v) {
+            const beta = v / 299792458;
             const gamma = 1 / Math.sqrt(1 - beta**2);
-            this.set('lorentz-factor', gamma.toFixed(14));
-            this.set('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
-            this.set('mach-number', (v / 340.29).toFixed(5));
-            this.set('dynamic-pressure', (0.5 * 1.225 * v**2).toFixed(4) + " Pa");
-        }
-
-        setupMap() {
-            if (typeof L !== 'undefined' && $('map-container')) {
-                this.map = L.map('map-container').setView([43.2965, 5.3698], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-                setTimeout(() => this.map.invalidateSize(), 500);
-            }
-        }
-
-        set(id, val) {
-            const el = $(id);
-            if (el) el.textContent = val;
+            if ($('mach-number')) $('mach-number').textContent = (v / 340.29).toFixed(5);
+            if ($('lorentz-factor')) $('lorentz-factor').textContent = gamma.toFixed(14);
+            if ($('dynamic-pressure')) $('dynamic-pressure').textContent = (0.5 * 1.225 * v**2).toFixed(4) + " Pa";
         }
     }
 
+    // Lancement
     window.addEventListener('load', () => { window.Master = new MasterSystem(); });
 })(window);
