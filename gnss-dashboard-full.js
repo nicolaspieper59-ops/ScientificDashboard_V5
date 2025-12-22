@@ -1,132 +1,124 @@
 /**
- * GNSS SPACETIME - MASTER SYSTEM (V120)
- * Gère l'UI, les Capteurs et la Suture avec le Moteur UKF
+ * GNSS SPACETIME - FLIGHT CONTROLLER V200
+ * Gestion Temps Réel & Relativité Restreinte
  */
 (function(window) {
     const $ = id => document.getElementById(id);
 
-    class MasterSystem {
+    class FlightController {
         constructor() {
             this.isRunning = false;
             this.engine = null;
-            this.startTime = Date.now();
-            this.C = 299792458;
-            this.G = 6.67430e-11;
+            this.C = 299792458; 
+            this.lastTick = 0;
             this.init();
         }
 
         init() {
-            // 1. Bouton MARCHE / ARRÊT
-            const btnMain = $('gps-pause-toggle');
-            if (btnMain) btnMain.onclick = () => this.toggleSystem();
+            // UI Setup
+            const btn = $('gps-pause-toggle');
+            if(btn) btn.onclick = () => this.engageSystem();
+            
+            $('reset-all-btn').onclick = () => location.reload();
+            $('toggle-mode-btn').onclick = () => document.body.classList.toggle('dark-mode');
 
-            // 2. Boutons Utilitaires
-            const btnReset = $('reset-all-btn');
-            if (btnReset) btnReset.onclick = () => location.reload();
-
-            const btnNight = $('night-mode-toggle');
-            if (btnNight) btnNight.onclick = () => document.body.classList.toggle('night-theme');
-
-            // 3. Initialisation Map (Leaflet)
-            if (typeof L !== 'undefined' && $('map-container')) {
-                this.map = L.map('map-container').setView([0, 0], 2);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-                this.marker = L.marker([0, 0]).addTo(this.map);
-            }
-
-            // 4. Calculs Statiques Immédiats
-            this.updatePhysics(70.0); // Masse par défaut
-            this.startLoop();
+            this.updateStaticPhysics();
+            this.uiLoop();
         }
 
-        updatePhysics(m) {
-            const Rs = (2 * this.G * m) / Math.pow(this.C, 2);
-            const E0 = m * Math.pow(this.C, 2);
-            this.setUI('schwarzschild-radius', Rs.toExponential(8) + " m");
-            this.setUI('rest-mass-energy', E0.toExponential(8) + " J");
+        updateStaticPhysics() {
+            // Affichage E0 et Rs (Théorique)
+            const mass = 70.0; 
+            const E0 = mass * this.C**2;
+            const Rs = (2 * 6.674e-11 * mass) / this.C**2;
+            
+            this.safeSet('rest-mass-energy', E0.toExponential(6) + " J");
+            this.safeSet('schwarzschild-radius', Rs.toExponential(6) + " m");
         }
 
-        setUI(id, val) {
+        safeSet(id, val) {
             const el = $(id);
             if (el) el.textContent = val;
         }
 
-        async toggleSystem() {
+        async engageSystem() {
             const btn = $('gps-pause-toggle');
-            if (!this.isRunning) {
-                try {
-                    // Déblocage sécurité navigateurs
-                    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                        await DeviceMotionEvent.requestPermission();
-                    }
+            if (this.isRunning) { location.reload(); return; }
 
-                    this.engine = new window.UltimateUKFEngine();
-                    this.isRunning = true;
-
-                    // Activation Capteurs
-                    navigator.geolocation.watchPosition(p => {
-                        this.engine.updateGPS(p.coords.latitude, p.coords.longitude, p.coords.altitude);
-                        if(this.map) {
-                            const pos = [p.coords.latitude, p.coords.longitude];
-                            this.map.setView(pos, 15);
-                            this.marker.setLatLng(pos);
-                        }
-                    }, null, {enableHighAccuracy: true});
-
-                    window.ondevicemotion = (e) => {
-                        if(this.isRunning) this.engine.predict(e.accelerationIncludingGravity, e.rotationRate, 0.016);
-                    };
-
-                    btn.textContent = "🛑 ARRÊT GPS";
-                    btn.style.background = "#dc3545";
-                } catch (err) {
-                    alert("Erreur Capteurs: " + err.message);
+            try {
+                // 1. Permissions Capteurs (Hardware Low-Level)
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    await DeviceMotionEvent.requestPermission();
                 }
-            } else {
-                location.reload();
+
+                // 2. Démarrage Moteur
+                if (typeof window.UltimateUKFEngine === 'undefined') throw new Error("Moteur Physique manquant");
+                
+                this.engine = new window.UltimateUKFEngine();
+                this.isRunning = true;
+                this.lastTick = performance.now();
+
+                // 3. Branchement Interruptions Capteurs
+                // GPS (1 Hz)
+                navigator.geolocation.watchPosition(p => {
+                    this.engine.updateGPS(p.coords.latitude, p.coords.longitude, p.coords.altitude);
+                }, err => console.error(err), { enableHighAccuracy: true, maximumAge: 0 });
+
+                // IMU (100 Hz approx via Browser)
+                window.ondevicemotion = (e) => {
+                    const now = performance.now();
+                    const dt = (now - this.lastTick) / 1000;
+                    this.lastTick = now;
+
+                    // Injection des données brutes dans le moteur strapdown
+                    this.engine.predict(
+                        e.accelerationIncludingGravity, // Accel
+                        e.rotationRate,                 // Gyro
+                        dt                              // Delta Time Précis
+                    );
+                };
+
+                // UI Feedback
+                btn.innerHTML = "SYSTEM ENGAGED <i class='fas fa-check-circle'></i>";
+                btn.style.background = "#28a745";
+                btn.style.color = "#fff";
+
+            } catch (err) {
+                alert("ECHEC SYSTÈME : " + err.message);
             }
         }
 
-        startLoop() {
-            const run = () => {
+        uiLoop() {
+            const loop = () => {
                 const now = new Date();
-                this.setUI('local-time', now.toLocaleTimeString() + "." + now.getMilliseconds());
-
-                // Calcul Temps Minecraft (24000 ticks / jour)
-                const totalSec = (now.getHours()*3600) + (now.getMinutes()*60) + now.getSeconds();
-                const ticks = Math.floor((totalSec / 86400) * 24000);
-                this.setUI('time-minecraft', ticks.toString().padStart(5, '0'));
+                this.safeSet('local-time', now.toLocaleTimeString() + `.${now.getMilliseconds().toString().padStart(3,'0')}`);
 
                 if (this.isRunning && this.engine) {
-                    this.updateDynamicUI(now);
+                    // Lecture de l'État Vrai (Post-Filtrage)
+                    const lat = this.engine.x.get([0,0]);
+                    const lon = this.engine.x.get([1,0]);
+                    
+                    // Calcul Vitesse Réelle 3D
+                    const vn = this.engine.x.get([3,0]);
+                    const ve = this.engine.x.get([4,0]);
+                    const vd = this.engine.x.get([5,0]);
+                    const v_norm = Math.sqrt(vn**2 + ve**2 + vd**2);
+
+                    // Relativité Restreinte (Temps Réel)
+                    const beta = v_norm / this.C;
+                    const gamma = 1 / Math.sqrt(1 - beta**2);
+
+                    // Mise à jour UI
+                    this.safeSet('lat-ukf', lat.toFixed(8)); // Précision géodésique
+                    this.safeSet('lon-ukf', lon.toFixed(8));
+                    this.safeSet('vitesse-stable-kmh', (v_norm * 3.6).toFixed(2));
+                    this.safeSet('mach-number', (v_norm / 340.29).toFixed(6));
+                    this.safeSet('lorentz-factor', gamma.toFixed(15));
                 }
-                requestAnimationFrame(run);
+                requestAnimationFrame(loop);
             };
-            run();
-        }
-
-        updateDynamicUI(now) {
-            const lat = this.engine.x.get([0, 0]);
-            const lon = this.engine.x.get([1, 0]);
-            const vx = this.engine.x.get([3, 0]);
-            const vy = this.engine.x.get([4, 0]);
-            const v = Math.sqrt(vx**2 + vy**2);
-
-            this.setUI('lat-ukf', lat.toFixed(7));
-            this.setUI('lon-ukf', lon.toFixed(7));
-            this.setUI('vitesse-stable-kmh', (v * 3.6).toFixed(2) + " km/h");
-
-            // Relativité
-            const gamma = 1 / Math.sqrt(1 - Math.pow(v / this.C, 2));
-            this.setUI('lorentz-factor', gamma.toFixed(14));
-
-            // Suture Astro (Appel de astro.js)
-            if (typeof computeAstroAll === 'function' && lat !== 0) {
-                const astro = computeAstroAll(now, lat, lon);
-                this.setUI('sun-alt', astro.sun.altitude.toFixed(4) + "°");
-                this.setUI('moon-phase-name', astro.moon.illumination.phase_name);
-            }
+            loop();
         }
     }
-    window.addEventListener('load', () => { window.Master = new MasterSystem(); });
+    window.onload = () => new FlightController();
 })(window);
