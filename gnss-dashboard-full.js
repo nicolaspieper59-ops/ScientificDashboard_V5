@@ -1,159 +1,73 @@
-(function(window) {
-    const $ = id => document.getElementById(id);
+// --- gnss-dashboard-full.js ---
+(function() {
+    let isRunning = false;
+    let engine = null;
 
-    class MasterDashboard {
-        constructor() {
-            this.engine = null; // Sera lié à votre moteur UKF
-            this.isRunning = false;
-            this.lastT = performance.now();
-            
-            // Initialisation au chargement de la page
-            window.addEventListener('load', () => this.init());
-        }
+    const ui = {
+        btn: () => document.getElementById('gps-pause-toggle'),
+        vCosmic: () => document.getElementById('v-cosmic'),
+        status: () => document.getElementById('status-physique'),
+        accX: () => document.getElementById('acc-x'),
+        bubble: () => document.getElementById('bubble') // ID corrigé ici
+    };
 
-        init() {
-            console.log("⚡ Initialisation du Dashboard...");
-            
-            // 1. Liaison du Bouton MARCHE / ARRÊT
-            const btn = $('gps-pause-toggle');
-            if (btn) {
-                btn.onclick = () => this.toggleSystem();
-                console.log("✅ Bouton Marche/Arrêt détecté et lié.");
-            } else {
-                console.error("❌ ERREUR : Bouton 'gps-pause-toggle' introuvable !");
-            }
-        }
-
-        async toggleSystem() {
-            const btn = $('gps-pause-toggle');
-
-            // --- CAS 1 : SI LE SYSTÈME EST DÉJÀ EN MARCHE -> ON ARRÊTE ---
-            if (this.isRunning) {
-                this.isRunning = false;
-                
-                // Mise à jour visuelle du bouton
-                btn.textContent = "▶️ MARCHE GPS";
-                btn.style.backgroundColor = ""; // Retour couleur par défaut
-                btn.classList.remove('active');
-                
-                // Désactivation des écouteurs pour économiser la batterie
-                window.removeEventListener('devicemotion', this.handleMotion);
-                
-                $('status-physique').textContent = "PAUSE";
-                console.log("🛑 Système arrêté.");
+    function start() {
+        ui.btn().addEventListener('click', async () => {
+            if (isRunning) {
+                isRunning = false;
+                ui.btn().textContent = "▶️ MARCHE GPS";
+                ui.btn().style.background = "";
                 return;
             }
 
-            // --- CAS 2 : SI LE SYSTÈME EST À L'ARRÊT -> ON DÉMARRE ---
+            // Demande de permission (Indispensable mobile)
+            if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
+                const perms = await DeviceMotionEvent.requestPermission();
+                if (perms !== 'granted') return alert("Capteurs refusés");
+            }
+
+            isRunning = true;
+            ui.btn().textContent = "⏸️ ARRÊT GPS";
+            ui.btn().style.background = "#dc3545";
             
-            // A. Demande de permission (Obligatoire pour iOS 13+ et Android récents)
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                try {
-                    const permissionState = await DeviceMotionEvent.requestPermission();
-                    if (permissionState !== 'granted') {
-                        alert("Permission refusée pour les capteurs.");
-                        return;
-                    }
-                } catch (e) {
-                    console.error("Erreur permission:", e);
-                }
-            }
-
-            // B. Initialisation du Moteur UKF (si présent)
-            if (typeof window.ProfessionalUKF !== 'undefined' && !this.engine) {
-                this.engine = new window.ProfessionalUKF();
-            }
-
-            // C. Activation
-            this.isRunning = true;
-            btn.textContent = "⏸️ ARRÊT GPS";
-            btn.style.backgroundColor = "#dc3545"; // Rouge pour signifier "Stop possible"
-            btn.classList.add('active');
-            $('status-physique').textContent = "ACQUISITION EN COURS...";
-
-            // D. Lancement des capteurs
-            window.addEventListener('devicemotion', (e) => this.handleMotion(e));
-            
-            // Lancement du GPS (Géolocalisation)
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition(
-                    (p) => this.updateGPS(p), 
-                    (e) => console.warn("Erreur GPS:", e),
-                    { enableHighAccuracy: true }
-                );
-            }
-
-            console.log("🚀 Système démarré avec succès.");
-        }
-
-        // --- GESTION DES CAPTEURS (DeviceMotion) ---
-        handleMotion(event) {
-            if (!this.isRunning) return;
-
-            // 1. Récupération des données brutes
-            // accelerationIncludingGravity contient la gravité (9.81 m/s²)
-            const acc = event.accelerationIncludingGravity || {x:0, y:0, z:0};
-            // acceleration est l'accélération linéaire pure (sans gravité)
-            const accLin = event.acceleration || {x:0, y:0, z:0};
-            // rotationRate est le gyroscope
-            const rot = event.rotationRate || {alpha:0, beta:0, gamma:0};
-
-            // 2. Affichage dans le DOM (Section IMU)
-            if($('acc-x')) $('acc-x').textContent = (acc.x || 0).toFixed(2);
-            if($('acc-y')) $('acc-y').textContent = (acc.y || 0).toFixed(2);
-            if($('acc-z')) $('acc-z').textContent = (acc.z || 0).toFixed(2);
-
-            // 3. Calcul simple du Pitch/Roll pour le niveau à bulle
-            // (Approximation basique à partir de l'accéléromètre)
-            const roll = Math.atan2(acc.y, acc.z) * 180 / Math.PI;
-            const pitch = Math.atan2(-acc.x, Math.sqrt(acc.y * acc.y + acc.z * acc.z)) * 180 / Math.PI;
-
-            if($('pitch')) $('pitch').textContent = pitch.toFixed(1) + "°";
-            if($('roll')) $('roll').textContent = roll.toFixed(1) + "°";
-
-            // Mise à jour visuelle de la bulle
-            const bubble = $('bubble');
-            if (bubble) {
-                // Limite le déplacement pour rester dans le cercle
-                const maxDist = 45; 
-                const x = Math.max(-maxDist, Math.min(maxDist, roll));
-                const y = Math.max(-maxDist, Math.min(maxDist, pitch));
-                bubble.style.transform = `translate(${x}px, ${y}px)`;
-            }
-
-            // 4. Envoi au moteur UKF (si le moteur existe)
-            if (this.engine) {
-                const now = performance.now();
-                const dt = (now - this.lastT) / 1000;
-                this.lastT = now;
-                
-                // On passe les données au moteur pour le filtrage
-                this.engine.predict(dt, acc, rot, null);
-                
-                // Mise à jour de l'affichage vitesse calculée
-                const state = this.engine.getState();
-                if($('speed-main-display')) $('speed-main-display').textContent = (state.v * 3.6).toFixed(1) + " km/h";
-            }
-        }
-
-        updateGPS(position) {
-            if (!this.isRunning) return;
-            
-            // Mise à jour des coordonnées brutes
-            if(this.engine) {
-                this.engine.update({
-                    lat: position.coords.latitude,
-                    lon: position.coords.longitude,
-                    alt: position.coords.altitude
-                });
-            }
-
-            // Affichage UI GPS
-            if($('gps-accuracy-display')) $('gps-accuracy-display').textContent = position.coords.accuracy.toFixed(1) + " m";
-        }
+            activateSensors();
+        });
     }
 
-    // Instanciation globale
-    window.masterApp = new MasterDashboard();
+    function activateSensors() {
+        // Écouteur de mouvement (Oiseaux / Manèges)
+        window.addEventListener('devicemotion', (e) => {
+            if (!isRunning) return;
+            
+            const ax = e.accelerationIncludingGravity.x || 0;
+            const ay = e.accelerationIncludingGravity.y || 0;
+            const az = e.accelerationIncludingGravity.z || 0;
 
-})(window);
+            // Mise à jour sécurisée des IDs
+            if (ui.accX()) ui.accX().textContent = ax.toFixed(2);
+            
+            // Calcul inclinaison pour la bulle
+            const roll = Math.atan2(ay, az) * 57.29;
+            const pitch = Math.atan2(-ax, 9.81) * 57.29;
+            
+            if (ui.bubble()) {
+                ui.bubble().style.transform = `translate(${roll}px, ${pitch}px)`;
+            }
+
+            // Vérité Cosmique (Simulation si pas de GPS)
+            if (ui.vCosmic()) {
+                const v_base = 1307000; // Vitesse Galactique approx
+                ui.vCosmic().textContent = v_base.toLocaleString() + " km/h";
+            }
+        });
+
+        // GPS
+        navigator.geolocation.watchPosition((p) => {
+            if (!isRunning) return;
+            document.getElementById('speed-main-display').textContent = 
+                ((p.coords.speed || 0) * 3.6).toFixed(1) + " km/h";
+        }, null, {enableHighAccuracy: true});
+    }
+
+    window.onload = start;
+})();
