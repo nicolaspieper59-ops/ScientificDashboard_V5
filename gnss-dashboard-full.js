@@ -1,43 +1,59 @@
 (function() {
-    let engine = null;
+    let engine = new window.ProfessionalUKF();
     let isRunning = false;
+    let lastT = performance.now();
 
-    function bridge() {
-        if (!isRunning || !engine) return;
+    const btn = document.getElementById('gps-pause-toggle');
 
-        const state = engine.getState();
-        const mass = parseFloat(document.getElementById('mass-input')?.value) || 70;
+    btn.onclick = async () => {
+        if (isRunning) {
+            isRunning = false;
+            btn.textContent = "▶️ MARCHE GPS";
+            btn.style.background = "";
+            return;
+        }
 
-        // On crée un objet qui contient TOUTES les réponses pour tes IDs
-        const updates = {
-            'speed-main-display': (state.v * 3.6).toFixed(2) + " km/h",
-            'v-cosmic': (state.v * 3.6 + 1070000).toLocaleString() + " km/h",
-            'lat-ukf': state.lat.toFixed(8),
-            'lorentz-factor': (1 / Math.sqrt(1 - Math.pow(state.v/299792458, 2))).toFixed(12),
-            'kinetic-energy': (0.5 * mass * state.v**2).toFixed(0) + " J"
-            // Ajoute ici tous les autres IDs...
-        };
+        // Permission capteurs (Mobile/Tablette)
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            const resp = await DeviceMotionEvent.requestPermission();
+            if (resp !== 'granted') return;
+        }
 
-        // On boucle sur tous les IDs existants dans le HTML
-        Object.keys(updates).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = updates[id];
-        });
-
-        requestAnimationFrame(bridge);
-    }
-
-    document.getElementById('gps-pause-toggle').onclick = async () => {
-        if (isRunning) { isRunning = false; return; }
-        
-        // Initialisation propre
-        if (!window.ProfessionalUKF) return alert("Math.js ou UKF non chargé !");
-        engine = new window.ProfessionalUKF();
         isRunning = true;
+        btn.textContent = "⏸ PAUSE SYSTÈME";
+        btn.style.background = "#dc3545";
         
-        // Démarrage des capteurs
-        window.ondevicemotion = (e) => engine.predict(0.02, e.accelerationIncludingGravity, e.rotationRate);
-        
-        bridge();
+        // Boucle de calcul
+        requestAnimationFrame(syncLoop);
     };
+
+    // Capteurs IMU
+    window.addEventListener('devicemotion', (e) => {
+        if (!isRunning) return;
+        const now = performance.now();
+        const dt = (now - lastT) / 1000;
+        lastT = now;
+        engine.predict(dt, e.acceleration || {x:0, y:0, z:0}, e.rotationRate);
+    });
+
+    // Capteur GPS
+    navigator.geolocation.watchPosition(p => engine.updateGPS(p.coords));
+
+    function syncLoop() {
+        if (!isRunning) return;
+
+        const mass = parseFloat(document.getElementById('mass-input')?.value) || 70;
+        const results = engine.computeAll(mass);
+
+        // --- SUTURE AUTOMATIQUE DES 100+ IDs ---
+        // Cette boucle regarde chaque résultat et cherche l'ID correspondant dans ton HTML
+        for (const [id, value] of Object.entries(results)) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        requestAnimationFrame(syncLoop);
+    }
 })();
