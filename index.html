@@ -460,25 +460,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     
     <script src="vendor/leaflet.js"></script>
-    
-    <script src="lib/ukf-lib.js"></script> 
+     
 
     <script src="lib/astro.js" onerror="console.warn('Module Astro non chargé (optionnel)')"></script>
 
     <script src="js/gnss-dashboard-full.js"></script>
 
     <script>
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                if (typeof window.ProfessionalUKF === 'undefined') {
-                    console.error("❌ Moteur UKF non détecté.");
-                    document.getElementById('gps-status').textContent = "ERREUR MOTEUR";
-                    document.getElementById('gps-status').style.color = "red";
-                } else {
-                    console.log("✅ HTML connecté au Moteur UKF V12.");
-                }
-            }, 1000);
-        });
-    </script>
 </body>
 </html>
