@@ -265,18 +265,28 @@
             <section class="panel" aria-labelledby="speed-heading">
                 <h2 id="speed-heading"><i class="fas fa-tachometer-alt"></i> Vitesse, Distance & Relativité</h2>
                 <div class="speed-display" role="status" aria-live="polite">
-                    <span id="speed-main-display">0.0 km/h</span> <small id="speed-status-text">Attente du signal GPS...</small>
+                    <span id="speed-main-display">0.0 km/h</span> 
+                    <small id="speed-status-text">Attente du signal GPS...</small>
+
+                <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff;">
+                <span style="color: #00ffff;">🚀 Vitesse Cosmique</span>
+                <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff;">0 km/h</span>
                 </div>
+                    
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">0.0 km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">0.00 m/s</span></div>
-                <div class="data-point"><span>Vitesse Brute (m/s)</span><span id="speed-raw-ms">0.00 m/s</span></div> <div class="data-point"><span>Vitesse Max (Session)</span><span id="speed-max-session">0.0 km/h</span></div> <div class="data-point"><span>Vitesse Moyenne (Mvt)</span><span id="speed-avg-moving">0.0 km/h</span></div>
+                <div class="data-point"><span>Vitesse Brute (m/s)</span><span id="speed-raw-ms">0.00 m/s</span></div> 
+                <div class="data-point"><span>Vitesse Max (Session)</span><span id="speed-max-session">0.0 km/h</span></div> 
+                <div class="data-point"><span>Vitesse Moyenne (Mvt)</span><span id="speed-avg-moving">0.0 km/h</span></div>
                 <div class="data-point"><span>Vitesse Moyenne (Totale)</span><span id="speed-avg-total">0.0 km/h</span></div>
                 <hr>
                 <h3>Physique & Relativité</h3>
-                <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="local-speed-of-sound">N/A</span></div> <div class="data-point"><span>% Vitesse du Son</span><span id="perc-speed-sound">0.00 %</span></div>
+                <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="local-speed-of-sound">N/A</span></div>
+                <div class="data-point"><span>% Vitesse du Son</span><span id="perc-speed-sound">0.00 %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">0.0000</span></div>
-                <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">0.00e+0 %</span></div> <div class="data-point"><span>Facteur de Lorentz (γ)</span><span id="lorentz-factor">1.0000</span></div>
-                <div class="data-point"><span>Temps Dilation (Vitesse)</span><span id="time-dilation-vitesse">0.00 ns/j</span></div>
+                <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">0.00 %</span></div>
+                <div class="data-point"><span>Facteur de Lorentz (γ)</span><span id="lorentz-factor">1.00000000</span></div>
+                <div class="data-point"><span>Dilatation du Temps</span><span id="time-dilation-vitesse">0.00 ns/j</span></div>
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">0.00 ns/j</span></div>
                 <div class="data-point"><span>Énergie Relativiste (E)</span><span id="relativistic-energy">N/A</span></div>
                 <div class="data-point"><span>Énergie de Masse (E₀)</span><span id="rest-mass-energy">N/A</span></div>
@@ -287,18 +297,18 @@
                 
                 <hr>
                 <h3>Distance (3D)</h3>
-                <div class="data-point"><span>Distance Totale (3D)</span><span id="total-distance">0.000 km | 0.00 m</span></div>
+                <div class="data-point"><span>Distance Totale (3D)</span><span id="total-distance">0.000 km</span></div>
                 <div class="data-point"><span>Distance 3D Précise (UKF)</span><span id="total-distance-3d">0.0000 km</span></div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">1.000</span></div>
                 <span id="nether-mode-status" style="display:none;">1.000</span>
-                
+                    
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">0.00e+00 s</span></div>
                 <div class="data-point"><span>Distance (min-lumière)</span><span id="distance-light-min">0.00e+00 min</span></div>
                 <div class="data-point"><span>Distance (h-lumière)</span><span id="distance-light-h">0.00e+00 h</span></div>
                 <div class="data-point"><span>Distance (j-lumière)</span><span id="distance-light-day">0.00e+00 j</span></div>
                 <div class="data-point"><span>Distance (sem-lumière)</span><span id="distance-light-week">0.00e+00 sem</span></div>
                 <div class="data-point"><span>Distance (mois-lumière)</span><span id="distance-light-month">0.00e+00 mois</span></div>
-                <div class="data-point"><span>Distance (UA / al)</span><span id="distance-cosmic">0.00e+00 UA | 0.00e+00 al</span></div>
+                <div class="data-point"><span>Distance (UA / al)</span><span id="distance-cosmic">0.00 UA</span></div>
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">N/A</span></div>
                 <div class="data-point"><span>Distance Horizon (s)</span><span id="horizon-distance-km">N/A</span></div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">N/A</span></div>
@@ -345,7 +355,8 @@
                  <h2 id="dynamics-heading"><i class="fas fa-balance-scale-right"></i> Dynamique & Forces</h2>
                 <div class="data-point"><span>Gravité Locale (g)</span><span id="local-gravity">N/A</span></div>                 
                 <div class="data-point"><span>Force G (Long.)</span><span id="force-g-long">N/A</span></div>
-                <div class="data-point"><span>Accélération Long.</span><span id="accel-long">N/A</span></div> <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vertical-speed">N/A</span></div>
+                <div class="data-point"><span>Accélération Long.</span><span id="accel-long">N/A</span></div>
+                <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vertical-speed">N/A</span></div>
                 <div class="data-point"><span>Accel. Verticale (IMU)</span><span id="accel-verticale-imu">N/A</span></div>
                 <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">N/A</span></div>
                 <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">N/A</span></div>
@@ -410,7 +421,10 @@
                     <div class="clock-display"><span id="astro-phase" aria-live="polite">Nuit/Crépuscule (🌙)</span></div> </div>
                 <hr>
                 <h3>Positionnement EKF</h3>
-                <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">...</span></div> <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">...</span></div> <div class="data-point"><span>Altitude (UKF)</span><span id="alt-ukf">...</span></div> <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">N/A</span></div>
+                <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">...</span></div> 
+                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">...</span></div>
+                <div class="data-point"><span>Altitude (UKF)</span><span id="alt-ukf">...</span></div> 
+                <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">N/A</span></div>
                 <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">N/A</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">N/A</span></div>
                 <hr>
@@ -444,14 +458,29 @@
     </main>
 
     <script src="vendor/math.min.js"></script> 
-    <script src="vendor/leaflet.js"></script>
-    <script src="vendor/turf.min.js"></script>
+    <script>
+        if (typeof math === 'undefined') {
+            alert("ERREUR CRITIQUE : Le fichier 'vendor/math.min.js' est introuvable.\nLe moteur UKF ne pourra pas démarrer.");
+        }
+    </script>
+    <script src="vendor/leaflet.js"></script> <script src="lib/ukf-lib.js"></script> 
 
-    <script src="lib/ephem.js"></script>
-    <script src="lib/astro.js"></script>
+    <script src="lib/astro.js" onerror="console.warn('Module Astro non chargé (optionnel)')"></script>
 
-    <script src="ukf-lib.js"></script> 
+    <script src="js/gnss-dashboard-full.js"></script>
 
-    <script src="gnss-dashboard-full.js"></script>
-
+    <script>
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (typeof window.ProfessionalUKF === 'undefined') {
+                    console.error("❌ Moteur UKF non détecté.");
+                    document.getElementById('gps-status').textContent = "ERREUR MOTEUR";
+                    document.getElementById('gps-status').style.color = "red";
+                } else {
+                    console.log("✅ HTML connecté au Moteur UKF V12.");
+                }
+            }, 1000);
+        });
+    </script>
 </body>
+</html>
