@@ -457,13 +457,11 @@
         </div>
     </main>
 
-    <script src="vendor/math.min.js"></script> 
-    <script>
-        if (typeof math === 'undefined') {
-            alert("ERREUR CRITIQUE : Le fichier 'vendor/math.min.js' est introuvable.\nLe moteur UKF ne pourra pas démarrer.");
-        }
-    </script>
-    <script src="vendor/leaflet.js"></script> <script src="lib/ukf-lib.js"></script> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    
+    <script src="vendor/leaflet.js"></script>
+    
+    <script src="lib/ukf-lib.js"></script> 
 
     <script src="lib/astro.js" onerror="console.warn('Module Astro non chargé (optionnel)')"></script>
 
