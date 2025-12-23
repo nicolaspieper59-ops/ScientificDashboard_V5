@@ -2,55 +2,42 @@
     let engine = null;
     let isRunning = false;
 
-    const updateUI = () => {
+    function bridge() {
         if (!isRunning || !engine) return;
 
-        const mass = parseFloat(document.getElementById('object-mass')?.value) || 70;
-        const data = engine.computeExtendedState(mass);
+        const state = engine.getState();
+        const mass = parseFloat(document.getElementById('mass-input')?.value) || 70;
 
-        // --- MAPPING MASSIF PAR ID ---
-        const map = {
-            'speed-main-display': data.v_kmh.toFixed(2) + " km/h",
-            'speed-stable-kmh': data.v_kmh.toFixed(2) + " km/h",
-            'lat-ukf': data.lat.toFixed(8),
-            'lon-ukf': data.lon.toFixed(8),
-            'alt-ukf': data.alt.toFixed(2),
-            'lorentz-factor': data.gamma.toFixed(10),
-            'time-dilation-vitesse': data.dilation.toFixed(3) + " ns/j",
-            'speed-mach': data.mach.toFixed(4),
-            'kinetic-energy': data.ke.toLocaleString() + " J",
-            'schwarzschild-radius': data.schwarzschild.toExponential(4) + " m",
-            'v-cosmic': (data.v_kmh + 107000 + 828000).toLocaleString() + " km/h"
+        // On crée un objet qui contient TOUTES les réponses pour tes IDs
+        const updates = {
+            'speed-main-display': (state.v * 3.6).toFixed(2) + " km/h",
+            'v-cosmic': (state.v * 3.6 + 1070000).toLocaleString() + " km/h",
+            'lat-ukf': state.lat.toFixed(8),
+            'lorentz-factor': (1 / Math.sqrt(1 - Math.pow(state.v/299792458, 2))).toFixed(12),
+            'kinetic-energy': (0.5 * mass * state.v**2).toFixed(0) + " J"
+            // Ajoute ici tous les autres IDs...
         };
 
-        // Application automatique : si l'ID existe dans le HTML, on le remplit
-        for (let [id, val] of Object.entries(map)) {
-            let el = document.getElementById(id);
-            if (el) el.textContent = val;
-        }
+        // On boucle sur tous les IDs existants dans le HTML
+        Object.keys(updates).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = updates[id];
+        });
 
-        requestAnimationFrame(updateUI);
+        requestAnimationFrame(bridge);
+    }
+
+    document.getElementById('gps-pause-toggle').onclick = async () => {
+        if (isRunning) { isRunning = false; return; }
+        
+        // Initialisation propre
+        if (!window.ProfessionalUKF) return alert("Math.js ou UKF non chargé !");
+        engine = new window.ProfessionalUKF();
+        isRunning = true;
+        
+        // Démarrage des capteurs
+        window.ondevicemotion = (e) => engine.predict(0.02, e.accelerationIncludingGravity, e.rotationRate);
+        
+        bridge();
     };
-
-    const init = () => {
-        const btn = document.getElementById('gps-pause-toggle');
-        btn.onclick = async () => {
-            if (isRunning) { isRunning = false; btn.textContent = "▶️ MARCHE GPS"; return; }
-
-            if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
-            
-            engine = new window.ProfessionalUKF();
-            isRunning = true;
-            btn.textContent = "⏸️ ARRÊT GPS";
-            btn.style.background = "#dc3545";
-
-            // Capteurs
-            window.ondevicemotion = (e) => engine.predict(0.02, e.accelerationIncludingGravity, e.rotationRate);
-            navigator.geolocation.watchPosition(p => engine.update({lat:p.coords.latitude, lon:p.coords.longitude, alt:p.coords.altitude}));
-            
-            updateUI();
-        };
-    };
-
-    window.onload = init;
 })();
