@@ -460,21 +460,8 @@
     <script src="lib/ukf-lib.js"></script> <script src="js/gnss-dashboard-full.js"></script>
 
     <script>
-        // Ce script final vérifie si tout est prêt pour Android
-        window.addEventListener('load', () => {
-            console.log("🚀 Système GNSS SpaceTime : Initialisation...");
-            
-            // Vérification des dépendances critiques
-            if (typeof math === 'undefined') console.error("❌ Math.js manquant !");
-            if (typeof ProfessionalUKF === 'undefined') console.error("❌ Moteur UKF manquant !");
-            
-            // Indique à l'utilisateur que le système est prêt pour le clic "MARCHE"
-            const statusEl = document.getElementById('gps-status');
-            if (statusEl) {
-                statusEl.textContent = "SYSTÈME PRÊT";
-                statusEl.style.color = "#00ff00";
-            }
-        });
-    </script>
+        <script src="vendor/leaflet.js"></script>
+<script src="gnss-dashboard-full.js"></script>
+   </script>
 </body>
 </html>
