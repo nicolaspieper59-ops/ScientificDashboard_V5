@@ -459,30 +459,29 @@
 
     <script src="vendor/math.min.js"></script> 
     <script src="vendor/leaflet.js"></script> 
-    <script src="lib/astro.js"></script>
+    
     <script src="lib/ukf-lib.js"></script> 
-    <script src="gnss-dashboard-full.js"></script>
+
+    <script src="lib/astro.js"></script>
+    <script src="js/gnss-dashboard-full.js"></script>
 
     <script>
         window.addEventListener('load', function() {
             setTimeout(() => {
-                // CORRECTION : On vérifie le nom REEL de la classe dans ukf-class (13)
-                if (typeof window.UltimateUKFEngine === 'undefined') {
-                    console.error("❌ Moteur UltimateUKFEngine non détecté.");
-                    document.getElementById('gps-status').textContent = "ERREUR LIAISON JS";
+                // Maintenant, ProfessionalUKF existe car on l'a lié dans ukf-lib.js
+                if (typeof window.ProfessionalUKF === 'undefined') {
+                    document.getElementById('gps-status').textContent = "ERREUR MOTEUR";
                     document.getElementById('gps-status').style.color = "red";
                 } else {
-                    console.log("✅ Système Ready. Initialisation du moteur...");
-                    // On force la création de l'instance si elle n'existe pas
+                    console.log("✅ Liaison réussie avec le fichier unique !");
                     if(!window.MainEngine) {
-                        window.MainEngine = new UltimateUKFEngine();
+                        window.MainEngine = new ProfessionalUKF();
                     }
                     document.getElementById('gps-status').textContent = "SYSTÈME PRÊT";
                     document.getElementById('gps-status').style.color = "#00ff00";
                 }
-            }, 1000);
+            }, 500);
         });
-    
-   </script>
+    </script>   
 </body>
 </html>
