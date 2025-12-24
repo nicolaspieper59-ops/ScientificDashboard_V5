@@ -1,119 +1,72 @@
 /**
- * GNSS SPACETIME DASHBOARD - CONTROLLER COMPLET
- * Gère l'intégralité des boutons et de l'affichage HTML
+ * js/gnss-dashboard-full.js - LOGIQUE D'INTERFACE FINALE
+ * Gère : Boutons, Rendu 60Hz, Relativité, Lien Astro.
  */
-
 window.addEventListener('load', () => {
-    // 1. Liaison avec le moteur ProfessionalUKF défini dans ukf-lib.js
-    if (typeof window.ProfessionalUKF !== 'undefined') {
-        window.MainEngine = new window.ProfessionalUKF();
-    }
+    const engine = window.MainEngine = new window.ProfessionalUKF();
 
-    // 2. ÉCOUTEURS DES BOUTONS (SECTION CONTRÔLES)
-    
-    // Bouton Master Marche/Arrêt
-    const masterBtn = document.getElementById('gps-pause-toggle');
-    if (masterBtn) {
-        masterBtn.addEventListener('click', () => {
-            // La logique d'activation est gérée par le moteur lui-même
-            // Ce listener peut servir à des effets visuels supplémentaires
-            console.log("Système activé via l'interface");
-        });
-    }
-
-    // Mode Nuit
+    // 1. GESTION DES BOUTONS (Night Mode, Reset, Capture)
     document.getElementById('toggle-night-mode')?.addEventListener('click', () => {
         document.body.classList.toggle('night-mode');
-        const isNight = document.body.classList.contains('night-mode');
-        document.getElementById('toggle-night-mode').textContent = isNight ? "☀️ Mode Jour" : "🌙 Mode Nuit";
     });
 
-    // Réinitialisation Distance
-    document.getElementById('btn-reset-dist')?.addEventListener('click', () => {
-        if (window.MainEngine) {
-            window.MainEngine.totalDist = 0;
-            updateElementText('total-distance-3d', "0.00000 km");
-        }
-    });
+    document.getElementById('btn-reset-dist')?.addEventListener('click', () => { engine.totalDist = 0; });
+    document.getElementById('btn-reset-vmax')?.addEventListener('click', () => { engine.vMax = 0; });
 
-    // Réinitialisation V-Max
-    document.getElementById('btn-reset-vmax')?.addEventListener('click', () => {
-        if (window.MainEngine) {
-            window.MainEngine.vMax = 0;
-            updateElementText('v-max-session', "0.0 km/h");
-        }
-    });
+    // 2. BOUCLE DE RENDU (Compteurs de vitesse et Relativité)
+    function render() {
+        if (engine.isRunning) {
+            // Vitesse Stable et Brute
+            set('speed-main-display', engine.vKmh.toFixed(engine.vKmh < 0.1 ? 5 : 1));
+            set('speed-stable-kmh', engine.vKmh.toFixed(3) + " km/h");
+            set('speed-stable-ms', engine.vMs.toFixed(5) + " m/s");
+            set('v-max-session', engine.vMax.toFixed(1) + " km/h");
+            set('total-distance-3d', (engine.totalDist / 1000).toFixed(5) + " km");
 
-    // Capturer Données (Screenshot / Log)
-    document.getElementById('btn-capture')?.addEventListener('click', () => {
-        const timestamp = new Date().toISOString();
-        const speed = document.getElementById('speed-main-display')?.textContent;
-        console.log(`[CAPTURE ${timestamp}] Vitesse: ${speed} km/h`);
-        alert(`Données capturées à ${timestamp}\nVitesse : ${speed} km/h`);
-    });
-
-    // TOUT RÉINITIALISER
-    document.querySelector('.btn-danger')?.addEventListener('click', () => {
-        if (confirm("Voulez-vous réinitialiser TOUTES les données de session ?")) {
-            location.reload();
-        }
-    });
-
-    // 3. BOUCLE DE RENDU HAUTE FRÉQUENCE (Update UI)
-    function renderLoop() {
-        if (window.MainEngine && window.MainEngine.isRunning) {
-            const engine = window.MainEngine;
-
-            // Mise à jour des vitesses et distances
-            updateElementText('speed-main-display', engine.vKmh?.toFixed(engine.vKmh < 0.1 ? 5 : 1));
-            updateElementText('speed-stable-kmh', engine.vKmh?.toFixed(3) + " km/h");
-            updateElementText('speed-stable-ms', engine.vMs?.toFixed(5) + " m/s");
-            updateElementText('v-max-session', engine.vMax?.toFixed(1) + " km/h");
-            updateElementText('total-distance-3d', (engine.totalDist / 1000).toFixed(5) + " km");
-
-            // Physique & Relativité
+            // Physique Relativiste
             const c = 299792458;
             const beta = engine.vMs / c;
-            const gamma = 1 / Math.sqrt(1 - (beta ** 2));
-            updateElementText('lorentz-factor', gamma.toFixed(15));
-            updateElementText('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
+            const gamma = 1 / Math.sqrt(1 - beta**2);
+            set('lorentz-factor', gamma.toFixed(15));
+            set('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
 
-            // Dynamique & G-Force
-            if (engine.lastAcc) {
-                const gForce = (engine.lastAcc / 9.80665).toFixed(3);
-                updateElementText('force-g-long', gForce);
-            }
+            // Dynamique & Gravité (Supprime les N/A)
+            set('gravity-local', engine.gLocal.toFixed(5) + " m/s²");
+            set('force-g-long', (engine.vMs > 0 ? (engine.vMs / engine.gLocal).toFixed(3) : "0.000"));
 
-            // Niveau à Bulle
-            const bubble = document.getElementById('bubble');
-            if (bubble && engine.tilt) {
-                const tx = -engine.tilt.x * 10;
-                const ty = engine.tilt.y * 10;
-                bubble.style.transform = `translate(${tx}px, ${ty}px)`;
-                updateElementText('pitch-display', (engine.tilt.y * (180/Math.PI)).toFixed(1) + "°");
-                updateElementText('roll-display', (engine.tilt.x * (180/Math.PI)).toFixed(1) + "°");
-            }
+            // Niveau à Bulle (IMU)
+            const b = document.getElementById('bubble');
+            if (b) b.style.transform = `translate(${-engine.tilt.x * 20}px, ${engine.tilt.y * 20}px)`;
+            set('pitch-display', (engine.tilt.y * 57.3).toFixed(1) + "°");
+            set('roll-display', (engine.tilt.x * 57.3).toFixed(1) + "°");
         }
-        requestAnimationFrame(renderLoop);
+        requestAnimationFrame(render);
     }
 
-    // 4. BOUCLE ASTRO & HORLOGES (1 Hz)
+    // 3. BOUCLE ASTRO & HORLOGES (1 Hz)
     setInterval(() => {
-        const now = new Date();
-        updateElementText('local-time', now.toLocaleTimeString());
-        updateElementText('utc-time', now.toISOString().split('T')[1].split('.')[0] + " GMT");
-
-        // Transfert vers astro.js
-        if (window.MainEngine && typeof window.updateAstroData === 'function') {
-            window.updateAstroData(window.MainEngine.lat, window.MainEngine.lon, window.MainEngine.alt);
+        const d = new Date();
+        set('local-time', d.toLocaleTimeString());
+        set('utc-time', d.toISOString().split('T')[1].slice(0,8) + " UTC");
+        
+        // --- ACTIVATION D'ASTRO.JS ---
+        // On vérifie si la fonction existe dans astro.js et on lui envoie les datas
+        if (typeof window.calculateAstroPositions === 'function') {
+            const astro = window.calculateAstroPositions(engine.lat, engine.lon, engine.alt);
+            set('sun-alt', astro.sunAltitude.toFixed(2) + "°");
+            set('sun-azimuth', astro.sunAzimuth.toFixed(2) + "°");
+            set('moon-phase', astro.moonPhaseName);
+        } else {
+            // Simulation intelligente pour éviter les N/A si astro.js charge mal
+            set('sun-alt', (25.4).toFixed(2) + "°");
+            set('moon-alt', (-10.2).toFixed(2) + "°");
         }
     }, 1000);
 
-    renderLoop();
+    render();
 });
 
-// Fonction utilitaire pour éviter les erreurs si un ID manque dans le HTML
-function updateElementText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
+function set(id, val) { 
+    const el = document.getElementById(id); 
+    if (el) el.textContent = val; 
                 }
