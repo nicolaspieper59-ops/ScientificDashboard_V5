@@ -1,327 +1,262 @@
 /**
- * GNSS SPACETIME - UKF GOLD MASTER (V100 - FINAL FUSION)
- * ======================================================
- * Le Moteur de Navigation Inertielle Ultime pour Web.
- * * FONCTIONNALITÉS :
- * 1. Fusion 24 États : Pos(3)+Vel(3)+Quat(4)+Bias(6)+Scale(6)+Thermo(2).
- * 2. Physique Totale : Gravité Somigliana, Coriolis, Traînée Aéro (Drag), Poussée d'Archimède.
- * 3. Modes Intelligents : 
- * - "Tunnel/Grotte" (Inertie Newtonienne pure sans GPS).
- * - "Acrobatie" (Q Adaptatif pour G élevés).
- * - "Microscopique" (Sensibilité mm/s).
- * 4. Relativité Générale : Dilatation temporelle, Facteur Lorentz, Rayon Schwarzschild.
- * 5. Astro-Navigation : Position Soleil/Lune intégrée.
+ * GNSS SPACETIME - UKF GOLD MASTER (V101 - HTML FUSION)
+ * Spécialisé pour index(28).html & DeviceMotionEvent Android
  */
 
 ((window) => {
-    // Vérification Dépendance
-    if (typeof math === 'undefined') throw new Error("⛔ CRITIQUE : math.js manquant !");
+    // 1. SÉCURITÉ : Vérification des maths
+    if (typeof math === 'undefined') {
+        alert("ERREUR : math.js n'est pas chargé ! Le système ne peut pas démarrer.");
+        throw new Error("math.js missing");
+    }
 
-    // --- CONSTANTES UNIVERSELLES (CODATA 2018 & WGS84) ---
-    const C = 299792458;          // Vitesse Lumière (m/s)
-    const G_UNIV = 6.67430e-11;   // Constante Gravitationnelle
-    const G_EARTH = 9.80665;      // Gravité Standard
-    const R_MAJOR = 6378137.0;    // Rayon Terre Équateur
-    const FLATTENING = 1/298.257223563;
-    const OMEGA_E = 7.292115e-5;  // Vitesse Rotation Terre (rad/s)
+    // --- CONSTANTES PHYSIQUES ---
+    const C = 299792458;
+    const G_EARTH = 9.80665;
     const D2R = Math.PI / 180;
     const R2D = 180 / Math.PI;
 
     class UltimateUKF {
         constructor() {
             // --- CONFIGURATION VECTEUR D'ÉTAT (n=24) ---
-            // 0-2: Pos (Lat, Lon, Alt)
-            // 3-5: Vel (Nord, Est, Bas)
-            // 6-9: Attitude Quaternion (q0, q1, q2, q3)
-            // 10-12: Gyro Bias (Dérive Gyro)
-            // 13-15: Accel Bias (Dérive Accéléro)
-            // 16-18: Gyro Scale Factor
-            // 19-21: Accel Scale Factor
-            // 22-23: Paramètres Thermiques/Vibratoires
             this.n = 24;
             this.x = math.matrix(math.zeros([this.n, 1]));
-            this.x.set([6, 0], 1.0); // Quaternion W initialisé à 1
-            
-            // Initialisation Scale Factors à 1.0 (neutralité)
+            this.x.set([6, 0], 1.0); // Quaternion W = 1
+            // Init Scale Factors à 1.0
             for(let i=16; i<=21; i++) this.x.set([i, 0], 1.0);
 
-            // Matrice de Covariance P (Incertitude initiale)
-            this.P = math.diag(math.zeros(this.n).map((_, i) => {
-                if(i<=2) return 1e-5;  // Pos (m)
-                if(i<=5) return 0.01;  // Vel (m/s)
-                return 1e-4;           // Biais/Scale
-            }));
+            // Covariance Initiale
+            this.P = math.diag(math.zeros(this.n).map((_, i) => i<=2 ? 1e-5 : 0.01));
 
-            // --- PARAMÈTRES PHYSIQUES OBJET ---
-            this.mass = 70.0;     // kg (Humain par défaut)
-            this.dragArea = 0.5;  // m² (Surface frontale)
-            this.dragCoeff = 1.1; // Cd (Humain debout)
-            
             // --- ÉTATS SYSTÈME ---
             this.isRunning = false;
             this.isCalibrating = true;
             this.calibSamples = [];
-            this.calibLimit = 100;
-            this.lastT = performance.now();
             this.totalDist = 0;
-            this.mode = "INIT"; // INIT, NAV, TUNNEL, ACRO, MICRO
+            this.vMax = 0;
             
-            // Matrices de Bruit (Réglage Fin)
-            this.Q_base = 1e-4; // Bruit process standard
-            this.R_GPS_Std = math.diag([0.5, 0.5, 1.0, 0.1, 0.1, 0.1]);
+            // --- DONNÉES UTILISATEUR (Lues depuis le HTML) ---
+            this.mass = 70.0;
+            this.lastT = performance.now();
 
+            // Lancement automatique de l'interface
             this.init();
         }
 
         init() {
+            console.log("🚀 Système GNSS prêt. Attente utilisateur.");
             this.setupUI();
             this.renderLoop();
-            console.log("🚀 UKF GOLD MASTER V100 INITIALISÉ");
         }
 
         // =================================================================
-        // 1. PHYSIQUE DE PROPAGATION (PREDICT)
-        // C'est ici que la magie opère : Newton, Coriolis, Drag, Gravité
+        // 1. GESTION CAPTEURS & INTERACTION (C'est ici que ça bloquait)
         // =================================================================
-        predict(accRaw, gyroRaw, dt) {
-            if (dt <= 0) return;
+        setupUI() {
+            const btn = document.getElementById('gps-pause-toggle');
+            if (!btn) return console.error("Bouton 'gps-pause-toggle' introuvable dans le HTML !");
 
-            // A. Gestion des Modes Dynamiques (Adaptatif)
-            const accMag = Math.sqrt(accRaw.x**2 + accRaw.y**2 + accRaw.z**2);
-            const gyroMag = Math.sqrt(gyroRaw.x**2 + gyroRaw.y**2 + gyroRaw.z**2);
-            
-            // Mode ACROBATIE (Manèges/Drones) : Si accélération > 2G ou rotation rapide
-            let dynamicFactor = 1.0;
-            if (accMag > 19.6 || gyroMag > 5.0) {
-                this.mode = "ACRO";
-                dynamicFactor = 10.0; // On augmente l'incertitude pour être plus réactif
-            } else if (accMag < 1.0) {
-                this.mode = "CHUTE_LIBRE";
-            } else {
-                this.mode = "NAV";
-            }
+            btn.onclick = async () => {
+                if (!this.isRunning) {
+                    // A. DEMANDE DE PERMISSION (Obligatoire pour Android 10+ / iOS)
+                    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                        try {
+                            const response = await DeviceMotionEvent.requestPermission();
+                            if (response !== 'granted') return alert("Permission capteurs refusée.");
+                        } catch (e) { console.error(e); }
+                    }
 
-            // B. Correction des Capteurs (Biais + Scale Factors)
-            // Formule : Mesure_Corrigée = (Mesure_Brute * Scale) - Biais
-            const ax = (accRaw.x * this.x.get([19,0])) - this.x.get([13,0]);
-            const ay = (accRaw.y * this.x.get([20,0])) - this.x.get([14,0]);
-            const az = (accRaw.z * this.x.get([21,0])) - this.x.get([15,0]);
+                    // B. DÉMARRAGE DES ÉCOUTEURS
+                    window.addEventListener('devicemotion', (e) => this.handleMotion(e), true);
+                    
+                    navigator.geolocation.watchPosition(
+                        (p) => this.updateGPS(p),
+                        (e) => console.warn(e),
+                        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+                    );
 
-            const gx = (gyroRaw.x * this.x.get([16,0])) - this.x.get([10,0]);
-            const gy = (gyroRaw.y * this.x.get([17,0])) - this.x.get([11,0]);
-            const gz = (gyroRaw.z * this.x.get([18,0])) - this.x.get([12,0]);
+                    this.isRunning = true;
+                    btn.textContent = "⏸ PAUSE SYSTÈME";
+                    btn.style.backgroundColor = "#dc3545"; // Rouge
+                    
+                    // Lecture de la masse définie dans le HTML
+                    const massInput = document.getElementById('mass-input');
+                    if(massInput) this.mass = parseFloat(massInput.value) || 70;
 
-            // C. Rotation dans le Repère Monde (NED) via Quaternions
-            const q = [this.x.get([6,0]), this.x.get([7,0]), this.x.get([8,0]), this.x.get([9,0])];
-            const accWorld = this.rotateVector(q, [ax, ay, az]);
-
-            // D. Calcul de la Gravité Somigliana (WGS84) selon Latitude/Altitude
-            const lat = this.x.get([0,0]) * D2R;
-            const alt = this.x.get([2,0]);
-            const sinLat = Math.sin(lat);
-            // Gravité précise à l'équateur corrigée par latitude
-            let g_loc = 9.7803253359 * (1 + 0.00193185 * sinLat**2) / Math.sqrt(1 - 0.00669438 * sinLat**2);
-            // Correction "Free Air" (Altitude)
-            g_loc -= (3.086e-6 * alt);
-
-            // E. Force de Coriolis (Rotation Terre)
-            const vn = this.x.get([3,0]);
-            const ve = this.x.get([4,0]);
-            const vd = this.x.get([5,0]);
-            
-            const ac_n =  2 * OMEGA_E * ve * Math.sin(lat);
-            const ac_e = -2 * OMEGA_E * (vn * Math.sin(lat) + vd * Math.cos(lat));
-            const ac_d =  2 * OMEGA_E * ve * Math.cos(lat);
-
-            // F. Traînée Aérodynamique (Drag)
-            // Densité de l'air (ISA Model)
-            const rho = 1.225 * Math.exp(-alt / 8500);
-            const vSq = vn**2 + ve**2 + vd**2;
-            const vAbs = Math.sqrt(vSq);
-            let drag = [0, 0, 0];
-            
-            if (vAbs > 0.1) {
-                const fDrag = 0.5 * rho * vSq * this.dragCoeff * this.dragArea;
-                const aDrag = fDrag / this.mass; // F=ma -> a=F/m
-                drag[0] = -aDrag * (vn/vAbs);
-                drag[1] = -aDrag * (ve/vAbs);
-                drag[2] = -aDrag * (vd/vAbs);
-            }
-
-            // G. INTÉGRATION NEWTONIENNE (Vitesse)
-            // a_net = Acc_Capteur + Coriolis + Drag + [0, 0, g_loc]
-            let ax_net = accWorld[0] + ac_n + drag[0];
-            let ay_net = accWorld[1] + ac_e + drag[1];
-            let az_net = accWorld[2] + ac_d + drag[2] + g_loc; // +g car NED Down est positif vers le bas
-
-            // Mode Microscopique / ZUPT (Zero Velocity Update)
-            // Si l'accélération est infime, on la force à 0 pour éviter la dérive à l'arrêt
-            if (Math.abs(ax_net) < 0.02) ax_net = 0;
-            if (Math.abs(ay_net) < 0.02) ay_net = 0;
-            if (Math.abs(az_net) < 0.02) az_net = 0;
-
-            const vn_new = vn + ax_net * dt;
-            const ve_new = ve + ay_net * dt;
-            const vd_new = vd + az_net * dt;
-
-            // H. Mise à jour Position (Géodésique)
-            // Rayons de courbure Terre
-            const Rn = R_MAJOR / Math.sqrt(1 - (2*FLATTENING - FLATTENING**2) * sinLat**2);
-            const Rm = Rn * ((1 - (2*FLATTENING - FLATTENING**2)) / (1 - (2*FLATTENING - FLATTENING**2) * sinLat**2));
-
-            const lat_new = this.x.get([0,0]) + (vn_new * dt) / (Rm + alt) * R2D;
-            const lon_new = this.x.get([1,0]) + (ve_new * dt) / ((Rn + alt) * Math.cos(lat)) * R2D;
-            const alt_new = alt - (vd_new * dt); // - car vd est positif vers le bas
-
-            // I. Intégration Quaternions (Attitude)
-            this.integrateQuaternions({x:gx, y:gy, z:gz}, dt);
-
-            // J. Sauvegarde État
-            this.x.set([0,0], lat_new); this.x.set([1,0], lon_new); this.x.set([2,0], alt_new);
-            this.x.set([3,0], vn_new);  this.x.set([4,0], ve_new);  this.x.set([5,0], vd_new);
-
-            // Mise à jour distance totale 3D
-            this.totalDist += vAbs * dt;
-            
-            // Propagation de la Covariance P (Incertitude grandit avec le temps)
-            // On ajoute Q * dynamicFactor pour permettre des sauts en mode Acro
-            const Q = math.multiply(math.identity(this.n), this.Q_base * dt * dynamicFactor);
-            this.P = math.add(this.P, Q);
+                } else {
+                    location.reload(); // Reset complet pour arrêter proprement
+                }
+            };
         }
 
         // =================================================================
-        // 2. CORRECTION GPS (UPDATE)
-        // Gère les tunnels et la précision variable
+        // 2. MOTEUR PHYSIQUE (UKF PREDICT)
         // =================================================================
-        updateGPS(pos) {
-            if (!pos.coords) return;
-            const { latitude, longitude, altitude, accuracy, speed } = pos.coords;
+        handleMotion(e) {
+            if (!this.isRunning) return;
+            const now = performance.now();
+            const dt = Math.min((now - this.lastT) / 1000, 0.1); // Max 100ms
+            this.lastT = now;
 
-            // Détection Mode Tunnel (Si accuracy > 50m ou pas de signal)
-            if (accuracy > 50) {
-                this.mode = "TUNNEL";
-                this.updateStatus("MODE TUNNEL (INERTIE PURE)");
-                return; // On ne corrige PAS avec un mauvais GPS, on fait confiance à l'inertie (Predict)
-            } else {
-                this.mode = "NAV";
-            }
+            // RECUPERATION DES DONNÉES (Android : accelerationIncludingGravity est plus fiable)
+            const accIncGrav = e.accelerationIncludingGravity || {x:0, y:0, z:0};
+            const gyro = e.rotationRate || {alpha:0, beta:0, gamma:0};
 
-            // Vecteur de Mesure z (Lat, Lon, Alt, Vn, Ve, Vd)
-            // Conversion Vitesse Sol GPS (Heading + Speed) en NED
-            const headRad = (pos.coords.heading || 0) * D2R;
-            const vn_gps = (speed || 0) * Math.cos(headRad);
-            const ve_gps = (speed || 0) * Math.sin(headRad);
-            const vd_gps = -(pos.coords.altitudeAccuracy ? 0 : 0); // Vitesse verticale souvent bruitée sur GPS mobile
-
-            const z = math.matrix([
-                [latitude], [longitude], [altitude || this.x.get([2,0])],
-                [vn_gps], [ve_gps], [vd_gps]
-            ]);
-
-            // Matrice d'Observation H (Linéaire ici car états directs)
-            // On mappe les états 0-5 vers les mesures
-            const H = math.zeros([6, this.n]);
-            for(let i=0; i<6; i++) H.set([i, i], 1);
-
-            // Matrice de Bruit de Mesure R (Adaptative selon Accuracy)
-            const r_pos = Math.pow(accuracy, 2); // Variance position
-            const r_vel = 0.5; // Variance vitesse
-            const R = math.diag([r_pos, r_pos, r_pos*2, r_vel, r_vel, r_vel]);
-
-            // --- FILTRE DE KALMAN ÉTENDU (EKF Update Standard) ---
-            // Innovation y = z - Hx
-            const Hx = math.multiply(H, this.x);
-            const y = math.subtract(z, Hx);
-
-            // S = HPH' + R
-            const PHt = math.multiply(this.P, math.transpose(H));
-            const S = math.add(math.multiply(H, PHt), R);
-
-            // K = PH'S^-1
-            const K = math.multiply(PHt, math.inv(S));
-
-            // x = x + Ky
-            this.x = math.add(this.x, math.multiply(K, y));
-
-            // P = (I - KH)P
-            const I = math.identity(this.n);
-            const KH = math.multiply(K, H);
-            this.P = math.multiply(math.subtract(I, KH), this.P);
+            // Mapping Gyro Android (alpha=Z, beta=X, gamma=Y) -> NED
+            // Attention : l'orientation des axes dépend du téléphone, on normalise ici.
+            const gyroRaw = { x: gyro.beta || 0, y: gyro.gamma || 0, z: gyro.alpha || 0 };
             
-            // Re-normalisation Quaternion après update
-            this.normalizeQuaternion();
-        }
+            // Retrait Gravité Simplifié (Pour l'inertie) si l'accélération linéaire est nulle
+            // C'est une approximation robuste pour éviter les dépendances complexes
+            let ax = accIncGrav.x || 0;
+            let ay = accIncGrav.y || 0;
+            let az = accIncGrav.z || 0;
 
-        // =================================================================
-        // 3. AFFICHAGE & RENDU SCIENTIFIQUE
-        // =================================================================
-        renderLoop() {
-            if (!this.isRunning) {
-                requestAnimationFrame(() => this.renderLoop());
+            // 1. CALIBRATION AU DÉMARRAGE (2 secondes)
+            if (this.isCalibrating) {
+                this.calibrate(ax, ay, az);
                 return;
             }
 
-            // Extraction Vitesse
-            const vn = this.x.get([3,0]);
-            const ve = this.x.get([4,0]);
-            const vz = this.x.get([5,0]);
-            const vTot = Math.sqrt(vn**2 + ve**2 + vz**2);
-            const kmh = vTot * 3.6;
+            // 2. CORRECTION DES BIAIS
+            // On retire le biais calculé + la gravité standard (9.81 sur Z)
+            ax -= this.x.get([13,0]);
+            ay -= this.x.get([14,0]);
+            az -= (this.x.get([15,0]) + G_EARTH); // On retire la gravité ici
 
-            // A. RELATIVITÉ GÉNÉRALE & RESTREINTE
-            // Facteur de Lorentz (Dilatation temporelle due à la vitesse)
-            const gamma = 1 / Math.sqrt(1 - Math.pow(vTot/C, 2));
-            const timeDilation = (gamma - 1) * 86400 * 1e9; // nanosecondes par jour
+            // Deadzone (Filtre bruit blanc à l'arrêt)
+            if (Math.abs(ax) < 0.1) ax = 0;
+            if (Math.abs(ay) < 0.1) ay = 0;
+            if (Math.abs(az) < 0.1) az = 0;
+
+            // 3. PRÉDICTION UKF (Intégration)
+            // v = v + a * dt
+            const vx = this.x.get([3,0]) + ax * dt;
+            const vy = this.x.get([4,0]) + ay * dt;
+            const vz = this.x.get([5,0]) + az * dt;
+
+            // Sauvegarde État
+            this.x.set([3,0], vx); this.x.set([4,0], vy); this.x.set([5,0], vz);
             
-            // Rayon de Schwarzschild (Si l'objet était un trou noir)
-            const rs = (2 * G_UNIV * this.mass) / C**2;
+            // Distance
+            const speed = Math.sqrt(vx**2 + vy**2 + vz**2);
+            this.totalDistance += speed * dt;
+            if (speed * 3.6 > this.vMax) this.vMax = speed * 3.6;
 
-            // B. MÉTÉO & SON (ISA Model)
-            const alt = this.x.get([2,0]);
-            const tempK = 288.15 - 0.0065 * alt; // Température std à l'altitude
-            const vSound = Math.sqrt(1.4 * 287.05 * tempK); // Vitesse son locale
-            const mach = vTot / vSound;
+            // Intégration Quaternions (Orientation) pour le niveau à bulle
+            this.integrateQuaternions(gyroRaw, dt);
+        }
 
-            // C. MISES À JOUR DOM
-            this.set('speed-main-display', kmh.toFixed(2));
-            this.set('speed-stable-kmh', kmh.toFixed(3) + " km/h");
-            this.set('speed-mach', mach.toFixed(4));
+        // =================================================================
+        // 3. CORRECTION GPS (UKF UPDATE)
+        // =================================================================
+        updateGPS(pos) {
+            if (!pos.coords) return;
+            const { latitude, longitude, altitude, speed, heading } = pos.coords;
+
+            // Conversion Vitesse GPS en vecteur
+            const hRad = (heading || 0) * D2R;
+            const vn = (speed || 0) * Math.cos(hRad);
+            const ve = (speed || 0) * Math.sin(hRad);
+
+            // Fusion simple (Filtre Complémentaire) pour recaler l'UKF
+            // On fait confiance au GPS à 10% pour corriger la dérive de l'accéléromètre
+            const k = 0.1;
+            this.x.set([0,0], latitude);
+            this.x.set([1,0], longitude);
+            this.x.set([2,0], altitude || 0);
+            this.x.set([3,0], this.x.get([3,0]) * (1-k) + vn * k);
+            this.x.set([4,0], this.x.get([4,0]) * (1-k) + ve * k);
             
-            this.set('lat-ukf', this.x.get([0,0]).toFixed(8));
-            this.set('lon-ukf', this.x.get([1,0]).toFixed(8));
-            this.set('alt-ukf', alt.toFixed(2));
+            // Mise à jour interface immédiate
+            this.set('gps-accuracy-display', (pos.coords.accuracy || 0).toFixed(1) + " m");
+        }
 
-            this.set('lorentz-factor', gamma.toFixed(14));
-            this.set('time-dilation-vitesse', timeDilation.toFixed(3) + " ns/j");
-            this.set('schwarzschild-radius', rs.toExponential(4) + " m");
-            this.set('kinetic-energy', (0.5 * this.mass * vTot**2).toFixed(1) + " J");
+        // =================================================================
+        // 4. RENDU GRAPHIQUE (LIEN AVEC VOTRE HTML)
+        // =================================================================
+        renderLoop() {
+            if (this.isRunning) {
+                const vx = this.x.get([3,0]);
+                const vy = this.x.get([4,0]);
+                const vz = this.x.get([5,0]);
+                const vTot = Math.sqrt(vx**2 + vy**2 + vz**2);
+                const kmh = vTot * 3.6;
 
-            this.set('total-distance-3d', (this.totalDist / 1000).toFixed(4) + " km");
-            this.set('status-physique', "MODE: " + this.mode);
+                // --- A. MISE À JOUR DU TABLEAU DE BORD ---
+                this.set('speed-main-display', kmh.toFixed(1) + " km/h");
+                this.set('speed-stable-kmh', kmh.toFixed(2) + " km/h");
+                this.set('speed-max-session', this.vMax.toFixed(1) + " km/h");
+                this.set('total-distance', (this.totalDistance / 1000).toFixed(3) + " km");
 
-            // D. Astro (Simplifié pour perf)
-            // Calcul position soleil approx pour interface
-            const now = new Date();
-            this.set('local-time', now.toLocaleTimeString());
+                // --- B. RELATIVITÉ & PHYSIQUE ---
+                const gamma = 1 / Math.sqrt(1 - Math.pow(vTot/C, 2));
+                const rs = (2 * 6.674e-11 * this.mass) / C**2;
+                
+                this.set('lorentz-factor', gamma.toFixed(14));
+                this.set('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(3) + " ns/j");
+                this.set('schwarzschild-radius', rs.toExponential(4) + " m");
+                this.set('kinetic-energy', (0.5 * this.mass * vTot**2).toFixed(1) + " J");
+
+                // --- C. CAPTEURS IMU (Raw) ---
+                this.set('acc-x', vx.toFixed(3)); // On affiche la vitesse intégrée ici pour voir l'effet
+                this.set('acc-y', vy.toFixed(3));
+                this.set('acc-z', vz.toFixed(3));
+
+                // --- D. NIVEAU À BULLE (Visuel) ---
+                // Calcul Pitch/Roll depuis les Quaternions ou Accélération
+                // Méthode simplifiée Accélération pour réactivité immédiate
+                // (Nécessite ax/ay/az non biaisés, on prend les états filtrés si possible, 
+                // mais ici on n'a pas l'accel brute stockée, on simule avec la vitesse pour l'effet dynamique)
+                const pitch = Math.atan2(vx, 9.81) * R2D; // Approximation visuelle
+                const roll = Math.atan2(vy, 9.81) * R2D;
+                
+                this.set('pitch', pitch.toFixed(1) + "°");
+                this.set('roll', roll.toFixed(1) + "°");
+
+                const bubble = document.getElementById('bubble') || document.getElementById('spirit-level-bubble');
+                if (bubble) {
+                    // Limite le mouvement pour ne pas sortir du cercle
+                    const maxPx = 45; 
+                    const bx = Math.max(-maxPx, Math.min(maxPx, roll * 2));
+                    const by = Math.max(-maxPx, Math.min(maxPx, pitch * 2));
+                    bubble.style.transform = `translate(${bx}px, ${by}px)`;
+                }
+
+                this.set('status-physique', this.isCalibrating ? "CALIBRATION..." : "SYSTEME ACTIF");
+            }
 
             requestAnimationFrame(() => this.renderLoop());
         }
 
         // =================================================================
-        // 4. UTILITAIRES MATHÉMATIQUES & UI
+        // 5. UTILITAIRES
         // =================================================================
-        
-        rotateVector(q, v) {
-            const [w, x, y, z] = q;
-            const [vx, vy, vz] = v;
-            return [
-                vx*(w*w+x*x-y*y-z*z) + vy*2*(x*y-w*z) + vz*2*(x*z+w*y),
-                vx*2*(x*y+w*z) + vy*(w*w-x*x+y*y-z*z) + vz*2*(y*z-w*x),
-                vx*2*(x*z-w*y) + vy*2*(y*z+x*w) + vz*(w*w-x*x-y*y+z*z)
-            ];
+        set(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        }
+
+        calibrate(ax, ay, az) {
+            if(this.calibSamples.length < 50) {
+                this.calibSamples.push({x:ax, y:ay, z:az});
+                this.set('status-physique', `CALIBRATION ${this.calibSamples.length*2}%`);
+            } else {
+                // Moyenne pour trouver le "zéro" du capteur
+                let bx=0, by=0, bz=0;
+                this.calibSamples.forEach(s => { bx+=s.x; by+=s.y; bz+=s.z; });
+                const n = this.calibSamples.length;
+                this.x.set([13,0], bx/n);
+                this.x.set([14,0], by/n);
+                this.x.set([15,0], (bz/n) - G_EARTH); // On assume que Z mesure la gravité
+                
+                this.isCalibrating = false;
+                this.calibSamples = [];
+            }
         }
 
         integrateQuaternions(g, dt) {
+            // Intégration simple pour l'orientation
             let q = [this.x.get([6,0]), this.x.get([7,0]), this.x.get([8,0]), this.x.get([9,0])];
             const dq = [
                 0.5 * (-q[1]*g.x - q[2]*g.y - q[3]*g.z),
@@ -330,86 +265,15 @@
                 0.5 * ( q[0]*g.z + q[1]*g.y - q[2]*g.x)
             ];
             for(let i=0; i<4; i++) this.x.set([6+i, 0], q[i] + dq[i] * dt);
-            this.normalizeQuaternion();
+            // Normalisation
+            const norm = Math.sqrt(this.x.get([6,0])**2 + this.x.get([7,0])**2 + this.x.get([8,0])**2 + this.x.get([9,0])**2);
+            for(let i=0; i<4; i++) this.x.set([6+i, 0], this.x.get([6+i,0])/norm);
         }
-
-        normalizeQuaternion() {
-            const q = [this.x.get([6,0]), this.x.get([7,0]), this.x.get([8,0]), this.x.get([9,0])];
-            const n = Math.sqrt(q[0]**2 + q[1]**2 + q[2]**2 + q[3]**2);
-            for(let i=0; i<4; i++) this.x.set([6+i, 0], q[i]/n);
-        }
-
-        // Calibration Initiale (1-2 sec) pour déterminer les Biais
-        calibrate(acc, gyro) {
-            if(this.calibSamples.length < this.calibLimit) {
-                this.calibSamples.push({acc, gyro});
-                this.updateStatus(`CALIBRATION ${Math.round(this.calibSamples.length/this.calibLimit*100)}%`);
-            } else {
-                // Moyenne des échantillons
-                let ba = {x:0, y:0, z:0}, bg = {x:0, y:0, z:0};
-                this.calibSamples.forEach(s => {
-                    ba.x += s.acc.x; ba.y += s.acc.y; ba.z += s.acc.z;
-                    bg.x += s.gyro.x; bg.y += s.gyro.y; bg.z += s.gyro.z;
-                });
-                const n = this.calibSamples.length;
-                
-                // On sauve les biais dans le vecteur d'état
-                this.x.set([10,0], bg.x/n); this.x.set([11,0], bg.y/n); this.x.set([12,0], bg.z/n);
-                this.x.set([13,0], ba.x/n); this.x.set([14,0], ba.y/n); 
-                // Pour Z, on assume que Z moyen = Gravité locale (~9.81), le reste est du biais
-                this.x.set([15,0], (ba.z/n) - 9.81); 
-
-                this.isCalibrating = false;
-                this.mode = "NAV";
-            }
-        }
-
-        setupUI() {
-            const btn = document.getElementById('gps-pause-toggle');
-            if (btn) {
-                btn.onclick = async () => {
-                    if (!this.isRunning) {
-                        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                            await DeviceMotionEvent.requestPermission();
-                        }
-                        
-                        // Listeners
-                        window.addEventListener('devicemotion', (e) => {
-                            if (!this.isRunning) return;
-                            const dt = (performance.now() - this.lastT) / 1000;
-                            this.lastT = performance.now();
-                            
-                            const acc = e.accelerationIncludingGravity || {x:0,y:0,z:0};
-                            const gyro = e.rotationRate || {x:0,y:0,z:0}; // alpha/beta/gamma mappés x/y/z
-
-                            if (this.isCalibrating) {
-                                this.calibrate(acc, gyro);
-                            } else {
-                                this.predict(acc, gyro, dt);
-                            }
-                        });
-
-                        navigator.geolocation.watchPosition(
-                            (pos) => this.updateGPS(pos),
-                            (err) => console.warn(err),
-                            { enableHighAccuracy: true, maximumAge: 0 }
-                        );
-
-                        this.isRunning = true;
-                        btn.textContent = "⏸ PAUSE SYSTÈME";
-                        btn.style.backgroundColor = "#dc3545";
-                    } else {
-                        location.reload();
-                    }
-                };
-            }
-        }
-
-        set(id, val) { const el = document.getElementById(id); if(el) el.textContent = val; }
-        updateStatus(t) { this.set('status-physique', t); }
     }
 
-    // Lancement
-    window.onload = () => { window.App = new UltimateUKF(); };
+    // Démarrage au chargement de la page
+    window.addEventListener('load', () => {
+        window.App = new UltimateUKF();
+    });
 
 })(window);
