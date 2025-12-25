@@ -1,107 +1,84 @@
 /**
- * GNSS DASHBOARD MASTER CONTROL - FINAL VERSION
- * Gère les boutons, l'affichage et les calculs relativistes/astro
+ * MASTER INTERFACE - NEWTONIAN SYNC
  */
 (function() {
     "use strict";
 
-    function updateAll() {
+    function init() {
         const engine = window.MainEngine;
-        if (!engine) return;
 
-        engine.update(); // Pulse du moteur
-
-        const v = engine.vMs;
-        const c = 299792458;
-        const now = new Date();
-
-        // 1. DYNAMIQUE & VITESSE
-        update('speed-stable-kmh', (v * 3.6).toFixed(3) + " km/h");
-        update('speed-stable-ms', v.toFixed(5) + " m/s");
-        update('speed-max-session', (engine.maxSpeed * 3.6).toFixed(2) + " km/h");
-        update('total-distance-3d', engine.distance3D.toFixed(4) + " km");
-        update('precise-distance-ukf', engine.distance3D.toFixed(7) + " km");
-
-        // 2. RELATIVITÉ & ÉNERGIE
-        const gamma = 1 / Math.sqrt(1 - Math.pow(v / c, 2));
-        update('lorentz-factor', gamma.toFixed(15));
-        update('cosmic-speed', ((v/c)*100).toExponential(4) + " % c");
-        update('kinetic-energy', (0.5 * engine.mass * v * v).toFixed(2) + " J");
-
-        // 3. ASTRO DE PRÉCISION (VSOP2013 via ephem.js)
-        if (typeof calculateAstroData === 'function') {
-            const astro = calculateAstroData(now, engine.lat, engine.lon);
-            update('sun-alt', astro.sun.altitude.toFixed(4) + "°");
-            update('sun-distance', (astro.sun.distance * 149597870.7).toLocaleString() + " km");
-            
-            // Perturbation Gravitationnelle (Effet de marée solaire)
-            const gLoc = 9.80665 - (0.0000011 * Math.sin(astro.sun.altitude * (Math.PI/180)));
-            update('gravity-local', gLoc.toFixed(6) + " m/s²");
-        }
-
-        // 4. MÉTÉO & FLUIDES (Modèle OACI)
-        const rho = 1.225 * Math.exp(-engine.altitude / 8500);
-        update('air-density', rho.toFixed(4) + " kg/m³");
-        update('reynolds-number', v > 0.1 ? Math.floor((rho * v * 0.5) / 1.8e-5).toLocaleString() : "0");
-
-        // 5. IMU
-        update('pitch-val', engine.gyro.pitch.toFixed(1) + "°");
-        update('roll-val', engine.gyro.roll.toFixed(1) + "°");
-    }
-
-    // --- LIAISON DES BOUTONS ---
-    function setupButtons() {
-        const engine = window.MainEngine;
-        if (!engine) return;
-
-        // MARCHE GPS / SYSTÈME
+        // --- GESTION DU BOUTON MARCHE/ARRÊT ---
         const btnPower = document.querySelector('.status-indicator');
         if (btnPower) {
             btnPower.onclick = function() {
                 engine.isRunning = !engine.isRunning;
                 this.textContent = engine.isRunning ? "▶️ SYSTÈME ACTIF" : "⏸️ SYSTÈME EN PAUSE";
+                this.className = engine.isRunning ? "status-indicator active" : "status-indicator paused";
                 this.style.color = engine.isRunning ? "#00ff41" : "#ff4d4d";
+                
                 if (engine.isRunning && typeof DeviceMotionEvent.requestPermission === 'function') {
                     DeviceMotionEvent.requestPermission();
                 }
             };
         }
 
-        // RÉINITIALISATIONS
-        const findAndBind = (text, fn) => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes(text));
-            if (btn) btn.onclick = fn;
+        // --- GESTION DU MODE NETHER ---
+        const btnNether = Array.from(document.querySelectorAll('div, button')).find(el => el.textContent.includes('Nether'));
+        if (btnNether) {
+            btnNether.onclick = function() {
+                engine.isNetherMode = !engine.isNetherMode;
+                this.textContent = engine.isNetherMode ? "Mode Nether: ACTIF (1:8)" : "Mode Nether: DÉSACTIVÉ (1:1)";
+            };
+        }
+
+        // --- RÉINITIALISATIONS ---
+        const bind = (txt, fn) => {
+            const el = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes(txt));
+            if (el) el.onclick = fn;
         };
 
-        findAndBind('Réinit. Dist.', () => { engine.distance3D = 0; });
-        findAndBind('Réinit. V-Max', () => { engine.maxSpeed = 0; });
-        findAndBind('TOUT RÉINITIALISER', () => {
-            if(confirm("Réinitialiser toutes les données ?")) {
-                engine.distance3D = 0; engine.maxSpeed = 0; engine.vMs = 0;
-            }
+        bind('Réinit. Dist.', () => engine.distance3D = 0);
+        bind('Réinit. V-Max', () => engine.maxSpeed = 0);
+        bind('TOUT RÉINITIALISER', () => {
+            engine.vMs = 0; engine.distance3D = 0; engine.maxSpeed = 0;
+            engine.velocityVec = {x:0, y:0, z:0};
         });
-        findAndBind('Arrêt d\'urgence', () => { engine.isRunning = false; engine.vMs = 0; });
-        findAndBind('Capturer données', exportCSV);
-        findAndBind('Mode Nuit', () => document.body.classList.toggle('night-mode'));
+
+        setInterval(() => {
+            engine.update();
+            updateDisplay(engine);
+        }, 100);
     }
 
-    function update(id, val) {
+    function updateDisplay(e) {
+        const vKmh = e.vMs * 3.6;
+        
+        // Vitesse et Distance
+        set('speed-stable-kmh', vKmh.toFixed(3) + " km/h");
+        set('total-distance-3d', e.distance3D.toFixed(3) + " km");
+        set('precise-distance-ukf', e.distance3D.toFixed(7) + " km");
+        
+        // Accélérations (IMU)
+        set('accel-x', e.accel.x.toFixed(2));
+        set('accel-y', e.accel.y.toFixed(2));
+        set('accel-z', e.accel.z.toFixed(2));
+
+        // Relativité (Einstein)
+        const c = 299792458;
+        const gamma = 1 / Math.sqrt(1 - Math.pow(e.vMs / c, 2));
+        set('lorentz-factor', gamma.toFixed(15));
+
+        // Astro VSOP2013 (si ephem.js et astro.js sont chargés)
+        if (typeof calculateAstroData === 'function') {
+            const astro = calculateAstroData(new Date(), e.lat, e.lon);
+            set('sun-alt', astro.sun.altitude.toFixed(4) + "°");
+        }
+    }
+
+    function set(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
 
-    function exportCSV() {
-        const e = window.MainEngine;
-        const csv = `Paramètre,Valeur\nTimestamp,${new Date().toISOString()}\nVitesse,${e.vMs} m/s\nDistance,${e.distance3D} km`;
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `Log_Pro_${Date.now()}.csv`;
-        a.click();
-    }
-
-    window.addEventListener('load', () => {
-        setupButtons();
-        setInterval(updateAll, 100);
-    });
+    window.addEventListener('load', init);
 })();
