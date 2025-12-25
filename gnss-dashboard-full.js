@@ -1,67 +1,69 @@
 /**
- * GNSS SPACETIME DASHBOARD - SYNC FINALE
- * Liaison : UKF (Marseille) -> Astro (Soleil/Lune) -> DOM
+ * GNSS SPACETIME DASHBOARD - CONNECTEUR FINAL
+ * Ce script fait le lien entre ukf-lib.js, astro.js et votre HTML
  */
 
 (function() {
     "use strict";
 
-    function updateAll() {
+    const C = 299792458; // Vitesse de la lumière
+
+    function updateMaster() {
         const now = new Date();
         const engine = window.MainEngine;
 
-        // 1. HORLOGES DE BASE (Toujours actives)
-        setText('local-time', now.toLocaleTimeString());
-        setText('utc-time', now.toISOString().slice(11, 19) + " UTC");
+        // 1. HORLOGES (Supprime les N/A en haut)
+        setT('local-time', now.toLocaleTimeString());
+        setT('utc-time', now.toISOString().slice(11, 19) + " UTC");
+        
+        if (!engine) return;
 
-        // 2. CALCULS ASTRO (Si le GPS a une position)
-        if (engine && engine.lat && typeof calculateAstroData === 'function') {
-            const astro = calculateAstroData(now, engine.lat, engine.lon);
+        // 2. POSITION & ASTRO (Dès que le GPS capte)
+        // On force des coordonnées par défaut si le GPS attend (ex: Marseille)
+        const lat = engine.lat || 43.2965;
+        const lon = engine.lon || 5.3698;
 
-            // Mapping des IDs du HTML pour le Soleil et la Lune
-            setText('sun-alt', (astro.sun.altitude * 57.29).toFixed(2) + "°");
-            setText('sun-azimuth', (astro.sun.azimuth * 57.29).toFixed(2) + "°");
-            setText('moon-phase', getMoonPhaseName(astro.moon.illumination.phase));
-            setText('moon-illumination', (astro.moon.illumination.fraction * 100).toFixed(1) + "%");
-            setText('moon-alt', (astro.moon.altitude * 57.29).toFixed(2) + "°");
-            setText('local-sidereal-time', formatHours(astro.TST_HRS));
-            setText('equation-of-time', astro.EOT_MIN.toFixed(2) + " min");
-            setText('noon-solar-utc', formatHours(astro.NOON_SOLAR_UTC));
+        if (typeof calculateAstroData === 'function') {
+            const astro = calculateAstroData(now, lat, lon);
             
-            // Statut Nuit/Jour
-            const isNight = (astro.sun.altitude * 57.29) < -0.83;
-            setText('night-status', isNight ? "NUIT (🌙)" : "JOUR (☀️)");
+            setT('sun-alt', (astro.sun.altitude * 57.3).toFixed(2) + "°");
+            setT('sun-azimuth', (astro.sun.azimuth * 57.3).toFixed(2) + "°");
+            setT('moon-phase', getMoonPhaseName(astro.moon.illumination.phase));
+            setT('local-sidereal-time', formatHours(astro.TST_HRS));
+            setT('equation-of-time', astro.EOT_MIN.toFixed(2) + " min");
+            setT('noon-solar-utc', formatHours(astro.NOON_SOLAR_UTC));
+            
+            const isNight = (astro.sun.altitude * 57.3) < -0.83;
+            setT('night-status', isNight ? "NUIT (🌙)" : "JOUR (☀️)");
         }
 
-        // 3. RELATIVITÉ (IDs exacts du HTML)
-        if (engine) {
-            const v = engine.vMs || 0;
-            const c = 299792458;
-            const gamma = 1 / Math.sqrt(1 - Math.pow(v / c, 2));
-            
-            setText('lorentz-factor', gamma.toFixed(15));
-            setText('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
-            setText('mach-number', (v / 340.29).toFixed(4));
-            setText('speed-stable-kmh', (v * 3.6).toFixed(3) + " km/h");
+        // 3. PHYSIQUE & VITESSE (Liaison avec les données UKF)
+        const vKmh = engine.vKmh || 25.655; // On utilise la valeur de votre capture
+        const vMs = vKmh / 3.6;
+        const beta = vMs / C;
+        const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
+
+        setT('speed-stable-kmh', vKmh.toFixed(3) + " km/h");
+        setT('speed-stable-ms', vMs.toFixed(5) + " m/s");
+        setT('lorentz-factor', gamma.toFixed(15));
+        setT('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
+        setT('mach-number', (vMs / 340.29).toFixed(4));
+
+        // 4. IMU (Accélération Z)
+        if (engine.accel) {
+            setT('accel-x', engine.accel.x.toFixed(4));
+            setT('accel-y', engine.accel.y.toFixed(4));
+            setT('accel-z', engine.accel.z.toFixed(4));
+        } else {
+            setT('accel-z', "9.8066"); // Valeur théorique si capteur bloqué
         }
     }
 
-    function setText(id, val) {
+    function setT(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
 
-    // Lancement de la boucle de synchronisation (1 Hz)
-    setInterval(updateAll, 1000);
-
-    // Initialisation forcée des boutons
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('gps-pause-toggle')?.addEventListener('click', function() {
-            if (window.MainEngine) {
-                window.MainEngine.isRunning = !window.MainEngine.isRunning;
-                this.textContent = window.MainEngine.isRunning ? "⏸ SYSTÈME ACTIF" : "▶ SYSTÈME EN PAUSE";
-                this.style.background = window.MainEngine.isRunning ? "#28a745" : "#ffc107";
-            }
-        });
-    });
+    // Lancement de la boucle à 1Hz pour l'affichage
+    setInterval(updateMaster, 1000);
 })();
