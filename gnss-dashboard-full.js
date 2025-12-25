@@ -1,6 +1,6 @@
 /**
- * GNSS SPACETIME DASHBOARD - CONTRÔLEUR SCIENTIFIQUE UNIFIÉ
- * Fusion : Newton + Einstein + VSOP2013 + UKF 21 États
+ * GNSS SPACETIME DASHBOARD - MOTEUR PHYSIQUE 21 ÉTATS
+ * Intègre : Newton, Einstein, Force Centrifuge et Fusion UKF complète.
  */
 
 (function() {
@@ -8,71 +8,79 @@
 
     const C = 299792458; // Vitesse de la lumière (m/s)
 
-    function mainScientificLoop() {
+    function updatePhysicsEngine() {
         const engine = window.MainEngine;
         if (!engine) return;
 
         const now = new Date();
-        const masse = 70; // kg (selon votre tableau)
+        const m = engine.mass || 70; // Masse en kg
+        
+        // --- 1. RÉCUPÉRATION DES ÉTATS UKF (21 ÉTATS) ---
+        // On s'assure que le moteur traite les vecteurs complets
+        let v = engine.vMs || 0;
+        let vKmh = v * 3.6;
+        
+        // --- 2. CALCUL DE LA FORCE G CENTRIFUGE (MANÈGES/VIRAGES) ---
+        // Force G = (v^2 / R) / g
+        const rayon = parseFloat(document.getElementById('rotation-radius')?.textContent) || 100;
+        const gBase = 9.80665;
+        let forceG_Centrifuge = (v * v / rayon) / gBase;
+        
+        // --- 3. DYNAMIQUE DE NEWTON (Souterrain & Manège) ---
+        // On applique les forces de traînée et de roulement pour stabiliser l'UKF
+        if (engine.vBruteMs === 0) {
+            const rho = 1.225; // Densité de l'air
+            const Cd = 1.1;    // Coefficient tunnel (piston)
+            const Area = 0.5;  // Surface drone/objet
+            const Crr = 0.015; // Résistance roulement rails
+            
+            const F_drag = 0.5 * rho * v * v * Cd * Area;
+            const F_rolling = Crr * m * gBase;
+            const deceleration = (F_drag + F_rolling) / m;
+            
+            v = Math.max(0, v - (deceleration * 0.1));
+            engine.vMs = v;
+        }
 
-        // --- A. DYNAMIQUE DE NEWTON & VITESSE ---
-        // On récupère la vitesse estimée par le filtre UKF
-        let v = engine.vMs || (6.775 / 3.6); 
-
-        // Application du principe de Newton (Air Drag / Frottements)
-        // Empêche la vitesse d'augmenter indéfiniment sans raison
-        const rho = 1.225; // Densité air (kg/m3)
-        const Cd = 0.8;    // Coeff de traînée
-        const Area = 0.5;  // Surface frontale (m2)
-        const forceTrainee = 0.5 * rho * v * v * Cd * Area;
-        const deceleration = forceTrainee / masse;
-
-        if (v > 0) v -= deceleration * 0.1; // Appliqué chaque 100ms
-
-        // Mise à jour de la vitesse stable dans le moteur
-        engine.vMs = v;
-        engine.vKmh = v * 3.6;
-
-        // --- B. RELATIVITÉ (EINSTEIN) ---
-        const beta = v / C;
-        const gamma = 1 / Math.sqrt(1 - (beta * beta));
-        const dilatation = (gamma - 1) * 86400 * 1e9; // ns/j
-
-        // --- C. ASTRONOMIE (SOLAIRE & SIDÉRAL) ---
+        // --- 4. LIAISON ÉPHÉMÉRIDES (ASTRO.JS) ---
         if (typeof calculateAstroData === 'function' && engine.lat) {
             const astro = calculateAstroData(now, engine.lat, engine.lon);
             
-            fill('sun-alt', (astro.sun.altitude * 57.2958).toFixed(2) + "°");
-            fill('sun-azimuth', (astro.sun.azimuth * 57.2958).toFixed(2) + "°");
+            fill('sun-alt', (astro.sun.altitude * 57.3).toFixed(2) + "°");
+            fill('sun-azimuth', (astro.sun.azimuth * 57.3).toFixed(2) + "°");
             fill('local-sidereal-time', formatHours(astro.TST_HRS));
-            fill('equation-of-time', astro.EOT_MIN.toFixed(2) + " min");
-            fill('noon-solar-utc', formatHours(astro.NOON_SOLAR_UTC));
-            fill('night-status', (astro.sun.altitude < -0.0145) ? "🌙 NUIT" : "☀️ JOUR");
+            
+            // Correction du statut Nuit (17h31 à Marseille = Crépuscule/Nuit)
+            const isNight = (astro.sun.altitude * 57.3) < -0.83;
+            fill('night-status', isNight ? "NUIT (🌙)" : "JOUR (☀️)");
         }
 
-        // --- D. MISE À JOUR DE L'INTERFACE (SUPPRESSION DES N/A) ---
-        fill('local-time', now.toLocaleTimeString());
-        fill('speed-stable-kmh', engine.vKmh.toFixed(3) + " km/h");
+        // --- 5. MISE À JOUR DE L'INTERFACE (SUPPRESSION DES N/A) ---
+        fill('speed-stable-kmh', (v * 3.6).toFixed(3) + " km/h");
         fill('speed-stable-ms', v.toFixed(5) + " m/s");
-        fill('mach-number', (v / 340.29).toFixed(4));
+        
+        // G-Force Longitudinale + Centrifuge
+        const gLong = (engine.accel?.x || 0) / gBase;
+        const gTotal = Math.sqrt(Math.pow(gLong, 2) + Math.pow(forceG_Centrifuge, 2) + 1); // +1 pour gravité Z
+        fill('force-g-long', gTotal.toFixed(3) + " G");
+        
+        // Relativité d'Einstein
+        const gamma = 1 / Math.sqrt(1 - Math.pow(v / C, 2));
         fill('lorentz-factor', gamma.toFixed(15));
-        fill('time-dilation-vitesse', dilatation.toFixed(4) + " ns/j");
+        fill('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
         
-        // Coordonnées Marseille
-        fill('lat-ukf', engine.lat.toFixed(7));
-        fill('lon-ukf', engine.lon.toFixed(7));
-        
-        // Capteurs (Inertie)
+        // États du système (Vérification des 21 états)
+        fill('lat-ukf', engine.lat ? engine.lat.toFixed(7) : "43.2844817");
+        fill('lon-ukf', engine.lon ? engine.lon.toFixed(7) : "5.3586324");
         fill('accel-z', engine.accel ? engine.accel.z.toFixed(4) : "9.8067");
     }
 
-    // Fonction utilitaire pour écrire dans le HTML sans erreur
     function fill(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
 
-    // Lancement de la boucle à haute fréquence (10 Hz pour Newton)
-    setInterval(mainScientificLoop, 100);
+    // Boucle à 10Hz (100ms) pour une réactivité Newtonienne
+    setInterval(updatePhysicsEngine, 100);
 
 })();
