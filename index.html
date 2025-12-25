@@ -462,19 +462,18 @@
     <script src="vendor/leaflet.js"></script> 
     
     <script src="lib/ukf-lib.js"></script> 
-    <script src="lib/ephem.js"></script> <script src="lib/astro.js"></script>
+
+    <script src="lib/astro.js"></script>
+    
     <script src="gnss-dashboard-full.js"></script>
 
     <script>
+        // Ce petit bloc démarre le moteur au chargement
         window.addEventListener('load', function() {
             if (typeof window.ProfessionalUKF !== 'undefined') {
-                if(!window.MainEngine) {
-                    window.MainEngine = new ProfessionalUKF();
-                    // On injecte les coordonnées de votre capture (Marseille) par défaut
-                    window.MainEngine.lat = 43.2845557;
-                    window.MainEngine.lon = 5.3587365;
-                }
-                document.getElementById('gps-status').textContent = "SYSTÈME PRÊT";
+                window.MainEngine = new ProfessionalUKF();
+                window.MainEngine.isRunning = true; // Force l'activation
+                document.getElementById('gps-status').textContent = "SYSTÈME ACTIF";
             }
         });
     </script>
