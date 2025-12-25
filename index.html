@@ -469,12 +469,20 @@
 
     <script>
         window.addEventListener('load', () => {
-            // Initialisation du moteur avec les coordonnées de la capture
-            window.MainEngine = new ProfessionalUKF();
-            window.MainEngine.lat = 43.2845592;
-            window.MainEngine.lon = 5.3587324;
-            window.MainEngine.isRunning = true;
-            console.log("✅ Moteur Newtonien et Astro Synchronisés");
+            // On vérifie que la librairie est chargée
+            if (typeof ProfessionalUKF !== 'undefined') {
+                window.MainEngine = new ProfessionalUKF();
+                
+                // INJECTION FORCEE DES DONNÉES DE DÉPART (Marseille)
+                // Cela débloque immédiatement l'affichage avant même le signal GPS
+                window.MainEngine.lat = 43.2845619;
+                window.MainEngine.lon = 5.3587411;
+                window.MainEngine.isRunning = true;
+                
+                console.log("🚀 SYSTÈME DÉMARRÉ : Physique Active.");
+            } else {
+                alert("Erreur critique : ukf-lib.js non chargé !");
+            }
         });
     </script>
 </body>
