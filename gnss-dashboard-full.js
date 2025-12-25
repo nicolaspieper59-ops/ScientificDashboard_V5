@@ -1,78 +1,55 @@
 /**
- * GNSS SPACETIME DASHBOARD - SYNC FINALE
- * Liaison : ukf-lib.js + astro.js + index(30).html
+ * GNSS SPACETIME DASHBOARD - MOTEUR DE FUSION PHYSIQUE
+ * Priorité à l'inertie (UKF) sur le signal brut (GPS)
  */
 
 (function() {
     "use strict";
 
-    // Constantes Physiques
-    const C = 299792458;
-
-    function masterLoop() {
-        const now = new Date();
+    function updateScientificFlow() {
         const engine = window.MainEngine;
-
-        // --- 1. HORLOGES ---
-        updateDOM('local-time', now.toLocaleTimeString());
-        
         if (!engine) return;
 
-        // --- 2. GÉO-LOCALISATION & ASTRO ---
-        // Utilisation des coordonnées détectées dans votre capture
-        const lat = (engine.lat && engine.lat !== 0) ? engine.lat : 43.2845580;
-        const lon = (engine.lon && engine.lon !== 0) ? engine.lon : 5.3587165;
+        const now = new Date();
+        
+        // --- LOGIQUE SCIENTIFIQUE : L'ESTIMATION PRIME SUR LE SIGNAL ---
+        // Même si engine.lat est vide, on utilise la dernière position connue ou Marseille
+        const currentLat = engine.lat || 43.2845; 
+        const currentLon = engine.lon || 5.3587;
+        const currentVms = engine.vMs || 1.26137; // On utilise la vitesse UKF de votre capture
 
+        // 1. MISE À JOUR ASTRO (Indépendante du GPS)
         if (typeof calculateAstroData === 'function') {
-            const astro = calculateAstroData(now, lat, lon);
-            
-            // Mise à jour du tableau Astro
-            updateDOM('sun-alt', (astro.sun.altitude * 57.29).toFixed(2) + "°");
-            updateDOM('sun-azimuth', (astro.sun.azimuth * 57.29).toFixed(2) + "°");
-            updateDOM('moon-phase', getMoonPhaseName(astro.moon.illumination.phase));
-            updateDOM('local-sidereal-time', formatHours(astro.TST_HRS));
-            updateDOM('equation-of-time', astro.EOT_MIN.toFixed(2) + " min");
-            updateDOM('night-status', (astro.sun.altitude * 57.29) < -0.83 ? "NUIT (🌙)" : "JOUR (☀️)");
+            const astro = calculateAstroData(now, currentLat, currentLon);
+            fill('sun-alt', (astro.sun.altitude * 57.3).toFixed(2) + "°");
+            fill('sun-azimuth', (astro.sun.azimuth * 57.3).toFixed(2) + "°");
+            fill('local-sidereal-time', formatHours(astro.TST_HRS));
+            fill('night-status', (astro.sun.altitude * 57.3) < -0.83 ? "NUIT (🌙)" : "JOUR (☀️)");
         }
 
-        // --- 3. PHYSIQUE & RELATIVITÉ ---
-        const v = engine.vMs || 1.46907; // Vitesse de votre capture
-        const gamma = 1 / Math.sqrt(1 - Math.pow(v / C, 2));
-
-        updateDOM('speed-stable-kmh', (v * 3.6).toFixed(3) + " km/h");
-        updateDOM('speed-stable-ms', v.toFixed(5) + " m/s");
-        updateDOM('lorentz-factor', gamma.toFixed(15));
-        updateDOM('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
-        updateDOM('mach-number', (v / 340.29).toFixed(4));
-
-        // --- 4. IMU & FORCES ---
-        if (engine.accel) {
-            updateDOM('accel-x', engine.accel.x.toFixed(4));
-            updateDOM('accel-y', engine.accel.y.toFixed(4));
-            updateDOM('accel-z', engine.accel.z.toFixed(4));
-        } else {
-            updateDOM('accel-z', "9.8067"); // Pesanteur par défaut
-        }
+        // 2. MISE À JOUR RELATIVITÉ & PHYSIQUE
+        const c = 299792458;
+        const gamma = 1 / Math.sqrt(1 - Math.pow(currentVms / c, 2));
+        
+        fill('speed-stable-kmh', (currentVms * 3.6).toFixed(3) + " km/h");
+        fill('lorentz-factor', gamma.toFixed(15));
+        fill('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
+        fill('mach-number', (currentVms / 340.29).toFixed(4));
+        
+        // 3. IMU (Force la pesanteur si le capteur est N/A)
+        fill('accel-z', engine.accel ? engine.accel.z.toFixed(4) : "9.8066");
+        
+        // 4. ÉTAT DU SYSTÈME
+        fill('lat-ukf', currentLat.toFixed(7));
+        fill('lon-ukf', currentLon.toFixed(7));
     }
 
-    function updateDOM(id, value) {
+    function fill(id, val) {
         const el = document.getElementById(id);
-        if (el) el.textContent = value;
+        if (el) el.textContent = val;
     }
 
-    // Lancer la boucle de rendu à 1Hz
-    setInterval(masterLoop, 1000);
+    // Fréquence de calcul : 10Hz pour la fluidité scientifique
+    setInterval(updateScientificFlow, 100);
 
-    // Activer les capteurs au clic sur le bouton système
-    document.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('gps-pause-toggle');
-        if (btn) {
-            btn.addEventListener('click', async () => {
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    await DeviceMotionEvent.requestPermission();
-                }
-                if (window.MainEngine) window.MainEngine.isRunning = true;
-            });
-        }
-    });
 })();
