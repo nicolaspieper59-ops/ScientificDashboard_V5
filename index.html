@@ -465,23 +465,5 @@
     <script src="lib/astro.js"></script>
     <script src="js/gnss-dashboard-full.js"></script>
 
-    <script>
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                // Maintenant, ProfessionalUKF existe car on l'a lié dans ukf-lib.js
-                if (typeof window.ProfessionalUKF === 'undefined') {
-                    document.getElementById('gps-status').textContent = "ERREUR MOTEUR";
-                    document.getElementById('gps-status').style.color = "red";
-                } else {
-                    console.log("✅ Liaison réussie avec le fichier unique !");
-                    if(!window.MainEngine) {
-                        window.MainEngine = new ProfessionalUKF();
-                    }
-                    document.getElementById('gps-status').textContent = "SYSTÈME PRÊT";
-                    document.getElementById('gps-status').style.color = "#00ff00";
-                }
-            }, 500);
-        });
-    </script>   
 </body>
 </html>
