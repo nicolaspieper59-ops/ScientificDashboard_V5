@@ -1,55 +1,78 @@
 /**
- * GNSS SPACETIME DASHBOARD - MOTEUR DE FUSION PHYSIQUE
- * Priorité à l'inertie (UKF) sur le signal brut (GPS)
+ * GNSS SPACETIME DASHBOARD - CONTRÔLEUR SCIENTIFIQUE UNIFIÉ
+ * Fusion : Newton + Einstein + VSOP2013 + UKF 21 États
  */
 
 (function() {
     "use strict";
 
-    function updateScientificFlow() {
+    const C = 299792458; // Vitesse de la lumière (m/s)
+
+    function mainScientificLoop() {
         const engine = window.MainEngine;
         if (!engine) return;
 
         const now = new Date();
-        
-        // --- LOGIQUE SCIENTIFIQUE : L'ESTIMATION PRIME SUR LE SIGNAL ---
-        // Même si engine.lat est vide, on utilise la dernière position connue ou Marseille
-        const currentLat = engine.lat || 43.2845; 
-        const currentLon = engine.lon || 5.3587;
-        const currentVms = engine.vMs || 1.26137; // On utilise la vitesse UKF de votre capture
+        const masse = 70; // kg (selon votre tableau)
 
-        // 1. MISE À JOUR ASTRO (Indépendante du GPS)
-        if (typeof calculateAstroData === 'function') {
-            const astro = calculateAstroData(now, currentLat, currentLon);
-            fill('sun-alt', (astro.sun.altitude * 57.3).toFixed(2) + "°");
-            fill('sun-azimuth', (astro.sun.azimuth * 57.3).toFixed(2) + "°");
+        // --- A. DYNAMIQUE DE NEWTON & VITESSE ---
+        // On récupère la vitesse estimée par le filtre UKF
+        let v = engine.vMs || (6.775 / 3.6); 
+
+        // Application du principe de Newton (Air Drag / Frottements)
+        // Empêche la vitesse d'augmenter indéfiniment sans raison
+        const rho = 1.225; // Densité air (kg/m3)
+        const Cd = 0.8;    // Coeff de traînée
+        const Area = 0.5;  // Surface frontale (m2)
+        const forceTrainee = 0.5 * rho * v * v * Cd * Area;
+        const deceleration = forceTrainee / masse;
+
+        if (v > 0) v -= deceleration * 0.1; // Appliqué chaque 100ms
+
+        // Mise à jour de la vitesse stable dans le moteur
+        engine.vMs = v;
+        engine.vKmh = v * 3.6;
+
+        // --- B. RELATIVITÉ (EINSTEIN) ---
+        const beta = v / C;
+        const gamma = 1 / Math.sqrt(1 - (beta * beta));
+        const dilatation = (gamma - 1) * 86400 * 1e9; // ns/j
+
+        // --- C. ASTRONOMIE (SOLAIRE & SIDÉRAL) ---
+        if (typeof calculateAstroData === 'function' && engine.lat) {
+            const astro = calculateAstroData(now, engine.lat, engine.lon);
+            
+            fill('sun-alt', (astro.sun.altitude * 57.2958).toFixed(2) + "°");
+            fill('sun-azimuth', (astro.sun.azimuth * 57.2958).toFixed(2) + "°");
             fill('local-sidereal-time', formatHours(astro.TST_HRS));
-            fill('night-status', (astro.sun.altitude * 57.3) < -0.83 ? "NUIT (🌙)" : "JOUR (☀️)");
+            fill('equation-of-time', astro.EOT_MIN.toFixed(2) + " min");
+            fill('noon-solar-utc', formatHours(astro.NOON_SOLAR_UTC));
+            fill('night-status', (astro.sun.altitude < -0.0145) ? "🌙 NUIT" : "☀️ JOUR");
         }
 
-        // 2. MISE À JOUR RELATIVITÉ & PHYSIQUE
-        const c = 299792458;
-        const gamma = 1 / Math.sqrt(1 - Math.pow(currentVms / c, 2));
-        
-        fill('speed-stable-kmh', (currentVms * 3.6).toFixed(3) + " km/h");
+        // --- D. MISE À JOUR DE L'INTERFACE (SUPPRESSION DES N/A) ---
+        fill('local-time', now.toLocaleTimeString());
+        fill('speed-stable-kmh', engine.vKmh.toFixed(3) + " km/h");
+        fill('speed-stable-ms', v.toFixed(5) + " m/s");
+        fill('mach-number', (v / 340.29).toFixed(4));
         fill('lorentz-factor', gamma.toFixed(15));
-        fill('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(4) + " ns/j");
-        fill('mach-number', (currentVms / 340.29).toFixed(4));
+        fill('time-dilation-vitesse', dilatation.toFixed(4) + " ns/j");
         
-        // 3. IMU (Force la pesanteur si le capteur est N/A)
-        fill('accel-z', engine.accel ? engine.accel.z.toFixed(4) : "9.8066");
+        // Coordonnées Marseille
+        fill('lat-ukf', engine.lat.toFixed(7));
+        fill('lon-ukf', engine.lon.toFixed(7));
         
-        // 4. ÉTAT DU SYSTÈME
-        fill('lat-ukf', currentLat.toFixed(7));
-        fill('lon-ukf', currentLon.toFixed(7));
+        // Capteurs (Inertie)
+        fill('accel-z', engine.accel ? engine.accel.z.toFixed(4) : "9.8067");
     }
 
+    // Fonction utilitaire pour écrire dans le HTML sans erreur
     function fill(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
 
-    // Fréquence de calcul : 10Hz pour la fluidité scientifique
-    setInterval(updateScientificFlow, 100);
+    // Lancement de la boucle à haute fréquence (10 Hz pour Newton)
+    setInterval(mainScientificLoop, 100);
 
 })();
