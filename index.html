@@ -462,10 +462,26 @@
     <script src="vendor/leaflet.js"></script> 
     
     <script src="lib/ukf-lib.js"></script> 
-
     <script src="lib/astro.js"></script>
-    <script src="js/gnss-dashboard-full.js"></script>
-    
-<script>
+    <script src="gnss-dashboard-full.js"></script>
+
+    <script>
+        window.addEventListener('load', function() {
+            console.log("Système : Vérification des moteurs...");
+            
+            // Vérification du moteur UKF
+            if (typeof window.ProfessionalUKF === 'undefined') {
+                console.error("❌ Erreur : ukf-lib.js n'est pas chargé correctement.");
+                const status = document.getElementById('gps-status');
+                if(status) {
+                    status.textContent = "ERREUR MOTEUR";
+                    status.style.color = "red";
+                }
+            } else {
+                console.log("✅ Moteur UKF détecté.");
+                // Le fichier gnss-dashboard-full.js prend le relais ici
+            }
+        });
+    </script>
 </body>
 </html>
