@@ -1,66 +1,45 @@
-/**
- * DASHBOARD MASTER CONTROL - FINAL VERSION
- */
 (function() {
     "use strict";
 
-    function updateAll() {
+    function updateDashboard() {
         const engine = window.MainEngine;
         if (!engine) return;
 
-        engine.update(); // Mise à jour de la physique inertielle
-
+        engine.update();
         const v = engine.vMs;
         const c = 299792458;
         const now = new Date();
 
         // 1. VITESSE & DISTANCE
         update('speed-stable-kmh', (v * 3.6).toFixed(3) + " km/h");
-        update('speed-stable-ms', v.toFixed(5) + " m/s");
+        update('speed-stable-ms', v.toFixed(4) + " m/s");
         update('total-distance-3d', engine.distance3D.toFixed(4) + " km");
         update('precise-distance-ukf', engine.distance3D.toFixed(7) + " km");
-        update('dist-light-sec', ((engine.distance3D * 1000) / c).toExponential(6) + " s");
 
-        // 2. RELATIVITÉ & COSMOLOGIE
-        const gamma = 1 / Math.sqrt(1 - Math.pow(v / c, 2));
+        // 2. RELATIVITÉ & FORCES
+        const gamma = 1 / Math.sqrt(1 - Math.pow(v/c, 2));
         update('lorentz-factor', gamma.toFixed(15));
+        update('kinetic-energy', (0.5 * engine.mass * v * v).toFixed(2) + " J");
         
-        const vLib = Math.sqrt(2 * 6.6743e-11 * 5.972e24 / 6371000);
-        update('velocity-status', v > vLib ? "🚀 ÉCHAPPEMENT" : "🛰️ ORBITAL");
-        update('cosmic-speed', ((v/c)*100).toExponential(4) + " % c");
+        // Vitesse de libération
+        const vLib = 11186; // m/s sur Terre
+        update('cosmic-speed', (v / vLib * 100).toFixed(4) + " % (Libération)");
 
-        // 3. ASTRO & PERTURBATION (VSOP2013)
-        const astro = calculateAstroPro(now, engine.lat, engine.lon);
-        update('sun-alt', astro.sunAlt.toFixed(4) + "°");
-        update('sun-distance', (astro.sunDist * 149597870.7).toLocaleString() + " km");
+        // 3. ASTRO (VSOP2013)
+        const astro = calculateAstroData(now, engine.lat, engine.lon);
+        update('sun-alt', astro.sun.altitude.toFixed(4) + "°");
+        update('sun-distance', (astro.sun.distance * 149597870.7).toLocaleString() + " km");
         
-        // Gravité avec perturbation de marée
-        const gPerturb = 9.80665 - (0.0000011 * Math.sin(astro.sunAlt * (Math.PI/180)));
-        update('gravity-local', gPerturb.toFixed(6) + " m/s²");
-
-        // 4. MÉTÉO & FLUIDES (OACI)
-        const rho = 1.225 * Math.exp(-engine.altitude / 8500);
-        const reynolds = (rho * v * 0.5) / 1.8e-5;
+        // 4. DYNAMIQUE & MÉTO (OACI)
+        const alt = engine.altitude;
+        const rho = 1.225 * Math.exp(-alt / 8500);
         update('air-density', rho.toFixed(4) + " kg/m³");
-        update('reynolds-number', v > 0.1 ? Math.floor(reynolds).toLocaleString() : "0");
-        update('pres-atm', (1013.25 * Math.pow(1 - (0.0065*engine.altitude)/288.15, 5.255)).toFixed(2) + " hPa");
-
-        // 5. IMU
-        update('pitch-val', engine.gyro.x.toFixed(1) + "°");
-        update('roll-val', engine.gyro.y.toFixed(1) + "°");
-    }
-
-    // --- FIX BOUTON SYSTÈME ---
-    function initControls() {
-        const btn = document.querySelector('.status-indicator');
-        if (btn) {
-            btn.onclick = function() {
-                if (!window.MainEngine) return;
-                window.MainEngine.isRunning = !window.MainEngine.isRunning;
-                this.textContent = window.MainEngine.isRunning ? "▶ SYSTÈME ACTIF" : "⏸ SYSTÈME EN PAUSE";
-                this.style.color = window.MainEngine.isRunning ? "#00ff41" : "#ff4d4d";
-            };
-        }
+        update('pres-atm', (1013.25 * Math.pow(1 - (0.0065*alt)/288.15, 5.255)).toFixed(2) + " hPa");
+        
+        // Forces G
+        const gVert = engine.accel.z / 9.80665;
+        update('force-g-vert', gVert.toFixed(3) + " G");
+        update('gravity-local', (9.80665 * (1 - (0.0000011 * Math.sin(astro.sun.altitude * Math.PI/180)))).toFixed(6) + " m/s²");
     }
 
     function update(id, val) {
@@ -68,8 +47,17 @@
         if (el) el.textContent = val;
     }
 
+    // --- ACTIVATION DU BOUTON MARCHE GPS ---
     window.addEventListener('load', () => {
-        initControls();
-        setInterval(updateAll, 100);
+        const btn = document.querySelector('.status-indicator') || document.getElementById('system-status');
+        if (btn) {
+            btn.onclick = function() {
+                if (!window.MainEngine) return;
+                window.MainEngine.isRunning = !window.MainEngine.isRunning;
+                this.textContent = window.MainEngine.isRunning ? "▶️ SYSTÈME ACTIF" : "⏸️ SYSTÈME EN PAUSE";
+                this.style.color = window.MainEngine.isRunning ? "#00ff41" : "#ff4d4d";
+            };
+        }
+        setInterval(updateDashboard, 100);
     });
 })();
