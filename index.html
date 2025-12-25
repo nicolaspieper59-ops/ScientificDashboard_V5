@@ -468,13 +468,13 @@
     <script src="gnss-dashboard-full.js"></script>
 
     <script>
-        // Ce petit bloc démarre le moteur au chargement
-        window.addEventListener('load', function() {
-            if (typeof window.ProfessionalUKF !== 'undefined') {
-                window.MainEngine = new ProfessionalUKF();
-                window.MainEngine.isRunning = true; // Force l'activation
-                document.getElementById('gps-status').textContent = "SYSTÈME ACTIF";
-            }
+        window.addEventListener('load', () => {
+            // Initialisation du moteur avec les coordonnées de la capture
+            window.MainEngine = new ProfessionalUKF();
+            window.MainEngine.lat = 43.2845592;
+            window.MainEngine.lon = 5.3587324;
+            window.MainEngine.isRunning = true;
+            console.log("✅ Moteur Newtonien et Astro Synchronisés");
         });
     </script>
 </body>
