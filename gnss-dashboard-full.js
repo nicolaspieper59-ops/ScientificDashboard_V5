@@ -1,147 +1,66 @@
-/**
- * GNSS SpaceTime Dashboard - CONTROLEUR MASTER SYNCHRONISÉ
- * Analyse croisée complète : HTML (index 25) + UKF-Lib + Newton
- */
 (function() {
     "use strict";
 
-    // Configuration des IDs réels du HTML
-    const DOM_MAP = {
-        // Boutons et Contrôles
-        btnToggle: 'gps-pause-toggle',
-        btnNether: 'nether-toggle-btn',
-        btnResetDist: 'reset-dist-btn',
-        btnResetAll: 'reset-all-btn',
-        
-        // Affichage Vitesse
-        speedMain: 'speed-main-display',
-        speedKmh: 'speed-stable-kmh',
-        speedMs: 'speed-stable-ms',
-        speedMax: 'speed-max-session',
-        
-        // Odométrie
-        distTotal: 'total-distance-3d',
-        distPrecise: 'precise-distance-ukf',
-        
-        // IMU (Capteurs)
-        accX: 'acc-x',
-        accY: 'acc-y',
-        accZ: 'acc-z',
-        
-        // Physique & Relativité
-        lorentz: 'lorentz-factor',
-        kinetic: 'kinetic-energy',
-        gravLocal: 'gravity-local'
-    };
+    function start() {
+        const engine = window.MainEngine = new ProfessionalUKF();
 
-    function initDashboard() {
-        // Initialisation du moteur UKF (Newtonien)
-        if (!window.MainEngine) {
-            if (typeof ProfessionalUKF !== 'undefined') {
-                window.MainEngine = new ProfessionalUKF();
-            } else {
-                console.error("❌ Erreur : ukf-lib.js non chargé.");
-                return;
-            }
-        }
-        
-        const engine = window.MainEngine;
-
-        // --- LIAISON DES ÉVÉNEMENTS ---
-
-        // 1. Bouton MARCHE / PAUSE
-        const btnStart = document.getElementById(DOM_MAP.btnToggle);
-        if (btnStart) {
-            btnStart.addEventListener('click', function() {
+        // 1. Liaison Contrôles
+        const btnToggle = document.getElementById('gps-pause-toggle');
+        if (btnToggle) {
+            btnToggle.onclick = () => {
                 engine.isRunning = !engine.isRunning;
-                this.textContent = engine.isRunning ? "▶️ SYSTÈME ACTIF" : "⏸️ SYSTÈME EN PAUSE";
-                this.style.backgroundColor = engine.isRunning ? "#28a745" : "#555";
-                
-                // Demande de permission pour les capteurs (iOS/Android)
-                if (engine.isRunning && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    DeviceMotionEvent.requestPermission().catch(console.error);
+                btnToggle.textContent = engine.isRunning ? "▶️ SYSTÈME ACTIF" : "⏸️ SYSTÈME EN PAUSE";
+                btnToggle.style.color = engine.isRunning ? "#00ff00" : "#ff4d4d";
+                if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                    DeviceMotionEvent.requestPermission();
                 }
-            });
-        }
-
-        // 2. Mode Nether (1:8)
-        const btnNether = document.getElementById(DOM_MAP.btnNether);
-        if (btnNether) {
-            btnNether.addEventListener('click', function() {
-                engine.isNetherMode = !engine.isNetherMode;
-                this.textContent = engine.isNetherMode ? "Mode Nether: ACTIF (1:8)" : "Mode Nether: DÉSACTIVÉ (1:1)";
-                this.classList.toggle('active', engine.isNetherMode);
-            });
-        }
-
-        // 3. Réinitialisations
-        const btnResetDist = document.getElementById(DOM_MAP.btnResetDist);
-        if (btnResetDist) btnResetDist.onclick = () => engine.distance3D = 0;
-
-        const btnResetAll = document.getElementById(DOM_MAP.btnResetAll);
-        if (btnResetAll) {
-            btnResetAll.onclick = () => {
-                engine.vMs = 0;
-                engine.distance3D = 0;
-                engine.maxSpeed = 0;
-                engine.velocityVec = { x: 0, y: 0, z: 0 };
             };
         }
 
-        // --- BOUCLE DE MISE À JOUR (10 Hz) ---
+        // 2. Boucle de rafraîchissement (Hautes fréquences)
         setInterval(() => {
-            if (!engine.isRunning) return;
+            engine.update();
+            const now = new Date();
+            const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
 
-            engine.update(); // Appel du moteur Newtonien
+            // --- VITESSES ---
+            const kmh = engine.vMs * 3.6;
+            safeSet('speed-main-display', kmh.toFixed(2) + " km/h");
+            safeSet('speed-stable-kmh', kmh.toFixed(3) + " km/h");
+            safeSet('speed-stable-ms', engine.vMs.toFixed(5) + " m/s");
 
-            try {
-                // MISE À JOUR VITESSES
-                const vKmh = engine.vMs * 3.6;
-                updateText(DOM_MAP.speedMain, vKmh.toFixed(1) + " km/h");
-                updateText(DOM_MAP.speedKmh, vKmh.toFixed(3) + " km/h");
-                updateText(DOM_MAP.speedMs, engine.vMs.toFixed(5) + " m/s");
-                updateText(DOM_MAP.speedMax, engine.maxSpeed.toFixed(2) + " km/h");
+            // --- PHYSIQUE ÉNERGÉTIQUE ---
+            // Energie Cinétique (1/2 mv²)
+            const kinetic = 0.5 * engine.mass * Math.pow(engine.vMs, 2);
+            safeSet('kinetic-energy', kinetic.toFixed(2) + " J");
 
-                // MISE À JOUR ODOMÉTRIE
-                updateText(DOM_MAP.distTotal, engine.distance3D.toFixed(5) + " km");
-                updateText(DOM_MAP.distPrecise, engine.distance3D.toFixed(8) + " km");
+            // --- RELATIVITÉ RESTREINTE ---
+            // Facteur de Lorentz gamma = 1 / sqrt(1 - v²/c²)
+            const beta = engine.vMs / engine.C;
+            const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
+            safeSet('lorentz-factor', gamma.toFixed(18));
+            
+            // Dilatation du temps (ns/jour)
+            const timeDilat = (gamma - 1) * 86400 * 1e9;
+            safeSet('time-dilation', timeDilat.toFixed(2) + " ns/j");
 
-                // MISE À JOUR IMU (Capteurs réels)
-                updateText(DOM_MAP.accX, engine.accel.x.toFixed(3));
-                updateText(DOM_MAP.accY, engine.accel.y.toFixed(3));
-                updateText(DOM_MAP.accZ, engine.accel.z.toFixed(3));
+            // --- ODOMÉTRIE ---
+            safeSet('total-distance-3d', engine.distance3D.toFixed(6) + " km");
+            safeSet('precise-distance-ukf', engine.distance3D.toFixed(9) + " km");
 
-                // PHYSIQUE RELATIVISTE (Lorentz)
-                const c = 299792458;
-                const ratio = engine.vMs / c;
-                const gamma = 1 / Math.sqrt(1 - Math.pow(ratio, 2));
-                updateText(DOM_MAP.lorentz, gamma.toFixed(15));
+            // --- ASTRONOMIE ---
+            const lst = engine.getLST ? engine.getLST() : 0;
+            safeSet('sidereal-time', (lst/15).toFixed(4) + " h");
+            safeSet('utc-time', now.toISOString().split('T')[1].substr(0,8));
+            safeSet('gravity-local', engine.gLocal.toFixed(5) + " m/s²");
 
-                // ÉNERGIE CINÉTIQUE (Ec = 1/2 mv²)
-                const energy = 0.5 * engine.mass * Math.pow(engine.vMs, 2);
-                updateText(DOM_MAP.kinetic, energy.toFixed(2) + " J");
+            // --- IMU ---
+            safeSet('acc-x', engine.accel.x.toFixed(3));
+            safeSet('acc-y', engine.accel.y.toFixed(3));
+            safeSet('acc-z', engine.accel.z.toFixed(3));
 
-                // Gravité Locale Calibrée
-                if (engine.gBase) {
-                    updateText(DOM_MAP.gravLocal, engine.gBase.toFixed(5) + " m/s²");
-                }
-
-            } catch (error) {
-                // Silencieux pour éviter que la colonne ne disparaisse en cas de DOM manquant
-            }
         }, 100);
     }
 
-    // Fonction utilitaire pour éviter les erreurs de DOM nul
-    function updateText(id, value) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value;
-    }
-
-    // Lancement propre
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initDashboard);
-    } else {
-        initDashboard();
-    }
+    window.addEventListener('load', start);
 })();
