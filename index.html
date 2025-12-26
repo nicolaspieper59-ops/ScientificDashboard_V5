@@ -376,10 +376,12 @@ button {
                 <div class="data-point"><span>Gravité Locale (g)</span><span id="local-gravity">N/A</span></div>                 
                 <div class="data-point"><span>Force G (Long.)</span><span id="force-g-long">N/A</span></div>
                 <div class="data-point"><span>Accélération Long.</span><span id="accel-long">N/A</span></div>
-                <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vertical-speed">N/A</span></div>
+                <div class="data-point"><span>Accélération Long. (Filtrée)</span><span id="accel-long">0.000 m/s²</span>
+                <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vel-z">0.00 m/s</span>
                 <div class="data-point"><span>Accel. Verticale (IMU)</span><span id="accel-verticale-imu">N/A</span></div>
                 <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">N/A</span></div>
                 <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">N/A</span></div>
+                <div class="data-point"><span>Coeff. Balistique (Inertie)</span><span id="ballistic-coeff">N/A</span>    
                 <hr>
                 <h3>Mécanique des Fluides</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">0.00 Pa</span></div>
@@ -457,6 +459,7 @@ button {
                 <div class="data-point"><span>Midi Solaire Local (UTC)</span><span id="noon-solar">N/A</span></div>
                 <div class="data-point"><span>Équation du Temps (EOT)</span><span id="equation-of-time">N/A</span></div>
                 <div class="data-point"><span>Temps Sidéral Local Vrai</span><span id="tslv">N/A</span></div>
+                <div class="data-point"><span>Temps Sidéral (TSLV)</span><span id="tslv">N/A</span>
                 <div class="data-point"><span>Longitude Écliptique</span><span id="ecl-long">N/A</span></div>
                 <hr>
                 <h3><i class="fas fa-sun"></i> Soleil</h3>
@@ -473,10 +476,12 @@ button {
                 <div class="data-point"><span>Azimut (Lune)</span><span id="moon-azimuth">N/A</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">N/A</span></div>
                 <div class="data-point"><span>Distance à la Terre</span><span id="moon-distance">N/A</span></div>
-            </section>
+             </section>
         </div>
     </main>
-    </main> <script src="vendor/math.min.js"></script> 
+    <script>
+                    
+    <script src="vendor/math.min.js"></script> 
     <script src="vendor/leaflet.js"></script> 
     
     <script src="lib/ephem.js"></script> 
