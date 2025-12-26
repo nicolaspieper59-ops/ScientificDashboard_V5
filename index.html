@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="leaflet.css" />
     <link rel="stylesheet" href="fontawesome.min.css" />
           
-    <style>
+<style>
     /* --- VARIABLES GLOBALES --- */
     :root {
         --bg-dark: #121220; 
@@ -28,265 +28,112 @@
         background-color: var(--bg-dark); 
         color: var(--text-dark); 
         transition: background-color 0.3s, color 0.3s; 
-        overflow-x: hidden; /* Évite le scroll horizontal parasite */
+        overflow-x: hidden;
     }
 
-    /* --- STRUCTURE PRINCIPALE (GRID SYSTÈME CORRIGÉ) --- */
+    /* --- GRID SYSTÈME : 3 COLONNES FORCÉES (MODE COCKPIT) --- */
     .dashboard-container {
         display: grid;
-        /* Mobile First : Une seule colonne par défaut */
-        grid-template-columns: 1fr; 
-        gap: 15px;
+        /* Force 3 colonnes : Gauche (28%), Centre (44%), Droite (28%) */
+        /* On donne plus de place au milieu pour la carte et la vitesse */
+        grid-template-columns: 28% 44% 28%; 
+        gap: 5px; /* Espace très réduit pour gagner de la place */
         width: 100%;
-        min-height: 100vh;
-        padding: 10px;
+        height: 100vh; /* Prend tout l'écran */
+        padding: 5px;
         box-sizing: border-box;
     }
 
-    /* Tablette / Écran moyen : Grille fluide auto-adaptative */
-    @media (min-width: 768px) {
+    /* Adaptation pour les Grands Écrans (PC) */
+    @media (min-width: 1024px) {
         .dashboard-container {
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: 300px 1fr 340px; /* Retour aux tailles confortables */
+            gap: 15px;
+            padding: 15px;
         }
     }
 
-    /* Desktop Large (Votre demande de stabilité) : 3 Colonnes Fixes */
-    @media (min-width: 1400px) {
-        .dashboard-container {
-            grid-template-columns: 300px 1fr 340px;
-        }
-    }
-
-    /* --- PANNEAUX & CONTENEURS --- */
+    /* --- PANNEAUX --- */
     section.panel { 
         background-color: var(--panel-dark); 
-        padding: 15px 20px; 
-        border-radius: 8px; 
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-        display: flex; 
-        flex-direction: column;
+        padding: 8px; /* Padding réduit pour le mobile */
+        border-radius: 6px; 
         border: 1px solid var(--border-dark);
-        position: relative;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.5); 
+        display: flex; flex-direction: column; position: relative;
+        overflow: hidden; /* Empêche le contenu de dépasser */
     }
 
     section.panel h2 { 
-        margin-top: 0; 
-        border-bottom: 2px solid var(--border-dark); 
-        padding-bottom: 10px; 
-        font-size: 1.1em; 
+        margin-top: 0; border-bottom: 1px solid var(--border-dark); 
+        padding-bottom: 5px; margin-bottom: 8px;
+        font-size: 0.85em; /* Titres plus petits */
         color: var(--accent-color);
-        display: flex; 
-        align-items: center; 
-        gap: 8px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    h3 { 
-        color: var(--accent-color); 
-        margin-top: 15px; 
-        margin-bottom: 5px; 
-        font-size: 0.95em; 
-        opacity: 0.9;
-    }
-
-    /* --- DONNÉES & AFFICHAGE --- */
+    /* --- DONNÉES (Optimisé pour petit écran) --- */
     .data-point { 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
-        padding: 6px 0; 
+        padding: 4px 0; 
         border-bottom: 1px solid #2a2a2a; 
-        font-size: 0.9em; 
-        min-height: 24px; 
-    }
-
-    .data-point span:first-child { 
-        font-weight: 500; 
-        color: #ccc; 
-        margin-right: 10px; 
-    }
-
-    .data-point span:last-child { 
-        font-family: 'Courier New', Courier, monospace; 
-        font-weight: bold; 
-        color: #99ccff; 
-        text-align: right; 
-    }
-
-    .speed-display { 
-        text-align: center; 
-        background-color: #1a1a1a; 
-        color: #00ff66; 
-        padding: 20px; 
-        border-radius: 12px; 
-        font-size: 2em; 
-        margin-bottom: 15px; 
-        border: 1px solid #333;
-        box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.1);
+        font-size: 0.75em; /* Texte compact */
+        line-height: 1.2;
     }
     
-    .speed-display small { 
-        display: block; 
-        font-size: 0.4em; 
-        color: #aaa; 
-        margin-top: 5px; 
-        text-transform: uppercase;
+    /* Sur très petit écran, on empile Label et Valeur pour gagner de la place */
+    @media (max-width: 600px) {
+        .data-point {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
+        .data-point span:last-child {
+            width: 100%;
+            text-align: left;
+            color: #99ccff;
+        }
     }
 
-    #speed-stable { font-size: 1.2em; font-weight: 700; }
+    .data-point span:first-child { font-weight: 500; color: #aaa; }
+    .data-point span:last-child { font-family: 'Courier New', monospace; font-weight: bold; color: #99ccff; }
 
-    /* --- CONTRÔLES & INPUTS --- */
-    .controls-grid { 
-        display: grid; 
-        grid-template-columns: repeat(2, 1fr); 
-        gap: 10px; 
-        margin-top: 10px; 
-    }
-
-    .control-input-full { grid-column: 1 / -1; margin-top: 5px; }
-    
-    .control-input-full label { 
-        display: block; 
-        font-size: 0.85em; 
-        margin-bottom: 5px; 
-        color: #aaa;
-    }
-
+    /* --- CONTRÔLES --- */
     input, select { 
-        width: 100%; 
-        padding: 8px; 
-        border-radius: 4px; 
-        border: 1px solid #555; 
-        background-color: #2b2b2b; 
-        color: var(--text-dark); 
-        box-sizing: border-box; /* Important pour ne pas dépasser */
+        width: 100%; padding: 4px; border-radius: 3px; border: 1px solid #555; 
+        background-color: #2b2b2b; color: #fff; box-sizing: border-box; 
+        font-size: 0.8em;
     }
-
-    input:focus, select:focus {
-        outline: none;
-        border-color: var(--accent-color);
-        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-    }
-
     button { 
-        padding: 10px; 
-        border: none; 
-        border-radius: 5px; 
-        cursor: pointer !important; 
-        font-weight: bold; 
-        transition: all 0.2s; 
-        background-color: #444; 
-        color: #fff; 
-        width: 100%;
-        text-transform: uppercase;
-        font-size: 0.8rem;
+        padding: 8px; border: none; border-radius: 4px; cursor: pointer; 
+        font-weight: bold; background-color: #444; color: #fff; width: 100%; 
+        font-size: 0.75em; text-transform: uppercase; margin-top: 5px;
     }
-
-    button:active { transform: scale(0.98); }
-    button:hover { filter: brightness(1.2); }
-
     #toggle-gps-btn { background-color: var(--success-color); }
-    #emergency-stop-btn { background-color: var(--error-color); }
-    #emergency-stop-btn.active { animation: pulse-red 1s infinite alternate; }
 
-    @keyframes pulse-red { 
-        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 
-        100% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); } 
+    /* --- MODULES VISUELS --- */
+    #map-container { 
+        width: 100%; 
+        height: 180px; /* Carte moins haute sur mobile */
+        border: 1px solid var(--border-dark); 
+        border-radius: 4px; overflow: hidden; margin-bottom: 10px;
     }
+    @media (min-width: 1024px) { #map-container { height: 350px; } }
 
-    /* --- CARTE (LEAFLET) --- */
-    #map-container {
-        width: 100%;
-        height: 350px;
-        position: relative;
-        border: 1px solid var(--border-dark);
-        border-radius: 8px;
-        overflow: hidden;
-        margin-bottom: 15px;
-    }
-    #map { height: 100% !important; width: 100% !important; z-index: 1; }
-
-    /* --- MODULES SPÉCIFIQUES --- */
+    #map { width: 100%; height: 100%; }
     
-    /* 1. Horloge Minecraft */
-    #minecraft-clock-container { 
-        display: flex; justify-content: center; align-items: center; 
-        flex-direction: column; padding: 15px 0; position: relative; 
+    .speed-display { 
+        text-align: center; background: #1a1a1a; color: #00ff66; padding: 10px; 
+        border-radius: 8px; font-size: 1.5em; margin-bottom: 10px; border: 1px solid #333;
     }
-    #minecraft-clock { 
-        width: 100px; height: 100px; position: relative; border: 4px solid #444; 
-        overflow: hidden; background-color: transparent; border-radius: 50%; 
-        transition: background-color 0.8s, border-color 0.8s; z-index: 0;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-    }
-    #minecraft-clock::before { 
-        content: ''; position: absolute; top: 50%; left: 0; right: 0; 
-        height: 2px; background-color: #666; transform: translateY(-50%); z-index: 3;
-    }
-    #biome-half { 
-        content: ''; position: absolute; top: 50%; left: 0; right: 0; bottom: 0; 
-        background-color: #2a2a2a; transition: opacity 0.8s; z-index: 1;
-    }
-    .sun-element, .moon-element { 
-        position: absolute; width: 100%; height: 100%; top: 0; left: 0; 
-        display: flex; justify-content: center; align-items: flex-start; 
-        transform-origin: center center; 
-        transition: transform 1s linear; z-index: 2; 
-    }
-    .sun-icon { color: #ffdd00; font-size: 1.5em; transform: translateY(5px); text-shadow: 0 0 10px #ffdd00; }
-    .moon-icon { color: #f0f0f0; font-size: 1.2em; transform: translateY(8px); text-shadow: 0 0 5px #fff; }
-    .sky-day { background-color: #87ceeb !important; } 
-    .sky-night { background-color: #121220 !important; } 
-
-    /* 2. Niveau à Bulle */
-    .spirit-level-container {
-        position: relative; width: 120px; height: 120px; margin: 15px auto;
-        border: 4px solid #444; border-radius: 50%;
-        background-color: #111; overflow: hidden;
-        box-shadow: inset 0 0 20px #000;
-    }
-    .spirit-level-bubble {
-        position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
-        border-radius: 50%; background: radial-gradient(circle at 30% 30%, #4da6ff, var(--accent-color));
-        border: 1px solid #fff; box-shadow: 0 0 10px var(--accent-color);
-        transform: translate(-50%, -50%); /* Centré par défaut */
-        transition: top 0.1s linear, left 0.1s linear;
-    }
-    .crosshair-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(255,0,0,0.5); }
-    .crosshair-v { position: absolute; left: 50%; top: 0; height: 100%; width: 1px; background: rgba(255,0,0,0.5); }
-
-    /* 3. Globe Interactif */
-    #globe-container {
-        width: 180px; height: 180px; margin: 20px auto;
-        border-radius: 50%; position: relative;
-        transform-style: preserve-3d;
-        background: radial-gradient(circle at 30% 30%, #2c3e50, #000);
-        box-shadow: 0 0 30px rgba(0, 123, 255, 0.2), inset 0 0 20px rgba(0,0,0,0.8);
-        border: 1px solid rgba(0, 123, 255, 0.3);
-    }
-    #globe-container::before {
-        content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        border-radius: 50%;
-        background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 123, 255, 0.1) 3px);
-        pointer-events: none;
-    }
-
-    /* --- LISTES & SCROLLBARS --- */
-    .theoretical-list { 
-        max-height: 300px; 
-        overflow-y: auto; 
-        margin-top: 8px;
-        scrollbar-width: thin;
-        scrollbar-color: var(--accent-color) var(--bg-dark);
-    }
-    /* Webkit Scrollbar (Chrome/Safari) */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: var(--bg-dark); }
-    ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+    .speed-display small { font-size: 0.4em; display: block; color: #888; }
     
-    .theoretical-crit { color: #ffcf59; font-weight: 800;
+    /* Scrollbar fine pour les listes */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
 </style>
 </head>
 <body class="dark-mode"> 
