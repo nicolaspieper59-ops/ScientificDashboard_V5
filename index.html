@@ -476,12 +476,10 @@ button {
                 <div class="data-point"><span>Azimut (Lune)</span><span id="moon-azimuth">N/A</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">N/A</span></div>
                 <div class="data-point"><span>Distance à la Terre</span><span id="moon-distance">N/A</span></div>
-             </section>
-        </div>
-    </main>
-    <script>
-                    
+        </main>
+
     <script src="vendor/math.min.js"></script> 
+    
     <script src="vendor/leaflet.js"></script> 
     
     <script src="lib/ephem.js"></script> 
@@ -492,30 +490,34 @@ button {
 
     <script>
         window.addEventListener('load', () => {
-            console.log("🚀 Initialisation du système...");
+            console.log("🚀 Initialisation du Dashboard...");
             
+            // Vérification de sécurité
             if (typeof ProfessionalUKF !== 'undefined') {
-                // Création de l'instance globale
+                // Création de l'instance du moteur 21 états
                 window.MainEngine = new ProfessionalUKF();
                 
-                // Configuration par défaut (Marseille)
+                // Configuration initiale (Marseille)
                 window.MainEngine.lat = 43.2965;
                 window.MainEngine.lon = 5.3698;
                 
-                // Liaison de l'input de masse
+                // Gestionnaire pour le changement de masse (Inertie)
                 const massInput = document.getElementById('mass-input');
                 if(massInput) {
                     massInput.addEventListener('change', (e) => {
-                        window.MainEngine.mass = parseFloat(e.target.value) || 70;
-                        console.log("Masse mise à jour :", window.MainEngine.mass, "kg");
+                        const newMass = parseFloat(e.target.value);
+                        if(newMass > 0) {
+                            window.MainEngine.mass = newMass;
+                            console.log(`⚖️ Masse mise à jour : ${newMass} kg (Impacte l'inertie et la traînée)`);
+                        }
                     });
                 }
 
-                console.log("✅ UKF 21 États Connecté. Prêt pour fusion sensorielle.");
+                console.log("✅ SYSTÈME ACTIF : Fusion 21 États + VSOP2013 opérationnels.");
             } else {
-                console.error("❌ Erreur : ProfessionalUKF non détecté. Vérifiez lib/ukf-lib.js");
+                console.error("❌ ERREUR CRITIQUE : Le moteur 'ukf-lib.js' n'a pas été chargé correctement.");
+                alert("Erreur de chargement des fichiers scientifiques. Vérifiez la console (F12).");
             }
         });
-    </script>
 </body>
-</html>
+    </html>
