@@ -432,23 +432,19 @@
                 <div class="data-point"><span>Azimut (Lune)</span><span id="moon-azimuth">N/A</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">N/A</span></div>
                 <div class="data-point"><span>Distance à la Terre</span><span id="moon-distance">N/A</span></div>
-        </main>
+        </div> 
+    </main>
 
     <script src="vendor/math.min.js"></script> 
-    
     <script src="vendor/leaflet.js"></script> 
-    
     <script src="lib/ephem.js"></script> 
-
     <script src="lib/ukf-lib.js"></script> 
-    
     <script src="gnss-dashboard-full.js"></script>
 
     <script>
         window.addEventListener('load', () => {
             console.log("🚀 Initialisation du Dashboard...");
             
-            // Vérification de sécurité
             if (typeof ProfessionalUKF !== 'undefined') {
                 // Création de l'instance du moteur 21 états
                 window.MainEngine = new ProfessionalUKF();
@@ -464,16 +460,15 @@
                         const newMass = parseFloat(e.target.value);
                         if(newMass > 0) {
                             window.MainEngine.mass = newMass;
-                            console.log(`⚖️ Masse mise à jour : ${newMass} kg (Impacte l'inertie et la traînée)`);
+                            console.log(`⚖️ Masse mise à jour : ${newMass} kg`);
                         }
                     });
                 }
-
                 console.log("✅ SYSTÈME ACTIF : Fusion 21 États + VSOP2013 opérationnels.");
             } else {
-                console.error("❌ ERREUR CRITIQUE : Le moteur 'ukf-lib.js' n'a pas été chargé correctement.");
-                alert("Erreur de chargement des fichiers scientifiques. Vérifiez la console (F12).");
+                console.error("❌ ERREUR CRITIQUE : Le moteur 'ukf-lib.js' n'a pas été chargé.");
             }
-        });
-</body>
-    </html>
+        }); // <-- Fermeture de la fonction listener ajoutée ici
+    </script> 
+            </body>
+            </html>
