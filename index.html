@@ -476,23 +476,41 @@ button {
             </section>
         </div>
     </main>
-    <script>
-
-    <script src="vendor/math.min.js"></script> 
+    </main> <script src="vendor/math.min.js"></script> 
     <script src="vendor/leaflet.js"></script> 
     
+    <script src="lib/ephem.js"></script> 
+
     <script src="lib/ukf-lib.js"></script> 
-    <script src="lib/astro.js"></script>
     
     <script src="gnss-dashboard-full.js"></script>
 
     <script>
         window.addEventListener('load', () => {
+            console.log("🚀 Initialisation du système...");
+            
             if (typeof ProfessionalUKF !== 'undefined') {
-                // Initialisation avec les IDs du HTML actuel
+                // Création de l'instance globale
                 window.MainEngine = new ProfessionalUKF();
-                window.MainEngine.mass = parseFloat(document.getElementById('mass-input').value);
-                console.log("🚀 Moteur UKF synchronisé avec le HTML.");
+                
+                // Configuration par défaut (Marseille)
+                window.MainEngine.lat = 43.2965;
+                window.MainEngine.lon = 5.3698;
+                
+                // Liaison de l'input de masse
+                const massInput = document.getElementById('mass-input');
+                if(massInput) {
+                    massInput.addEventListener('change', (e) => {
+                        window.MainEngine.mass = parseFloat(e.target.value) || 70;
+                        console.log("Masse mise à jour :", window.MainEngine.mass, "kg");
+                    });
+                }
+
+                console.log("✅ UKF 21 États Connecté. Prêt pour fusion sensorielle.");
+            } else {
+                console.error("❌ Erreur : ProfessionalUKF non détecté. Vérifiez lib/ukf-lib.js");
             }
         });
     </script>
+</body>
+</html>
