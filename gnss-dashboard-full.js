@@ -4,50 +4,35 @@
         const engine = window.MainEngine = new ProfessionalUKF();
         const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
 
-        const btn = document.getElementById('gps-pause-toggle');
-        if(btn) btn.onclick = () => {
-            engine.isRunning = !engine.isRunning;
-            btn.textContent = engine.isRunning ? "⏸️ SYSTÈME ACTIF" : "▶️ MARCHE GPS";
-            engine.mass = parseFloat(document.getElementById('mass-input').value) || 70;
-            if(typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission();
-        };
-
         setInterval(() => {
             engine.update();
-            const astro = engine.getAstroData();
-            const v = Math.sqrt(engine.state.vel.x**2 + engine.state.vel.y**2 + engine.state.vel.z**2);
-            const rho = engine.getAirDensity();
-
-            // --- VITESSES & PHYSIQUE ---
+            const v = Math.sqrt(engine.state.v.x**2 + engine.state.v.y**2 + engine.state.v.z**2);
+            
+            // --- ÉTATS PHYSIQUES ---
             safeSet('speed-main-display', (v * 3.6).toFixed(2) + " km/h");
-            safeSet('vel-z', engine.state.vel.z.toFixed(2) + " m/s");
-            safeSet('kinetic-energy', (0.5 * engine.mass * v**2).toFixed(2) + " J");
-
-            // --- FLUIDES & INERTIE ---
-            const q = 0.5 * rho * v**2;
-            const dragForce = q * engine.Cd * engine.Area;
-            safeSet('air-density', rho.toFixed(4) + " kg/m³");
-            safeSet('dyn-pressure', q.toFixed(2) + " Pa");
+            safeSet('accel-vert', engine.state.a.z.toFixed(3) + " m/s²");
+            safeSet('vel-z', engine.state.v.z.toFixed(2) + " m/s");
+            
+            // --- ÉTATS ENVIRONNEMENTAUX ---
+            safeSet('air-density', engine.state.rho.toFixed(4) + " kg/m³");
+            const dragForce = 0.5 * engine.state.rho * v**2 * engine.Cd * engine.Area;
             safeSet('drag-force', dragForce.toFixed(2) + " N");
-            safeSet('ballistic-coeff', engine.getBallisticCoefficient().toFixed(2) + " kg/m²");
 
-            // --- NAVIGATION 21-ÉTATS (RÉPONSE AUX N/A) ---
-            safeSet('acc-x', engine.accelRaw.x.toFixed(3));
-            safeSet('acc-y', engine.accelRaw.y.toFixed(3));
-            safeSet('acc-z', engine.accelRaw.z.toFixed(3));
-            safeSet('total-distance-3d', (Math.sqrt(engine.state.pos.x**2 + engine.state.pos.y**2 + engine.state.pos.z**2)/1000).toFixed(6) + " km");
-
-            // --- ASTRONOMIE (VSOP2013) ---
-            if (astro) {
-                safeSet('tslv', astro.tslv.toFixed(4) + " h");
-                safeSet('ecl-long', astro.sunLon.toFixed(2) + "°");
+            // --- ASTRONOMIE VSOP2013 ---
+            if (typeof vsop2013 !== 'undefined') {
+                const jd = (new Date().getTime() / 86400000) + 2440587.5;
+                const earth = vsop2013.earth.state(jd);
+                const sunLon = (Math.atan2(-earth.r.y, -earth.r.x) * 180 / Math.PI + 360) % 360;
+                safeSet('ecl-long', sunLon.toFixed(4) + "°");
+                safeSet('tslv', ((jd % 1) * 24).toFixed(4) + " h");
             }
 
-            // --- RELATIVITÉ ---
+            // --- RELATIVITÉ & ÉNERGIE ---
+            safeSet('kinetic-energy', (0.5 * engine.mass * v**2).toFixed(2) + " J");
             const gamma = 1 / Math.sqrt(1 - Math.pow(v / 299792458, 2));
             safeSet('lorentz-factor', gamma.toFixed(18));
 
-        }, 40); // 25Hz pour la fluidité
+        }, 50); // Fréquence de rafraîchissement 20Hz
     }
     window.addEventListener('load', start);
 })();
