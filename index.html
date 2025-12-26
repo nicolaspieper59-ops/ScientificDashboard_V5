@@ -21,32 +21,28 @@
             transition: background-color 0.3s, color 0.3s; 
         }
         /* --- FIX STRUCTURE COLONNES --- */
-.dashboard-container { 
-    display: grid; 
-    grid-template-columns: 1fr 1.5fr 1fr; /* Trois colonnes fixes */
-    gap: 15px; 
-    padding: 15px; 
-    max-width: 100vw; 
-    margin: auto;
-    box-sizing: border-box;
-    align-items: start; /* Empêche l'étirement qui fait disparaître les boutons */
+./* Empêche la colonne de disparaître */
+.dashboard-container {
+    display: grid;
+    grid-template-columns: 280px 1fr 320px; /* Colonnes fixes pour la stabilité */
+    gap: 15px;
+    width: 100%;
+    min-height: 100vh;
 }
 
-/* Force l'affichage des colonnes même si le JS plante */
-.sidebar, .main-content {
-    min-width: 0; 
-    overflow: hidden;
-    background: rgba(30, 30, 30, 0.9);
-    border: 1px solid var(--border-dark);
+/* Style spécifique pour vos boutons de contrôle */
+.sidebar section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+button {
+    width: 100%;
     padding: 10px;
-    border-radius: 8px;
-}
-
-/* Style des boutons pour éviter les clics fantômes */
-button, .status-indicator {
-    cursor: pointer !important;
-    pointer-events: auto !important;
-    z-index: 100;
+    cursor: pointer !important; /* Force l'interaction */
+    z-index: 1000;
 }
 
 @media (max-width: 1200px) {
