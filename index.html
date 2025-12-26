@@ -482,28 +482,17 @@ button {
     <script src="vendor/leaflet.js"></script> 
     
     <script src="lib/ukf-lib.js"></script> 
-
     <script src="lib/astro.js"></script>
     
     <script src="gnss-dashboard-full.js"></script>
 
     <script>
         window.addEventListener('load', () => {
-            // On vérifie que la librairie est chargée
             if (typeof ProfessionalUKF !== 'undefined') {
+                // Initialisation avec les IDs du HTML actuel
                 window.MainEngine = new ProfessionalUKF();
-                
-                // INJECTION FORCEE DES DONNÉES DE DÉPART (Marseille)
-                // Cela débloque immédiatement l'affichage avant même le signal GPS
-                window.MainEngine.lat = 43.2845619;
-                window.MainEngine.lon = 5.3587411;
-                window.MainEngine.isRunning = true;
-                
-                console.log("🚀 SYSTÈME DÉMARRÉ : Physique Active.");
-            } else {
-                alert("Erreur critique : ukf-lib.js non chargé !");
+                window.MainEngine.mass = parseFloat(document.getElementById('mass-input').value);
+                console.log("🚀 Moteur UKF synchronisé avec le HTML.");
             }
         });
     </script>
-</body>
-</html>
