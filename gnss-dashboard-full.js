@@ -1,63 +1,55 @@
 (function() {
     "use strict";
-    function init() {
-        if (!window.MainEngine) window.MainEngine = new ProfessionalUKF();
-        const engine = window.MainEngine;
+    function start() {
+        const engine = window.MainEngine = new ProfessionalUKF();
+        const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
 
-        const safeSet = (id, val) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = val;
+        // Gestion des contrôles
+        const btn = document.getElementById('gps-pause-toggle');
+        const massInput = document.getElementById('mass-input');
+
+        if(btn) btn.onclick = () => {
+            engine.isRunning = !engine.isRunning;
+            btn.textContent = engine.isRunning ? "⏸️ SYSTÈME ACTIF" : "▶️ SYSTÈME EN PAUSE";
+            if(massInput) engine.mass = parseFloat(massInput.value) || 70;
+            if(typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission();
         };
-
-        // Liaison Masse & Bouton
-        const btn = document.getElementById('gps-pause-toggle') || document.getElementById('gps-status');
-        if (btn) {
-            btn.onclick = () => {
-                engine.isRunning = !engine.isRunning;
-                btn.textContent = engine.isRunning ? "▶️ SYSTÈME ACTIF" : "⏸️ SYSTÈME EN PAUSE";
-                const mInput = document.getElementById('mass-obj-kg');
-                if (mInput) engine.mass = parseFloat(mInput.value) || 70;
-                if (typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission();
-            };
-        }
 
         setInterval(() => {
             engine.update();
             const now = new Date();
 
-            // 1. VITESSE & PHYSIQUE
-            const kmh = engine.vMs * 3.6;
-            safeSet('speed-main-display', kmh.toFixed(2) + " km/h");
-            safeSet('speed-stable-kmh', kmh.toFixed(3) + " km/h");
-            safeSet('speed-stable-ms', engine.vMs.toFixed(5) + " m/s");
-            safeSet('speed-max-session', engine.maxSpeed.toFixed(2) + " km/h");
-            safeSet('kinetic-energy', (0.5 * engine.mass * engine.vMs**2).toFixed(2) + " J");
+            // VITESSES & DISTANCE
+            safeSet('speed-main-display', (engine.vMs * 3.6).toFixed(2) + " km/h");
+            safeSet('speed-stable-kmh', (engine.vMs * 3.6).toFixed(3) + " km/h");
+            safeSet('total-distance-3d', engine.distance3D.toFixed(6) + " km");
 
-            // 2. RELATIVITÉ (Précision SI)
+            // RELATIVITÉ & ÉNERGIE
             const gamma = 1 / Math.sqrt(1 - Math.pow(engine.vMs / engine.C, 2));
             safeSet('lorentz-factor', gamma.toFixed(18));
-            safeSet('time-dilation', ((gamma - 1) * 86400 * 1e9).toFixed(2) + " ns/j");
+            safeSet('kinetic-energy', (0.5 * engine.mass * Math.pow(engine.vMs, 2)).toFixed(2) + " J");
 
-            // 3. ASTRONOMIE (Offline)
-            const astro = engine.getAstroData(5.36, 43.28); // Marseille par défaut
-            const h = Math.floor(astro.lst);
-            const m = Math.floor((astro.lst - h) * 60);
-            safeSet('sidereal-time', `${h}h ${m}m LST`);
-            safeSet('sun-longitude', astro.sunLon.toFixed(2) + "°");
-            safeSet('utc-time', now.toISOString().split('T')[1].substr(0,8));
-
-            // 4. ENVIRONNEMENT
+            // MÉCANIQUE DES FLUIDES (Météo)
             const rho = engine.getAirDensity();
             safeSet('air-density', rho.toFixed(4) + " kg/m³");
             const dragPower = 0.5 * rho * Math.pow(engine.vMs, 3) * engine.Cd * engine.Area;
-            safeSet('drag-power', (dragPower/1000).toFixed(3) + " kW");
+            safeSet('drag-power-kw', (dragPower/1000).toFixed(3) + " kW");
 
-            // 5. IMU & ODOMÉTRIE
-            safeSet('acc-x', engine.acc.x.toFixed(3));
-            safeSet('total-distance-3d', engine.distance3D.toFixed(5) + " km");
-            safeSet('precise-distance-ukf', engine.distance3D.toFixed(8) + " km");
+            // ASTRONOMIE OFFLINE
+            const lst = engine.getLST(5.36); // Longitude Marseille par défaut
+            safeSet('tslv', lst.toFixed(4) + " h");
+            safeSet('utc-datetime', now.toISOString().replace('T', ' ').substr(0, 19));
+
+            // IMU & INCLINAISON
+            const pitch = Math.atan2(-engine.accel.x, engine.accel.z) * (180/Math.PI);
+            const roll = Math.atan2(engine.accel.y, engine.accel.z) * (180/Math.PI);
+            safeSet('pitch', pitch.toFixed(1) + "°");
+            safeSet('roll', roll.toFixed(1) + "°");
+            safeSet('acc-x', engine.accel.x.toFixed(3));
+            safeSet('acc-y', engine.accel.y.toFixed(3));
+            safeSet('acc-z', engine.accel.z.toFixed(3));
 
         }, 100);
     }
-    window.addEventListener('load', init);
+    window.addEventListener('load', start);
 })();
