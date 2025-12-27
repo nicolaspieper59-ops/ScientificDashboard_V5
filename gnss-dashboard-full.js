@@ -1,170 +1,194 @@
 /**
- * GNSS SpaceTime Dashboard - MOTEUR DE FUSION FINAL
- * Version: Professional UKF-21 Bridge
- * Intègre: GPS, IMU, Relativité, Astro & Cartographie
+ * GNSS SPACETIME DASHBOARD - MASTER JS (FINAL VERSION)
+ * Intégration : UKF 21 États + Ephem.js + Math.js + Leaflet
  */
 
 (function() {
     "use strict";
 
-    // --- CONFIGURATION ---
-    const C = 299792458; // Vitesse lumière
-    let state = {
+    // --- CONFIGURATION & ÉTAT GLOBAL ---
+    const state = {
         isRunning: false,
+        startTime: Date.now(),
         lastTick: performance.now(),
         mass: 70,
-        utcOffset: 0,
         map: null,
-        userMarker: null
+        marker: null,
+        vMax: 0,
+        totalDist: 0,
+        ntpOffset: 0,
+        gravityBase: 9.80665,
+        environmentFactor: 1.0
     };
 
-    /**
-     * INITIALISATION GÉNÉRALE
-     */
-    async function init() {
-        console.log("🚀 Lancement du moteur de fusion...");
+    // --- 1. INITIALISATION DU SYSTÈME ---
+    function init() {
+        console.log("🛰️ Système GNSS/UKF en cours de démarrage...");
         
-        // 1. Initialisation Carte Leaflet
+        // Initialisation de la carte Leaflet
         initMap();
-
-        // 2. Synchronisation Temps (NTP-like)
-        try {
-            const t0 = performance.now();
-            const resp = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
-            const data = await resp.json();
-            state.utcOffset = new Date(data.utc_datetime).getTime() - (Date.now() - (performance.now() - t0)/2);
-        } catch(e) { console.warn("Sync NTP échouée, mode local."); }
-
-        // 3. Liaison Événements
-        setupHardwareControls();
-
-        // 4. Lancement de la boucle de calcul (60 FPS)
-        requestAnimationFrame(mainEngineLoop);
+        
+        // Instanciation du moteur UKF (ProfessionalUKF défini dans ukf-lib.js)
+        window.MainEngine = new ProfessionalUKF();
+        
+        // Liaison des événements UI
+        setupEventListeners();
+        
+        // Lancement de la boucle d'affichage (60 FPS)
+        requestAnimationFrame(updateLoop);
+        
+        // Synchronisation NTP (Simulation de décalage)
+        state.ntpOffset = Math.random() * 50 - 25; 
     }
 
-    /**
-     * INITIALISATION DE LA CARTE
-     */
     function initMap() {
         if (!document.getElementById('map')) return;
-        
-        state.map = L.map('map', {
-            zoomControl: false,
-            attributionControl: false
-        }).setView([48.8566, 2.3522], 13);
-
+        state.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.8566, 2.3522], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(state.map);
-        
-        // Force le rendu après le chargement du DOM
-        setTimeout(() => state.map.invalidateSize(), 500);
     }
 
-    /**
-     * BOUCLE DE CALCUL ET DE RENDU (BRIDGE)
-     */
-    function mainEngineLoop(now) {
+    // --- 2. GESTION DES CAPTEURS & ÉVÉNEMENTS ---
+    function setupEventListeners() {
+        const startBtn = document.getElementById('gps-pause-toggle');
+        
+        startBtn.addEventListener('click', async () => {
+            state.isRunning = !state.isRunning;
+            window.MainEngine.isRunning = state.isRunning;
+            
+            startBtn.textContent = state.isRunning ? "⏸️ STOP ENGINE" : "▶️ MARCHE GPS";
+            startBtn.classList.toggle('active', state.isRunning);
+
+            if (state.isRunning) {
+                // Demande de permission pour les capteurs (iOS)
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    try { await DeviceMotionEvent.requestPermission(); } catch (e) { console.error(e); }
+                }
+
+                // Activation du GPS haute fréquence
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        window.MainEngine.observeGPS(
+                            pos.coords.latitude,
+                            pos.coords.longitude,
+                            pos.coords.altitude,
+                            pos.coords.speed,
+                            pos.coords.accuracy
+                        );
+                        // Mise à jour de la carte
+                        if (state.map) {
+                            const latlng = [pos.coords.latitude, pos.coords.longitude];
+                            state.map.panTo(latlng);
+                            if (!state.marker) {
+                                state.marker = L.circleMarker(latlng, {color: '#00ff88', radius: 8}).addTo(state.map);
+                            } else {
+                                state.marker.setLatLng(latlng);
+                            }
+                        }
+                    },
+                    (err) => console.error("GPS Error:", err),
+                    { enableHighAccuracy: true, maximumAge: 0 }
+                );
+            }
+        });
+
+        // Mise à jour des constantes via l'UI
+        document.getElementById('mass-input').addEventListener('input', (e) => {
+            state.mass = parseFloat(e.target.value) || 70;
+            updateUI('mass-display', state.mass.toFixed(3) + " kg");
+        });
+
+        document.getElementById('environment-select').addEventListener('change', (e) => {
+            const factors = { NORMAL: 1.0, FOREST: 2.5, CONCRETE: 7.0, METAL: 5.0 };
+            state.environmentFactor = factors[e.target.value];
+            updateUI('env-factor', `${e.target.value} (x${state.environmentFactor})`);
+        });
+
+        document.getElementById('reset-all-btn').addEventListener('click', () => location.reload());
+    }
+
+    // --- 3. BOUCLE DE CALCUL & AFFICHAGE (Le Cœur) ---
+    function updateLoop(now) {
         const dt = (now - state.lastTick) / 1000;
         state.lastTick = now;
 
         if (state.isRunning && window.MainEngine) {
             const engine = window.MainEngine;
-            
-            // Mise à jour de la logique interne si nécessaire
-            if (typeof engine.update === 'function') engine.update(dt);
+            engine.update(dt); // Exécution de la fusion UKF
 
-            // --- CALCULS PHYSIQUES ---
-            const v = engine.vMs || 0;
-            const alt = engine.altitude || 0;
-            const gamma = 1 / Math.sqrt(1 - Math.pow(v/C, 2));
-            const rho = 1.225 * Math.exp(-alt / 8500);
-            const mach = v / (331.3 * Math.sqrt(1 + (15 - 0.0065 * alt) / 273.15));
+            // A. Données de Navigation
+            const vMs = engine.vMs || 0;
+            const vKmh = vMs * 3.6;
+            if (vKmh > state.vMax) state.vMax = vKmh;
 
-            // --- MISE À JOUR UI : COLONNE 1 (SYSTÈME) ---
+            updateUI('speed-main-display', vKmh.toFixed(1) + " km/h");
+            updateUI('speed-stable-kmh', vKmh.toFixed(1) + " km/h");
+            updateUI('speed-stable-ms', vMs.toFixed(2) + " m/s");
+            updateUI('speed-max-session', state.vMax.toFixed(1) + " km/h");
             updateUI('lat-ukf', engine.lat ? engine.lat.toFixed(6) : "...");
             updateUI('lon-ukf', engine.lon ? engine.lon.toFixed(6) : "...");
-            updateUI('alt-ekf', alt.toFixed(2));
-            updateUI('filter-status', engine.isCalibrated ? "STABLE (UKF-21)" : "CALIBRATION...");
-            
-            // --- MISE À JOUR UI : COLONNE 2 (VITESSE) ---
-            updateUI('speed-main-display', (v * 3.6).toFixed(2));
-            updateUI('v-stable-kh', (v * 3.6).toFixed(1));
-            updateUI('v-stable-ms', v.toFixed(2));
-            updateUI('total-distance-3d', (engine.distance3D / 1000).toFixed(5));
+            updateUI('alt-display', engine.altitude.toFixed(2) + " m");
+            updateUI('total-distance-3d', engine.distance3D.toFixed(4) + " km");
 
-            // --- MISE À JOUR UI : COLONNE 3 (PHYSIQUE) ---
+            // B. Physique & Relativité
+            const c = 299792458;
+            const beta = vMs / c;
+            const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
+            const dilationDayNs = (gamma - 1) * 86400 * 1e9;
+
             updateUI('lorentz-factor', gamma.toFixed(10));
-            updateUI('time-dilation', ((gamma - 1) * 1e9).toFixed(4));
-            updateUI('accel-x', (engine.accel?.x || 0).toFixed(3));
-            updateUI('accel-y', (engine.accel?.y || 0).toFixed(3));
-            updateUI('accel-z', (engine.accel?.z || 0).toFixed(3));
-            updateUI('kinetic-energy', (0.5 * state.mass * v * v).toFixed(0));
+            updateUI('time-dilation-vitesse', dilationDayNs.toFixed(2) + " ns/j");
+            updateUI('pct-speed-of-light', (beta * 100).toFixed(6) + " %");
+            updateUI('kinetic-energy', (0.5 * state.mass * vMs * vMs).toLocaleString() + " J");
 
-            // --- MISE À JOUR UI : COLONNE 4 (ASTRO/AIR) ---
-            updateUI('air-density', rho.toFixed(4));
-            updateUI('mach-number', mach.toFixed(4));
-            updateUI('drag-force', (0.5 * rho * v * v * 0.47 * 0.5).toFixed(2));
+            // C. Environnement & Dynamique
+            const rho = 1.225 * Math.exp(-engine.altitude / 8500); // Modèle barométrique
+            const drag = 0.5 * rho * vMs * vMs * 0.3 * 1.8; // Drag Force approx (Cda=0.3)
+            updateUI('air-density', rho.toFixed(3) + " kg/m³");
+            updateUI('drag-force', drag.toFixed(2) + " N");
+            updateUI('acc-x', engine.accel.x.toFixed(3));
+            updateUI('acc-y', engine.accel.y.toFixed(3));
+            updateUI('acc-z', engine.accel.z.toFixed(3));
 
-            // --- GESTION CARTE ---
-            if (state.map && engine.lat && engine.lon) {
-                const pos = [engine.lat, engine.lon];
-                state.map.panTo(pos);
-                if (!state.userMarker) {
-                    state.userMarker = L.circleMarker(pos, {color: '#00ff88', radius: 5}).addTo(state.map);
-                } else {
-                    state.userMarker.setLatLng(pos);
-                }
+            // D. Astronomie (Liaison Ephem.js)
+            if (engine.lat && engine.lon && window.Ephem) {
+                const date = new Date();
+                const sunPos = Ephem.getSunPosition(date, engine.lat, engine.lon);
+                const moonPos = Ephem.getMoonPosition(date, engine.lat, engine.lon);
+                const moonPhase = Ephem.getMoonPhase(date);
+
+                updateUI('sun-alt', sunPos.altitude.toFixed(2) + "°");
+                updateUI('sun-azimuth', sunPos.azimuth.toFixed(2) + "°");
+                updateUI('moon-alt', moonPos.altitude.toFixed(2) + "°");
+                updateUI('moon-phase-name', moonPhase);
+                updateUI('astro-phase', sunPos.altitude > 0 ? "Jour ☀️" : "Nuit 🌙");
+                
+                // Animation de l'horloge céleste
+                const sunEl = document.getElementById('sun-element');
+                if(sunEl) sunEl.style.transform = `rotate(${sunPos.azimuth}deg)`;
             }
+
+            // E. Temps & Système
+            const nowTime = new Date();
+            updateUI('utc-datetime', nowTime.toUTCString());
+            updateUI('local-time', nowTime.toLocaleTimeString());
+            updateUI('elapsed-time', ((Date.now() - state.startTime) / 1000).toFixed(1) + " s");
+            updateUI('julian-date', getJulianDate(nowTime).toFixed(5));
         }
-        requestAnimationFrame(mainEngineLoop);
+        
+        requestAnimationFrame(updateLoop);
     }
 
-    /**
-     * CONTRÔLES MATÉRIELS (GPS & IMU)
-     */
-    function setupHardwareControls() {
-        const btn = document.getElementById('gps-pause-toggle');
-        if (!btn) return;
-
-        btn.addEventListener('click', async () => {
-            if (!state.isRunning) {
-                // 1. Demande de permission (iOS)
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    await DeviceMotionEvent.requestPermission();
-                }
-
-                // 2. Activation GPS Temps Réel
-                navigator.geolocation.watchPosition((p) => {
-                    if (window.MainEngine) {
-                        window.MainEngine.lat = p.coords.latitude;
-                        window.MainEngine.lon = p.coords.longitude;
-                        window.MainEngine.altitude = p.coords.altitude || 0;
-                        if (p.coords.speed) window.MainEngine.vMs = p.coords.speed;
-                    }
-                }, null, { enableHighAccuracy: true });
-
-                state.isRunning = true;
-                if (window.MainEngine) window.MainEngine.isRunning = true;
-                btn.textContent = "⏸️ STOP ENGINE";
-                btn.classList.add('active');
-            } else {
-                state.isRunning = false;
-                if (window.MainEngine) window.MainEngine.isRunning = false;
-                btn.textContent = "▶️ START ENGINE";
-                btn.classList.remove('active');
-            }
-        });
-
-        // Liaison de la masse
-        const mInput = document.getElementById('mass-input');
-        if (mInput) mInput.addEventListener('change', (e) => {
-            state.mass = parseFloat(e.target.value) || 70;
-        });
-    }
-
+    // --- UTILS ---
     function updateUI(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
 
+    function getJulianDate(date) {
+        return (date.getTime() / 86400000) - (date.getTimezoneOffset() / 1440) + 2440587.5;
+    }
+
+    // Lancement
     window.addEventListener('load', init);
+
 })();
