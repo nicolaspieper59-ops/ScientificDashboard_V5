@@ -10,188 +10,206 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
           
 <style>
-    /* --- VARIABLES GLOBALES --- */
-    :root {
-        --bg-dark: #121220; 
-        --panel-dark: #1e1e1e; 
-        --text-dark: #e0e0e0;
-        --border-dark: #333; 
-        --accent-color: #007bff; 
-        --error-color: #dc3545;
-        --success-color: #28a745;
-    }
+    
+/* --- GNSS SPACETIME DASHBOARD • STYLE EXPERT CORRIGÉ --- */
 
-    /* --- BASE & RESET --- */
-    body { 
-        font-family: 'Segoe UI', 'Arial', sans-serif; 
-        margin: 0; padding: 0; 
-        background-color: var(--bg-dark); 
-        color: var(--text-dark); 
-        transition: background-color 0.3s, color 0.3s; 
-        overflow-x: hidden;
-    }
+:root {
+    --bg-dark: #0a0a0c; 
+    --panel-dark: #16161e; 
+    --text-main: #e0e0e0;
+    --text-dim: #999;
+    --accent: #00a2ff; 
+    --border: #2d2d3a;
+    --success: #00ff66;
+    --warning: #ffcc00;
+    --danger: #ff4444;
+}
 
-    /* --- GRID SYSTÈME : 3 COLONNES FORCÉES (MODE COCKPIT) --- */
-    .dashboard-container {
-        display: grid;
-        /* Force 3 colonnes : Gauche (28%), Centre (44%), Droite (28%) */
-        /* On donne plus de place au milieu pour la carte et la vitesse */
-        grid-template-columns: 28% 44% 28%; 
-        gap: 5px; /* Espace très réduit pour gagner de la place */
-        width: 100%;
-        height: 100vh; /* Prend tout l'écran */
-        padding: 5px;
-        box-sizing: border-box;
-    }
+/* --- BASE & SCROLLBAR --- */
+body { 
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+    margin: 0; 
+    background-color: var(--bg-dark); 
+    color: var(--text-main); 
+    overflow: hidden; /* Empêche le scroll global, seuls les panneaux scrollent */
+}
 
-    /* Adaptation pour les Grands Écrans (PC) */
-    @media (min-width: 1024px) {
-        .dashboard-container {
-            grid-template-columns: 300px 1fr 340px; /* Retour aux tailles confortables */
-            gap: 15px;
-            padding: 15px;
-        }
-    }
+::-webkit-scrollbar {
+    width: 4px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
 
-    /* --- PANNEAUX --- */
+/* --- STRUCTURE COCKPIT (3 COLONNES) --- */
+.dashboard-container {
+    display: grid;
+    grid-template-columns: 28% 44% 28%; 
+    gap: 10px; 
+    width: 100vw; 
+    height: 100vh; 
+    padding: 10px; 
+    box-sizing: border-box;
+}
+
+/* --- ADAPTATION MOBILE --- */
+@media (max-width: 1000px) {
+    .dashboard-container { 
+        grid-template-columns: 1fr; 
+        overflow-y: auto; 
+        display: block;
+    }
     section.panel { 
-        background-color: var(--panel-dark); 
-        padding: 8px; /* Padding réduit pour le mobile */
-        border-radius: 6px; 
-        border: 1px solid var(--border-dark);
-        box-shadow: 0 2px 10px rgba(0,0,0,0.5); 
-        display: flex; flex-direction: column; position: relative;
-        overflow: hidden; /* Empêche le contenu de dépasser */
-    }
-
-    section.panel h2 { 
-        margin-top: 0; border-bottom: 1px solid var(--border-dark); 
-        padding-bottom: 5px; margin-bottom: 8px;
-        font-size: 0.85em; /* Titres plus petits */
-        color: var(--accent-color);
-        text-transform: uppercase; letter-spacing: 0.5px;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-
-    /* --- DONNÉES (Optimisé pour petit écran) --- */
-    .data-point { 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        padding: 4px 0; 
-        border-bottom: 1px solid #2a2a2a; 
-        font-size: 0.75em; /* Texte compact */
-        line-height: 1.2;
-    }
-    
-    /* Sur très petit écran, on empile Label et Valeur pour gagner de la place */
-    @media (max-width: 600px) {
-        .data-point {
-            flex-direction: column;
-            align-items: flex-start;
-            text-align: left;
-        }
-        .data-point span:last-child {
-            width: 100%;
-            text-align: left;
-            color: #99ccff;
-        }
-    }
-
-    .data-point span:first-child { font-weight: 500; color: #aaa; }
-    .data-point span:last-child { font-family: 'Courier New', monospace; font-weight: bold; color: #99ccff; }
-
-    /* --- CONTRÔLES --- */
-    input, select { 
-        width: 100%; padding: 4px; border-radius: 3px; border: 1px solid #555; 
-        background-color: #2b2b2b; color: #fff; box-sizing: border-box; 
-        font-size: 0.8em;
-    }
-    button { 
-        padding: 8px; border: none; border-radius: 4px; cursor: pointer; 
-        font-weight: bold; background-color: #444; color: #fff; width: 100%; 
-        font-size: 0.75em; text-transform: uppercase; margin-top: 5px;
-    }
-    #toggle-gps-btn { background-color: var(--success-color); }
-
-    /* --- MODULES VISUELS --- */
-    #map-container { 
-        width: 100%; 
-        height: 180px; /* Carte moins haute sur mobile */
-        border: 1px solid var(--border-dark); 
-        border-radius: 4px; overflow: hidden; margin-bottom: 10px;
-    }
-    @media (min-width: 1024px) { #map-container { height: 350px; } }
-
-    #map { width: 100%; height: 100%; }
-    
-    .speed-display { 
-        text-align: center; background: #1a1a1a; color: #00ff66; padding: 10px; 
-        border-radius: 8px; font-size: 1.5em; margin-bottom: 10px; border: 1px solid #333;
-    }
-    .speed-display small { font-size: 0.4em; display: block; color: #888; }
-    
-    /* Scrollbar fine pour les listes */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
-    /* --- OPTIMISATION PETITS ÉCRANS (MOBILES & TABLETTES) --- */
-@media (max-width: 800px) {
-    /* On ajuste la grille pour que les colonnes soient plus équilibrées ou empilées */
-    .dashboard-container {
-        grid-template-columns: 1fr; /* Une seule colonne sur mobile très étroit */
-        height: auto;
-        overflow-y: scroll;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 5px;
-    }
-
-    /* Sur tablette (entre 600px et 800px), on peut tenter de garder le cockpit réduit */
-    @media (min-width: 600px) {
-        .dashboard-container {
-            display: grid;
-            grid-template-columns: 30% 1fr 30%;
-        }
-    }
-
-    /* Réduction de la taille des polices pour éviter les débordements */
-    section.panel {
-        padding: 8px;
-        min-height: auto;
-    }
-
-    h2 {
-        font-size: 0.75rem;
-        margin-bottom: 8px;
-    }
-
-    .data-point {
-        font-size: 0.7rem;
-        padding: 3px 0;
-    }
-
-    /* Ajustement de l'affichage de la vitesse centrale */
-    #speed-main-display {
-        font-size: 2.2rem;
-    }
-
-    .speed-display {
-        padding: 10px;
-    }
-
-    /* La carte prend une hauteur fixe pour laisser de la place aux données */
-    #map-container {
-        height: 200px;
-        min-height: 150px;
-    }
-
-    /* Les boutons de contrôle en bas */
-    .controls {
-        grid-template-columns: 1fr;
-        gap: 5px;
+        margin-bottom: 15px; 
+        height: auto; 
+        max-height: none;
     }
 }
+
+/* --- PANNEAUX --- */
+section.panel { 
+    background: var(--panel-dark); 
+    border: 1px solid var(--border);
+    border-radius: 10px; 
+    padding: 15px; 
+    display: flex; 
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6); 
+    overflow-y: auto;
+}
+
+h2 { 
+    font-size: 0.75rem; 
+    color: var(--accent); 
+    text-transform: uppercase; 
+    border-bottom: 1px solid var(--border); 
+    padding-bottom: 5px; 
+    margin: 15px 0 8px 0; 
+    letter-spacing: 1.5px;
+    display: flex;
+    align-items: center;
+}
+
+h2 i { margin-right: 8px; }
+h2:first-child { margin-top: 0; }
+
+/* --- POINTS DE DONNÉES (L'alignement des IDs) --- */
+.data-point { 
+    display: flex; 
+    justify-content: space-between; /* Pousse le texte à gauche et l'ID à droite */
+    align-items: center; 
+    padding: 4px 0; 
+    border-bottom: 1px solid rgba(255,255,255,0.03); 
+    font-size: 0.72rem;
+}
+
+.data-point span:first-child { 
+    color: var(--text-dim); 
+    max-width: 60%;
+}
+
+/* Style spécifique pour les valeurs (vos IDs) */
+.data-point span:last-child, 
+.data-point span[id] { 
+    font-family: 'Courier New', monospace; 
+    font-weight: bold; 
+    color: var(--success); 
+    text-align: right;
+}
+
+/* --- AFFICHAGE DE VITESSE CENTRALE --- */
+.speed-display { 
+    text-align: center; 
+    background: #000; 
+    padding: 20px 10px; 
+    border-radius: 8px; 
+    border: 1px solid var(--border); 
+    margin-bottom: 10px;
+    box-shadow: inset 0 0 15px rgba(0,255,102,0.05);
+}
+
+#speed-main-display { 
+    font-size: 3rem; 
+    color: var(--success); 
+    display: block; 
+    font-weight: 900; 
+    line-height: 1;
+    text-shadow: 0 0 10px rgba(0,255,102,0.3);
+}
+
+.speed-display small {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+/* --- CARTE & GLOBE --- */
+#map { 
+    width: 100%; 
+    height: 250px; 
+    border-radius: 6px; 
+    border: 1px solid var(--border); 
+    margin: 10px 0; 
+    background: #050505; 
+}
+
+/* --- BOUTONS & INPUTS --- */
+.control-group {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+button { 
+    flex: 1;
+    padding: 10px; 
+    background: #2a2a35; 
+    color: white; 
+    border: 1px solid var(--border); 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 0.7rem; 
+    transition: all 0.2s;
+}
+
+button:hover { 
+    background: var(--accent); 
+    border-color: var(--accent);
+}
+
+button#gps-pause-toggle {
+    background: #1a2e1a;
+    border-color: #28a745;
+}
+
+input[type="number"] { 
+    background: #000; 
+    color: var(--success); 
+    border: 1px solid var(--border); 
+    padding: 2px 5px; 
+    width: 55px; 
+    text-align: center; 
+    font-weight: bold; 
+    font-size: 0.75rem;
+    border-radius: 3px;
+}
+
+/* --- CLASSES DE STATUT DYNAMIQUES --- */
+.status-active { color: var(--success) !important; }
+.status-wait { color: var(--warning) !important; }
+.status-error { color: var(--danger) !important; }
+
+/* --- SÉPARATEURS --- */
+hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 15px 0;
+    }
 </style>
 </head>
 <body class="dark-mode"> 
