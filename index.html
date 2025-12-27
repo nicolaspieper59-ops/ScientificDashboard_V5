@@ -119,9 +119,26 @@ section.panel {
     margin: 5px 0;
 }
 #speed-main-display { font-size: 1.8rem; font-weight: 900; }
-</style>
+    navigator.geolocation.watchPosition(p => {
+    const lat = p.coords.latitude;
+    const lon = p.coords.longitude;
 
+    if(window.MainEngine) {
+        window.MainEngine.lat = lat;
+        window.MainEngine.lon = lon;
+    }
 
+    // Mise à jour de la carte en temps réel
+    if (map) {
+        map.setView([lat, lon], map.getZoom());
+        // Optionnel : ajouter un marqueur
+        if (!window.userMarker) {
+            window.userMarker = L.marker([lat, lon]).addTo(map);
+        } else {
+            window.userMarker.setLatLng([lat, lon]);
+        }
+    }
+}, null, {enableHighAccuracy:true});
 </style>
 </head>
 <body class="dark-mode"> 
