@@ -10,206 +10,118 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
           
 <style>
-    
-/* --- GNSS SPACETIME DASHBOARD • STYLE EXPERT CORRIGÉ --- */
-
 :root {
-    --bg-dark: #0a0a0c; 
-    --panel-dark: #16161e; 
-    --text-main: #e0e0e0;
-    --text-dim: #999;
-    --accent: #00a2ff; 
-    --border: #2d2d3a;
-    --success: #00ff66;
-    --warning: #ffcc00;
-    --danger: #ff4444;
+    --bg-dark: #07070a;
+    --panel-dark: #12121a;
+    --border: #252533;
+    --col-1: #00d2ff; /* Bleu : Système */
+    --col-2: #00ff88; /* Vert : Vitesse */
+    --col-3: #ff00ff; /* Magenta : Physique */
+    --col-4: #ffcc00; /* Or : Astro */
 }
 
-/* --- BASE & SCROLLBAR --- */
-body { 
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-    margin: 0; 
-    background-color: var(--bg-dark); 
-    color: var(--text-main); 
-    overflow: hidden; /* Empêche le scroll global, seuls les panneaux scrollent */
+body.dark-mode { 
+    font-family: 'Segoe UI', sans-serif; 
+    margin: 0; background: var(--bg-dark); color: #fff;
+    overflow-x: hidden;
 }
 
-::-webkit-scrollbar {
-    width: 4px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 10px;
+/* --- LE HEADER --- */
+header h1 {
+    font-size: 1.1rem;
+    padding: 10px;
+    background: rgba(0,0,0,0.5);
+    margin: 0;
 }
 
-/* --- STRUCTURE COCKPIT (3 COLONNES) --- */
+/* --- GRILLE 4 COLONNES --- */
 .dashboard-container {
     display: grid;
-    grid-template-columns: 28% 44% 28%; 
-    gap: 10px; 
-    width: 100vw; 
-    height: 100vh; 
-    padding: 10px; 
+    grid-template-columns: repeat(4, 1fr); /* 4 colonnes PC */
+    gap: 8px;
+    padding: 8px;
     box-sizing: border-box;
 }
 
-/* --- ADAPTATION MOBILE --- */
-@media (max-width: 1000px) {
-    .dashboard-container { 
-        grid-template-columns: 1fr; 
-        overflow-y: auto; 
-        display: block;
+/* --- ADAPTATION MOBILE (Visible & Sans bug) --- */
+@media (max-width: 900px) {
+    .dashboard-container {
+        grid-template-columns: repeat(4, 1fr); /* Force 4 colonnes sur Mobile */
+        gap: 3px;
+        padding: 4px;
+        height: auto;
     }
-    section.panel { 
-        margin-bottom: 15px; 
-        height: auto; 
-        max-height: none;
+
+    section.panel {
+        padding: 5px 2px !important;
+        min-width: 0; /* Empêche le débordement */
+    }
+
+    /* Texte ultra-compact pour mobile */
+    .data-point {
+        flex-direction: column !important; /* Libellé au dessus de la valeur */
+        text-align: center;
+        padding: 4px 0 !important;
+        font-size: 0.55rem !important; 
+    }
+
+    h2 { font-size: 0.5rem !important; margin: 5px 0 !important; }
+    h3 { font-size: 0.45rem !important; }
+    
+    .data-point span:first-child {
+        color: #999;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
     }
 }
 
-/* --- PANNEAUX --- */
-section.panel { 
-    background: var(--panel-dark); 
+/* --- COULEURS DES COLONNES --- */
+/* Colonne 1 : SYSTÈME */
+.panel:nth-child(1) { border-top: 3px solid var(--col-1); }
+.panel:nth-child(1) span[id] { color: var(--col-1); }
+
+/* Colonne 2 : VITESSE */
+.panel:nth-child(2) { border-top: 3px solid var(--col-2); }
+.panel:nth-child(2) span[id] { color: var(--col-2); }
+
+/* Colonne 3 : PHYSIQUE */
+.panel:nth-child(3) { border-top: 3px solid var(--col-3); }
+.panel:nth-child(3) span[id] { color: var(--col-3); }
+
+/* Colonne 4 : ASTRO */
+.panel:nth-child(4) { border-top: 3px solid var(--col-4); }
+.panel:nth-child(4) span[id] { color: var(--col-4); }
+
+/* --- STYLE DES ÉLÉMENTS --- */
+section.panel {
+    background: var(--panel-dark);
     border: 1px solid var(--border);
-    border-radius: 10px; 
-    padding: 15px; 
-    display: flex; 
-    flex-direction: column;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.6); 
-    overflow-y: auto;
+    border-radius: 5px;
+    overflow: hidden;
 }
 
-h2 { 
-    font-size: 0.75rem; 
-    color: var(--accent); 
-    text-transform: uppercase; 
-    border-bottom: 1px solid var(--border); 
-    padding-bottom: 5px; 
-    margin: 15px 0 8px 0; 
-    letter-spacing: 1.5px;
+.data-point {
     display: flex;
-    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 
-h2 i { margin-right: 8px; }
-h2:first-child { margin-top: 0; }
-
-/* --- POINTS DE DONNÉES (L'alignement des IDs) --- */
-.data-point { 
-    display: flex; 
-    justify-content: space-between; /* Pousse le texte à gauche et l'ID à droite */
-    align-items: center; 
-    padding: 4px 0; 
-    border-bottom: 1px solid rgba(255,255,255,0.03); 
-    font-size: 0.72rem;
+.data-point span[id] {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
 }
 
-.data-point span:first-child { 
-    color: var(--text-dim); 
-    max-width: 60%;
+.speed-display {
+    background: #000;
+    padding: 10px 0;
+    margin: 5px 0;
 }
+#speed-main-display { font-size: 1.8rem; font-weight: 900; }
+</style>
 
-/* Style spécifique pour les valeurs (vos IDs) */
-.data-point span:last-child, 
-.data-point span[id] { 
-    font-family: 'Courier New', monospace; 
-    font-weight: bold; 
-    color: var(--success); 
-    text-align: right;
-}
 
-/* --- AFFICHAGE DE VITESSE CENTRALE --- */
-.speed-display { 
-    text-align: center; 
-    background: #000; 
-    padding: 20px 10px; 
-    border-radius: 8px; 
-    border: 1px solid var(--border); 
-    margin-bottom: 10px;
-    box-shadow: inset 0 0 15px rgba(0,255,102,0.05);
-}
-
-#speed-main-display { 
-    font-size: 3rem; 
-    color: var(--success); 
-    display: block; 
-    font-weight: 900; 
-    line-height: 1;
-    text-shadow: 0 0 10px rgba(0,255,102,0.3);
-}
-
-.speed-display small {
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-}
-
-/* --- CARTE & GLOBE --- */
-#map { 
-    width: 100%; 
-    height: 250px; 
-    border-radius: 6px; 
-    border: 1px solid var(--border); 
-    margin: 10px 0; 
-    background: #050505; 
-}
-
-/* --- BOUTONS & INPUTS --- */
-.control-group {
-    display: flex;
-    gap: 5px;
-    margin-top: 10px;
-}
-
-button { 
-    flex: 1;
-    padding: 10px; 
-    background: #2a2a35; 
-    color: white; 
-    border: 1px solid var(--border); 
-    border-radius: 5px; 
-    cursor: pointer; 
-    font-weight: bold; 
-    font-size: 0.7rem; 
-    transition: all 0.2s;
-}
-
-button:hover { 
-    background: var(--accent); 
-    border-color: var(--accent);
-}
-
-button#gps-pause-toggle {
-    background: #1a2e1a;
-    border-color: #28a745;
-}
-
-input[type="number"] { 
-    background: #000; 
-    color: var(--success); 
-    border: 1px solid var(--border); 
-    padding: 2px 5px; 
-    width: 55px; 
-    text-align: center; 
-    font-weight: bold; 
-    font-size: 0.75rem;
-    border-radius: 3px;
-}
-
-/* --- CLASSES DE STATUT DYNAMIQUES --- */
-.status-active { color: var(--success) !important; }
-.status-wait { color: var(--warning) !important; }
-.status-error { color: var(--danger) !important; }
-
-/* --- SÉPARATEURS --- */
-hr {
-    border: 0;
-    border-top: 1px solid var(--border);
-    margin: 15px 0;
-    }
 </style>
 </head>
 <body class="dark-mode"> 
