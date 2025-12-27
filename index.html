@@ -10,83 +10,306 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
           
 <style> 
-    /* --- GNSS DASHBOARD OPTIMISÉ --- */
+/* --- GNSS SPACETIME DASHBOARD • FINAL MASTER STYLE --- */
 
 :root {
+    /* Palette de base */
     --bg-dark: #07070a;
     --panel-dark: #12121a;
     --border: #252533;
-    --accent: #00a2ff;
+    --text-main: #e0e0e0;
+    --text-dim: #888;
+    
+    /* Couleurs Néon par Colonne */
+    --col-sys: #00d2ff;  /* Cyan : Système & Contrôles */
+    --col-nav: #00ff88;  /* Vert : Navigation & Vitesse */
+    --col-phy: #ff00ff;  /* Magenta : Physique & Forces */
+    --col-ast: #ffcc00;  /* Or : Astro & Météo */
+    
+    /* États */
+    --success: #00ff66;
+    --warning: #ffcc00;
+    --danger: #ff4444;
 }
 
+/* --- CONFIGURATION GÉNÉRALE --- */
 body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background: var(--bg-dark);
-    /* Supprime les espaces vides sur les bords */
-    width: 100%;
-    overflow-x: hidden;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    width: 100vw;
+    height: 100vh;
+    overflow-x: hidden; /* Pas de scroll horizontal */
+    overscroll-behavior-y: none; /* Empêche l'effet élastique sur mobile */
 }
 
-/* Grille ultra-serrée pour maximiser l'espace */
+/* Scrollbar Stylisée */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* --- HEADER --- */
+header {
+    background: rgba(0,0,0,0.8);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 0;
+}
+
+header h1 {
+    font-size: 1rem;
+    margin: 0;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-main);
+}
+
+/* --- GRILLE PRINCIPALE (LAYOUT) --- */
 .dashboard-container {
     display: grid;
+    /* 4 Colonnes égales sur PC */
     grid-template-columns: repeat(4, 1fr); 
-    gap: 6px; /* Espace minimal entre colonnes */
-    padding: 5px; /* Marge minimale avec le bord de l'écran */
+    gap: 6px;
+    padding: 6px;
     box-sizing: border-box;
-    width: 100vw;
+    height: calc(100vh - 40px); /* Toute la hauteur moins le header */
 }
 
-/* Fix pour la carte et le globe */
+/* --- PANNEAUX (CARD DESIGN) --- */
+section.panel {
+    background: var(--panel-dark);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Scroll interne si trop de données */
+    position: relative;
+}
+
+/* Bordures colorées pour identifier les colonnes */
+/* Colonne 1 (Système) */
+.column-1 section.panel { border-top: 3px solid var(--col-sys); }
+.column-1 h2 { color: var(--col-sys); }
+
+/* Colonne 2 (Navigation) */
+.column-2 section.panel { border-top: 3px solid var(--col-nav); }
+.column-2 h2 { color: var(--col-nav); }
+
+/* Colonne 3 (Physique) */
+.column-3 section.panel { border-top: 3px solid var(--col-phy); }
+.column-3 h2 { color: var(--col-phy); }
+
+/* Colonne 4 (Astro) */
+.column-3 section.panel { border-top: 3px solid var(--col-ast); }
+.column-4 h2 { color: var(--col-ast); }
+
+/* --- TYPOGRAPHIE --- */
+h2 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 5px;
+    margin: 5px 0 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+h3 {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin: 10px 0 5px 0;
+    text-transform: uppercase;
+}
+
+/* --- POINTS DE DONNÉES (LIGNES) --- */
+.data-point {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 0.75rem;
+}
+
+.data-point span:first-child {
+    color: var(--text-dim);
+}
+
+/* Valeurs numériques */
+.data-point span[id] {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: var(--text-main);
+    text-align: right;
+}
+
+/* Coloriage des valeurs selon la colonne */
+.column-1 span[id] { color: var(--col-sys); }
+.column-2 span[id] { color: var(--col-nav); }
+.column-3 span[id] { color: var(--col-phy); }
+.column-4 span[id] { color: var(--col-ast); }
+
+/* --- MODULE VITESSE (CENTRAL) --- */
+.speed-display {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 15px 0;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+#speed-main-display {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--col-nav);
+    line-height: 1;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.speed-display small {
+    font-size: 0.6rem;
+    color: #555;
+    text-transform: uppercase;
+}
+
+/* --- CARTE & GLOBE (FIX HAUTEUR) --- */
+#map-container {
+    position: relative;
+    width: 100%;
+    margin-top: 5px;
+}
+
 #map, #globe-container {
     width: 100%;
-    height: 160px; /* Hauteur réduite pour éviter de descendre trop bas */
-    border-radius: 4px;
-    margin: 5px 0;
+    height: 180px; /* Hauteur fixe impérative */
     background: #000;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    z-index: 1;
 }
 
-/* Adaptation Mobile 4 colonnes sans espace vide */
+/* Boutons sur la carte */
+#map-container button {
+    position: absolute;
+    z-index: 1000;
+    padding: 4px 8px;
+    font-size: 0.6rem;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--col-nav);
+}
+
+/* --- INTERACTIVITÉ (BOUTONS) --- */
+.controls-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+button {
+    background: var(--panel-dark);
+    border: 1px solid var(--border);
+    color: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+button:active { transform: scale(0.98); }
+
+/* Bouton actif */
+button.active, #gps-pause-toggle {
+    border-left: 4px solid var(--col-nav);
+    background: linear-gradient(90deg, rgba(0,255,136,0.1), transparent);
+}
+
+/* Inputs */
+input, select {
+    background: #000;
+    border: 1px solid var(--border);
+    color: #fff;
+    padding: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.7rem;
+}
+
+/* --- RESPONSIVE MOBILE (NANO-GRID 4 COLONNES) --- */
 @media (max-width: 900px) {
     .dashboard-container {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 3px;
+        /* On force 4 colonnes même sur mobile */
+        grid-template-columns: repeat(4, 1fr); 
+        gap: 2px;
         padding: 2px;
+        height: auto; /* Permet le scroll global sur mobile */
+        padding-bottom: 50px; /* Marge pour le bas de l'écran */
     }
 
     section.panel {
         padding: 4px 2px !important;
+        min-height: 100px;
     }
 
+    /* Rétrécissement extrême des textes pour tenir */
+    h2 { 
+        font-size: 0.5rem !important; 
+        margin: 2px 0 5px 0 !important;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    h2 i { display: none; } /* On cache les icônes des titres sur mobile */
+    
+    hr { margin: 5px 0 !important; }
+
+    /* STRATÉGIE "STACK" : Texte au-dessus, Valeur en-dessous */
     .data-point {
-        font-size: 0.58rem !important;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        padding: 4px 0 !important;
+        font-size: 0.55rem !important;
+        line-height: 1.1;
     }
 
-    /* Empêche le titre de prendre trop de place */
-    h2 {
-        font-size: 0.5rem !important;
-        margin: 4px 0 !important;
-        padding-bottom: 2px !important;
+    .data-point span:first-child {
+        font-size: 0.5rem;
+        margin-bottom: 2px;
+        width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis; /* Coupe le texte proprement */
+    }
+
+    .data-point span[id] {
+        font-size: 0.65rem !important;
+    }
+
+    /* Ajustement Vitesse */
+    #speed-main-display {
+        font-size: 1.2rem !important;
+        padding: 5px 0;
+    }
+
+    /* Ajustement Carte */
+    #map, #globe-container {
+        height: 120px !important; /* Carte plus petite sur mobile */
+    }
+    
+    button {
+        padding: 4px !important;
+        font-size: 0.55rem !important;
     }
 }
-
-/* Style des panneaux */
-section.panel {
-    background: var(--panel-dark);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-/* Couleurs par colonne */
-.column-1 { border-top: 2px solid #00d2ff; }
-.column-2 { border-top: 2px solid #00ff88; }
-.column-3 { border-top: 2px solid #ff00ff; }
-.column-4 { border-top: 2px solid #ffcc00; }
 </style>
 </head>
 <body class="dark-mode"> 
