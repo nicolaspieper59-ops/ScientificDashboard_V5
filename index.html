@@ -134,6 +134,64 @@
     /* Scrollbar fine pour les listes */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+    /* --- OPTIMISATION PETITS ÉCRANS (MOBILES & TABLETTES) --- */
+@media (max-width: 800px) {
+    /* On ajuste la grille pour que les colonnes soient plus équilibrées ou empilées */
+    .dashboard-container {
+        grid-template-columns: 1fr; /* Une seule colonne sur mobile très étroit */
+        height: auto;
+        overflow-y: scroll;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 5px;
+    }
+
+    /* Sur tablette (entre 600px et 800px), on peut tenter de garder le cockpit réduit */
+    @media (min-width: 600px) {
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 30% 1fr 30%;
+        }
+    }
+
+    /* Réduction de la taille des polices pour éviter les débordements */
+    section.panel {
+        padding: 8px;
+        min-height: auto;
+    }
+
+    h2 {
+        font-size: 0.75rem;
+        margin-bottom: 8px;
+    }
+
+    .data-point {
+        font-size: 0.7rem;
+        padding: 3px 0;
+    }
+
+    /* Ajustement de l'affichage de la vitesse centrale */
+    #speed-main-display {
+        font-size: 2.2rem;
+    }
+
+    .speed-display {
+        padding: 10px;
+    }
+
+    /* La carte prend une hauteur fixe pour laisser de la place aux données */
+    #map-container {
+        height: 200px;
+        min-height: 150px;
+    }
+
+    /* Les boutons de contrôle en bas */
+    .controls {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+}
 </style>
 </head>
 <body class="dark-mode"> 
@@ -151,6 +209,8 @@
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">N/A</span></div>
                 <div class="data-point"><span>Heure UTC Synchro</span><span id="gmt-time-display">--:--:--</span></div>
                 <div class="data-point"><span>Précision Synchro</span><span id="clock-accuracy">0ms</span></div>
+                <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display">00:00:00.000</span></div>
+                <div class="data-point"><span>Précision</span><span id="clock-accuracy">± 0ms</span></div>
                 
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">0.00 s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">0.00 s</span></div>
@@ -405,7 +465,7 @@
                 <h3>Positionnement EKF</h3>
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">...</span></div> 
                 <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">...</span></div>
-                <div class="data-point"><span>Altitude (UKF)</span><span id="alt-ukf">...</span></div> 
+                <div class="data-point"><span>Altitude EKF</span><span id="alt-display">0.00 m</span></div>
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">N/A</span></div>
                 <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">N/A</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">N/A</span></div>
