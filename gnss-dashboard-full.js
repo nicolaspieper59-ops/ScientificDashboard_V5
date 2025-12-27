@@ -1,185 +1,139 @@
 /**
- * GNSS SpaceTime Dashboard - ENGINE CORE v4.0 (Professional Edition)
- * Fusion UKF 21-États + VSOP2013 + Relativité Einsteinienne
- * REQUIS : math.min.js, ephem.js, ukf-lib.js
+ * GNSS SpaceTime Dashboard - MOTEUR DE FUSION ET BRIDGE FINAL
+ * Connecte ukf-lib.js aux IDs du HTML v6
  */
 
 (function() {
     "use strict";
 
-    // --- CONSTANTES PHYSIQUES ---
-    const C = 299792458; // Vitesse lumière (m/s)
-    const G = 6.67430e-11; // Constante gravitationnelle
-    const M_EARTH = 5.972e24; // Masse Terre (kg)
-    const R_EARTH = 6371000; // Rayon Terre (m)
-
-    // --- ÉTAT DU MOTEUR ---
-    let engine = {
+    const C = 299792458;
+    let state = {
         isRunning: false,
-        startTime: Date.now(),
         lastTick: performance.now(),
-        utcOffset: 0,
         mass: 70,
-        totalDistance: 0,
-        vMax: 0,
-        ukf: null // Instance du filtre ProfessionalUKF
+        utcOffset: 0
     };
 
     /**
      * INITIALISATION
      */
     async function init() {
-        console.log("🚀 Lancement du Moteur UKF-21...");
+        console.log("🚀 Liaison Moteur-Interface en cours...");
         
-        // 1. Synchronisation Temps Atomique via API
-        await syncAtomicTime();
-
-        // 2. Initialisation du filtre de Kalman (via ukf-lib.js et math.js)
-        if (typeof ProfessionalUKF !== 'undefined') {
-            engine.ukf = new ProfessionalUKF();
-        } else {
-            console.error("❌ Librairie ukf-lib.js manquante !");
-            updateUI('filter-status', "ERREUR LIB");
-            return;
-        }
-
-        setupControls();
-        requestAnimationFrame(mainLoop);
-    }
-
-    /**
-     * SYNCHRONISATION GMT / UTC (Précision Astro)
-     */
-    async function syncAtomicTime() {
+        // Synchronisation Heure (NTP-like)
         try {
-            const start = performance.now();
+            const t0 = performance.now();
             const resp = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
             const data = await resp.json();
-            const latency = (performance.now() - start) / 2;
-            engine.utcOffset = new Date(data.utc_datetime).getTime() - (Date.now() - latency);
-            updateUI('clock-accuracy', `±${latency.toFixed(0)}ms`);
-        } catch (e) {
-            updateUI('clock-accuracy', 'Locale (Offline)');
-        }
+            state.utcOffset = new Date(data.utc_datetime).getTime() - (Date.now() - (performance.now() - t0)/2);
+            updateUI('clock-accuracy', "±" + ((performance.now()-t0)/2).toFixed(0) + "ms");
+        } catch(e) { updateUI('clock-accuracy', "Locale (Offline)"); }
+
+        setupHardwareHandlers();
+        requestAnimationFrame(mainLoop);
     }
 
     /**
-     * BOUCLE SCIENTIFIQUE (Haute Fréquence)
+     * BOUCLE DE RENDU ET CALCULS (BRIDGE)
      */
     function mainLoop(now) {
-        const dt = (now - engine.lastTick) / 1000;
-        engine.lastTick = now;
+        const dt = (now - state.lastTick) / 1000;
+        state.lastTick = now;
 
-        if (engine.isRunning && engine.ukf) {
-            // A. TEMPS ET ÉPHÉMÉRIDES
-            const exactNow = new Date(Date.now() + engine.utcOffset);
-            const jd = (exactNow.getTime() / 86400000) + 2440587.5;
+        if (state.isRunning && window.MainEngine) {
+            const engine = window.MainEngine;
 
-            // B. PRÉDICTION DU FILTRE (math.js interne)
-            engine.ukf.predict(dt);
-            const state = engine.ukf.getState(); // Position, Vitesse, Accel filtrées
+            // --- 1. NAVIGATION & VITESSE (IDs Vérifiés) ---
+            const v = engine.vMs || 0;
+            updateUI('speed-main-display', (v * 3.6).toFixed(2));
+            updateUI('v-stable-kh', (v * 3.6).toFixed(1));
+            updateUI('v-stable-ms', v.toFixed(2));
+            updateUI('vel-z', (engine.velocityVec?.z || 0).toFixed(2));
+            updateUI('total-distance-3d', (engine.distance3D / 1000).toFixed(5));
+            updateUI('dist-precise-ukf', (engine.distance3D / 1000).toFixed(5));
 
-            // C. PHYSIQUE & RELATIVITÉ
-            const v = state.velocity; // m/s
-            const alt = state.altitude;
+            // --- 2. CAPTEURS IMU (IDs Vérifiés) ---
+            updateUI('accel-x', (engine.accel?.x || 0).toFixed(3));
+            updateUI('accel-y', (engine.accel?.y || 0).toFixed(3));
+            updateUI('accel-z', (engine.accel?.z || 0).toFixed(3));
             
-            // Lorentz & Temps
+            // Calcul Inclinaison pour le niveau à bulle
+            const pitch = Math.atan2(-(engine.accel?.x || 0), Math.sqrt(Math.pow(engine.accel?.y||0, 2) + Math.pow(engine.accel?.z||9.8, 2))) * (180/Math.PI);
+            const roll = Math.atan2((engine.accel?.y || 0), (engine.accel?.z || 9.8)) * (180/Math.PI);
+            updateUI('pitch-val', pitch.toFixed(1) + "°");
+            updateUI('roll-val', roll.toFixed(1) + "°");
+
+            // --- 3. PHYSIQUE & RELATIVITÉ ---
+            const alt = engine.altitude || 0;
             const beta = v / C;
-            const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
-            const timeDilation = (gamma - 1) * 1e9; // nanosecondes par seconde
+            const gamma = 1 / Math.sqrt(1 - beta * beta);
+            const rho = 1.225 * Math.exp(-alt / 8500); // Modèle atmosphérique
+            
+            updateUI('lorentz-factor', gamma.toFixed(10));
+            updateUI('time-dilation', ((gamma - 1) * 1e9).toFixed(4));
+            updateUI('mach-number', (v / 340.3).toFixed(5));
+            updateUI('air-density', rho.toFixed(4));
+            updateUI('drag-force', (0.5 * rho * v * v * 0.47 * 0.5).toFixed(2));
+            updateUI('kinetic-energy', (0.5 * state.mass * v * v).toLocaleString());
 
-            // Aérodynamique (Densité de l'air dynamique)
-            const rho = 1.225 * Math.pow(1 - 0.0065 * alt / 288.15, 5.255);
-            const mach = v / (331.3 * Math.sqrt(1 + (15 - 0.0065 * alt) / 273.15));
-            const dynPressure = 0.5 * rho * Math.pow(v, 2);
-            const dragForce = dynPressure * 0.47 * 0.5; // Coeff standard sphère
-
-            // D. ASTRONOMIE VSOP2013 (ephem.js)
-            const astro = (typeof VSOP2013 !== 'undefined') ? 
-                          VSOP2013.getPositions(jd, state.lat, state.lon) : null;
-
-            // E. MISE À JOUR DE L'INTERFACE (DOM)
-            refreshDashboard(exactNow, jd, state, gamma, mach, rho, dragForce, astro);
+            // --- 4. GPS ET STATUT ---
+            updateUI('lat-ukf', engine.lat ? engine.lat.toFixed(6) : "...");
+            updateUI('lon-ukf', engine.lon ? engine.lon.toFixed(6) : "...");
+            updateUI('alt-ekf', alt.toFixed(2));
+            
+            const statusEl = document.getElementById('filter-status');
+            if (statusEl) {
+                statusEl.textContent = engine.isCalibrated ? "STABLE (UKF-21)" : "CALIBRATION...";
+                statusEl.className = engine.isCalibrated ? "status-active" : "status-wait";
+            }
         }
         requestAnimationFrame(mainLoop);
     }
 
     /**
-     * RENDU DES DONNÉES (Liaison avec vos IDs HTML)
+     * GESTIONNAIRE MATÉRIEL (FIX GPS & ACCEL)
      */
-    function refreshDashboard(time, jd, state, gamma, mach, rho, drag, astro) {
-        // Temps & Session
-        updateUI('gmt-time-display', time.toISOString().split('T')[1].slice(0, 12));
-        updateUI('julian-date', jd.toFixed(7));
-        updateUI('session-time', ((Date.now() - engine.startTime)/1000).toFixed(2) + "s");
-
-        // Navigation (Centre)
-        updateUI('speed-main-display', (state.velocity * 3.6).toFixed(2));
-        updateUI('alt-display', state.altitude.toFixed(2) + " m");
-        updateUI('vel-z', state.velZ.toFixed(2) + " m/s");
-        updateUI('total-distance-3d', (engine.ukf.distance / 1000).toFixed(5) + " km");
-
-        // Physique & Relativité
-        updateUI('mach-number', mach.toFixed(5));
-        updateUI('lorentz-factor', gamma.toFixed(10));
-        updateUI('time-dilation', timeDilation.toFixed(4) + " ns/s");
-        updateUI('air-density', rho.toFixed(4) + " kg/m³");
-        updateUI('drag-force', drag.toFixed(2) + " N");
-        updateUI('kinetic-energy', (0.5 * engine.mass * Math.pow(state.velocity, 2)).toExponential(2) + " J");
-
-        // Astronomie
-        if (astro) {
-            updateUI('tslv', astro.tslv.toFixed(6));
-            updateUI('sun-alt', astro.sunAlt.toFixed(2) + "°");
-            updateUI('moon-distance', Math.round(astro.moonDist).toLocaleString() + " km");
-            updateUI('moon-phase-name', astro.phaseName);
-        }
-
-        // Status
-        updateUI('filter-status', "ACTIF (UKF-21)");
-        document.getElementById('filter-status').className = "status-active";
-    }
-
-    /**
-     * GESTION DES CAPTEURS RÉELS (GPS / IMU)
-     */
-    function setupControls() {
+    function setupHardwareHandlers() {
         const btn = document.getElementById('gps-pause-toggle');
-        
+        if (!btn) return;
+
         btn.addEventListener('click', async () => {
-            if (!engine.isRunning) {
-                // Demande de permissions (iOS/Android)
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                    await DeviceMotionEvent.requestPermission();
+            if (!state.isRunning) {
+                // Déverrouillage des capteurs sur mobile
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    try { await DeviceMotionEvent.requestPermission(); } catch(e) {}
                 }
 
-                // Activation Géolocalisation Haute Précision
-                navigator.geolocation.watchPosition(
-                    (pos) => engine.ukf.observeGPS(pos),
-                    (err) => console.error("GPS Error:", err),
-                    { enableHighAccuracy: true, maximumAge: 0 }
-                );
+                // Activation du GPS réel
+                navigator.geolocation.watchPosition((pos) => {
+                    if (window.MainEngine) {
+                        window.MainEngine.lat = pos.coords.latitude;
+                        window.MainEngine.lon = pos.coords.longitude;
+                        window.MainEngine.altitude = pos.coords.altitude || 0;
+                        if (pos.coords.speed) window.MainEngine.vMs = pos.coords.speed;
+                    }
+                }, null, { enableHighAccuracy: true });
 
-                // Activation Accéléromètre
-                window.addEventListener('devicemotion', (e) => {
-                    engine.ukf.observeIMU(e.accelerationIncludingGravity);
-                });
-
-                engine.isRunning = true;
+                state.isRunning = true;
+                if (window.MainEngine) window.MainEngine.isRunning = true;
                 btn.textContent = "⏸️ STOP ENGINE";
-                btn.style.background = "#3a1a1a";
+                btn.style.borderLeft = "4px solid #ff4444";
             } else {
-                engine.isRunning = false;
+                state.isRunning = false;
+                if (window.MainEngine) window.MainEngine.isRunning = false;
                 btn.textContent = "▶️ START ENGINE";
-                btn.style.background = "#1a2e1a";
-                updateUI('filter-status', "PAUSE");
+                btn.style.borderLeft = "4px solid #00ff66";
             }
         });
 
-        // Masse dynamique
-        document.getElementById('mass-input').addEventListener('change', (e) => {
-            engine.mass = parseFloat(e.target.value) || 70;
-        });
+        // Masse
+        const massIn = document.getElementById('mass-input');
+        if (massIn) {
+            massIn.addEventListener('change', (e) => {
+                state.mass = parseFloat(e.target.value) || 70;
+                if(window.MainEngine) window.MainEngine.mass = state.mass;
+            });
+        }
     }
 
     function updateUI(id, val) {
@@ -188,5 +142,4 @@
     }
 
     window.addEventListener('load', init);
-
 })();
