@@ -211,6 +211,7 @@
                 <div class="data-point"><span>Précision Synchro</span><span id="clock-accuracy">0ms</span></div>
                 <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display">00:00:00.000</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy">± 0ms</span></div>
+                <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
                 
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">0.00 s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">0.00 s</span></div>
@@ -322,10 +323,11 @@
                 <h3>Physique & Relativité</h3>
                 <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="local-speed-of-sound">N/A</span></div>
                 <div class="data-point"><span>% Vitesse du Son</span><span id="perc-speed-sound">0.00 %</span></div>
-                <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">0.000</span></div>
+                <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">0.0000</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">0.00 %</span></div>
-                <div class="data-point"><span>Facteur de Lorentz</span><span id="lorentz-factor">1.000</span></div>
+                <div class="data-point"><span>Facteur de Lorentz</span><span id="lorentz-factor">1.00000000</span></div>
                 <div class="data-point"><span>Dilatation du Temps</span><span id="time-dilation-vitesse">0.00 ns/j</span></div>
+                <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">0.00 ns/s</span></div>    
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">0.00 ns/j</span></div>
                 <div class="data-point"><span>Énergie Relativiste (E)</span><span id="relativistic-energy">N/A</span></div>
                 <div class="data-point"><span>Énergie de Masse (E₀)</span><span id="rest-mass-energy">N/A</span></div>
@@ -336,7 +338,7 @@
                 
                 <hr>
                 <h3>Distance (3D)</h3>
-                <div class="data-point"><span>Distance Totale 3D</span><span id="total-distance-3d">0.00 km</span></div>
+                <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d">0.0000 km</span></div>
                 <div class="data-point"><span>Distance 3D Précise (UKF)</span><span id="total-distance-3d">0.0000 km</span></div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">1.000</span></div>
                 <span id="nether-mode-status" style="display:none;">1.000</span>
@@ -401,7 +403,8 @@
                 <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">N/A</span></div>
                 <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">N/A</span></div>
                 <div class="data-point"><span>Coeff. Balistique (Inertie)</span><span id="ballistic-coeff">N/A</span>
-                <div class="data-point"><span>Force de Traînée</span><span id="drag-force">0 N</span></div>    
+                <div class="data-point"><span>Force de Traînée</span><span id="drag-force">0.00 N</span></div>
+                <div class="data-point"><span>Pression Dyn. (q)</span> <span id="dyn-pressure">0.00 Pa</span></div>    
                 <hr>
                 <h3>Mécanique des Fluides</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">0.00 Pa</span></div>
@@ -428,13 +431,15 @@
                     </select>
                 </div>
                 <div class="data-point"><span>Statut GPS</span><span id="gps-status">N/A</span></div>
-                <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ukf-status">N/A</span></div> 
+                <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ukf-status">N/A</span></div>
+                <div class="data-point"><span>Statut Filtre (EKF)</span> <span id="filter-status">Initialisation...</span></div>
                 <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="ukf-velocity-uncertainty">N/A</span></div> 
                 <div class="data-point"><span>Incertitude Alt. (σ)</span><span id="ukf-alt-uncertainty">N/A</span></div> 
                 <div class="data-point"><span>Bruit Mesure Vitesse (R)</span><span id="ukf-r-noise">N/A</span></div>
                 <div class="data-point"><span>Bande Passante (Nyquist)</span><span id="bande-passante">N/A</span></div>
                 <div class="data-point"><span>Mode Dynamique Master</span><span id="status-physique" style="color: #00ff00;">Initialisation...</span></div>    
                 <div class="data-point"><span>Fréquence d'Échantillonnage</span><span id="nyquist-limit">-- Hz</span></div>
+                <div class="data-point"><span>Bruit Accel. (R)</span> <span id="acc-bias">0.00 mg</span></div>
             </section>
 
             <section class="panel" aria-labelledby="bubble-heading">
@@ -465,7 +470,7 @@
                 <h3>Positionnement EKF</h3>
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">...</span></div> 
                 <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">...</span></div>
-                <div class="data-point"><span>Altitude EKF</span><span id="alt-display">0.00 m</span></div>
+                <div class="data-point"><span>Altitude EKF (Z)</span> <span id="alt-display">0.00 m</span></div>
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">N/A</span></div>
                 <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">N/A</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">N/A</span></div>
@@ -496,43 +501,15 @@
                 <div class="data-point"><span>Azimut (Lune)</span><span id="moon-azimuth">N/A</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">N/A</span></div>
                 <div class="data-point"><span>Distance à la Terre</span><span id="moon-distance">N/A</span></div>
-        </div> 
-    </main>
-
-    <script src="vendor/math.min.js"></script> 
+                <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">N/A</span></div>  
+             </section>
+        </main>
+                    
+     <script src="vendor/math.min.js"></script> 
     <script src="vendor/leaflet.js"></script> 
     <script src="lib/ephem.js"></script> 
     <script src="lib/ukf-lib.js"></script> 
     <script src="gnss-dashboard-full.js"></script>
-
-    <script>
-        window.addEventListener('load', () => {
-            console.log("🚀 Initialisation du Dashboard...");
-            
-            if (typeof ProfessionalUKF !== 'undefined') {
-                // Création de l'instance du moteur 21 états
-                window.MainEngine = new ProfessionalUKF();
-                
-                // Configuration initiale (Marseille)
-                window.MainEngine.lat = 43.2965;
-                window.MainEngine.lon = 5.3698;
-                
-                // Gestionnaire pour le changement de masse (Inertie)
-                const massInput = document.getElementById('mass-input');
-                if(massInput) {
-                    massInput.addEventListener('change', (e) => {
-                        const newMass = parseFloat(e.target.value);
-                        if(newMass > 0) {
-                            window.MainEngine.mass = newMass;
-                            console.log(`⚖️ Masse mise à jour : ${newMass} kg`);
-                        }
-                    });
-                }
-                console.log("✅ SYSTÈME ACTIF : Fusion 21 États + VSOP2013 opérationnels.");
-            } else {
-                console.error("❌ ERREUR CRITIQUE : Le moteur 'ukf-lib.js' n'a pas été chargé.");
-            }
-        }); // <-- Fermeture de la fonction listener ajoutée ici
-    </script> 
-            </body>
-            </html>
+                    
+</body>
+</html>
