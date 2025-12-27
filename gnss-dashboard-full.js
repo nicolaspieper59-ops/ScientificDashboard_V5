@@ -1,147 +1,154 @@
 /**
- * GNSS SpaceTime Dashboard - Moteur de Contrôle Final
- * Version Haute Précision : Fusion UKF 21-états & VSOP2013
+ * GNSS SpaceTime Dashboard - MOTEUR FINAL OPÉRATIONNEL
+ * Version : Fusion Pro UKF 21-États & VSOP2013
+ * Usage : Données réelles uniquement (No Simulation)
  */
 
 (function() {
     "use strict";
 
-    // --- VARIABLES D'ÉTAT ---
+    // --- CONFIGURATION ET VARIABLES D'ÉTAT ---
     let engine;
-    let utcOffset = 0; 
-    const C = 299792458; // Vitesse de la lumière (m/s)
+    let utcOffset = 0;
+    let startTime = Date.now();
+    let lastUpdate = Date.now();
+    const C = 299792458; // m/s
 
-    // Utilitaire de mise à jour sécurisée du DOM
-    const safeSet = (id, val) => {
+    // Sécurité de mise à jour du DOM
+    const updateUI = (id, value) => {
         const el = document.getElementById(id);
-        if (el) el.textContent = val;
+        if (el) el.textContent = value;
     };
 
     /**
-     * 1. SYNCHRONISATION GMT RÉELLE
-     * Interroge un serveur de temps pour calibrer l'astronomie
+     * 1. SYNCHRONISATION TEMPORELLE (NTP/GMT)
+     * Pour une précision astronomique vs heure système potentiellement fausse
      */
-    async function synchronizeTime() {
+    async function syncRealTime() {
         try {
-            const start = Date.now();
+            const startFetch = Date.now();
             const response = await fetch("https://worldtimeapi.org/api/timezone/Etc/UTC");
             const data = await response.json();
             const serverTime = new Date(data.utc_datetime).getTime();
-            const latency = (Date.now() - start) / 2;
-            
+            const latency = (Date.now() - startFetch) / 2;
             utcOffset = serverTime - (Date.now() - latency);
-            console.log(`🕒 Synchro GMT : Offset ${utcOffset}ms`);
-            safeSet('clock-accuracy', `± ${Math.abs(utcOffset).toFixed(0)}ms`);
+            updateUI('clock-accuracy', `± ${Math.abs(utcOffset).toFixed(0)}ms`);
+            console.log("🕒 GMT Synchro terminée.");
         } catch (e) {
-            console.warn("⚠️ Synchro GMT impossible, repli sur heure locale.");
+            console.warn("⚠️ Échec synchro GMT, utilisation heure locale.");
+            updateUI('clock-accuracy', "Locale");
         }
     }
 
     /**
-     * 2. INITIALISATION DU SYSTÈME
+     * 2. INITIALISATION DES CAPTEURS ET DU MOTEUR
      */
     function init() {
-        // Initialisation du moteur physique
-        if (typeof ProfessionalUKF !== 'undefined') {
-            engine = window.MainEngine = new ProfessionalUKF();
-            // Marseille par défaut
-            engine.lat = 43.2965;
-            engine.lon = 5.3698;
-        } else {
-            console.error("❌ Moteur UKF introuvable.");
+        if (typeof ProfessionalUKF === 'undefined') {
+            console.error("❌ Moteur UKF introuvable. Vérifiez ukf-lib.js");
             return;
         }
 
-        synchronizeTime();
+        engine = new ProfessionalUKF();
+        syncRealTime();
 
-        // Gestionnaire du bouton Start/Pause
+        // Écouteur pour le bouton Start (Indispensable pour permissions capteurs iOS/Android)
         const btn = document.getElementById('gps-pause-toggle');
         if (btn) {
-            btn.onclick = () => {
-                engine.isRunning = !engine.isRunning;
-                btn.textContent = engine.isRunning ? "⏸️ STOP ENGINE" : "▶️ START ENGINE";
-                btn.style.background = engine.isRunning ? "#3a1a1a" : "#1a3a2a";
-                
-                // Permission capteurs pour mobile
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    DeviceMotionEvent.requestPermission();
+            btn.addEventListener('click', async () => {
+                if (!engine.isRunning) {
+                    // Demande de permission pour les capteurs sur mobile
+                    if (DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
+                        await DeviceMotionEvent.requestPermission();
+                    }
+                    engine.start(); // Active la lecture GPS et IMU réelle
+                    btn.textContent = "⏸️ STOP ENGINE";
+                    btn.style.background = "#3a1a1a";
+                } else {
+                    engine.stop();
+                    btn.textContent = "▶️ START ENGINE";
+                    btn.style.background = "#2a2a35";
                 }
-            };
+            });
         }
 
-        // Boucle principale à 20Hz (50ms)
-        setInterval(updateDashboard, 50);
+        // Boucle de rendu (20Hz)
+        requestAnimationFrame(processLoop);
     }
 
     /**
-     * 3. BOUCLE DE CALCUL ET RENDU
+     * 3. BOUCLE DE TRAITEMENT PRINCIPALE
      */
-    function updateDashboard() {
-        if (!engine) return;
+    function processLoop() {
+        const now = Date.now();
+        const dt = (now - lastUpdate) / 1000;
+        lastUpdate = now;
 
-        // --- A. GESTION DU TEMPS ---
-        const exactNow = new Date(Date.now() + utcOffset);
-        const jd = (exactNow.getTime() / 86400000) + 2440587.5; // Date Julienne
-        
-        // --- B. MISE À JOUR PHYSIQUE (UKF) ---
-        engine.update(0.05); // dt = 50ms
-        
-        const state = engine.state; 
-        const v = Math.sqrt(state.vel.x**2 + state.vel.y**2 + state.vel.z**2); // m/s
-        const altitude = engine.alt || 0;
+        if (engine && engine.isRunning) {
+            // A. CALCUL DU TEMPS RÉEL (Synchro GMT)
+            const exactNow = new Date(now + utcOffset);
+            const jd = (exactNow.getTime() / 86400000) + 2440587.5; // Date Julienne
 
-        // --- C. CALCULS ASTRONOMIQUES ---
-        const astro = (typeof engine.getAstro === 'function') ? engine.getAstro(jd) : null;
+            // B. MISE À JOUR DU FILTRE UKF (Fusion Accel/GPS/Mag)
+            // Le filtre traite ici les données réelles reçues par les API navigateurs
+            engine.update(dt); 
 
-        // --- D. PHYSIQUE ET RELATIVITÉ ---
-        // 1. Mach (vitesse du son variable selon altitude)
-        const speedSound = 331.3 + 0.606 * (15 - 0.0065 * altitude);
-        const mach = v / speedSound;
+            const state = engine.state; // Position, Vitesse, Accélération filtrées
+            const velocityVec = state.vel;
+            const speedMS = Math.sqrt(velocityVec.x**2 + velocityVec.y**2 + velocityVec.z**2);
+            const altitude = engine.altitude || 0;
 
-        // 2. Facteur de Lorentz (Gamma)
-        const gamma = 1 / Math.sqrt(1 - Math.pow(v / C, 2));
+            // C. CALCULS PHYSIQUES RÉELS
+            // Vitesse du son locale (selon altitude/température standard)
+            const tempCelsius = 15 - (0.0065 * altitude);
+            const speedSound = 331.3 * Math.sqrt(1 + tempCelsius / 273.15);
+            const mach = speedMS / speedSound;
 
-        // 3. Pression Dynamique
-        const rho = 1.225 * Math.exp(-altitude / 8500); 
-        const q = 0.5 * rho * v**2;
+            // Relativité (Lorentz)
+            const beta = speedMS / C;
+            const gamma = 1 / Math.sqrt(1 - beta**2);
+            const timeDilation = (gamma - 1) * 1e9; // ns/s
 
-        // --- E. MISE À JOUR DU HTML (IDs) ---
-        
-        // Navigation
-        safeSet('speed-main-display', (v * 3.6).toFixed(2));
-        safeSet('vel-z', state.vel.z.toFixed(2) + " m/s");
-        safeSet('alt-display', altitude.toFixed(2) + " m");
-        const distKm = Math.sqrt(state.pos.x**2 + state.pos.y**2 + state.pos.z**2) / 1000;
-        safeSet('total-distance-3d', distKm.toFixed(6) + " km");
+            // Aéro (Traînée)
+            const rho = 1.225 * Math.exp(-altitude / 8500); // Densité de l'air
+            const dynamicPressure = 0.5 * rho * speedMS**2;
+            const dragForce = dynamicPressure * engine.dragCoeff * engine.area;
 
-        // Astronomie (VSOP2013)
-        if (astro) {
-            safeSet('tslv', astro.tslv ? astro.tslv.toFixed(4) + " h" : "N/A");
-            safeSet('ecl-long', astro.sunLon ? astro.sunLon.toFixed(2) + "°" : "N/A");
-            safeSet('sun-alt', astro.sunAlt ? astro.sunAlt.toFixed(2) + "°" : "N/A");
-            safeSet('sun-azimuth', astro.sunAz ? astro.sunAz.toFixed(2) + "°" : "N/A");
-            safeSet('moon-distance', astro.moonDist ? Math.round(astro.moonDist).toLocaleString() + " km" : "N/A");
+            // D. CALCULS ASTRONOMIQUES (VSOP2013)
+            const astro = engine.getAstroData ? engine.getAstroData(jd) : null;
+
+            // E. MISE À JOUR DE L'INTERFACE (IDs demandés)
+            updateUI('speed-main-display', (speedMS * 3.6).toFixed(2));
+            updateUI('gmt-time-display', exactNow.toISOString().split('T')[1].replace('Z',''));
+            updateUI('julian-date', jd.toFixed(6));
+            updateUI('session-time', ((now - startTime)/1000).toFixed(2) + " s");
+
+            updateUI('alt-display', altitude.toFixed(2) + " m");
+            updateUI('vel-z', velocityVec.z.toFixed(2) + " m/s");
+            updateUI('total-distance-3d', (engine.totalDistance / 1000).toFixed(4) + " km");
+
+            updateUI('mach-number', mach.toFixed(4));
+            updateUI('lorentz-factor', gamma.toFixed(9));
+            updateUI('time-dilation', timeDilation.toFixed(4) + " ns/s");
+            updateUI('air-density', rho.toFixed(4) + " kg/m³");
+            updateUI('dyn-pressure', dynamicPressure.toFixed(2) + " Pa");
+            updateUI('drag-force', dragForce.toFixed(2) + " N");
+            updateUI('kinetic-energy', (0.5 * engine.mass * speedMS**2).toLocaleString() + " J");
+
+            if (astro) {
+                updateUI('tslv', astro.tslv.toFixed(4) + " h");
+                updateUI('moon-distance', Math.round(astro.moonDist).toLocaleString() + " km");
+                updateUI('sun-alt', astro.sunAlt.toFixed(2) + "°");
+            }
+
+            updateUI('filter-status', "ACTIF (UKF 21-E)");
+            document.getElementById('filter-status').className = "status-active";
         }
 
-        // Physique Avancée
-        safeSet('mach-number', mach.toFixed(5));
-        safeSet('lorentz-factor', gamma.toFixed(9));
-        safeSet('dyn-pressure', q.toFixed(2) + " Pa");
-        safeSet('kinetic-energy', (0.5 * (engine.mass || 75) * v**2).toLocaleString() + " J");
-        safeSet('time-dilation', ((gamma - 1) * 1e9).toFixed(4) + " ns/s");
-
-        // Système & Temps
-        safeSet('gmt-time-display', exactNow.toUTCString().split(' ')[4] + "." + String(exactNow.getUTCMilliseconds()).padStart(3,'0'));
-        safeSet('julian-date', jd.toFixed(6));
-        
-        const filterStatus = document.getElementById('filter-status');
-        if (filterStatus) {
-            filterStatus.textContent = engine.isRunning ? "ACTIF (FUSION 21-E)" : "VEILLE";
-            filterStatus.style.color = engine.isRunning ? "#00ff66" : "#ffcc00";
-        }
+        requestAnimationFrame(processLoop);
     }
 
-    // Lancement au chargement de la page
+    // Lancement
     window.addEventListener('load', init);
 
 })();
