@@ -1,68 +1,67 @@
 (function() {
     const engine = new ProfessionalUKF();
-    
-    // --- API MÉTÉO & POLLUTION (Simulation si pas de clé API) ---
-    async function fetchEnvironment(lat, lon) {
-        // En production, remplacez par un vrai fetch API
-        const mockData = { temp: 22.5, press: 1012, no2: 12.4, pm25: 8.1 };
-        document.getElementById('air-temp-c').textContent = mockData.temp;
-        document.getElementById('pressure-hpa').textContent = mockData.press;
-        document.getElementById('no2-val').textContent = mockData.no2;
-        document.getElementById('pm25-val').textContent = mockData.pm25;
-        document.getElementById('statut-meteo').textContent = "SYNCHRONISÉ";
-    }
+    let currentPos = { lat: 43.2965, lon: 5.3698 }; // Marseille par défaut
 
-    async function startHardware() {
-        // Capteur de Lumière
-        if ('AmbientLightSensor' in window) {
-            const light = new AmbientLightSensor();
-            light.onreading = () => {
-                document.getElementById('env-lux').textContent = light.illuminance + " lx";
-                document.getElementById('ambient-light').textContent = light.illuminance;
+    async function startSystem() {
+        // 1. Activation des capteurs (Generic Sensor API)
+        if ('LinearAccelerationSensor' in window) {
+            const acc = new LinearAccelerationSensor({ frequency: 60 });
+            acc.onreading = () => {
+                engine.accel.x = acc.x;
+                engine.accel.y = acc.y;
+                engine.accel.z = acc.z;
+                
+                document.getElementById('acc-x').textContent = acc.x.toFixed(2);
+                document.getElementById('acc-y').textContent = acc.y.toFixed(2);
+                document.getElementById('acc-z').textContent = acc.z.toFixed(2);
             };
-            light.start();
+            acc.start();
         }
 
-        // Microphone (Niveau Sonore)
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioContext = new AudioContext();
-            const analyzer = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyzer);
-            const data = new Uint8Array(analyzer.frequencyBinCount);
-            setInterval(() => {
-                analyzer.getByteFrequencyData(data);
-                const avg = data.reduce((a, b) => a + b) / data.length;
-                document.getElementById('sound-level').textContent = (avg * 1.2).toFixed(1) + " dB";
-            }, 500);
-        } catch(e) { document.getElementById('sound-level').textContent = "OFFLINE"; }
+        // 2. Magnétomètre pour la boussole
+        if ('Magnetometer' in window) {
+            const mag = new Magnetometer({ frequency: 10 });
+            mag.onreading = () => {
+                document.getElementById('mag-x').textContent = mag.x.toFixed(1);
+                document.getElementById('mag-y').textContent = mag.y.toFixed(1);
+                document.getElementById('mag-z').textContent = mag.z.toFixed(1);
+            };
+            mag.start();
+        }
+
+        // 3. Boucle de rendu Haute Fréquence
+        let lastTime = performance.now();
+        function frame(now) {
+            if (engine.isRunning) {
+                const dt = (now - lastTime) / 1000;
+                lastTime = now;
+
+                engine.predict(dt, currentPos);
+                AstroCore.update(currentPos.lat, currentPos.lon);
+                
+                requestAnimationFrame(frame);
+            }
+        }
+        requestAnimationFrame(frame);
     }
 
+    // Gestion du bouton START
     document.getElementById('gps-pause-toggle').addEventListener('click', async () => {
         if (!engine.isRunning) {
-            await startHardware();
-            if (engine.lat) fetchEnvironment(engine.lat, engine.lon);
             engine.isRunning = true;
             document.getElementById('gps-pause-toggle').textContent = "🛑 ARRÊT";
-            requestAnimationFrame(function loop() {
-                if(engine.isRunning) {
-                    engine.predict(0.016);
-                    AstroEngine.calculate(engine.lat || 48.8, engine.lon || 2.3);
-                    requestAnimationFrame(loop);
-                }
-            });
+            document.getElementById('gps-pause-toggle').classList.add('active');
+            await startSystem();
         } else {
-            engine.isRunning = false;
             location.reload();
         }
     });
 
+    // Écoute GPS
     navigator.geolocation.watchPosition((p) => {
-        engine.lat = p.coords.latitude;
-        engine.lon = p.coords.longitude;
-        document.getElementById('lat-ukf').textContent = engine.lat.toFixed(6);
-        document.getElementById('lon-ukf').textContent = engine.lon.toFixed(6);
+        currentPos = { lat: p.coords.latitude, lon: p.coords.longitude };
+        document.getElementById('lat-ukf').textContent = currentPos.lat.toFixed(6);
+        document.getElementById('lon-ukf').textContent = currentPos.lon.toFixed(6);
         document.getElementById('gps-accuracy-display').textContent = p.coords.accuracy.toFixed(1) + " m";
     }, null, { enableHighAccuracy: true });
 
