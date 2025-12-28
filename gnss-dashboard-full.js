@@ -1,42 +1,34 @@
 (function() {
     const engine = new ProfessionalUKF();
-    let lastTime = performance.now();
-    let currentPos = { lat: 43.29, lon: 5.37 };
-
     const btn = document.getElementById('gps-pause-toggle');
 
-    async function initHardware() {
-        // Accéléromètre Haute Fréquence
-        if ('LinearAccelerationSensor' in window) {
-            const acc = new LinearAccelerationSensor({ frequency: 60 });
-            acc.onreading = () => {
-                engine.accel.x = acc.x;
-                document.getElementById('acc-x').textContent = acc.x.toFixed(2);
-                document.getElementById('acc-z').textContent = acc.z.toFixed(2);
-            };
-            acc.start();
+    async function startSystem() {
+        // 1. Demande de Permission DeviceMotion (iOS / Chrome Mobile)
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const response = await DeviceMotionEvent.requestPermission();
+                if (response !== 'granted') throw new Error("Permission Motion refusée");
+            } catch (err) { alert(err); return; }
         }
 
-        // Boucle de rendu
-        function frame(now) {
-            if (!engine.isRunning) return;
-            const dt = (now - lastTime) / 1000;
-            lastTime = now;
+        // 2. Activation de l'écouteur universel
+        window.addEventListener('devicemotion', (e) => engine.processMotion(e), true);
 
-            engine.update(dt);
-            AstroBridge.update(currentPos.lat, currentPos.lon);
+        // 3. Lancement de la boucle Astro & Environnement
+        engine.isRunning = true;
+        btn.textContent = "🛑 ARRÊT";
+        btn.style.background = "#990000";
 
-            requestAnimationFrame(frame);
-        }
-        requestAnimationFrame(frame);
+        setInterval(() => {
+            const lat = parseFloat(document.getElementById('lat-ukf').textContent) || 0;
+            const lon = parseFloat(document.getElementById('lon-ukf').textContent) || 0;
+            AstroBridge.update(lat, lon);
+        }, 1000);
     }
 
     btn.addEventListener('click', async () => {
         if (!engine.isRunning) {
-            engine.isRunning = true;
-            btn.textContent = "🛑 ARRÊT";
-            btn.style.background = "#880000";
-            await initHardware();
+            await startSystem();
         } else {
             location.reload();
         }
@@ -44,19 +36,9 @@
 
     // GPS & Turf.js
     navigator.geolocation.watchPosition((p) => {
-        const newPos = { lat: p.coords.latitude, lon: p.coords.longitude };
-        
-        // Exemple d'usage Turf.js pour la distance précise
-        if(currentPos) {
-            const from = turf.point([currentPos.lon, currentPos.lat]);
-            const to = turf.point([newPos.lon, newPos.lat]);
-            const distMeters = turf.distance(from, to, {units: 'meters'});
-            // On pourrait ajouter cette distance au moteur UKF ici
-        }
-        
-        currentPos = newPos;
-        document.getElementById('lat-ukf').textContent = currentPos.lat.toFixed(6);
-        document.getElementById('lon-ukf').textContent = currentPos.lon.toFixed(6);
+        document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
+        document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
+        document.getElementById('gps-accuracy-display').textContent = p.coords.accuracy.toFixed(1) + " m";
     }, null, { enableHighAccuracy: true });
 
 })();
