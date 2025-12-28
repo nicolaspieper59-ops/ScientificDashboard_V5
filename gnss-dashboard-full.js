@@ -2,71 +2,73 @@
     "use strict";
     const engine = new ProfessionalUKF();
 
-    async function activateSensors() {
-        // Baromètre (Pression)
+    async function startSensors() {
+        // Baromètre matériel (Android)
         if ('PressureSensor' in window) {
-            const p = new PressureSensor({ frequency: 10 });
-            p.onreading = () => { engine.pressureHardware = p.pressure / 100; };
-            p.start();
-        }
-
-        // Luminosité (Ambient Light)
-        if ('AmbientLightSensor' in window) {
-            const l = new AmbientLightSensor();
-            l.onreading = () => {
-                document.querySelectorAll('[id^="env-lux"]').forEach(e => e.textContent = l.illuminance.toFixed(1));
+            const baro = new PressureSensor({ frequency: 10 });
+            baro.onreading = () => { 
+                engine.pressureHardware = baro.pressure / 100;
+                document.querySelectorAll('[id^="pressure-hpa"]').forEach(el => el.textContent = engine.pressureHardware.toFixed(1));
             };
-            l.start();
+            baro.start();
         }
 
-        // Magnétomètre (Champ magnétique)
-        if ('Magnetometer' in window) {
-            const m = new Magnetometer({frequency: 10});
-            m.onreading = () => {
-                document.getElementById('mag-x').textContent = m.x.toFixed(1);
-                document.getElementById('mag-y').textContent = m.y.toFixed(1);
-                document.getElementById('mag-z').textContent = m.z.toFixed(1);
-            };
-            m.start();
+        // Accéléromètre & Gyro (Mouvement & Saltos)
+        if ('LinearAccelerationSensor' in window) {
+            const acc = new LinearAccelerationSensor({ frequency: 60 });
+            acc.onreading = () => { engine.accel = { x: acc.x, y: acc.y, z: acc.z }; };
+            acc.start();
         }
 
-        // IMU (Pitch & Roll)
         window.addEventListener('deviceorientation', (e) => {
-            document.querySelectorAll('[id^="pitch"]').forEach(el => el.textContent = e.beta.toFixed(1) + "°");
-            document.querySelectorAll('[id^="roll"]').forEach(el => el.textContent = e.gamma.toFixed(1) + "°");
+            engine.pitch = e.beta || 0;
+            document.querySelectorAll('[id^="pitch"]').forEach(el => el.textContent = engine.pitch.toFixed(1) + "°");
+            document.querySelectorAll('[id^="roll"]').forEach(el => el.textContent = (e.gamma || 0).toFixed(1) + "°");
         });
+
+        // Magnétomètre
+        if ('Magnetometer' in window) {
+            const mag = new Magnetometer({ frequency: 10 });
+            mag.onreading = () => {
+                document.getElementById('mag-x').textContent = mag.x.toFixed(1);
+                document.getElementById('mag-y').textContent = mag.y.toFixed(1);
+                document.getElementById('mag-z').textContent = mag.z.toFixed(1);
+            };
+            mag.start();
+        }
     }
 
     function render() {
-        if (!engine.isRunning) return;
-        
-        engine.predict();
-        AstroEngine.update(engine.lat, engine.lon);
-
-        // Relativité (Jamais de N/A)
-        const c = 299792458;
-        const beta = engine.vMs / c;
-        const lorentz = 1 / Math.sqrt(1 - beta * beta);
-        document.querySelectorAll('[id^="lorentz-factor"]').forEach(e => e.textContent = lorentz.toFixed(12));
-
-        requestAnimationFrame(render);
+        if (engine.isRunning) {
+            engine.predict();
+            AstroEngine.calculate(engine.lat || 43.3, engine.lon || 5.4);
+            requestAnimationFrame(render);
+        }
     }
 
     document.getElementById('gps-pause-toggle').addEventListener('click', async () => {
         if (!engine.isRunning) {
-            await activateSensors();
+            await startSensors();
+            if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
             engine.isRunning = true;
-            document.getElementById('filter-status').textContent = "UKF ACTIVE";
+            document.getElementById('filter-status').textContent = "UKF FUSION ACTIVE";
             render();
         }
     });
 
-    // GPS & Vitesse
     navigator.geolocation.watchPosition((p) => {
-        engine.vMs = p.coords.speed || engine.vMs;
-        engine.altitude = p.coords.altitude || 0;
-        document.querySelectorAll('[id^="lat-ukf"]').forEach(e => e.textContent = p.coords.latitude.toFixed(6));
-        document.querySelectorAll('[id^="lon-ukf"]').forEach(e => e.textContent = p.coords.longitude.toFixed(6));
+        engine.lat = p.coords.latitude;
+        engine.lon = p.coords.longitude;
+        if (p.coords.speed !== null) {
+            // Fusion douce GPS / Newton
+            engine.vMs = (engine.vMs * 0.3) + (p.coords.speed * 0.7);
+        }
+        document.querySelectorAll('[id^="lat-ukf"]').forEach(el => el.textContent = engine.lat.toFixed(6));
+        document.querySelectorAll('[id^="lon-ukf"]').forEach(el => el.textContent = engine.lon.toFixed(6));
     }, null, { enableHighAccuracy: true });
 
+    // Enregistrement PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
 })();
