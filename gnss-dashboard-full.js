@@ -1,18 +1,19 @@
 (function() {
     "use strict";
-    const engine = new SpaceTimeUKF();
-    const mass = 70; // kg
+    const ukf = new ProfessionalUKF();
+    const C_LIGHT = 299792458;
 
-    async function init() {
+    async function setup() {
         document.getElementById('gps-pause-toggle').addEventListener('click', async () => {
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 await DeviceMotionEvent.requestPermission();
             }
-            engine.isRunning = !engine.isRunning;
+            ukf.isRunning = !ukf.isRunning;
+            document.getElementById('gps-pause-toggle').textContent = ukf.isRunning ? "⏸️ STOP ENGINE" : "▶️ MARCHE GPS";
         });
 
         window.addEventListener('devicemotion', (e) => {
-            engine.accelBrute = {
+            ukf.accel = {
                 x: e.accelerationIncludingGravity.x || 0,
                 y: e.accelerationIncludingGravity.y || 0,
                 z: e.accelerationIncludingGravity.z || 0
@@ -20,58 +21,48 @@
         });
 
         navigator.geolocation.watchPosition((p) => {
-            engine.updateGPS(p.coords.latitude, p.coords.longitude, p.coords.altitude, p.coords.speed, p.coords.accuracy);
+            ukf.observeGPS(p.coords.latitude, p.coords.longitude, p.coords.altitude, p.coords.speed, p.coords.accuracy);
         }, null, { enableHighAccuracy: true });
 
-        requestAnimationFrame(dashboardLoop);
+        requestAnimationFrame(updateUI);
     }
 
-    function dashboardLoop() {
-        if (engine.isRunning) {
-            engine.predict();
-            const v = engine.vMs;
-            const c = 299792458;
+    function updateUI() {
+        if (ukf.isRunning) {
+            ukf.predict();
+            const v = ukf.vMs;
 
-            // --- 1. NAVIGATION & VITESSE ---
-            setUI('speed-main-display', (v * 3.6).toFixed(1) + " km/h");
-            setUI('speed-stable-ms', v.toFixed(2) + " m/s");
-            setUI('total-distance-3d', engine.totalDistance.toFixed(4) + " km");
+            // --- NAVIGATION ---
+            set('speed-main-display', (v * 3.6).toFixed(1) + " km/h");
+            set('speed-stable-ms', v.toFixed(3) + " m/s");
+            set('total-distance-3d', ukf.distance.toFixed(4) + " km");
 
-            // --- 2. PHYSIQUE & RELATIVITÉ (Plus de 0) ---
-            const gamma = 1 / Math.sqrt(1 - Math.pow(v / c, 2));
-            setUI('lorentz-factor', gamma.toFixed(12));
-            setUI('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(2) + " ns/j");
-            setUI('kinetic-energy', (0.5 * mass * v * v).toFixed(0) + " J");
-            setUI('pct-speed-of-light', ((v / c) * 100).toFixed(7) + " %");
+            // --- RELATIVITÉ ---
+            const gamma = 1 / Math.sqrt(1 - Math.pow(v / C_LIGHT, 2));
+            set('lorentz-factor', gamma.toFixed(14));
+            set('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(2) + " ns/j");
 
-            // --- 3. DYNAMIQUE & FORCES ---
-            const rho = 1.225 * Math.exp(-engine.alt / 8500);
-            setUI('air-density', rho.toFixed(3) + " kg/m³");
-            setUI('drag-force', (0.5 * rho * v * v * 0.3 * 1.8).toFixed(2) + " N");
-
-            // --- 4. ASTRONOMIE (Suppression des N/A) ---
-            if (engine.lat && window.Ephem) {
-                const now = new Date();
-                const sun = Ephem.getSunPosition(now, engine.lat, engine.lon);
-                setUI('lat-ukf', engine.lat.toFixed(6));
-                setUI('lon-ukf', engine.lon.toFixed(6));
-                setUI('sun-alt', sun.altitude.toFixed(2) + "°");
-                setUI('sun-azimuth', sun.azimuth.toFixed(2) + "°");
-                setUI('astro-phase', sun.altitude > 0 ? "Jour ☀️" : "Nuit 🌙");
-                setUI('moon-phase-name', Ephem.getMoonPhase(now));
+            // --- ASTRO (Liaison astro.js) ---
+            if (ukf.lat && window.calculateAstroData) {
+                const astro = calculateAstroData(new Date(), ukf.lat, ukf.lon);
+                set('sun-alt', astro.sun.altitude.toFixed(2) + "°");
+                set('sun-azimuth', astro.sun.azimuth.toFixed(2) + "°");
+                set('lat-ukf', ukf.lat.toFixed(6));
+                set('lon-ukf', ukf.lon.toFixed(6));
+                set('julian-date', astro.jd.toFixed(5));
             }
 
-            // --- 5. SYSTÈME ---
-            setUI('local-time', new Date().toLocaleTimeString());
-            setUI('nyquist-limit', "60 Hz"); // Basé sur RAF
+            // --- DYNAMIQUE ---
+            set('kinetic-energy', (0.5 * 70 * v * v).toFixed(1) + " J");
+            set('force-g-vertical', (ukf.accel.z / 9.80665).toFixed(2) + " G");
         }
-        requestAnimationFrame(dashboardLoop);
+        requestAnimationFrame(updateUI);
     }
 
-    function setUI(id, val) {
+    function set(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
 
-    window.addEventListener('load', init);
+    window.addEventListener('load', setup);
 })();
