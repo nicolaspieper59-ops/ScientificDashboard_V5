@@ -1,68 +1,76 @@
+/**
+ * GNSS Dashboard Main Controller
+ */
 (function() {
     const engine = new ProfessionalUKF();
     let lastTime = performance.now();
+    let currentAccelX = 0;
 
-    // 1. Branchement du bouton MARCHE/ARRÊT
     const btn = document.getElementById('gps-pause-toggle');
     
-    btn.addEventListener('click', async () => {
-        if (!engine.isRunning) {
-            // DÉMARRAGE
-            engine.isRunning = true;
-            btn.textContent = "🛑 ARRÊT";
-            btn.style.background = "#550000";
-            
-            // Activation des capteurs IMU
-            startIMU();
-            
-            // Lancement de la boucle de calcul
-            requestAnimationFrame(mainLoop);
-        } else {
-            // ARRÊT
-            location.reload(); // Réinitialisation propre
+    // Fonction de démarrage
+    async function initSystem() {
+        // Demande d'accès aux capteurs (Obligatoire sur Android/iOS)
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            await DeviceOrientationEvent.requestPermission();
         }
-    });
 
-    function startIMU() {
+        // Accéléromètre
         if ('LinearAccelerationSensor' in window) {
             const acc = new LinearAccelerationSensor({ frequency: 60 });
             acc.onreading = () => {
-                engine.accel.x = acc.x;
-                engine.accel.y = acc.y;
-                engine.accel.z = acc.z;
+                currentAccelX = acc.x;
                 document.getElementById('acc-x').textContent = acc.x.toFixed(2);
                 document.getElementById('acc-y').textContent = acc.y.toFixed(2);
                 document.getElementById('acc-z').textContent = acc.z.toFixed(2);
             };
             acc.start();
         }
+
+        // Boucle de rendu
+        function loop(now) {
+            if (!engine.isRunning) return;
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            // Mise à jour Physique
+            engine.update(dt, currentAccelX);
+
+            // Mise à jour Astro
+            const lat = parseFloat(document.getElementById('lat-ukf').textContent) || 0;
+            const lon = parseFloat(document.getElementById('lon-ukf').textContent) || 0;
+            AstroEngine.calculate(lat, lon);
+
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
     }
 
-    function mainLoop(now) {
-        if (!engine.isRunning) return;
+    // Événement clic sur le bouton MARCHE
+    btn.addEventListener('click', async () => {
+        if (!engine.isRunning) {
+            engine.isRunning = true;
+            btn.textContent = "🛑 ARRÊT D'URGENCE";
+            btn.style.background = "linear-gradient(135deg, #660000, #ff0000)";
+            btn.style.boxShadow = "0 0 20px #ff0000";
+            
+            await initSystem();
+        } else {
+            // Arrêt : On recharge pour tout réinitialiser
+            location.reload();
+        }
+    });
 
-        const dt = (now - lastTime) / 1000;
-        lastTime = now;
-
-        // Appel des moteurs
-        engine.compute(dt);
-        
-        // Utilisation de Turf pour la distance si coordonnées changent
-        // (Logique Turf ici)
-
-        // Mise à jour Astro
-        const lat = parseFloat(document.getElementById('lat-ukf').textContent);
-        const lon = parseFloat(document.getElementById('lon-ukf').textContent);
-        EphemProcessor.update(lat, lon);
-
-        requestAnimationFrame(mainLoop);
-    }
-
-    // GPS (Toujours actif pour les coordonnées)
+    // Géolocalisation (indépendante de la boucle pour précision)
     navigator.geolocation.watchPosition((p) => {
         document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
         document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
-        if(p.coords.speed) engine.vMs = p.coords.speed;
-    }, null, {enableHighAccuracy: true});
+        document.getElementById('gps-accuracy-display').textContent = p.coords.accuracy.toFixed(1) + " m";
+        
+        // Synchronisation de la vitesse si le moteur tourne
+        if(engine.isRunning && p.coords.speed) {
+            engine.vMs = p.coords.speed;
+        }
+    }, null, { enableHighAccuracy: true });
 
 })();
