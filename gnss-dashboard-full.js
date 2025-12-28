@@ -1,77 +1,74 @@
 (function() {
     "use strict";
-
-    const state = { isRunning: false };
+    const engine = new SpaceTimeUKF();
+    const mass = 70; // kg
 
     async function init() {
-        window.MainEngine = new ProfessionalUKF();
-        document.getElementById('gps-pause-toggle').addEventListener('click', startDashboard);
-        requestAnimationFrame(syncLoop);
+        document.getElementById('gps-pause-toggle').addEventListener('click', async () => {
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                await DeviceMotionEvent.requestPermission();
+            }
+            engine.isRunning = !engine.isRunning;
+        });
+
+        window.addEventListener('devicemotion', (e) => {
+            engine.accelBrute = {
+                x: e.accelerationIncludingGravity.x || 0,
+                y: e.accelerationIncludingGravity.y || 0,
+                z: e.accelerationIncludingGravity.z || 0
+            };
+        });
+
+        navigator.geolocation.watchPosition((p) => {
+            engine.updateGPS(p.coords.latitude, p.coords.longitude, p.coords.altitude, p.coords.speed, p.coords.accuracy);
+        }, null, { enableHighAccuracy: true });
+
+        requestAnimationFrame(dashboardLoop);
     }
 
-    async function startDashboard() {
-        // Demande des autorisations (iOS/Android)
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            const permission = await DeviceMotionEvent.requestPermission();
-            if (permission !== 'granted') return;
-        }
-
-        state.isRunning = !state.isRunning;
-        window.MainEngine.isRunning = state.isRunning;
-        
-        const btn = document.getElementById('gps-pause-toggle');
-        btn.textContent = state.isRunning ? "⏸️ STOP ENGINE" : "▶️ START ENGINE";
-
-        if (state.isRunning) {
-            // Capteur de mouvement (Newton)
-            window.addEventListener('devicemotion', (e) => {
-                window.MainEngine.accelBrute = {
-                    x: e.accelerationIncludingGravity.x || 0,
-                    y: e.accelerationIncludingGravity.y || 0,
-                    z: e.accelerationIncludingGravity.z || 0
-                };
-            });
-
-            // Capteur GPS
-            navigator.geolocation.watchPosition((p) => {
-                window.MainEngine.updateGPS(
-                    p.coords.latitude, p.coords.longitude,
-                    p.coords.altitude, p.coords.speed, p.coords.accuracy
-                );
-            }, null, { enableHighAccuracy: true });
-        }
-    }
-
-    function syncLoop() {
-        if (state.isRunning && window.MainEngine) {
-            const engine = window.MainEngine;
+    function dashboardLoop() {
+        if (engine.isRunning) {
             engine.predict();
-
-            // 1. Mise à jour Navigation
-            updateUI('speed-main-display', (engine.vMs * 3.6).toFixed(1) + " km/h");
-            updateUI('lat-ukf', engine.lat ? engine.lat.toFixed(6) : "...");
-            updateUI('lon-ukf', engine.lon ? engine.lon.toFixed(6) : "...");
-            updateUI('alt-display', engine.alt ? engine.alt.toFixed(1) + " m" : "0 m");
-
-            // 2. Mise à jour Relativité
+            const v = engine.vMs;
             const c = 299792458;
-            const gamma = 1 / Math.sqrt(1 - Math.pow(engine.vMs / c, 2));
-            updateUI('lorentz-factor', gamma.toFixed(12));
-            updateUI('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(2) + " ns/j");
 
-            // 3. Mise à jour Astronomie (Suppression des N/A)
+            // --- 1. NAVIGATION & VITESSE ---
+            setUI('speed-main-display', (v * 3.6).toFixed(1) + " km/h");
+            setUI('speed-stable-ms', v.toFixed(2) + " m/s");
+            setUI('total-distance-3d', engine.totalDistance.toFixed(4) + " km");
+
+            // --- 2. PHYSIQUE & RELATIVITÉ (Plus de 0) ---
+            const gamma = 1 / Math.sqrt(1 - Math.pow(v / c, 2));
+            setUI('lorentz-factor', gamma.toFixed(12));
+            setUI('time-dilation-vitesse', ((gamma - 1) * 86400 * 1e9).toFixed(2) + " ns/j");
+            setUI('kinetic-energy', (0.5 * mass * v * v).toFixed(0) + " J");
+            setUI('pct-speed-of-light', ((v / c) * 100).toFixed(7) + " %");
+
+            // --- 3. DYNAMIQUE & FORCES ---
+            const rho = 1.225 * Math.exp(-engine.alt / 8500);
+            setUI('air-density', rho.toFixed(3) + " kg/m³");
+            setUI('drag-force', (0.5 * rho * v * v * 0.3 * 1.8).toFixed(2) + " N");
+
+            // --- 4. ASTRONOMIE (Suppression des N/A) ---
             if (engine.lat && window.Ephem) {
                 const now = new Date();
                 const sun = Ephem.getSunPosition(now, engine.lat, engine.lon);
-                updateUI('sun-alt', sun.altitude.toFixed(2) + "°");
-                updateUI('sun-azimuth', sun.azimuth.toFixed(2) + "°");
-                updateUI('astro-phase', sun.altitude > 0 ? "Jour ☀️" : "Nuit 🌙");
+                setUI('lat-ukf', engine.lat.toFixed(6));
+                setUI('lon-ukf', engine.lon.toFixed(6));
+                setUI('sun-alt', sun.altitude.toFixed(2) + "°");
+                setUI('sun-azimuth', sun.azimuth.toFixed(2) + "°");
+                setUI('astro-phase', sun.altitude > 0 ? "Jour ☀️" : "Nuit 🌙");
+                setUI('moon-phase-name', Ephem.getMoonPhase(now));
             }
+
+            // --- 5. SYSTÈME ---
+            setUI('local-time', new Date().toLocaleTimeString());
+            setUI('nyquist-limit', "60 Hz"); // Basé sur RAF
         }
-        requestAnimationFrame(syncLoop);
+        requestAnimationFrame(dashboardLoop);
     }
 
-    function updateUI(id, val) {
+    function setUI(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
