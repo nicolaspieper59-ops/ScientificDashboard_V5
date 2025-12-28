@@ -1,76 +1,62 @@
-/**
- * GNSS Dashboard Main Controller
- */
 (function() {
     const engine = new ProfessionalUKF();
     let lastTime = performance.now();
-    let currentAccelX = 0;
+    let currentPos = { lat: 43.29, lon: 5.37 };
 
     const btn = document.getElementById('gps-pause-toggle');
-    
-    // Fonction de démarrage
-    async function initSystem() {
-        // Demande d'accès aux capteurs (Obligatoire sur Android/iOS)
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            await DeviceOrientationEvent.requestPermission();
-        }
 
-        // Accéléromètre
+    async function initHardware() {
+        // Accéléromètre Haute Fréquence
         if ('LinearAccelerationSensor' in window) {
             const acc = new LinearAccelerationSensor({ frequency: 60 });
             acc.onreading = () => {
-                currentAccelX = acc.x;
+                engine.accel.x = acc.x;
                 document.getElementById('acc-x').textContent = acc.x.toFixed(2);
-                document.getElementById('acc-y').textContent = acc.y.toFixed(2);
                 document.getElementById('acc-z').textContent = acc.z.toFixed(2);
             };
             acc.start();
         }
 
         // Boucle de rendu
-        function loop(now) {
+        function frame(now) {
             if (!engine.isRunning) return;
             const dt = (now - lastTime) / 1000;
             lastTime = now;
 
-            // Mise à jour Physique
-            engine.update(dt, currentAccelX);
+            engine.update(dt);
+            AstroBridge.update(currentPos.lat, currentPos.lon);
 
-            // Mise à jour Astro
-            const lat = parseFloat(document.getElementById('lat-ukf').textContent) || 0;
-            const lon = parseFloat(document.getElementById('lon-ukf').textContent) || 0;
-            AstroEngine.calculate(lat, lon);
-
-            requestAnimationFrame(loop);
+            requestAnimationFrame(frame);
         }
-        requestAnimationFrame(loop);
+        requestAnimationFrame(frame);
     }
 
-    // Événement clic sur le bouton MARCHE
     btn.addEventListener('click', async () => {
         if (!engine.isRunning) {
             engine.isRunning = true;
-            btn.textContent = "🛑 ARRÊT D'URGENCE";
-            btn.style.background = "linear-gradient(135deg, #660000, #ff0000)";
-            btn.style.boxShadow = "0 0 20px #ff0000";
-            
-            await initSystem();
+            btn.textContent = "🛑 ARRÊT";
+            btn.style.background = "#880000";
+            await initHardware();
         } else {
-            // Arrêt : On recharge pour tout réinitialiser
             location.reload();
         }
     });
 
-    // Géolocalisation (indépendante de la boucle pour précision)
+    // GPS & Turf.js
     navigator.geolocation.watchPosition((p) => {
-        document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
-        document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
-        document.getElementById('gps-accuracy-display').textContent = p.coords.accuracy.toFixed(1) + " m";
+        const newPos = { lat: p.coords.latitude, lon: p.coords.longitude };
         
-        // Synchronisation de la vitesse si le moteur tourne
-        if(engine.isRunning && p.coords.speed) {
-            engine.vMs = p.coords.speed;
+        // Exemple d'usage Turf.js pour la distance précise
+        if(currentPos) {
+            const from = turf.point([currentPos.lon, currentPos.lat]);
+            const to = turf.point([newPos.lon, newPos.lat]);
+            const distMeters = turf.distance(from, to, {units: 'meters'});
+            // On pourrait ajouter cette distance au moteur UKF ici
         }
+        
+        currentPos = newPos;
+        document.getElementById('lat-ukf').textContent = currentPos.lat.toFixed(6);
+        document.getElementById('lon-ukf').textContent = currentPos.lon.toFixed(6);
     }, null, { enableHighAccuracy: true });
 
 })();
