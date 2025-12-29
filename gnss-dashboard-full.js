@@ -1,11 +1,11 @@
 /**
- * GNSS-DASHBOARD-FULL.JS - Liaison Capteurs & UI
+ * MASTER CONTROLLER : Mapping complet des ID HTML
  */
 const ukf = new SpaceTimeUKF();
 let lastPos = null;
 
-async function startSystem() {
-    // Bouton de démarrage (Permissions iOS/Android)
+async function initSystem() {
+    // Permission & Start
     document.getElementById('gps-pause-toggle').onclick = async () => {
         if (typeof DeviceMotionEvent.requestPermission === 'function') {
             await DeviceMotionEvent.requestPermission();
@@ -14,9 +14,9 @@ async function startSystem() {
         document.getElementById('gps-pause-toggle').textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
     };
 
-    // 1. Magnétomètre 3 axes
+    // Magnétomètre & Capteurs
     if ('Magnetometer' in window) {
-        const mag = new Magnetometer({frequency: 50});
+        const mag = new Magnetometer({frequency: 60});
         mag.onreading = () => {
             document.getElementById('mag-x').textContent = mag.x.toFixed(1) + " µT";
             document.getElementById('mag-y').textContent = mag.y.toFixed(1) + " µT";
@@ -25,60 +25,47 @@ async function startSystem() {
         mag.start();
     }
 
-    // 2. Capteurs de Lumière & Son
-    if ('AmbientLightSensor' in window) {
-        const light = new AmbientLightSensor();
-        light.onreading = () => {
-            document.getElementById('env-lux').textContent = light.illuminance + " lx";
-            document.getElementById('ambient-light').textContent = light.illuminance + " lx";
-        };
-        light.start();
-    }
-
-    // 3. Boucle de Mouvement (UKF)
+    // Boucle Inertielle (Haute Fréquence 60Hz)
     window.addEventListener('devicemotion', (e) => {
         ukf.predict(e);
-        // Mise à jour Niveau à Bulle
+        
+        // Niveau à bulle & Debug
         const acc = e.accelerationIncludingGravity;
         const pitch = Math.atan2(-acc.x, 10) * 180 / Math.PI;
         const roll = Math.atan2(acc.y, acc.z) * 180 / Math.PI;
         document.getElementById('pitch').textContent = pitch.toFixed(1) + "°";
         document.getElementById('roll').textContent = roll.toFixed(1) + "°";
-        document.getElementById('bubble').style.transform = `translate(${roll}px, ${pitch}px)`;
+        document.getElementById('acc-x').textContent = acc.x.toFixed(2);
+        document.getElementById('acc-y').textContent = acc.y.toFixed(2);
     });
 
-    // 4. Boucle GPS & Météo
+    // Boucle GPS & Météo (Basse Fréquence 1Hz)
     navigator.geolocation.watchPosition(async (p) => {
         const {latitude, longitude, speed, accuracy} = p.coords;
-        const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+        
+        document.getElementById('lat-ukf').textContent = latitude.toFixed(6);
+        document.getElementById('lon-ukf').textContent = longitude.toFixed(6);
+        document.getElementById('speed-main-display').textContent = ((speed || 0) * 3.6).toFixed(1) + " km/h";
+        document.getElementById('gps-accuracy-display').textContent = accuracy.toFixed(1) + " m";
 
-        set('lat-ukf', latitude.toFixed(6));
-        set('lon-ukf', longitude.toFixed(6));
-        set('gps-accuracy-display', accuracy.toFixed(1) + " m");
-        set('speed-main-display', ((speed || 0) * 3.6).toFixed(1) + " km/h");
-        set('v-cosmic', (speed || 0).toFixed(2) + " m/s");
+        // Distance Ellipsoïdale (Turf.js)
+        if (lastPos) {
+            const from = turf.point([lastPos.lon, lastPos.lat]);
+            const to = turf.point([longitude, latitude]);
+            const dist = turf.distance(from, to, {units: 'kilometers'});
+            document.getElementById('total-distance-3d-2').textContent = dist.toFixed(6) + " km";
+        }
+        lastPos = {lat: latitude, lon: longitude};
 
-        // Sync Météo Pro
+        // Météo & Astro
         try {
-            const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=VOTRE_CLE_API&units=metric`);
+            const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=VOTRE_CLE&units=metric`);
             const data = await res.json();
-            if(data.main) {
-                set('air-temp-c', data.main.temp + " °C");
-                set('pressure-hpa', data.main.pressure + " hPa");
-                set('humidity-perc', data.main.humidity + " %");
-                set('statut-meteo', "ACTIF ✅");
-                
-                // Calcul Mach & Densité
-                const Tk = data.main.temp + 273.15;
-                const vSon = Math.sqrt(1.4 * 287.05 * Tk);
-                set('local-speed-of-sound', vSon.toFixed(2) + " m/s");
-                set('mach-number', ((speed || 0) / vSon).toFixed(5));
-                
-                AstroBridge.update(latitude, longitude, data.main.pressure);
-            }
-        } catch(e) { console.error("Météo indisponible"); }
+            AstroEngine.sync(latitude, longitude, data);
+            document.getElementById('statut-meteo').textContent = "ACTIF ✅";
+        } catch(e) { AstroEngine.sync(latitude, longitude, null); }
 
     }, null, {enableHighAccuracy: true});
 }
 
-document.addEventListener('DOMContentLoaded', startSystem);
+document.addEventListener('DOMContentLoaded', initSystem);
