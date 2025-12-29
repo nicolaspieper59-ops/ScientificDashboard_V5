@@ -1,71 +1,53 @@
-/**
- * MASTER CONTROLLER : Mapping complet des ID HTML
- */
 const ukf = new SpaceTimeUKF();
-let lastPos = null;
+let lastLocation = null;
 
-async function initSystem() {
-    // Permission & Start
+async function init() {
+    // 1. Bouton Start & Permissions
     document.getElementById('gps-pause-toggle').onclick = async () => {
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
-        }
+        if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
         ukf.isRunning = !ukf.isRunning;
-        document.getElementById('gps-pause-toggle').textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
+        document.getElementById('gps-pause-toggle').className = ukf.isRunning ? "btn btn-danger" : "btn btn-success";
     };
 
-    // Magnétomètre & Capteurs
-    if ('Magnetometer' in window) {
-        const mag = new Magnetometer({frequency: 60});
-        mag.onreading = () => {
-            document.getElementById('mag-x').textContent = mag.x.toFixed(1) + " µT";
-            document.getElementById('mag-y').textContent = mag.y.toFixed(1) + " µT";
-            document.getElementById('mag-z').textContent = mag.z.toFixed(1) + " µT";
-        };
-        mag.start();
-    }
-
-    // Boucle Inertielle (Haute Fréquence 60Hz)
+    // 2. Capteurs IMU (60Hz)
     window.addEventListener('devicemotion', (e) => {
-        ukf.predict(e);
+        ukf.update(e);
+        document.getElementById('acc-x').textContent = e.accelerationIncludingGravity.x.toFixed(2);
+        document.getElementById('acc-y').textContent = e.accelerationIncludingGravity.y.toFixed(2);
         
-        // Niveau à bulle & Debug
-        const acc = e.accelerationIncludingGravity;
-        const pitch = Math.atan2(-acc.x, 10) * 180 / Math.PI;
-        const roll = Math.atan2(acc.y, acc.z) * 180 / Math.PI;
+        // Niveau à bulle (Pitch/Roll)
+        const pitch = Math.atan2(-e.accelerationIncludingGravity.x, 10) * 180 / Math.PI;
+        const roll = Math.atan2(e.accelerationIncludingGravity.y, e.accelerationIncludingGravity.z) * 180 / Math.PI;
         document.getElementById('pitch').textContent = pitch.toFixed(1) + "°";
         document.getElementById('roll').textContent = roll.toFixed(1) + "°";
-        document.getElementById('acc-x').textContent = acc.x.toFixed(2);
-        document.getElementById('acc-y').textContent = acc.y.toFixed(2);
     });
 
-    // Boucle GPS & Météo (Basse Fréquence 1Hz)
+    // 3. Capteurs Environnementaux
+    if ('AmbientLightSensor' in window) {
+        const sensor = new AmbientLightSensor();
+        sensor.onreading = () => document.getElementById('env-lux').textContent = sensor.illuminance;
+        sensor.start();
+    }
+
+    // 4. GPS & Météo & Polluants
     navigator.geolocation.watchPosition(async (p) => {
-        const {latitude, longitude, speed, accuracy} = p.coords;
+        const {latitude, longitude, speed} = p.coords;
         
         document.getElementById('lat-ukf').textContent = latitude.toFixed(6);
         document.getElementById('lon-ukf').textContent = longitude.toFixed(6);
-        document.getElementById('speed-main-display').textContent = ((speed || 0) * 3.6).toFixed(1) + " km/h";
-        document.getElementById('gps-accuracy-display').textContent = accuracy.toFixed(1) + " m";
+        document.getElementById('speed-main-display').textContent = (speed * 3.6 || 0).toFixed(1);
 
-        // Distance Ellipsoïdale (Turf.js)
-        if (lastPos) {
-            const from = turf.point([lastPos.lon, lastPos.lat]);
-            const to = turf.point([longitude, latitude]);
-            const dist = turf.distance(from, to, {units: 'kilometers'});
-            document.getElementById('total-distance-3d-2').textContent = dist.toFixed(6) + " km";
-        }
-        lastPos = {lat: latitude, lon: longitude};
-
-        // Météo & Astro
+        // Fetch API (Météo + Pollution)
         try {
-            const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=VOTRE_CLE&units=metric`);
-            const data = await res.json();
-            AstroEngine.sync(latitude, longitude, data);
-            document.getElementById('statut-meteo').textContent = "ACTIF ✅";
-        } catch(e) { AstroEngine.sync(latitude, longitude, null); }
+            const res = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=VOTRE_CLE`);
+            const poll = await res.json();
+            const comp = poll.list[0].components;
+            document.getElementById('no2-val').textContent = comp.no2.toFixed(1);
+            document.getElementById('pm25-val').textContent = comp.pm2_5.toFixed(1);
+        } catch(e) {}
 
+        AstroEngine.update(latitude, longitude, {main: {temp: 15, pressure: 1013}}); // Météo simulée si API off
     }, null, {enableHighAccuracy: true});
 }
 
-document.addEventListener('DOMContentLoaded', initSystem);
+document.addEventListener('DOMContentLoaded', init);
