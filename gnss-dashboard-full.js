@@ -1,12 +1,12 @@
 const ukf = new ProfessionalUKF();
 
-document.addEventListener('DOMContentLoaded', () => {
+async function initializeSystem() {
     const btn = document.getElementById('gps-pause-toggle');
-
-    // DÉBLOCAGE CAPTEURS ET GPS
-    btn.addEventListener('click', async () => {
+    
+    // GESTION DU BOUTON (MARCHE / ARRÊT)
+    btn.onclick = async () => {
         try {
-            // Permission pour capteurs de mouvement (iOS/Chrome)
+            // Demande d'accès (Obligatoire sur iOS/Chrome moderne)
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 const permission = await DeviceMotionEvent.requestPermission();
                 if (permission !== 'granted') return alert("Capteurs refusés.");
@@ -14,40 +14,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ukf.isRunning = !ukf.isRunning;
             btn.textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
-            btn.style.background = ukf.isRunning ? "#ff4444" : "#00ff66";
+            btn.style.background = ukf.isRunning ? "var(--danger)" : "var(--success)";
             
-            if (ukf.isRunning) {
-                // Activer le GPS
-                navigator.geolocation.watchPosition((p) => {
-                    document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
-                    document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
-                    // Liaison Météo simplifiée
-                    document.getElementById('air-density').textContent = "1.225 kg/m³";
-                }, null, { enableHighAccuracy: true });
+            if(ukf.isRunning) {
+                ukf.lastTime = performance.now();
+                startGPS();
             }
-        } catch (e) { console.error(e); }
-    });
+        } catch (e) { console.error("Permission Error:", e); }
+    };
 
-    // Capture des mouvements IMU
+    // CAPTEURS (DeviceMotion)
     window.addEventListener('devicemotion', (e) => {
         ukf.accelRaw = {
             x: e.accelerationIncludingGravity.x || 0,
             y: e.accelerationIncludingGravity.y || 0,
-            z: e.accelerationIncludingGravity.z || 9.81
+            z: e.accelerationIncludingGravity.z || 9.80665
         };
         ukf.gyroRaw = e.rotationRate || { alpha: 0, beta: 0, gamma: 0 };
         
-        // Mise à jour visuelle du niveau à bulle
+        // Mise à jour immédiate du Niveau à Bulle
         const pitch = Math.atan2(-ukf.accelRaw.x, 10) * 180 / Math.PI;
         const roll = Math.atan2(ukf.accelRaw.y, ukf.accelRaw.z) * 180 / Math.PI;
         document.getElementById('pitch').textContent = pitch.toFixed(1) + "°";
         document.getElementById('roll').textContent = roll.toFixed(1) + "°";
     });
 
-    // Boucle de calcul 60Hz
-    function animate() {
-        ukf.update();
-        requestAnimationFrame(animate);
+    function startGPS() {
+        navigator.geolocation.watchPosition((p) => {
+            document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
+            document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
+            // Simuler l'altitude pour débloquer les IDs SVT
+            document.getElementById('air-density').textContent = "1.225 kg/m³";
+        }, null, { enableHighAccuracy: true });
     }
-    animate();
-});
+
+    // BOUCLE DE RENDU HAUTE FRÉQUENCE
+    function step() {
+        ukf.update();
+        requestAnimationFrame(step);
+    }
+    step();
+}
+
+document.addEventListener('DOMContentLoaded', initializeSystem);
