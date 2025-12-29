@@ -1,59 +1,26 @@
 const ukf = new ProfessionalUKF();
 
-async function initializeSystem() {
+document.getElementById('gps-pause-toggle').addEventListener('click', async () => {
+    // Déblocage obligatoire pour Chrome/iOS
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        const permission = await DeviceMotionEvent.requestPermission();
+        if (permission !== 'granted') return;
+    }
+
+    ukf.isRunning = !ukf.isRunning;
     const btn = document.getElementById('gps-pause-toggle');
-    
-    // GESTION DU BOUTON (MARCHE / ARRÊT)
-    btn.onclick = async () => {
-        try {
-            // Demande d'accès (Obligatoire sur iOS/Chrome moderne)
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission !== 'granted') return alert("Capteurs refusés.");
-            }
+    btn.textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
+    btn.style.background = ukf.isRunning ? "#ff4c4c" : "#00d166";
+});
 
-            ukf.isRunning = !ukf.isRunning;
-            btn.textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
-            btn.style.background = ukf.isRunning ? "var(--danger)" : "var(--success)";
-            
-            if(ukf.isRunning) {
-                ukf.lastTime = performance.now();
-                startGPS();
-            }
-        } catch (e) { console.error("Permission Error:", e); }
-    };
-
-    // CAPTEURS (DeviceMotion)
-    window.addEventListener('devicemotion', (e) => {
-        ukf.accelRaw = {
-            x: e.accelerationIncludingGravity.x || 0,
-            y: e.accelerationIncludingGravity.y || 0,
-            z: e.accelerationIncludingGravity.z || 9.80665
-        };
-        ukf.gyroRaw = e.rotationRate || { alpha: 0, beta: 0, gamma: 0 };
+window.addEventListener('devicemotion', (e) => {
+    if (ukf.isRunning) {
+        ukf.update(e.accelerationIncludingGravity, e.rotationRate);
         
-        // Mise à jour immédiate du Niveau à Bulle
-        const pitch = Math.atan2(-ukf.accelRaw.x, 10) * 180 / Math.PI;
-        const roll = Math.atan2(ukf.accelRaw.y, ukf.accelRaw.z) * 180 / Math.PI;
+        // Mise à jour du Niveau à bulle
+        const pitch = Math.atan2(-e.accelerationIncludingGravity.x, 10) * 180 / Math.PI;
+        const roll = Math.atan2(e.accelerationIncludingGravity.y, e.accelerationIncludingGravity.z) * 180 / Math.PI;
         document.getElementById('pitch').textContent = pitch.toFixed(1) + "°";
         document.getElementById('roll').textContent = roll.toFixed(1) + "°";
-    });
-
-    function startGPS() {
-        navigator.geolocation.watchPosition((p) => {
-            document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
-            document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
-            // Simuler l'altitude pour débloquer les IDs SVT
-            document.getElementById('air-density').textContent = "1.225 kg/m³";
-        }, null, { enableHighAccuracy: true });
     }
-
-    // BOUCLE DE RENDU HAUTE FRÉQUENCE
-    function step() {
-        ukf.update();
-        requestAnimationFrame(step);
-    }
-    step();
-}
-
-document.addEventListener('DOMContentLoaded', initializeSystem);
+});
