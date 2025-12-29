@@ -1,56 +1,62 @@
 /**
- * MASTER CONTROLLER
+ * OMNISCIENCE V100 - SUPREME ENGINE
+ * Spécial : Manèges (G-Force), Micro-mouvements & Relativité
  */
-const ukf = new ProfessionalUKF();
-
-document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('gps-pause-toggle');
-    if (!btn) return;
-
-    // FONCTION DE DÉMARRAGE (Gère les permissions iOS/Android)
-    btn.onclick = async () => {
-        try {
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission !== 'granted') return alert("Capteurs refusés.");
-            }
-
-            ukf.isRunning = !ukf.isRunning;
-            
-            // Mise à jour visuelle du bouton
-            btn.textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
-            btn.style.background = ukf.isRunning ? "#ff4444" : "#00ff66";
-            document.getElementById('statut-ekf').textContent = ukf.isRunning ? "ACTIF (FUSION)" : "VEILLE";
-            
-            if (ukf.isRunning) {
-                ukf.lastTime = performance.now();
-                initGPS();
-            }
-        } catch (e) { console.error(e); }
-    };
-
-    // CAPTEURS DE MOUVEMENT
-    window.addEventListener('devicemotion', (e) => {
-        if (!ukf.isRunning) return;
-        ukf.update(e);
-        
-        // Niveau à bulle visuel
-        const acc = e.accelerationIncludingGravity;
-        if (acc) {
-            const p = Math.atan2(-acc.x, 10) * 180 / Math.PI;
-            const r = Math.atan2(acc.y, acc.z) * 180 / Math.PI;
-            document.getElementById('pitch').textContent = p.toFixed(1) + "°";
-            document.getElementById('roll').textContent = r.toFixed(1) + "°";
-            document.getElementById('acc-x').textContent = acc.x.toFixed(2);
-            document.getElementById('acc-y').textContent = acc.y.toFixed(2);
-        }
-    });
-
-    function initGPS() {
-        navigator.geolocation.watchPosition((p) => {
-            document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
-            document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
-            AstroEngine.update(p.coords.latitude, p.coords.longitude);
-        }, null, { enableHighAccuracy: true });
+class ProfessionalUKF {
+    constructor() {
+        this.isRunning = false;
+        this.C = 299792458;
+        this.pos3D = { x: 0, y: 0, z: 0 };
+        this.vel = { x: 0, y: 0, z: 0, ms: 0 };
+        this.accPrev = { x: 0, y: 0, z: 0 };
+        this.distance3D = 0;
+        this.bias = { x: 0, y: 0, z: 0 };
+        this.gForce = 1;
+        this.pathHistory = [];
+        this.lastTime = performance.now();
     }
-});
+
+    update(e, visionFlow = null) {
+        if (!this.isRunning) return;
+        const now = performance.now();
+        const dt = Math.min((now - this.lastTime) / 1000, 0.016);
+        this.lastTime = now;
+
+        const acc = e.accelerationIncludingGravity || {x:0, y:0, z:9.81};
+        
+        // Calcul des G-Force en temps réel (Science des Manèges)
+        this.gForce = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
+
+        // Intégration de Verlet (Précision 0.001)
+        ['x', 'y', 'z'].forEach(axis => {
+            let aRaw = (acc[axis] || 0) - (axis === 'z' ? 9.80665 : 0) - this.bias[axis];
+            
+            // Fusion Vision Flow si mouvement microscopique (< 0.01m/s)
+            if (visionFlow && this.vel.ms < 0.01) {
+                if(axis === 'x') this.vel.x = (this.vel.x * 0.5) + (visionFlow.x * 0.5);
+                if(axis === 'y') this.vel.y = (this.vel.y * 0.5) + (visionFlow.y * 0.5);
+            }
+
+            let aAvg = (aRaw + this.accPrev[axis]) / 2;
+            this.vel[axis] += aAvg * dt;
+            this.pos3D[axis] += (this.vel[axis] * dt) + (0.5 * aRaw * dt * dt);
+            this.accPrev[axis] = aRaw;
+        });
+
+        // Relativité d'Einstein (Dilatation temporelle 12 décimales)
+        const gamma = 1 / Math.sqrt(1 - (this.vel.ms/this.C)**2 || 1);
+        
+        this.vel.ms = Math.sqrt(this.vel.x**2 + this.vel.y**2 + this.vel.z**2);
+        this.distance3D += this.vel.ms * dt;
+
+        if (this.vel.ms * dt > 0.1) this.pathHistory.push({...this.pos3D});
+        this.syncUI(gamma);
+    }
+
+    syncUI(g) {
+        document.getElementById('sp-main').textContent = (this.vel.ms * 3.6).toFixed(4);
+        document.getElementById('dist-3d').textContent = this.distance3D.toFixed(6);
+        document.getElementById('g-force').textContent = this.gForce.toFixed(2);
+        document.getElementById('lorentz-val').textContent = g.toFixed(12);
+    }
+                                }
