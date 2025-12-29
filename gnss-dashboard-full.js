@@ -2,48 +2,49 @@ const ukf = new ProfessionalUKF();
 
 document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('gps-pause-toggle');
-    if (!btn) return;
 
-    // FONCTION DE DÉMARRAGE SÉCURISÉE
+    // DÉBLOCAGE CAPTEURS ET GPS
     btn.addEventListener('click', async () => {
         try {
-            // Déblocage iOS/Android des capteurs de mouvement
+            // Permission pour capteurs de mouvement (iOS/Chrome)
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 const permission = await DeviceMotionEvent.requestPermission();
-                if (permission !== 'granted') {
-                    alert("Permission refusée. Le dashboard restera figé.");
-                    return;
-                }
+                if (permission !== 'granted') return alert("Capteurs refusés.");
             }
 
-            // Inversion de l'état
             ukf.isRunning = !ukf.isRunning;
-            
-            // Mise à jour visuelle du bouton
             btn.textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
             btn.style.background = ukf.isRunning ? "#ff4444" : "#00ff66";
-            document.getElementById('statut-ekf').textContent = ukf.isRunning ? "ACTIF (FUSION)" : "VEILLE";
             
-            if (ukf.isRunning) ukf.lastTime = performance.now();
-
-        } catch (e) {
-            console.error("Erreur d'activation :", e);
-        }
+            if (ukf.isRunning) {
+                // Activer le GPS
+                navigator.geolocation.watchPosition((p) => {
+                    document.getElementById('lat-ukf').textContent = p.coords.latitude.toFixed(6);
+                    document.getElementById('lon-ukf').textContent = p.coords.longitude.toFixed(6);
+                    // Liaison Météo simplifiée
+                    document.getElementById('air-density').textContent = "1.225 kg/m³";
+                }, null, { enableHighAccuracy: true });
+            }
+        } catch (e) { console.error(e); }
     });
 
-    // Écouteur de mouvement (Source UKF)
+    // Capture des mouvements IMU
     window.addEventListener('devicemotion', (e) => {
-        if (!e.accelerationIncludingGravity) return;
-        ukf.accel.x = e.accelerationIncludingGravity.x || 0;
-        ukf.accel.y = e.accelerationIncludingGravity.y || 0;
-        ukf.accel.z = e.accelerationIncludingGravity.z || 9.80665;
+        ukf.accelRaw = {
+            x: e.accelerationIncludingGravity.x || 0,
+            y: e.accelerationIncludingGravity.y || 0,
+            z: e.accelerationIncludingGravity.z || 9.81
+        };
+        ukf.gyroRaw = e.rotationRate || { alpha: 0, beta: 0, gamma: 0 };
         
-        // Mise à jour immédiate des IDs bruts pour prouver que ça marche
-        document.getElementById('acc-x').textContent = ukf.accel.x.toFixed(2);
-        document.getElementById('acc-y').textContent = ukf.accel.y.toFixed(2);
+        // Mise à jour visuelle du niveau à bulle
+        const pitch = Math.atan2(-ukf.accelRaw.x, 10) * 180 / Math.PI;
+        const roll = Math.atan2(ukf.accelRaw.y, ukf.accelRaw.z) * 180 / Math.PI;
+        document.getElementById('pitch').textContent = pitch.toFixed(1) + "°";
+        document.getElementById('roll').textContent = roll.toFixed(1) + "°";
     });
 
-    // Boucle de rendu (60 FPS)
+    // Boucle de calcul 60Hz
     function animate() {
         ukf.update();
         requestAnimationFrame(animate);
