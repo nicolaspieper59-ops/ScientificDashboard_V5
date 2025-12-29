@@ -1,74 +1,84 @@
 /**
- * GNSS-DASHBOARD-FULL.JS - Liaison Master
+ * GNSS-DASHBOARD-FULL.JS - Liaison Capteurs & UI
  */
 const ukf = new SpaceTimeUKF();
+let lastPos = null;
 
-async function initSystem() {
-    // 1. Bouton de démarrage (Autorisations iOS/Android)
+async function startSystem() {
+    // Bouton de démarrage (Permissions iOS/Android)
     document.getElementById('gps-pause-toggle').onclick = async () => {
         if (typeof DeviceMotionEvent.requestPermission === 'function') {
             await DeviceMotionEvent.requestPermission();
         }
         ukf.isRunning = !ukf.isRunning;
-        document.getElementById('gps-pause-toggle').textContent = ukf.isRunning ? "🛑 ARRÊT D'URGENCE" : "▶️ MARCHE GPS";
+        document.getElementById('gps-pause-toggle').textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
     };
 
-    // 2. Gestion du Magnétisme 3 Axes
+    // 1. Magnétomètre 3 axes
     if ('Magnetometer' in window) {
         const mag = new Magnetometer({frequency: 50});
-        mag.addEventListener('reading', () => {
+        mag.onreading = () => {
             document.getElementById('mag-x').textContent = mag.x.toFixed(1) + " µT";
             document.getElementById('mag-y').textContent = mag.y.toFixed(1) + " µT";
             document.getElementById('mag-z').textContent = mag.z.toFixed(1) + " µT";
-        });
+        };
         mag.start();
     }
 
-    // 3. Liaison Haute Fréquence (Mouvement/Salto)
-    window.addEventListener('devicemotion', (e) => ukf.predict(e), true);
+    // 2. Capteurs de Lumière & Son
+    if ('AmbientLightSensor' in window) {
+        const light = new AmbientLightSensor();
+        light.onreading = () => {
+            document.getElementById('env-lux').textContent = light.illuminance + " lx";
+            document.getElementById('ambient-light').textContent = light.illuminance + " lx";
+        };
+        light.start();
+    }
 
-    // 4. Liaison GPS & Weather.js (Recalage & Environnement)
+    // 3. Boucle de Mouvement (UKF)
+    window.addEventListener('devicemotion', (e) => {
+        ukf.predict(e);
+        // Mise à jour Niveau à Bulle
+        const acc = e.accelerationIncludingGravity;
+        const pitch = Math.atan2(-acc.x, 10) * 180 / Math.PI;
+        const roll = Math.atan2(acc.y, acc.z) * 180 / Math.PI;
+        document.getElementById('pitch').textContent = pitch.toFixed(1) + "°";
+        document.getElementById('roll').textContent = roll.toFixed(1) + "°";
+        document.getElementById('bubble').style.transform = `translate(${roll}px, ${pitch}px)`;
+    });
+
+    // 4. Boucle GPS & Météo
     navigator.geolocation.watchPosition(async (p) => {
-        const lat = p.coords.latitude;
-        const lon = p.coords.longitude;
-        const speed = p.coords.speed || 0;
+        const {latitude, longitude, speed, accuracy} = p.coords;
+        const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
 
-        // Recalage de la vitesse UKF par le GPS
-        ukf.correctFromGPS(speed);
+        set('lat-ukf', latitude.toFixed(6));
+        set('lon-ukf', longitude.toFixed(6));
+        set('gps-accuracy-display', accuracy.toFixed(1) + " m");
+        set('speed-main-display', ((speed || 0) * 3.6).toFixed(1) + " km/h");
+        set('v-cosmic', (speed || 0).toFixed(2) + " m/s");
 
-        // Mise à jour Astro
-        AstroBridge.update(lat, lon);
-
-        // Sync Weather.js pour supprimer les N/A
+        // Sync Météo Pro
         try {
-            const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
-            const weather = await res.json();
-            if (weather.main) {
-                updateWeatherUI(weather.main, speed);
+            const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=VOTRE_CLE_API&units=metric`);
+            const data = await res.json();
+            if(data.main) {
+                set('air-temp-c', data.main.temp + " °C");
+                set('pressure-hpa', data.main.pressure + " hPa");
+                set('humidity-perc', data.main.humidity + " %");
+                set('statut-meteo', "ACTIF ✅");
+                
+                // Calcul Mach & Densité
+                const Tk = data.main.temp + 273.15;
+                const vSon = Math.sqrt(1.4 * 287.05 * Tk);
+                set('local-speed-of-sound', vSon.toFixed(2) + " m/s");
+                set('mach-number', ((speed || 0) / vSon).toFixed(5));
+                
+                AstroBridge.update(latitude, longitude, data.main.pressure);
             }
-        } catch (err) { console.warn("Weather API inaccessible"); }
+        } catch(e) { console.error("Météo indisponible"); }
 
-        document.getElementById('lat-ukf').textContent = lat.toFixed(6);
-        document.getElementById('lon-ukf').textContent = lon.toFixed(6);
-    }, null, { enableHighAccuracy: true });
+    }, null, {enableHighAccuracy: true});
 }
 
-function updateWeatherUI(m, vMs) {
-    const set = (id, val) => { if(document.getElementById(id)) document.getElementById(id).textContent = val; };
-    
-    // Altitude Géopotentielle
-    const hBaro = 44330 * (1 - Math.pow(m.pressure / 1013.25, 0.1903));
-    const hGeo = (6356766 * hBaro) / (6356766 + hBaro);
-
-    set('altitude-geopotentielle', hGeo.toFixed(2) + " m");
-    set('temp-air', m.temp.toFixed(1) + " °C");
-    set('press-hpa', m.pressure + " hPa");
-    
-    // Physique des fluides
-    const vSon = 331.3 * Math.sqrt(1 + m.temp / 273.15);
-    set('mach-number', (vMs / vSon).toFixed(5));
-    const rho = (m.pressure * 100) / (287.05 * (m.temp + 273.15));
-    set('air-density', rho.toFixed(3) + " kg/m³");
-}
-
-document.addEventListener('DOMContentLoaded', initSystem);
+document.addEventListener('DOMContentLoaded', startSystem);
