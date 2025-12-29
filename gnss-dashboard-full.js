@@ -1,55 +1,88 @@
-(function() {
-    const ukf = new ProfessionalUKF();
-    const btnStart = document.getElementById('gps-pause-toggle');
+/** * GNSS MASTER CONTROLLER
+ */
+const ukf = new SpaceTimeUKF();
 
-    btnStart.addEventListener('click', async () => {
-        if (!ukf.isRunning) {
-            // Demande de permission DeviceMotion (Crucial pour iOS/Android)
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                await DeviceMotionEvent.requestPermission();
-            }
-            window.addEventListener('devicemotion', (e) => ukf.processMotion(e), true);
-            
-            ukf.isRunning = true;
-            btnStart.textContent = "🛑 ARRÊT D'URGENCE";
-            btnStart.style.backgroundColor = "red";
-            startDataStreams();
-        } else {
-            location.reload();
+async function initDashboard() {
+    // 1. Bouton Marche/Arrêt
+    document.getElementById('gps-pause-toggle').onclick = async () => {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            await DeviceMotionEvent.requestPermission();
         }
-    });
+        ukf.isRunning = !ukf.isRunning;
+        document.getElementById('gps-pause-toggle').textContent = ukf.isRunning ? "🛑 ARRÊT D'URGENCE" : "▶️ MARCHE GPS";
+    };
 
-    function startDataStreams() {
-        navigator.geolocation.watchPosition((p) => {
-            const lat = p.coords.latitude;
-            const lon = p.coords.longitude;
-            ukf.vMs = p.coords.speed || 0;
+    // 2. Flux GPS (Recalage dérive)
+    navigator.geolocation.watchPosition((p) => {
+        const lat = p.coords.latitude, lon = p.coords.longitude;
+        ukf.correct(p.coords.speed || 0);
+        
+        // Appel weather.js
+        fetchWeather(lat, lon);
+        
+        // Mise à jour Astro (Montre Minecraft)
+        if (window.AstroBridge) {
+            const astro = AstroBridge.update(lat, lon);
+            updateNightMode(astro.sunAltitude);
+        }
 
-            document.getElementById('lat-ukf').textContent = lat.toFixed(6);
-            document.getElementById('lon-ukf').textContent = lon.toFixed(6);
+        document.getElementById('lat-ukf').textContent = lat.toFixed(6);
+        document.getElementById('lon-ukf').textContent = lon.toFixed(6);
+    }, null, { enableHighAccuracy: true });
 
-            if (typeof AstroBridge !== 'undefined') AstroBridge.update(lat, lon);
-            
-            // --- UTILISATION DE VOTRE weather.js ---
-            fetch(`/api/weather?lat=${lat}&lon=${lon}`)
-                .then(r => r.json())
-                .then(data => {
-                    const temp = data.main.temp;
-                    const press = data.main.pressure;
-                    
-                    document.getElementById('temp-air').textContent = temp + "°C";
-                    document.getElementById('press-hpa').textContent = press + " hPa";
-                    document.getElementById('humidity-rel').textContent = data.main.humidity + "%";
-                    
-                    // Calcul Densité de l'air (Physique des fluides)
-                    const rho = (press * 100) / (287.05 * (temp + 273.15));
-                    document.getElementById('air-density').textContent = rho.toFixed(3) + " kg/m³";
+    // 3. Flux IMU (Dynamique Salto)
+    window.addEventListener('devicemotion', (e) => ukf.predict(e), true);
+}
 
-                    // Calcul du Nombre de Mach
-                    const vSon = 331.3 * Math.sqrt(1 + temp / 273.15);
-                    document.getElementById('mach-number').textContent = (ukf.vFiltered / vSon).toFixed(4);
-                    document.getElementById('speed-of-sound').textContent = vSon.toFixed(1) + " m/s";
-                });
-        }, null, { enableHighAccuracy: true });
+async function fetchWeather(lat, lon) {
+    try {
+        const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        if (data.main) {
+            updateEnvironment(data.main);
+        }
+    } catch (e) { console.error("Weather proxy fail"); }
+}
+
+function updateEnvironment(m) {
+    const tempK = m.temp + 273.15;
+    const rho = (m.pressure * 100) / (287.05 * tempK);
+    const vSon = 331.3 * Math.sqrt(1 + m.temp / 273.15);
+    
+    // Altitude Géopotentielle
+    const Re = 6356766;
+    const hBaro = (tempK / 0.0065) * (1 - Math.pow(m.pressure / 1013.25, 0.190263));
+    const hGeo = (Re * hBaro) / (Re + hBaro);
+
+    document.getElementById('air-density').textContent = rho.toFixed(3) + " kg/m³";
+    document.getElementById('altitude-geopotentielle').textContent = hGeo.toFixed(2) + " m";
+    document.getElementById('temp-air').textContent = m.temp + " °C";
+    document.getElementById('mach-number').textContent = ( (math.norm(ukf.v)) / vSon ).toFixed(5);
+}
+
+function updateNightMode(sunAlt) {
+    if (sunAlt < 0) {
+        document.body.classList.add('night-ui');
+        document.getElementById('night-mode-status').textContent = "Nuit (🌙)";
+    } else {
+        document.body.classList.remove('night-ui');
+        document.getElementById('night-mode-status').textContent = "Jour (☀️)";
     }
-})();
+}
+const DataLogger = {
+    records: [],
+    start() { this.records = []; this.active = true; },
+    stop() {
+        this.active = false;
+        let csv = "Timestamp,Vitesse_kmh,G_Force,Alt_Geo\n";
+        this.records.forEach(r => { csv += `${r.t},${r.v},${r.g},${r.a}\n`; });
+        const link = document.createElement("a");
+        link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+        link.download = "ukf_session.csv";
+        link.click();
+    },
+    capture(v, g, a) {
+        if(this.active) this.records.push({t: new Date().toLocaleTimeString(), v: v, g: g, a: a});
+    }
+};
+document.addEventListener('DOMContentLoaded', initDashboard);
