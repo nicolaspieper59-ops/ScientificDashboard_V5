@@ -1,46 +1,52 @@
-/**
- * MASTER CONTROLLER
- */
 const ukf = new ProfessionalUKF();
 
 document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('gps-pause-toggle');
-    
-    // 1. GESTION DU BOUTON (MARCHE / ARRÊT)
-    btn.onclick = async () => {
-        // Déblocage des capteurs (iOS/Android)
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
+    if (!btn) return;
+
+    // FONCTION DE DÉMARRAGE SÉCURISÉE
+    btn.addEventListener('click', async () => {
+        try {
+            // Déblocage iOS/Android des capteurs de mouvement
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                const permission = await DeviceMotionEvent.requestPermission();
+                if (permission !== 'granted') {
+                    alert("Permission refusée. Le dashboard restera figé.");
+                    return;
+                }
+            }
+
+            // Inversion de l'état
+            ukf.isRunning = !ukf.isRunning;
+            
+            // Mise à jour visuelle du bouton
+            btn.textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
+            btn.style.background = ukf.isRunning ? "#ff4444" : "#00ff66";
+            document.getElementById('statut-ekf').textContent = ukf.isRunning ? "ACTIF (FUSION)" : "VEILLE";
+            
+            if (ukf.isRunning) ukf.lastTime = performance.now();
+
+        } catch (e) {
+            console.error("Erreur d'activation :", e);
         }
+    });
 
-        ukf.isRunning = !ukf.isRunning;
-        btn.textContent = ukf.isRunning ? "🛑 PAUSE" : "▶️ MARCHE GPS";
-        btn.style.background = ukf.isRunning ? "var(--danger)" : "var(--success)";
+    // Écouteur de mouvement (Source UKF)
+    window.addEventListener('devicemotion', (e) => {
+        if (!e.accelerationIncludingGravity) return;
+        ukf.accel.x = e.accelerationIncludingGravity.x || 0;
+        ukf.accel.y = e.accelerationIncludingGravity.y || 0;
+        ukf.accel.z = e.accelerationIncludingGravity.z || 9.80665;
         
-        document.getElementById('statut-ekf').textContent = ukf.isRunning ? "ACTIF (FUSION)" : "VEILLE";
-    };
+        // Mise à jour immédiate des IDs bruts pour prouver que ça marche
+        document.getElementById('acc-x').textContent = ukf.accel.x.toFixed(2);
+        document.getElementById('acc-y').textContent = ukf.accel.y.toFixed(2);
+    });
 
-    // 2. ÉCOUTEUR GPS
-    navigator.geolocation.watchPosition((p) => {
-        const { latitude, longitude } = p.coords;
-        document.getElementById('lat-ukf').textContent = latitude.toFixed(6);
-        document.getElementById('lon-ukf').textContent = longitude.toFixed(6);
-        
-        // Mise à jour Astro & Météo
-        AstroEngine.update(latitude, longitude, {main: {temp: 15, pressure: 1013.25}});
-    }, null, { enableHighAccuracy: true });
-
-    // 3. BOUCLE DE RENDU (60 FPS)
-    function step() {
+    // Boucle de rendu (60 FPS)
+    function animate() {
         ukf.update();
-        
-        // Mise à jour Niveau à Bulle
-        const pitch = Math.atan2(-ukf.accel.x, 10) * 180 / Math.PI;
-        const roll = Math.atan2(ukf.accel.y, ukf.accel.z) * 180 / Math.PI;
-        document.getElementById('pitch').textContent = pitch.toFixed(1) + "°";
-        document.getElementById('roll').textContent = roll.toFixed(1) + "°";
-        
-        requestAnimationFrame(step);
+        requestAnimationFrame(animate);
     }
-    step();
+    animate();
 });
