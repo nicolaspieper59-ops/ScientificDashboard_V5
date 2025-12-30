@@ -251,6 +251,9 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
         <div class="column-1">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
+                <div id="poi-alert" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ff0; color:#000; font-weight:bold; padding:20px; border-radius:10px; z-index:10000; box-shadow:0 0 30px #ff0;">
+    ⚠️ POINT D'INTÉRÊT ENREGISTRÉ (SHAKE DETECTED)
+                </div>
                 <div class="data-point"><span>Heure Locale (NTP)</span><span id="local-time">--</span></div>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
@@ -259,10 +262,15 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
                 <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display-2">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy-2">± --ms</span></div>
                 <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
-                
-                <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">0.00 s</span></div>
-                <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">0.00 s</span></div>
-                <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">00:00</span></div>
+                <div class="data-point"><span>Heure NTP:</span> <span id="ntp-offset">Sync...</span></div>
+                <div class="data-point"><span>Batterie Appareil:</span> <span id="batt-level">-- %</span></div>
+                <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal">OPTIMAL</span></div>
+                <div class="data-point"><span>Vibration (Jerk):</span> <span id="jerk-vector">-.- m/s³</span></div>
+                <div class="data-point"><span>Latence (Est.):</span> <span id="wifi-latency">-- ms</span></div>  
+                <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
+                <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
+                <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
+                <div class="data-point"><span>Score Fluidité</span><span id="smoothness-score">--/100</span></div>
                 <hr>
                 <div class="controls-grid" role="group">
                     <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
@@ -365,11 +373,13 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
                 <div class="data-point"><span>Vitesse Max (Session)</span><span id="speed-max-session">-.- km/h</span></div> 
                 <div class="data-point"><span>Vitesse Moyenne (Mvt)</span><span id="speed-avg-moving">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Moyenne (Totale)</span><span id="speed-avg-total">-.- km/h</span></div>
-                <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">-.-- m/s</span></div>    
+                <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">-.-- m/s</span></div>
+                <div class="data-point"><span>Statut Vol:</span> <span id="air-time-s" style="color:#0f0;">SOL</span></div>
+                <div class="data-point"><span>Pente (%):</span> <span id="gradient-thermique" style="color:#ff00ff;">-.- %</span></div>    
                 <hr>
                 <h3>Physique & Relativité</h3>
                 <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="local-speed-of-sound">--</span></div>
-                <div class="data-point"><span>% Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
+                <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
                 <div class="data-point"><span>Facteur de Lorentz</span><span id="lorentz-factor">-.--------</span></div>
@@ -388,7 +398,7 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
                 <div class="data-point"><span>Distance 3D Précise (UKF)</span><span id="total-distance-3d-2">-.---- km</span></div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">1.000</span></div>
-                <span id="nether-mode-status" style="display:none;">1.000</span>
+                <span id="nether-mode-status" style="display:none;">1.000</span> 
                     
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">-.--e+-- s</span></div>
                 <div class="data-point"><span>Distance (min-lumière)</span><span id="distance-light-min">-.--e+-- min</span></div>
@@ -404,7 +414,7 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
 
             <section class="panel" aria-labelledby="map-heading">
                 <h2 id="map-heading"><i class="fas fa-map-marked-alt"></i> Carte GNSS / Globe Interactif</h2>
-                <div class="data-point"><span>Précision GPS (Acc)</span><span id="gps-accuracy-display">N/A</span></div> <div id="map-container">
+                <div class="data-point"><span>Précision GPS (Acc)</span><span id="gps-accuracy-display">--</span></div> <div id="map-container">
                     <div id="globe-container" style="display:none; width: 100%; height: 350px; background: #000; border-radius: 8px;"></div>
                     <div id="map" role="img" aria-label="Carte interactive affichant la position GPS en temps réel.">Chargement de la carte...</div>
                     <button id="toggle-globe-btn" style="position: absolute; top: 25px; left: 10px; z-index: 1000; background: rgba(0,0,0,0.6); color: white; padding: 5px; border-radius: 4px;">Globe</button>
@@ -461,8 +471,14 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
                 <div class="data-point"><span>Puissance Mécanique (W)</span><span id="mechanical-power">-.-- W</span></div>
                 <div class="data-point"><span>Pression de Radiation</span><span id="radiation-pressure">--</span></div>
                 <div class="data-point"><span>Force de Coriolis</span><span id="coriolis-force">-.-- N</span></div>
+                <hr style="border:1px solid var(--border);">
+                <h3>Performance & Flow</h3>
+                <div class="data-point"><span>Puissance (Watts):</span> <span id="human-power-w">-- W</span></div>
+                <div class="data-point"><span>Adrénaline Index:</span> <span id="adrenaline-idx">-.- / 10</span></div>
+                <div class="data-point" style="background:rgba(0,255,0,0.1);"><span>Score Fluidité:</span> <span id="smoothness-score">---/100</span></div>
+                <div class="data-point"><span>Calories (METs):</span> <span id="photosynthesis-rate">-.- kcal</span></div>
             </section>
-
+    
             <section class="panel" aria-labelledby="ekf-heading">
                 <h2 id="ekf-heading"><i class="fas fa-brain"></i> Filtre EKF/UKF & Debug</h2>
                 <div class="control-input-full" style="padding-bottom: 10px;">
@@ -495,10 +511,10 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
                 </div>
                 <div class="data-point">
                     <span>Inclinaison (Pitch)</span>
-                    <span id="pitch">0.0°</span> </div>
+                    <span id="pitch">-.-°</span> </div>
                 <div class="data-point">
                     <span>Roulis (Roll)</span>
-                    <span id="roll">0.0°</span> </div>
+                    <span id="roll">-.-°</span> </div>
             </section>
 
             <section class="panel" aria-labelledby="astro-heading">
@@ -561,7 +577,7 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
             <div style="font-size:1.2em;">KM/H</div>
         </div>
         <div style="border-top:1px solid #0f0; padding-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div>DIST 3D: <span id="dist-3d" style="color:#fff;">0.000000</span> m</div>
+            <div>DIST 3D: <span id="dist-3d" style="color:#fff;">-.------</span> m</div>
             <div>LORENTZ: <span id="lorentz-val" style="color:#fff;">1.0000</span></div>
             <div>SOLEIL: <span id="hud-sun-alt-1">--</span></div>
             <div>MODE: <span style="color:#0ff;">QUANTUM-MICRON</span></div>
