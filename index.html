@@ -202,6 +202,34 @@ button {
     .dashboard-container { grid-template-columns: 1fr; }
     #speed-main-display { font-size: 3rem; }
     }
+    :root {
+    --bg: #07070a; --panel: #12121a; --text: #e0e0e0;
+    --col-sys: #00d2ff; --col-nav: #00ff88; --col-phy: #ff00ff; --col-ast: #ffcc00;
+}
+
+body { background: var(--bg); color: var(--text); font-family: monospace; transition: 0.3s; }
+body.light-mode { --bg: #f0f0f5; --panel: #ffffff; --text: #111; }
+
+.dashboard-container { 
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; 
+}
+
+section.panel { 
+    background: var(--panel); border: 1px solid #252533; border-radius: 8px; padding: 12px; 
+}
+
+h2 { font-size: 0.9rem; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px; }
+
+.data-point { display: flex; justify-content: space-between; font-size: 0.8rem; margin: 4px 0; }
+.data-point span[id] { font-weight: bold; color: #fff; }
+
+body.light-mode .data-point span[id] { color: #000; }
+
+#sp-main { font-size: 4rem; color: var(--col-nav); text-align: center; display: block; }
+#g-force { color: var(--col-ast); font-weight: bold; }
+
+button { width: 100%; padding: 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+#start-btn { background: var(--col-nav); color: #000; margin-bottom: 10px; }
 </style>
 </head>
 <body class="dark-mode"> 
@@ -228,7 +256,7 @@ button {
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">00:00</span></div>
                 <hr>
                 <div class="controls-grid" role="group">
-                    <button id="gps-pause-toggle" class="control-btn accent">▶️ MARCHE GPS</button>
+                    <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
                     <select id="freq-select" aria-label="Fréquence GPS">
                         <option value="HIGH_FREQ">Haute Fréquence</option>
                         <option value="LOW_FREQ">Basse Fréquence</option>
