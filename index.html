@@ -239,8 +239,54 @@ input, select {
 }
 
 hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
+class UKFPro {
+    constructor() {
+        this.velocity = 0;
+        this.distance = 0;
+        this.lastT = performance.now();
+        this.noiseFloor = 0.04; 
+    }
+/* Mode Nuit (Par défaut) */
+body.dark-mode {
+    --bg-dark: #050507;
+    --panel-bg: rgba(18, 18, 26, 0.95);
+    --text-main: #e0e0e0;
+    --border-dim: #252533;
+}
+
+/* Mode Jour (Haute Visibilité) */
+body.light-mode {
+    --bg-dark: #f0f2f5;
+    --panel-bg: #ffffff;
+    --text-main: #1a1a1b;
+    --border-dim: #d1d9e6;
+    --text-dim: #555555;
+}
+
+body.light-mode .panel {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 1px solid #ccc;
+}
+
+body.light-mode .data-point span[id] {
+    color: #000;
+}
+
+body.light-mode h2 {
+    border-bottom: 2px solid #ddd;
+}
+
+/* Amélioration de la bulle de niveau */
+.spirit-level-container {
+    background: #000;
+    border-radius: 50px;
+    height: 40px;
+    margin: 10px 0;
+            }        
 </style>
 </head>
+<div id="poi-alert" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ff0; color:#000; font-weight:bold; padding:20px; border-radius:10px; z-index:10000; box-shadow:0 0 30px #ff0;">
+    ⚠️ POINT D'INTÉRÊT ENREGISTRÉ (SHAKE DETECTED)    
 <body class="dark-mode"> 
     <header>
         <h1 style="text-align: center; color: var(--accent-color);">GNSS SpaceTime Dashboard • UKF 21 États Fusion Professionnel</h1>
@@ -251,8 +297,6 @@ hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
         <div class="column-1">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
-                <div id="poi-alert" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ff0; color:#000; font-weight:bold; padding:20px; border-radius:10px; z-index:10000; box-shadow:0 0 30px #ff0;">
-    ⚠️ POINT D'INTÉRÊT ENREGISTRÉ (SHAKE DETECTED)
                 </div>
                 <div class="data-point"><span>Heure Locale (NTP)</span><span id="local-time">--</span></div>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
