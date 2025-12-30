@@ -275,7 +275,40 @@ body::before {
     z-index: 2000;
     background-size: 100% 2px, 3px 100%;
     pointer-events: none;
-    }        
+    }   
+    /* FORCE 4 COLONNES STRICTES */
+.dashboard-container {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 4px;
+    padding: 10px;
+    width: 100vw;
+    box-sizing: border-box;
+}
+
+.panel {
+    min-width: 0; 
+    overflow: hidden;
+    padding: 5px;
+    font-size: 0.6rem; /* Texte réduit pour mobile */
+}
+
+/* Adaptation spécifique aux petits écrans */
+@media (max-width: 600px) {
+    .data-point {
+        flex-direction: column;
+        align-items: flex-start;
+        font-size: 0.55rem;
+    }
+    h2 { font-size: 0.5rem; }
+}
+
+/* Horloge Minecraft */
+#minecraft-clock-container {
+    width: 60px; height: 60px;
+    margin: 0 auto;
+    border: 1px solid var(--accent-gold);
+}
 </style>
 </head>
 <div id="poi-alert" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ff0; color:#000; font-weight:bold; padding:20px; border-radius:10px; z-index:10000; box-shadow:0 0 30px #ff0;">
