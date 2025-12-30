@@ -1,47 +1,52 @@
-const FlightDashboard = {
+const Dashboard = {
     ukf: new UKFPro(),
     active: false,
 
     init() {
         document.getElementById('start-btn').onclick = () => {
             this.active = true;
-            document.getElementById('status-physique').textContent = "AIRBORNE / VOL";
+            document.getElementById('start-btn').style.display = 'none';
+            this.startSensors();
         };
-        this.loop();
+        
+        if ('getBattery' in navigator) {
+            navigator.getBattery().then(b => {
+                const up = () => document.getElementById('batt-level').textContent = (b.level * 100) + "%";
+                up(); b.onlevelchange = up;
+            });
+        }
     },
 
-    loop() {
+    startSensors() {
         window.addEventListener('devicemotion', (e) => {
             if (!this.active) return;
-
             const acc = e.accelerationIncludingGravity;
-            // Récupération des angles depuis le HTML (Niveau à bulle)
-            const pitch = parseFloat(document.getElementById('pitch').textContent);
-            const roll = parseFloat(document.getElementById('roll').textContent);
-
-            const flight = this.ukf.update(acc, pitch, roll);
-
-            // --- MISE À JOUR NAVIGATION VOL ---
-            const speedKmh = Math.abs(flight.velH * 3.6);
-            document.getElementById('sp-main').textContent = speedKmh.toFixed(4);
-            document.getElementById('speed-stable-kmh').textContent = speedKmh.toFixed(1) + " km/h";
             
-            // Vitesse Verticale (Crucial pour drone)
-            document.getElementById('vel-z').textContent = flight.velZ.toFixed(2) + " m/s";
-            document.getElementById('vertical-speed-ekf').textContent = flight.velZ.toFixed(2) + " m/s";
+            const pitch = (Math.atan2(-acc.x, Math.sqrt(acc.y**2 + acc.z**2)) * 180) / Math.PI;
+            const roll = (Math.atan2(acc.y, acc.z) * 180) / Math.PI;
 
-            // --- DYNAMIQUE ---
-            const gTotal = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
-            document.getElementById('g-force').textContent = gTotal.toFixed(2);
-            document.getElementById('force-g-vert').textContent = (acc.z / 9.80665).toFixed(2);
+            const res = this.ukf.compute(acc, pitch);
+            ScienceSocial.update(acc, res.vMs);
 
-            // --- ASTRO ---
-            // On garde les éphémérides pour le cap et la position du soleil (orientation)
-            const lat = parseFloat(document.getElementById('lat-ukf').textContent);
-            const lon = parseFloat(document.getElementById('lon-ukf').textContent);
-            AstroEngine.updateAll(lat, lon);
+            // Update UI
+            document.getElementById('sp-main').textContent = (res.vMs * 3.6).toFixed(2);
+            document.getElementById('speed-stable-kmh').textContent = (res.vMs * 3.6).toFixed(1) + " km/h";
+            document.getElementById('gradient-thermique').textContent = res.slope + " %";
+            document.getElementById('pitch').textContent = pitch.toFixed(0) + "°";
+            document.getElementById('roll').textContent = roll.toFixed(0) + "°";
+            
+            // Lorentz
+            const gamma = 1 / Math.sqrt(1 - Math.pow(res.vMs/299792458, 2));
+            document.getElementById('lorentz-factor').textContent = gamma.toFixed(10);
+
+            // Shake POI
+            if (Math.abs(acc.x) + Math.abs(acc.y) > 25) {
+                const alert = document.getElementById('poi-alert');
+                alert.style.display = 'block';
+                setTimeout(() => alert.style.display = 'none', 2000);
+            }
         });
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => FlightDashboard.init());
+Dashboard.init();
