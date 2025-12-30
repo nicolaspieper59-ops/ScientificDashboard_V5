@@ -11,65 +11,234 @@
     <link rel="manifest" href="manifest.json">
           
 <style> 
-/* style.css - VERSION FINALE CORRIGÉE */
+/* ============================================================
+   OMNISCIENCE V100 PRO - SYSTÈME DE DESIGN GLOBAL
+   ============================================================ */
+
 :root {
-    --bg: #07070a; --panel: #12121a; --border: #252533;
-    --text-main: #e0e0e0; --col-sys: #00d2ff; --col-nav: #00ff88;
-    --col-phy: #ff00ff; --col-ast: #ffcc00;
+    /* Palette de couleurs Scientifique */
+    --bg-dark: #050507;
+    --panel-bg: rgba(18, 18, 26, 0.95);
+    --border-dim: #252533;
+    --accent-cyan: #00d2ff;  /* Système */
+    --accent-green: #00ff88; /* Navigation */
+    --accent-pink: #ff00ff;  /* Dynamique */
+    --accent-gold: #ffcc00;  /* Astro */
+    --text-main: #e0e0e0;
+    --text-dim: #888888;
+    --danger: #ff4444;
 }
 
-body { background: var(--bg); color: var(--text-main); font-family: 'Courier New', monospace; margin: 0; font-size: 12px; }
+/* Base & Reset */
+* { box-sizing: border-box; }
 
-/* Force 4 colonnes */
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Segoe UI', 'Courier New', monospace;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    line-height: 1.4;
+}
+
+/* Conteneur WebGL de fond */
+#webgl-container {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1;
+}
+
+/* ============================================================
+   GRID SYSTEM (4 COLONNES)
+   ============================================================ */
+
 .dashboard-container {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 5px;
-    padding: 5px;
-    width: 100vw;
+    grid-template-columns: repeat(4, 1fr); /* Force 4 colonnes sur PC */
+    gap: 10px;
+    padding: 10px;
+    z-index: 10;
+    position: relative;
 }
 
-section.panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    padding: 8px;
-    border-radius: 4px;
-    overflow: hidden;
+/* Adaptation Mobile / Tablettes */
+@media (max-width: 1200px) { .dashboard-container { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .dashboard-container { grid-template-columns: 1fr; } }
+
+/* Panneaux de données */
+.panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    padding: 12px;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
 
-h2 { font-size: 0.7rem; color: #fff; border-bottom: 1px solid #333; margin: 0 0 5px 0; }
+h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 10px 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
+/* Couleurs par Colonne */
+.column-1 h2 { color: var(--accent-cyan); }
+.column-2 h2 { color: var(--accent-green); }
+.column-3 h2 { color: var(--accent-pink); }
+.column-4 h2 { color: var(--accent-gold); }
+
+/* Lignes de données */
 .data-point {
     display: flex;
     justify-content: space-between;
-    font-size: 0.65rem;
-    margin-bottom: 2px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    align-items: center;
+    font-size: 0.75rem;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 
-.data-point span:first-child { color: #888; }
-.data-point span[id] { font-weight: bold; color: #0f0; }
+.data-point span:first-child { color: var(--text-dim); }
+.data-point span[id] { 
+    font-weight: bold; 
+    font-family: 'Consolas', monospace;
+    color: #fff;
+}
 
-/* HUD du bas */
-.master-hud {
-    grid-column: span 4;
-    text-align: center;
-    border: 2px solid var(--col-nav);
-    padding: 15px;
+/* Mise en évidence des valeurs actives */
+span[id]:not(:empty):not(::-moz-placeholder) { color: #00ff00; }
+
+/* ============================================================
+   CONTROLES & BOUTONS
+   ============================================================ */
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
     margin-top: 10px;
 }
 
-#sp-main { font-size: 3rem; font-weight: 900; color: var(--col-nav); }
-
-/* Bouton Marche */
-#start-btn {
-    width: 100%; padding: 20px; background: #0f0; color: #000;
-    font-weight: bold; border-radius: 10px; cursor: pointer;
+button {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 8px;
+    font-size: 0.7rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-/* Mode Nuit/Jour */
-body.light-mode { --bg: #fff; --panel: #f0f0f0; --text-main: #000; }
-body.light-mode span[id] { color: #000 !important; }
+button:hover { background: #333; border-color: #666; }
+
+.control-input-full {
+    grid-column: span 2;
+    background: rgba(255,255,255,0.05);
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+input, select {
+    width: 100%;
+    background: #000;
+    color: #0f0;
+    border: 1px solid #333;
+    padding: 4px;
+    font-size: 0.8rem;
+}
+
+/* ============================================================
+   LE HUD MAÎTRE (OMNISCIENCE)
+   ============================================================ */
+
+/* Ce style s'applique à la partie basse que tu as fournie */
+.master-hud-container {
+    position: relative;
+    z-index: 20;
+    max-width: 600px;
+    margin: 20px auto;
+    pointer-events: none; /* Laisse passer le clic vers la carte sauf sur les boutons */
+}
+
+/* Le gros bloc vert */
+.hud-box {
+    background: rgba(0, 30, 0, 0.9);
+    border: 2px solid #0f0;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+    pointer-events: auto;
+}
+
+#sp-main {
+    font-family: 'Orbitron', 'Consolas', sans-serif;
+    text-shadow: 0 0 15px rgba(255,255,255,0.5);
+}
+
+#start-btn {
+    background: #0f0;
+    color: #000;
+    box-shadow: 0 5px 0 #006600;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+#start-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #006600;
+}
+
+/* ============================================================
+   ÉLÉMENTS SPÉCIFIQUES (Niveau, Carte, Astro)
+   ============================================================ */
+
+#map {
+    height: 200px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.spirit-level-container {
+    width: 100%;
+    height: 100px;
+    background: #111;
+    border: 1px solid #333;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spirit-level-bubble {
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, #0f0, #004400);
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: 0 0 10px #0f0;
+}
+
+/* Horloge Minecraft */
+#minecraft-clock-container {
+    background: #000;
+    padding: 10px;
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    margin: 10px auto;
+    border: 2px solid #333;
+    position: relative;
+}
+
+hr { border: 0; border-top: 1px solid #222; margin: 10px 0; }
 </style>
 </head>
 <body class="dark-mode"> 
@@ -87,7 +256,7 @@ body.light-mode span[id] { color: #000 !important; }
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
                 <div class="data-point"><span>Heure UTC Synchro</span><span id="gmt-time-display-1">--:--:--</span></div>
                 <div class="data-point"><span>Précision Synchro</span><span id="clock-accuracy-1">--ms</span></div>
-                <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display-2">00:00:00.000</span></div>
+                <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display-2">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy-2">± --ms</span></div>
                 <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
                 
@@ -344,7 +513,7 @@ body.light-mode span[id] { color: #000 !important; }
                 <hr>
                 <h3>Positionnement EKF</h3>
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">43.284559</span></div> 
-                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf"><5.345678</span></div>
+                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">5.345678</span></div>
                 <div class="data-point"><span>Altitude (UKF) (Z)</span> <span id="alt-display">100.00 m</span></div>
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">...</span></div>
                 <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">...</span></div>
