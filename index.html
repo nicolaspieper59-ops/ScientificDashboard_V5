@@ -11,225 +11,78 @@
     <link rel="manifest" href="manifest.json">
           
 <style> 
-/* * OMNISCIENCE V100 - SUPREME STYLE SHEET (FINAL VERSION)
- * Architecture : 4 Colonnes Adaptatives + Mode Hybride Jour/Nuit
- */
-
+/* OMNISCIENCE V100 - CSS FINAL CORRIGÉ */
 :root {
-    /* Palette Nuit (Par défaut) */
-    --bg-dark: #050508;
-    --panel-bg: rgba(18, 18, 26, 0.95);
-    --border-color: #252533;
-    --text-main: #ffffff;
-    --text-dim: #9da1b0;
-    
-    /* Couleurs de Colonnes (Néon) */
-    --col-sys: #00d2ff;  /* Cyan : Système */
-    --col-nav: #00ff88;  /* Vert : Navigation */
-    --col-phy: #ff00ff;  /* Magenta : Physique */
-    --col-ast: #ffcc00;  /* Or : Astro */
-    
-    /* Alertes */
-    --success: #00ff66;
-    --danger: #ff4444;
-    --warning: #ffcc00;
-}
-
-/* --- RESET & BASE --- */
-* { box-sizing: border-box; }
-
-body {
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    font-family: 'Segoe UI', 'Roboto', 'Courier New', monospace;
-    margin: 0;
-    transition: background-color 0.4s ease, color 0.4s ease;
-    overflow-x: hidden;
-}
-
-/* --- MODES JOUR / NUIT --- */
-body.light-mode {
-    --bg-dark: #f0f2f5;
-    --panel-bg: #ffffff;
-    --text-main: #1a1a1a;
-    --text-dim: #555555;
-    --border-color: #d1d1d6;
-    --col-nav: #008844; /* Contraste renforcé pour le soleil */
-}
-
-/* --- STRUCTURE 4 COLONNES --- */
-.dashboard-container {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    padding: 15px;
-    max-width: 100vw;
-}
-
-section.panel {
-    background: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 15px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    transition: transform 0.2s ease;
-}
-
-.column-1 h2 { color: var(--col-sys); border-bottom: 2px solid var(--col-sys); font-size: 1rem; margin-top: 0; }
-.column-2 h2 { color: var(--col-nav); border-bottom: 2px solid var(--col-nav); font-size: 1rem; margin-top: 0; }
-.column-3 h2 { color: var(--col-phy); border-bottom: 2px solid var(--col-phy); font-size: 1rem; margin-top: 0; }
-.column-4 h2 { color: var(--col-ast); border-bottom: 2px solid var(--col-ast); font-size: 1rem; margin-top: 0; }
-
-/* --- DATA POINTS (IDs) --- */
-.data-point {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
-    font-size: 0.85rem;
-}
-
-.data-point span:first-child {
-    color: var(--text-dim);
-}
-
-.data-point span[id] {
-    font-weight: bold;
-    font-family: 'Courier New', monospace;
-}
-
-/* --- HUD & SPEED DISPLAY --- */
-.speed-focus {
-    text-align: center;
-    padding: 20px 0;
-}
-
-#speed-main-display, #sp-main {
-    font-size: 4rem;
-    font-weight: 900;
-    color: var(--col-nav);
-    text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-}
-
-#g-force {
-    font-size: 2rem;
-    color: var(--col-ast);
-    text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
-}
-
-/* --- BOUTONS --- */
-button {
-    width: 100%;
-    padding: 18px;
-    margin: 10px 0;
-    border: none;
-    border-radius: 10px;
-    font-weight: bold;
-    font-size: 1rem;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: all 0.3s ease;
-}
-
-#start-btn {
-    background: var(--col-nav);
-    color: #000;
-    box-shadow: 0 5px 0 #006600;
-}
-
-#start-btn:active {
-    transform: translateY(4px);
-    box-shadow: 0 1px 0 #006600;
-}
-
-#toggle-mode-btn {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
-}
-
-/* --- ANIMATIONS & ÉTATS --- */
-@keyframes pulse-calibration {
-    0% { background-color: var(--col-ast); color: #000; }
-    50% { background-color: #ffaa00; color: #fff; }
-    100% { background-color: var(--col-ast); color: #000; }
-}
-
-.calibrating {
-    animation: pulse-calibration 1s infinite;
-}
-
-#poi-alert {
-    animation: flash 1s infinite alternate;
-}
-
-@keyframes flash {
-    from { opacity: 0.5; transform: scale(1); }
-    to { opacity: 1; transform: scale(1.05); }
-}
-
-/* --- IMU VISUALS (NIVEAU À BULLE) --- */
-.bubble-level {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 2px solid var(--border-color);
-    margin: 10px auto;
-    position: relative;
-    background: rgba(0,0,0,0.2);
-}
-
-#bubble {
-    width: 15px;
-    height: 15px;
-    background: var(--success);
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px var(--success);
-}
-
-/* --- RESPONSIVITÉ --- */
-@media (max-width: 1200px) {
-    .dashboard-container { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 650px) {
-    .dashboard-container { grid-template-columns: 1fr; }
-    #speed-main-display { font-size: 3rem; }
-    }
-    :root {
     --bg: #07070a; --panel: #12121a; --text: #e0e0e0;
     --col-sys: #00d2ff; --col-nav: #00ff88; --col-phy: #ff00ff; --col-ast: #ffcc00;
 }
 
-body { background: var(--bg); color: var(--text); font-family: monospace; transition: 0.3s; }
-body.light-mode { --bg: #f0f0f5; --panel: #ffffff; --text: #111; }
+body { 
+    background: var(--bg); color: var(--text); 
+    font-family: 'Segoe UI', monospace; margin: 0; padding: 5px;
+}
 
+/* Force les 4 colonnes même sur petit écran avec défilement horizontal si besoin */
 .dashboard-container { 
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; 
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 8px; 
+    width: 100%;
+    min-width: 320px; /* Sécurité pour très petits écrans */
 }
 
 section.panel { 
-    background: var(--panel); border: 1px solid #252533; border-radius: 8px; padding: 12px; 
+    background: var(--panel); 
+    border: 1px solid #252533; 
+    border-radius: 6px; 
+    padding: 8px;
+    overflow: hidden;
 }
 
-h2 { font-size: 0.9rem; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px; }
+h2 { 
+    font-size: 0.65rem; 
+    text-transform: uppercase; 
+    border-bottom: 1px solid #333; 
+    margin: 0 0 8px 0; 
+    padding-bottom: 3px;
+    white-space: nowrap;
+}
 
-.data-point { display: flex; justify-content: space-between; font-size: 0.8rem; margin: 4px 0; }
-.data-point span[id] { font-weight: bold; color: #fff; }
+/* Ajustement des IDs pour petits écrans */
+.data-point { 
+    display: flex; 
+    flex-direction: column; /* Label au-dessus de la valeur pour gagner de la place */
+    margin-bottom: 5px;
+    font-size: 0.7rem;
+}
 
-body.light-mode .data-point span[id] { color: #000; }
+.data-point span:first-child { color: #888; font-size: 0.6rem; }
+.data-point span[id] { font-weight: bold; color: #fff; word-break: break-all; }
 
-#sp-main { font-size: 4rem; color: var(--col-nav); text-align: center; display: block; }
-#g-force { color: var(--col-ast); font-weight: bold; }
+/* HUD Principal (Bas de page) */
+.master-hud {
+    grid-column: span 4;
+    text-align: center;
+    background: linear-gradient(180deg, #12121a 0%, #000 100%);
+    border: 2px solid var(--col-nav);
+    padding: 15px;
+    margin-top: 10px;
+}
 
-button { width: 100%; padding: 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-#start-btn { background: var(--col-nav); color: #000; margin-bottom: 10px; }
+#sp-main { font-size: 3.5rem; color: var(--col-nav); line-height: 1; font-weight: 900; }
+#g-force { font-size: 1.5rem; color: var(--col-ast); }
+
+/* Boutons */
+button { 
+    width: 100%; padding: 12px; border-radius: 5px; border: none; 
+    font-weight: bold; cursor: pointer; font-size: 0.8rem; margin: 5px 0;
+}
+#start-btn { background: var(--col-nav); color: #000; }
+#gps-pause-toggle { background: var(--col-ast); color: #000; }
+
+/* Mode Jour */
+body.light-mode { --bg: #f0f0f5; --panel: #fff; --text: #111; }
+body.light-mode span[id] { color: #000 !important; }
 </style>
 </head>
 <body class="dark-mode"> 
