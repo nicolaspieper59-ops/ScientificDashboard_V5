@@ -11,77 +11,64 @@
     <link rel="manifest" href="manifest.json">
           
 <style> 
-/* OMNISCIENCE V100 - CSS FINAL CORRIGÉ */
+/* style.css - VERSION FINALE CORRIGÉE */
 :root {
-    --bg: #07070a; --panel: #12121a; --text: #e0e0e0;
-    --col-sys: #00d2ff; --col-nav: #00ff88; --col-phy: #ff00ff; --col-ast: #ffcc00;
+    --bg: #07070a; --panel: #12121a; --border: #252533;
+    --text-main: #e0e0e0; --col-sys: #00d2ff; --col-nav: #00ff88;
+    --col-phy: #ff00ff; --col-ast: #ffcc00;
 }
 
-body { 
-    background: var(--bg); color: var(--text); 
-    font-family: 'Segoe UI', monospace; margin: 0; padding: 5px;
+body { background: var(--bg); color: var(--text-main); font-family: 'Courier New', monospace; margin: 0; font-size: 12px; }
+
+/* Force 4 colonnes */
+.dashboard-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    padding: 5px;
+    width: 100vw;
 }
 
-/* Force les 4 colonnes même sur petit écran avec défilement horizontal si besoin */
-.dashboard-container { 
-    display: grid; 
-    grid-template-columns: repeat(4, 1fr); 
-    gap: 8px; 
-    width: 100%;
-    min-width: 320px; /* Sécurité pour très petits écrans */
-}
-
-section.panel { 
-    background: var(--panel); 
-    border: 1px solid #252533; 
-    border-radius: 6px; 
+section.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
     padding: 8px;
+    border-radius: 4px;
     overflow: hidden;
 }
 
-h2 { 
-    font-size: 0.65rem; 
-    text-transform: uppercase; 
-    border-bottom: 1px solid #333; 
-    margin: 0 0 8px 0; 
-    padding-bottom: 3px;
-    white-space: nowrap;
+h2 { font-size: 0.7rem; color: #fff; border-bottom: 1px solid #333; margin: 0 0 5px 0; }
+
+.data-point {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    margin-bottom: 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-/* Ajustement des IDs pour petits écrans */
-.data-point { 
-    display: flex; 
-    flex-direction: column; /* Label au-dessus de la valeur pour gagner de la place */
-    margin-bottom: 5px;
-    font-size: 0.7rem;
-}
+.data-point span:first-child { color: #888; }
+.data-point span[id] { font-weight: bold; color: #0f0; }
 
-.data-point span:first-child { color: #888; font-size: 0.6rem; }
-.data-point span[id] { font-weight: bold; color: #fff; word-break: break-all; }
-
-/* HUD Principal (Bas de page) */
+/* HUD du bas */
 .master-hud {
     grid-column: span 4;
     text-align: center;
-    background: linear-gradient(180deg, #12121a 0%, #000 100%);
     border: 2px solid var(--col-nav);
     padding: 15px;
     margin-top: 10px;
 }
 
-#sp-main { font-size: 3.5rem; color: var(--col-nav); line-height: 1; font-weight: 900; }
-#g-force { font-size: 1.5rem; color: var(--col-ast); }
+#sp-main { font-size: 3rem; font-weight: 900; color: var(--col-nav); }
 
-/* Boutons */
-button { 
-    width: 100%; padding: 12px; border-radius: 5px; border: none; 
-    font-weight: bold; cursor: pointer; font-size: 0.8rem; margin: 5px 0;
+/* Bouton Marche */
+#start-btn {
+    width: 100%; padding: 20px; background: #0f0; color: #000;
+    font-weight: bold; border-radius: 10px; cursor: pointer;
 }
-#start-btn { background: var(--col-nav); color: #000; }
-#gps-pause-toggle { background: var(--col-ast); color: #000; }
 
-/* Mode Jour */
-body.light-mode { --bg: #f0f0f5; --panel: #fff; --text: #111; }
+/* Mode Nuit/Jour */
+body.light-mode { --bg: #fff; --panel: #f0f0f0; --text-main: #000; }
 body.light-mode span[id] { color: #000 !important; }
 </style>
 </head>
