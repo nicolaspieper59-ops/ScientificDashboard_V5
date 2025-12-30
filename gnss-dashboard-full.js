@@ -1,103 +1,71 @@
 /**
- * OMNISCIENCE V100 - MASTER FUSION ENGINE
- * Intègre : IMU + LST + dB + Lux (21 États)
+ * MASTER CONTROLER - OMNISCIENCE V100
+ * Mapping complet de tous les IDs du HTML
  */
-
-const Omniscience = {
+const Dashboard = {
+    ukf: new UKFPro(),
     isRunning: false,
-    speed: 0,
-    dist: 0,
-    bias: { x: 0, y: 0, z: 0 },
+    startTime: null,
+    maxSpeed: 0,
 
     init() {
-        document.getElementById('start-btn').onclick = async () => {
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                const p = await DeviceMotionEvent.requestPermission();
-                if (p !== 'granted') return;
-            }
-            this.calibrate();
-        };
+        document.getElementById('start-btn').addEventListener('click', () => this.start());
+        this.initSensors();
     },
 
-    calibrate() {
-        let samples = 0;
-        const btn = document.getElementById('start-btn');
-        btn.textContent = "CALIBRATION EN COURS...";
-        
-        const collector = (e) => {
-            this.bias.z += e.accelerationIncludingGravity.z;
-            samples++;
-        };
-        window.addEventListener('devicemotion', collector);
-
-        setTimeout(() => {
-            window.removeEventListener('devicemotion', collector);
-            this.bias.z /= samples; // Détermine le 1G local
-            this.isRunning = true;
-            btn.textContent = "SYSTÈME OPÉRATIONNEL";
-            btn.style.background = "#ffcc00";
-            this.loop();
-        }, 2000);
+    start() {
+        this.isRunning = true;
+        this.startTime = Date.now();
+        document.getElementById('start-btn').style.display = 'none';
+        document.getElementById('status-physique').textContent = "SYSTÈME ACTIF";
     },
 
-    loop() {
-        window.addEventListener('devicemotion', (e) => this.updatePhysics(e));
-        // Mise à jour Astro toutes les secondes
-        setInterval(() => this.updateAstro(), 1000);
-    },
+    initSensors() {
+        window.addEventListener('devicemotion', (e) => {
+            if (!this.isRunning) return;
+            const dt = 0.016;
+            const res = this.ukf.update(e.accelerationIncludingGravity, e.rotationRate, dt);
+            this.updateUI(e, res);
+        });
 
-    updatePhysics(e) {
-        if (!this.isRunning) return;
-
-        const dt = 0.016; // 60fps
-        const acc = e.accelerationIncludingGravity;
-        
-        // 1. Correction par Inclinaison (Pitch/Roll simplifié)
-        const pitch = Math.atan2(-acc.x, Math.sqrt(acc.y*acc.y + acc.z*acc.z));
-        const roll = Math.atan2(acc.y, acc.z);
-        
-        // 2. Calcul G-Force Réelle (corrigée du biais)
-        const gTotal = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
-        
-        // 3. Fusion Sonore (Validation de la vitesse par dB)
-        // Note : On utilise un ID simulé pour l'exemple, à lier à l'AnalyzerNode
-        const soundLevel = 65; // dB
-        const soundSpeedFactor = Math.max(0, (soundLevel - 40) / 2);
-
-        // 4. Intégration UKF Simplifiée
-        const linearAcc = (acc.z - this.bias.z);
-        if (Math.abs(linearAcc) > 0.1) {
-            this.speed += linearAcc * dt;
-            this.dist += Math.abs(this.speed * dt);
+        // Capteur de lumière (ID: env-lux)
+        if ('AmbientLightSensor' in window) {
+            const sensor = new AmbientLightSensor();
+            sensor.onreading = () => document.getElementById('env-lux').textContent = sensor.illuminance + " lx";
+            sensor.start();
         }
-
-        this.refreshUI(gTotal, pitch, roll, soundSpeedFactor);
     },
 
-    refreshUI(g, p, r, sSync) {
-        const vKmh = Math.abs(this.speed * 3.6);
+    updateUI(e, ukfRes) {
+        // 1. Colonne SYSTÈME
+        document.getElementById('elapsed-time').textContent = ((Date.now() - this.startTime)/1000).toFixed(2) + " s";
+        document.getElementById('ukf-velocity-uncertainty').textContent = ukfRes.uncertainty.toFixed(4);
+
+        // 2. Colonne NAVIGATION & RELATIVITÉ (ID sp-main et speed-stable-kmh)
+        const v = Math.abs(this.ukf.state.vel[2] * 3.6); // km/h
+        if(v > this.maxSpeed) this.maxSpeed = v;
         
-        // HUD
-        document.getElementById('sp-main').textContent = vKmh.toFixed(4);
-        document.getElementById('g-force').textContent = g.toFixed(3);
-        document.getElementById('dist-3d').textContent = this.dist.toFixed(6);
+        document.getElementById('sp-main').textContent = v.toFixed(4);
+        document.getElementById('speed-stable-kmh').textContent = v.toFixed(1) + " km/h";
+        document.getElementById('speed-max-session').textContent = this.maxSpeed.toFixed(1) + " km/h";
         
-        // Colonnes
-        document.getElementById('force-g-vert').textContent = g.toFixed(2);
-        document.getElementById('pitch').textContent = (p * 57.29).toFixed(1) + "°";
-        document.getElementById('roll').textContent = (r * 57.29).toFixed(1) + "°";
-        document.getElementById('sound-speed-sync').textContent = (85 + sSync).toFixed(1) + "%";
-        
-        // Relativité
-        const gamma = 1 / Math.sqrt(1 - Math.pow(this.speed / 299792458, 2));
-        document.getElementById('lorentz-val').textContent = gamma.toFixed(12);
+        const gamma = 1 / Math.sqrt(1 - (v/1079252848)**2); // Relativité
         document.getElementById('lorentz-factor').textContent = gamma.toFixed(8);
-    },
+        document.getElementById('lorentz-val').textContent = gamma.toFixed(10);
 
-    updateAstro() {
-        document.getElementById('tslv').textContent = new Date().toLocaleTimeString();
-        document.getElementById('hud-sun-alt').textContent = "Stable";
+        // 3. Colonne DYNAMIQUE (G-Force et Inclinaison)
+        const g = Math.sqrt(e.accelerationIncludingGravity.x**2 + e.accelerationIncludingGravity.y**2 + e.accelerationIncludingGravity.z**2) / 9.80665;
+        document.getElementById('g-force').textContent = g.toFixed(2);
+        document.getElementById('force-g-vert').textContent = g.toFixed(2);
+        document.getElementById('pitch').textContent = (ukfRes.pitch * 57.29).toFixed(1) + "°";
+        document.getElementById('roll').textContent = (ukfRes.roll * 57.29).toFixed(1) + "°";
+
+        // 4. Colonne ASTRO (Appel moteur astro)
+        const astro = AstroEngine.calculate(43.28, 5.34); // Marseille par défaut
+        document.getElementById('tslv').textContent = astro.tslv;
+        document.getElementById('hud-sun-alt').textContent = astro.sunAlt + "°";
+        document.getElementById('julian-date').textContent = astro.jd;
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => Omniscience.init()); 
+Dashboard.init();
