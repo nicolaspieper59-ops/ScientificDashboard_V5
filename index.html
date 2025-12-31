@@ -266,7 +266,7 @@ h2 {
                 <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display-2">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy-2">± --ms</span></div>
                 <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
-                <div class="data-point"><span>Heure NTP:</span> <span id="ntp-offset">Sync...</span></div>
+                <div class="data-point"><span>Heure NTP:</span> <span id="ntp-offset-2">Sync...</span></div>
                 <div class="data-point"><span>Batterie Appareil:</span> <span id="batt-level">-- %</span></div>
                 <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal">OPTIMAL</span></div>
                 <div class="data-point"><span>Vibration (Jerk):</span> <span id="jerk-vector">-.- m/s³</span></div>
@@ -570,6 +570,14 @@ h2 {
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>  
              </section>
         </main>
+    <div class="master-hud-fixed">
+    <div class="hud-display">
+        <div id="sp-main-hud">0.0</div>
+        <div class="unit">KM/H (UKF)</div>
+    </div>
+    
+    <button id="start-btn-final">INITIALISER LE SYSTÈME FINAL</button>
+    </div>
                     
 <script src="vendor/math.min.js"></script>
 
