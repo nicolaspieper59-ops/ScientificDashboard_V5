@@ -535,9 +535,9 @@ h2 {
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">43.284559</span></div> 
                 <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">5.345678</span></div>
                 <div class="data-point"><span>Altitude (UKF) (Z)</span> <span id="alt-display">100.00 m</span></div>
-                <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt">...</span></div>
-                <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">...</span></div>
-                <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">...</span></div>
+                <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt"></span></div>
+                <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">--</span></div>
+                <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">--</span></div>
                 <hr>
                 <div class="astro-visual-container">
     <canvas id="mc-clock-canvas" width="120" height="120"></canvas>
@@ -568,17 +568,18 @@ h2 {
                 <div class="data-point"><span>Azimut (Lune)</span><span id="moon-azimuth">--</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">--</span></div>
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>  
-                
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
              </section>
         </main>
                     
 <script src="vendor/math.min.js"></script>
-<script src="vendor/three.min.js"></script>    
+
+<script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
+
 <script src="lib/ephem.js"></script>
 <script src="lib/astro.js"></script>
 <script src="lib/ukf-lib.js"></script>
+
 <script src="gnss-dashboard-full.js"></script>
                     
 </body>
