@@ -247,9 +247,9 @@ h2 {
     }
 </style>
 </head>
-<div id="poi-alert" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#ff0; color:#000; font-weight:bold; padding:20px; border-radius:10px; z-index:10000; box-shadow:0 0 30px #ff0;">
-    ⚠️ POINT D'INTÉRÊT ENREGISTRÉ (SHAKE DETECTED)    
-<body class="dark-mode"> 
+ 
+<body class="dark-mode">
+<div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>   
     <header>
         <h1 style="text-align: center; color: var(--accent-color);">GNSS SpaceTime Dashboard • UKF 21 États Fusion Professionnel</h1>
     </header>
@@ -259,8 +259,6 @@ h2 {
         <div class="column-1">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
-                </div>
-                <div class="data-point"><span>Heure Locale (NTP)</span><span id="local-time">--</span></div>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
                 <div class="data-point"><span>Heure UTC Synchro</span><span id="gmt-time-display-1">--:--:--</span></div>
