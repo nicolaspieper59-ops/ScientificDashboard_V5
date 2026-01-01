@@ -11,268 +11,140 @@
     <link rel="manifest" href="manifest.json">
           
 <style> 
-    /* ============================================================
-   OMNISCIENCE V100 PRO - ARCHITECTURE CSS FINALE
-   Cible : Haute Précision, Navigation Mobile & Souterraine
+/* ============================================================
+   OMNISCIENCE V100 PRO - ARCHITECTURE CSS CORRIGÉE
+   Cible : Haute Précision & Clics Libérés
    ============================================================ */
 
 :root {
     --bg-dark: #050507;
-    --panel-bg: rgba(12, 12, 18, 0.92);
+    --panel-bg: rgba(12, 12, 18, 0.95);
     --border-dim: #252533;
-    --accent-cyan: #00d2ff;  /* Colonne 1 : Système */
-    --accent-green: #00ff88; /* Colonne 2 : Dynamique */
-    --accent-pink: #ff00ff;  /* Colonne 3 : Environnement */
-    --accent-gold: #ffcc00;  /* Colonne 4 : Astro */
+    --accent-cyan: #00d2ff;  
+    --accent-green: #00ff88; 
+    --accent-pink: #ff00ff;  
+    --accent-gold: #ffcc00;  
     --text-main: #e0e0e0;
-    --text-dim: #888888;
     --danger: #ff4444;
-    --font-mono: 'Consolas', 'Courier New', monospace;
 }
 
-/* 1. RESET & BASE */
-* { 
-    box-sizing: border-box; 
-    margin: 0; 
-    padding: 0; 
-}
-
-body {
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    font-family: 'Segoe UI', sans-serif;
-    overflow-x: hidden;
-    padding-bottom: 180px; /* Espace pour le HUD fixe */
-}
-
-/* 2. GRID SYSTEM - FORCE 4 COLONNES STRICTES */
+/* 1. SYSTÈME DE GRILLE (4 COLONNES) */
 .dashboard-container {
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important; /* Force les 4 colonnes */
-    gap: 8px;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px;
     padding: 10px;
     width: 100vw;
 }
 
-/* ============================================================
-   OPTIMISATION MOBILE EXTRÊME - 4 COLONNES SCIENTIFIQUES
-   ============================================================ */
-@media (max-width: 800px) {
-    .dashboard-container {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 3px !important; /* Espace minimal */
-        padding: 4px !important;
-    }
-    
-    .panel {
-        padding: 4px !important;
-        border-radius: 3px !important;
-    }
-
-    h2 {
-        font-size: 0.45rem !important; /* Très petit pour éviter les retours à la ligne */
-        letter-spacing: 0px !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .data-point {
-        flex-direction: column !important; /* Label au-dessus de la valeur */
-        align-items: flex-start !important;
-        font-size: 0.5rem !important; /* Lisibilité critique */
-        line-height: 1.1;
-        padding: 2px 0 !important;
-    }
-
-    .data-point span:first-child {
-        font-size: 0.4rem;
-        text-transform: uppercase;
-        opacity: 0.8;
-    }
-
-    .data-point span[id] {
-        font-size: 0.55rem;
-        color: #fff;
-    }
-
-    /* Ajustement du HUD pour ne pas masquer les données */
-    .master-hud-fixed {
-        padding: 5px;
-    }
-
-    #sp-main-hud {
-        font-size: 2.2rem !important;
-    }
-}
-
-/* 3. PANNEAUX ET DESIGN DES DONNÉES */
-.panel {
-    background: var(--panel-bg);
-    border: 1px solid var(--border-dim);
-    border-radius: 6px;
-    padding: 12px;
-    backdrop-filter: blur(8px);
-}
-
-h2 {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding-bottom: 4px;
-}
-
-.column-1 h2 { color: var(--accent-cyan); }
-.column-2 h2 { color: var(--accent-green); }
-.column-3 h2 { color: var(--accent-pink); }
-.column-4 h2 { color: var(--accent-gold); }
-
-.data-point {
-    display: flex;
-    justify-content: space-between;
-    padding: 3px 0;
-    font-family: var(--font-mono);
-    border-bottom: 1px solid rgba(255,255,255,0.02);
-}
-
-.data-point span:first-child { color: var(--text-dim); }
-.data-point span[id] { color: #fff; font-weight: bold; }
-
-/* 4. LE HUD MAÎTRE (FIXÉ EN BAS) */
+/* 2. LE HUD MAÎTRE (CORRECTION DES CLICS) */
 .master-hud-fixed {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-    z-index: 99999 !important;
+    z-index: 99999;
     padding: 15px;
-    background: linear-gradient(to top, rgba(0,0,0,1) 70%, transparent);
-    pointer-events: none; /* Laisse le clic passer à travers le vide */
+    background: linear-gradient(to top, rgba(0,0,0,1) 60%, transparent);
+    
+    /* CRITIQUE : Empêche le bloc invisible de bloquer les boutons du dessous */
+    pointer-events: none; 
 }
 
 .hud-display {
-    pointer-events: auto;
-    background: rgba(0, 20, 0, 0.9);
+    /* Rétablit le clic uniquement sur le compteur et le bouton */
+    pointer-events: auto; 
+    background: rgba(0, 15, 0, 0.9);
     border: 2px solid var(--accent-green);
     border-radius: 12px;
-    max-width: 500px;
+    max-width: 450px;
     margin: 0 auto 10px auto;
-    padding: 15px;
+    padding: 10px;
     text-align: center;
-    box-shadow: 0 0 25px rgba(0, 255, 136, 0.2);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
 #sp-main-hud {
-    font-size: 3.5rem;
+    font-size: 3.2rem;
     font-weight: 900;
     color: #fff;
-    line-height: 1;
+    font-family: 'Consolas', monospace;
 }
 
-.unit { font-size: 1rem; color: var(--accent-green); }
-
-/* 5. BOUTONS D'ACTION (LIBÉRÉS) */
-.hud-actions {
-    pointer-events: auto;
-    max-width: 500px;
-    margin: 0 auto;
-}
-
+/* 3. BOUTONS DE CONTRÔLE */
 #start-btn-final {
+    pointer-events: auto; /* Autorise le clic */
     width: 100%;
-    padding: 18px;
+    max-width: 450px;
+    display: block;
+    margin: 0 auto;
+    padding: 15px;
     background: var(--accent-green);
     color: #000;
     border: none;
     border-radius: 8px;
     font-weight: 900;
-    font-size: 1rem;
+    text-transform: uppercase;
     cursor: pointer;
     box-shadow: 0 4px 0 #006600;
-    text-transform: uppercase;
 }
 
 #start-btn-final:active {
-    transform: translateY(3px);
+    transform: translateY(2px);
     box-shadow: none;
 }
 
-.sub-btns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 10px;
+/* 4. OPTIMISATION MOBILE (4 COLONNES STRICTES) */
+@media (max-width: 850px) {
+    .dashboard-container {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 4px !important;
+        padding: 4px !important;
+    }
+
+    .panel {
+        padding: 5px !important;
+    }
+
+    h2 {
+        font-size: 0.45rem !important;
+        white-space: nowrap;
+    }
+
+    .data-point {
+        flex-direction: column !important;
+        font-size: 0.55rem !important;
+        padding: 2px 0 !important;
+    }
+
+    .data-point span:first-child {
+        font-size: 0.4rem;
+        opacity: 0.7;
+    }
 }
 
-.sub-btns button {
-    padding: 10px;
-    background: #1a1a26;
-    color: var(--accent-cyan);
-    border: 1px solid var(--accent-cyan);
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 0.7rem;
-    cursor: pointer;
-}
-
-/* 6. INSTRUMENTS SPÉCIFIQUES */
-/* Niveau à bulle */
-.spirit-level {
+/* 5. NIVEAU À BULLE (CORRECTIF VISUEL) */
+.spirit-level-container {
     width: 100%;
-    height: 80px;
+    height: 100px;
     background: #000;
     border: 1px solid #333;
     position: relative;
-    border-radius: 4px;
-    margin-top: 5px;
+    overflow: hidden;
+    border-radius: 8px;
 }
 
-#bubble {
-    width: 16px;
-    height: 16px;
-    background: radial-gradient(circle, var(--accent-green), #004400);
+.spirit-level-bubble {
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, #00ff88, #004400);
     border-radius: 50%;
     position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 8px var(--accent-green);
-}
-
-/* Horloge Minecraft */
-#minecraft-clock-container {
-    width: 80px;
-    height: 80px;
-    border: 2px solid #333;
-    border-radius: 50%;
-    margin: 5px auto;
-    position: relative;
-    overflow: hidden;
-    background: #000;
-}
-
-#minecraft-clock {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, #4488ff 50%, #000033 50%);
-    transition: transform 1s linear; /* Rotation fluide ephem.js */
-}
-
-/* Alertes SHAKE/POI */
-#poi-alert {
-    position: fixed;
-    top: 20%;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    background: #ff0;
-    color: #000;
-    padding: 15px;
-    font-weight: bold;
-    border-radius: 8px;
-    z-index: 100000;
-    display: none;
-    box-shadow: 0 0 30px #ff0;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--accent-green);
+    transition: transform 0.1s ease-out;
     }
 </style>
 </head>
@@ -408,7 +280,7 @@ h2 {
                 <div class="data-point"><span>Vitesse Moyenne (Totale)</span><span id="speed-avg-total">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">-.-- m/s</span></div>
                 <div class="data-point"><span>Statut Vol:</span> <span id="air-time-s" style="color:#0f0;">SOL</span></div>
-                <div class="data-point"><span>Pente (%):</span> <span id="gradient-thermique" style="color:#ff00ff;">-.- %</span></div>    
+                <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>    
                 <hr>
                 <h3>Physique & Relativité</h3>
                 <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="vitesse-son-cor">--</span></div>
@@ -509,7 +381,7 @@ h2 {
                 <div class="data-point"><span>Puissance (Watts):</span> <span id="human-power-w">-- W</span></div>
                 <div class="data-point"><span>Adrénaline Index:</span> <span id="adrenaline-idx">-.- / 10</span></div>
                 <div class="data-point" style="background:rgba(0,255,0,0.1);"><span>Score Fluidité:</span> <span id="smoothness-score">---/100</span></div>
-                <div class="data-point"><span>Calories (METs):</span> <span id="photosynthesis-rate">-.- kcal</span></div>
+                <div class="data-point"><span>Calories (METs):</span> <span id="calories-burn">-.- kcal</span></div>
             </section>
     
             <section class="panel" aria-labelledby="ekf-heading">
@@ -601,12 +473,13 @@ h2 {
         </main>
                     
 <script src="vendor/math.min.js"></script>
-
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
+<script src="vendor/leaflet.js"></script>    
 
 <script src="lib/ephem.js"></script>
 <script src="lib/astro.js"></script>
+<script src="lib/ntp-master.js"></script>    
 <script src="lib/ukf-lib.js"></script>
 
 <script src="gnss-dashboard-full.js"></script>
