@@ -1,47 +1,27 @@
 /**
- * OMNISCIENCE V100 PRO - MASTER CONTROLLER
+ * MASTER CONTROL - REAL-TIME SENSORS
  */
 const MasterSystem = {
-    init() {
-        const btn = document.getElementById('start-btn-final');
-        btn.addEventListener('click', async () => {
-            btn.style.display = 'none';
-            await this.startSensors();
-            this.startGPS();
+    async init() {
+        const startBtn = document.getElementById('start-btn-final');
+        startBtn.addEventListener('click', async () => {
+            startBtn.style.display = 'none';
             
-            // Boucle de calcul à fréquence maximale (indépendante du rendu)
-            // Utilise requestAnimationFrame pour le rendu, mais setInterval(0) pour le calcul
-            setInterval(() => UKF_PRO.compute(), 1); // Cycle 1ms
-        });
-    },
-
-    async startSensors() {
-        if ('LinearAccelerationSensor' in window) {
-            const acc = new LinearAccelerationSensor({ frequency: 60 });
-            acc.onreading = () => {
-                window.currentAccY = acc.y;
-                document.getElementById('acc-x').innerText = acc.x.toFixed(2);
-                document.getElementById('acc-y').innerText = acc.y.toFixed(2);
-                document.getElementById('acc-z').innerText = acc.z.toFixed(2);
-                
-                const g = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.81;
-                document.getElementById('g-force-resultant').innerText = g.toFixed(3) + " G";
+            // 1. Démarrage des capteurs à 100Hz minimum
+            const sensor = new LinearAccelerationSensor({ frequency: 100 });
+            sensor.onreading = () => {
+                const dt = 0.01; // Cycle de 10ms
+                Omniscience.compute(sensor, null, dt);
             };
-            acc.start();
-        }
-    },
+            sensor.start();
 
-    startGPS() {
-        navigator.geolocation.watchPosition(p => {
-            const {latitude, longitude, altitude} = p.coords;
-            document.getElementById('coord-x').innerText = latitude.toFixed(6);
-            document.getElementById('coord-y').innerText = longitude.toFixed(6);
-            document.getElementById('coord-z').innerText = (altitude || 0).toFixed(2);
-            
-            // Date Julienne
-            const jd = (Date.now() / 86400000) + 2440587.5;
-            document.getElementById('julian-date').innerText = jd.toFixed(6);
-        }, null, {enableHighAccuracy: true});
+            // 2. Coordonnées 3D GPS (Référence sol)
+            navigator.geolocation.watchPosition(pos => {
+                document.getElementById('coord-x').innerText = pos.coords.latitude.toFixed(8);
+                document.getElementById('coord-y').innerText = pos.coords.longitude.toFixed(8);
+                document.getElementById('coord-z').innerText = (pos.coords.altitude || 0).toFixed(3) + " m";
+            }, null, { enableHighAccuracy: true });
+        });
     }
 };
 
