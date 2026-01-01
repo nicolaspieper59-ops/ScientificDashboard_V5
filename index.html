@@ -54,26 +54,55 @@ body {
     width: 100vw;
 }
 
-/* Adaptation Mobile (on garde les 4 colonnes mais on réduit la taille) */
+/* ============================================================
+   OPTIMISATION MOBILE EXTRÊME - 4 COLONNES SCIENTIFIQUES
+   ============================================================ */
 @media (max-width: 800px) {
     .dashboard-container {
         grid-template-columns: repeat(4, 1fr) !important;
-        gap: 4px;
-        padding: 5px;
+        gap: 3px !important; /* Espace minimal */
+        padding: 4px !important;
     }
     
     .panel {
-        padding: 6px !important;
+        padding: 4px !important;
+        border-radius: 3px !important;
     }
 
     h2 {
-        font-size: 0.55rem !important;
+        font-size: 0.45rem !important; /* Très petit pour éviter les retours à la ligne */
+        letter-spacing: 0px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .data-point {
-        flex-direction: column;
+        flex-direction: column !important; /* Label au-dessus de la valeur */
         align-items: flex-start !important;
-        font-size: 0.55rem !important;
+        font-size: 0.5rem !important; /* Lisibilité critique */
+        line-height: 1.1;
+        padding: 2px 0 !important;
+    }
+
+    .data-point span:first-child {
+        font-size: 0.4rem;
+        text-transform: uppercase;
+        opacity: 0.8;
+    }
+
+    .data-point span[id] {
+        font-size: 0.55rem;
+        color: #fff;
+    }
+
+    /* Ajustement du HUD pour ne pas masquer les données */
+    .master-hud-fixed {
+        padding: 5px;
+    }
+
+    #sp-main-hud {
+        font-size: 2.2rem !important;
     }
 }
 
@@ -254,6 +283,15 @@ h2 {
         <h1 style="text-align: center; color: var(--accent-color);">GNSS SpaceTime Dashboard • UKF 21 États Fusion Professionnel</h1>
     </header>
     
+    <div class="master-hud-fixed">
+    <div class="hud-display">
+        <div id="sp-main-hud">0.0</div>
+        <div class="unit">KM/H (UKF)</div>
+    </div>
+    
+    <button id="start-btn-final">INITIALISER LE SYSTÈME FINAL</button>
+    </div>
+    
     <main class="dashboard-container">
         
         <div class="column-1">
@@ -268,13 +306,12 @@ h2 {
                 <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
                 <div class="data-point"><span>Heure NTP:</span> <span id="ntp-status-val">Sync...</span></div>
                 <div class="data-point"><span>Batterie Appareil:</span> <span id="batt-level">-- %</span></div>
-                <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal">OPTIMAL</span></div>
+                <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal-1">OPTIMAL</span></div>
                 <div class="data-point"><span>Vibration (Jerk):</span> <span id="jerk-vector">-.- m/s³</span></div>
                 <div class="data-point"><span>Latence (Est.):</span> <span id="wifi-latency">-- ms</span></div>  
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
-                <div class="data-point"><span>Score Fluidité</span><span id="smoothness-score">--/100</span></div>
                 <hr>
                 <div class="controls-grid" role="group">
                     <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
@@ -382,7 +419,7 @@ h2 {
                 <div class="data-point"><span>Pente (%):</span> <span id="gradient-thermique" style="color:#ff00ff;">-.- %</span></div>    
                 <hr>
                 <h3>Physique & Relativité</h3>
-                <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="local-speed-of-sound">--</span></div>
+                <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="vitesse-son-cor">--</span></div>
                 <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
@@ -473,7 +510,7 @@ h2 {
                 <h3>Champs & Forces</h3>
                 <div class="data-point"><span>Énergie Cinétique (J)</span><span id="kinetic-energy">-.-- J</span></div>
                 <div class="data-point"><span>Puissance Mécanique (W)</span><span id="mechanical-power">-.-- W</span></div>
-                <div class="data-point"><span>Pression de Radiation</span><span id="radiation-pressure">--</span></div>
+                <div class="data-point"><span>Pression de Radiation</span><span id="pression-radiation">--</span></div>
                 <div class="data-point"><span>Force de Coriolis</span><span id="coriolis-force">-.-- N</span></div>
                 <hr style="border:1px solid var(--border);">
                 <h3>Performance & Flow</h3>
@@ -570,14 +607,6 @@ h2 {
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>  
              </section>
         </main>
-    <div class="master-hud-fixed">
-    <div class="hud-display">
-        <div id="sp-main-hud">0.0</div>
-        <div class="unit">KM/H (UKF)</div>
-    </div>
-    
-    <button id="start-btn-final">INITIALISER LE SYSTÈME FINAL</button>
-    </div>
                     
 <script src="vendor/math.min.js"></script>
 
