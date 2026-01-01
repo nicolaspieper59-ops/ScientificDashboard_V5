@@ -1,55 +1,48 @@
-const MainHub = {
+const MasterController = {
     async init() {
         document.getElementById('start-btn-final').addEventListener('click', async () => {
-            await TimeSync.sync();
-            TimeSync.loop();
-            this.activateSensors();
+            this.setupSensors();
+            await this.syncNTP();
         });
     },
 
-    async activateSensors() {
-        // 1. Accéléromètre Linéaire Haute Fréquence
-        if ('LinearAccelerationSensor' in window) {
-            const acc = new LinearAccelerationSensor({ frequency: 60 });
-            acc.onreading = () => {
-                UKF_PRO.update(acc.y, null, 1/60, window.lastGpsSpeed);
-                // Mise à jour IMU IDs
-                document.getElementById('acc-x').innerText = acc.x.toFixed(3);
-                document.getElementById('acc-y').innerText = acc.y.toFixed(3);
-                document.getElementById('acc-z').innerText = acc.z.toFixed(3);
-            };
-            acc.start();
-        }
-
-        // 2. Capteur de Lumière (API Chrome)
-        if ('AmbientLightSensor' in window) {
-            const light = new AmbientLightSensor();
-            light.onreading = () => {
-                const lux = light.illuminance;
-                document.getElementById('ambient-light').innerText = lux.toFixed(1) + " Lux";
-                document.getElementById('env-lux').innerText = lux > 10 ? "Extérieur" : "Poche/Sombre";
-            };
-            light.start();
-        }
-
-        // 3. Audio (Décibels & Fréquence)
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        source.connect(analyser);
-        const data = new Uint8Array(analyser.frequencyBinCount);
-
-        const trackSound = () => {
-            analyser.getByteFrequencyData(data);
-            const level = Math.max(...data);
-            document.getElementById('sound-level').innerText = (20 * Math.log10(level || 1)).toFixed(1) + " dB";
-            requestAnimationFrame(trackSound);
-        };
-        trackSound();
+    async syncNTP() {
+        const t0 = performance.now();
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+        const data = await res.json();
+        const offset = new Date(data.utc_datetime).getTime() - Date.now();
         
-        document.getElementById('status-physique').innerText = "V100 PRO OPÉRATIONNEL";
+        setInterval(() => {
+            const now = new Date(Date.now() + offset);
+            document.getElementById('gmt-time-display-2').innerText = now.toISOString().split('T')[1].replace('Z','');
+            // Date Julienne
+            const jd = (now.getTime() / 86400000) + 2440587.5;
+            document.getElementById('julian-date').innerText = jd.toFixed(6);
+        }, 10);
+    },
+
+    setupSensors() {
+        // Accéléromètre 60Hz
+        const acc = new LinearAccelerationSensor({frequency: 60});
+        acc.onreading = () => {
+            UKF_PRO.update(acc.y, window.currentPitch || 0, 1/60, window.lastGpsSpeed);
+            document.getElementById('acc-x').innerText = acc.x.toFixed(2);
+            document.getElementById('acc-y').innerText = acc.y.toFixed(2);
+            document.getElementById('acc-z').innerText = acc.z.toFixed(2);
+        };
+        acc.start();
+
+        // GPS
+        navigator.geolocation.watchPosition(p => {
+            window.lastGpsSpeed = p.coords.speed;
+            window.gpsAcc = p.coords.accuracy;
+            WeatherBioEngine.update(p.coords.latitude, p.coords.longitude, p.coords.altitude || 0);
+            
+            document.getElementById('lat-ukf').innerText = p.coords.latitude.toFixed(6);
+            document.getElementById('lon-ukf').innerText = p.coords.longitude.toFixed(6);
+            document.getElementById('alt-ukf-z').innerText = (p.coords.altitude || 0).toFixed(2);
+        }, null, {enableHighAccuracy: true});
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => MainHub.init());
+document.addEventListener('DOMContentLoaded', () => MasterController.init());
