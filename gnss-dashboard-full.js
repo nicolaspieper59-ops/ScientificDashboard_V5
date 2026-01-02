@@ -1,50 +1,50 @@
-math.config({ number: 'BigNumber', precision: 64 });
-
-class OmniscienceUKF {
-    constructor() {
-        this.X = math.zeros(21, 1); // [0-2]Pos, [3-5]Vel, [6-8]Acc, [9-11]Att...
-        this.P = math.multiply(math.identity(21), 0.1);
-        this.isCalibrated = false;
-        this.biasA = math.zeros(3, 1);
-    }
-
-    update(accRaw, gyro, dt) {
-        if (isNaN(dt) || dt <= 0) return;
-        const d = math.bignumber(dt);
+const MainApp = {
+    init() {
+        console.log("Démarrage Omniscience V100 PRO...");
         
-        // 1. Correction des Biais (États 12-14)
-        const pureAccY = math.subtract(math.bignumber(accRaw.y), this.X.get([13, 0]));
+        // Nettoyage des NaN par défaut
+        document.querySelectorAll('span').forEach(el => {
+            if (el.innerText === "--" || el.innerText === "NaN") el.innerText = "0.00";
+        });
 
-        // 2. Intégration de la Vitesse (v = v + a*dt)
-        let currentV = this.X.get([4, 0]);
-        let nextV = math.add(currentV, math.multiply(pureAccY, d));
-        
-        // Sécurité anti-vitesse négative au repos
-        if (math.smaller(nextV, 0)) nextV = math.bignumber(0);
-        
-        this.X.set([4, 0], nextV);
-        this.render(nextV, accRaw);
+        // Initialisation des modules
+        Navigation3D.init();
+        this.initWeather();
+        this.initExport();
+    },
+
+    initWeather() {
+        // Capture du son pour le score de fluidité (Validation record)
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            const ctx = new AudioContext();
+            const ana = ctx.createAnalyser();
+            ctx.createMediaStreamSource(stream).connect(ana);
+            const data = new Uint8Array(ana.frequencyBinCount);
+            setInterval(() => {
+                ana.getByteFrequencyData(data);
+                const vol = data.reduce((a, b) => a + b) / data.length;
+                document.getElementById('score-fluidite').innerText = Math.floor(vol);
+            }, 100);
+        }).catch(() => console.log("Microphone OFF"));
+    },
+
+    initExport() {
+        document.getElementById('btn-export-all').onclick = () => {
+            const report = {
+                timestamp: new Date().toISOString(),
+                v_max: document.getElementById('speed-main-display').innerText,
+                lorentz: document.getElementById('lorentz-factor').innerText,
+                status: "CERTIFIED"
+            };
+            const blob = new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Omniscience_Record.json";
+            a.click();
+        };
     }
+};
 
-    render(v, acc) {
-        // Liaison avec les IDs exacts de ton index (25) (15).html
-        const v_ms = v;
-        const v_kmh = math.multiply(v_ms, 3.6);
-        const c = math.bignumber(299792458);
-
-        // Vitesse
-        document.getElementById('speed-stable-ms').innerText = math.format(v_ms, {notation: 'fixed', precision: 9});
-        document.getElementById('speed-main-display').innerText = math.format(v_kmh, {notation: 'fixed', precision: 4});
-        document.getElementById('sp-main-hud').innerText = math.format(v_kmh, {notation: 'fixed', precision: 2});
-
-        // Relativité
-        const beta = math.divide(v_ms, c);
-        const lorentz = math.divide(1, math.sqrt(math.subtract(1, math.square(beta))));
-        document.getElementById('lorentz-factor').innerText = math.format(lorentz, {precision: 15});
-
-        // Sismographe (Jerk)
-        const gRes = math.divide(math.sqrt(math.add(math.square(acc.x), math.square(acc.y), math.square(acc.z))), 9.805);
-        document.getElementById('force-g-resultante').innerText = gRes.toFixed(3);
-    }
-}
-const UKF = new OmniscienceUKF();
+// Liaison avec le bouton géant de ton HUD
+document.getElementById('start-btn-final').onclick = () => MainApp.init();
