@@ -1,3 +1,25 @@
+// DANS gnss-dashboard-full.js - LA FONCTION MIRACLE
+function syncAll() {
+    const v = UKF.v; // Vitesse filtrée
+    
+    // 1. DYNAMIQUE
+    document.getElementById('speed-main-display').innerText = (v * 3.6).toFixed(4);
+    document.getElementById('sp-main-hud').innerText = (v * 3.6).toFixed(1);
+    
+    // 2. RELATIVITÉ
+    const c = 299792458;
+    const beta = v / c;
+    const gamma = 1 / Math.sqrt(1 - beta**2);
+    document.getElementById('lorentz-factor').innerText = gamma.toFixed(15);
+    
+    // 3. COSMOS (Vitesse Cosmique)
+    // On ajoute la rotation Terre (Marseille) + Orbite Solaire
+    const v_cosmique = (v * 3.6) + 107208 + 1300; 
+    document.getElementById('v-cosmic').innerText = v_cosmique.toLocaleString() + " km/h";
+    
+    // 4. ENVIRONNEMENT
+    document.getElementById('local-gravity').innerText = "9.80512 m/s²";
+}
 const MainEngine = {
     isStarted: false,
     dist3D: 0,
