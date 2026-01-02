@@ -1,58 +1,61 @@
-/**
- * OMNISCIENCE V100 PRO - MASTER SYNC
- * Résout tous les tirets (--) restants
- */
 const MainEngine = {
     isStarted: false,
-    
-    async start() {
+    dist3D: 0,
+    startTime: 0,
+
+    async activate() {
+        if (this.isStarted) return;
         this.isStarted = true;
-        NTPMaster.sync();
+        this.startTime = performance.now();
+
+        // WakeLock : Empêche l'écran de s'éteindre pendant le record
+        if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
+
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            await DeviceMotionEvent.requestPermission();
+        }
+        
         WeatherEngine.init();
-        this.initAudio(); // Micro pour le niveau sonore
         
-        window.addEventListener('devicemotion', (e) => this.updateInertial(e));
-        setInterval(() => this.refreshDashboard(), 100);
+        // Boucle Inertielle (50Hz)
+        window.addEventListener('devicemotion', (e) => {
+            const acc = e.accelerationIncludingGravity;
+            const a_total = Math.sqrt(acc.x**2 + acc.y**2 + (acc.z - 9.80512)**2);
+            const v = UKF.update(a_total, 0.02);
+            this.dist3D += v * 0.02;
+        });
+
+        // Rendu UI (10Hz)
+        setInterval(() => this.render(), 100);
     },
 
-    initAudio() {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            const audioContext = new AudioContext();
-            const analyser = audioContext.createAnalyser();
-            const microphone = audioContext.createMediaStreamSource(stream);
-            microphone.connect(analyser);
-            const data = new Uint8Array(analyser.frequencyBinCount);
-            
-            setInterval(() => {
-                analyser.getByteFrequencyData(data);
-                let sum = data.reduce((a, b) => a + b, 0);
-                let db = 20 * Math.log10(sum / data.length + 1);
-                document.getElementById('sound-level').innerText = db.toFixed(1);
-                document.getElementById('sound-max').innerText = Math.max(db, 40).toFixed(1);
-            }, 200);
-        }).catch(err => console.log("Microphone bloqué ou absent"));
-    },
+    render() {
+        const v_ms = UKF.v;
+        const v_kmh = v_ms * 3.6;
+        const c = 299792458;
 
-    refreshDashboard() {
-        const v_kmh = UKF.state.v * 3.6;
-        const v_ms = UKF.state.v;
-        
-        // --- DYNAMIQUE DES FLUIDES ---
-        const rho = 1.225; // kg/m³
-        const q = 0.5 * rho * v_ms**2; // Pression dynamique
-        document.getElementById('dynamic-pressure').innerText = q.toFixed(2) + " Pa";
+        // Vitesse & HUD
+        document.getElementById('speed-main-display').innerText = v_kmh.toFixed(4);
+        document.getElementById('sp-main-hud').innerText = v_kmh.toFixed(1);
+        document.getElementById('v-stable-kmh').innerText = v_kmh.toFixed(2);
+        document.getElementById('dist-3d-precis').innerText = (this.dist3D / 1000).toFixed(4);
 
-        // --- FORCES DE CORIOLIS (Marseille) ---
-        const omega = 7.2921e-5; // Rotation Terre
-        const latitude = 43.29 * (Math.PI / 180);
-        const f_coriolis = 2 * mass * v_ms * omega * Math.sin(latitude);
-        document.getElementById('coriolis-force').innerText = f_coriolis.toFixed(4) + " N";
+        // Relativité (Einstein)
+        const beta = v_ms / c;
+        const lorentz = 1 / Math.sqrt(1 - beta**2);
+        document.getElementById('lorentz-factor').innerText = lorentz.toFixed(15);
+        document.getElementById('time-dilation-vitesse').innerText = ((lorentz - 1) * 86400 * 1e9).toFixed(2) + " ns/j";
+        document.getElementById('kinetic-energy').innerText = (0.5 * 70 * v_ms**2).toFixed(2) + " J";
 
-        // --- BIO/SVT ---
-        document.getElementById('oxygen-sat').innerText = "98 %";
-        document.getElementById('adrenaline-index').innerText = (1 + (v_kmh/200)).toFixed(1);
+        // Cosmos
+        document.getElementById('v-cosmic').innerText = (v_kmh + 107000 + 828000).toLocaleString();
+        AstroEngine.update();
 
-        // --- NAVIGATION 3D (X, Y, Z) ---
-        Navigation3D.update(v_ms, 0, 0, 0.1); 
+        // Système
+        document.getElementById('elapsed-time').innerText = ((performance.now() - this.startTime)/1000).toFixed(1);
+        document.getElementById('utc-time-sync').innerText = new Date().toLocaleTimeString();
+        document.getElementById('ekf-status').innerText = "FUSION ACTIVE (UKF)";
     }
 };
+
+document.getElementById('start-btn-final').addEventListener('click', () => MainEngine.activate());
