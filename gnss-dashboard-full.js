@@ -1,26 +1,31 @@
-document.getElementById('start-btn-final').addEventListener('click', async () => {
-    // 1. Reset UI (Supprime les NaN)
-    document.querySelectorAll('span').forEach(s => { if(s.innerText === "--") s.innerText = "0"; });
+const Navigation3D = {
+    lastT: performance.now(),
+    async init() {
+        // Demande de permission pour iOS/Android
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            await DeviceMotionEvent.requestPermission();
+        }
 
-    // 2. Initialise les moteurs
-    await WeatherEngine.init();
-    await Navigation3D.init();
+        window.addEventListener('deviceorientation', (e) => {
+            UKF.pitch = math.divide(math.multiply(math.bignumber(e.beta || 0), math.pi), 180);
+            UKF.roll = math.divide(math.multiply(math.bignumber(e.gamma || 0), math.pi), 180);
+            document.getElementById('pitch').innerText = (e.beta || 0).toFixed(1) + "°";
+        });
 
-    // 3. Update Status
-    document.getElementById('ekf-status').innerText = "V100 PRO • 64-BIT ACTIVE";
-    document.getElementById('ekf-status').style.color = "var(--accent-green)";
-    
-    // 4. Export (Bouton d'exportation de logs)
-    document.getElementById('btn-export-all').onclick = () => {
-        const data = {
-            v_max: document.getElementById('speed-main-display').innerText,
-            lorentz: document.getElementById('lorentz-factor').innerText,
-            timestamp: new Date().toISOString()
-        };
-        const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = "Omniscience_Log.json";
-        a.click();
-    };
+        window.addEventListener('devicemotion', (e) => {
+            const now = performance.now();
+            const dt = (now - this.lastT) / 1000;
+            this.lastT = now;
+            
+            const lightSound = WeatherEngine.getTensors();
+            UKF.update(e.accelerationIncludingGravity, e.rotationRate, dt, lightSound, lightSound);
+        });
+    }
+};
+
+// LE LIEN FINAL AVEC TON BOUTON HTML
+document.getElementById('start-btn-final').addEventListener('click', () => {
+    WeatherEngine.init();
+    Navigation3D.init();
+    document.getElementById('ekf-status').innerText = "V100 PRO : SYSTÈME ACTIF";
 });
