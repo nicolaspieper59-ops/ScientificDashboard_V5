@@ -1,52 +1,43 @@
-const MainApp = {
-    async start() {
-        // 1. Initialiser les variables à 0 pour éviter NaN
-        document.querySelectorAll('span').forEach(s => { if(s.innerText === "--") s.innerText = "0"; });
-        
-        // 2. Lancer les modules
-        await WeatherEngine.init();
-        this.initInertial();
-        this.initVoice();
-        
-        document.getElementById('btn-export-all').onclick = () => SeismicReporter.exportJSON();
-        console.log("Omniscience V100 PRO : Systèmes nominaux.");
-    },
+const Navigation3D = {
+    v: math.bignumber(0),
+    lastT: performance.now(),
 
-    initInertial() {
-        window.addEventListener('devicemotion', (e) => {
-            const acc = e.accelerationIncludingGravity;
-            const gyro = e.rotationRate;
-            if (acc && gyro) {
-                UKF.update({x: acc.x, y: acc.y, z: acc.z}, gyro, 0.02);
-            }
+    init() {
+        // Écouteur haute fréquence (100Hz)
+        window.addEventListener('devicemotion', (event) => {
+            const now = performance.now();
+            const dt = math.divide(math.bignumber(now - this.lastT), 1000);
+            this.lastT = now;
+
+            if (math.smaller(dt, 0.001)) return;
+
+            // Extraction accélération Y (axe de marche)
+            const accY = math.bignumber(event.acceleration.y || 0);
+            
+            // FILTRE UKF SIMPLIFIÉ (ÉTAT 4 : VITESSE)
+            // On intègre l'accélération : v = v + a*dt
+            this.v = math.add(this.v, math.multiply(accY, dt));
+
+            if (math.smaller(this.v, 0)) this.v = math.bignumber(0);
+
+            this.updateUI(accY);
         });
     },
 
-    initVoice() {
-        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (Speech) {
-            const rec = new Speech();
-            rec.continuous = true;
-            rec.onresult = (e) => {
-                if (e.results[e.results.length-1][0].transcript.includes("snapshot")) {
-                    this.takeSnapshot();
-                }
-            };
-            rec.start();
-        }
-    },
+    updateUI(accY) {
+        // Mapping direct avec ton HTML v25.15
+        const v_ms = this.v;
+        const v_kmh = math.multiply(v_ms, 3.6);
 
-    takeSnapshot() {
-        const snap = {
-            t: new Date().toISOString(),
-            v: document.getElementById('speed-stable-ms').innerText
-        };
-        let snaps = JSON.parse(localStorage.getItem('voice_snapshots') || "[]");
-        snaps.push(snap);
-        localStorage.setItem('voice_snapshots', JSON.stringify(snaps));
-        document.body.style.border = "5px solid gold";
-        setTimeout(() => document.body.style.border = "none", 500);
+        // Mise à jour des champs critiques
+        document.getElementById('speed-stable-ms').innerText = math.format(v_ms, {notation: 'fixed', precision: 9});
+        document.getElementById('speed-main-display').innerText = math.format(v_kmh, {notation: 'fixed', precision: 4});
+        document.getElementById('accel-y').innerText = math.format(accY, {precision: 3});
+        
+        // Calcul Relativité
+        const c = math.bignumber(299792458);
+        const beta = math.divide(v_ms, c);
+        const lorentz = math.divide(1, math.sqrt(math.subtract(1, math.square(beta))));
+        document.getElementById('lorentz-factor').innerText = math.format(lorentz, {precision: 15});
     }
 };
-
-document.getElementById('btn-init').onclick = () => MainApp.start();
