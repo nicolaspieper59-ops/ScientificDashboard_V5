@@ -1,50 +1,94 @@
 const MainApp = {
-    init() {
-        console.log("Démarrage Omniscience V100 PRO...");
-        
-        // Nettoyage des NaN par défaut
-        document.querySelectorAll('span').forEach(el => {
-            if (el.innerText === "--" || el.innerText === "NaN") el.innerText = "0.00";
+    // Variables pour stocker les capteurs
+    lightSensor: null,
+
+    async init() {
+        console.log("🚀 Lancement Omniscience...");
+
+        // 1. Demande Permission MOUVEMENT (iOS 13+ & Android)
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const permission = await DeviceMotionEvent.requestPermission();
+                if (permission === 'granted') {
+                    this.startMotion();
+                } else {
+                    alert("⚠️ Permission Mouvement refusée.");
+                }
+            } catch (e) {
+                console.error(e);
+                // Fallback pour certains Android qui n'ont pas requestPermission mais demandent HTTPS
+                this.startMotion(); 
+            }
+        } else {
+            // Non-iOS (Android standard)
+            this.startMotion();
+        }
+
+        // 2. Démarrage LUMIÈRE (API Generic Sensor)
+        this.startLightSensor();
+    },
+
+    startMotion() {
+        window.addEventListener('devicemotion', (event) => {
+            // Envoi des données brutes à l'UKF
+            // On vérifie que les données existent pour éviter le NaN
+            const acc = event.accelerationIncludingGravity || {x:0, y:0, z:0};
+            const gyro = event.rotationRate || {alpha:0, beta:0, gamma:0};
+            
+            // Si l'UKF est prêt, on injecte
+            if (typeof UKF !== 'undefined') {
+                // dt approximatif de 0.02s (50Hz) standard navigateur
+                UKF.update(acc, gyro, 0.02);
+            }
         });
-
-        // Initialisation des modules
-        Navigation3D.init();
-        this.initWeather();
-        this.initExport();
+        
+        // Confirmation visuelle
+        document.getElementById('ekf-status').innerText = "CAPTEURS ACTIFS";
+        document.getElementById('ekf-status').style.color = "var(--accent-green)";
     },
 
-    initWeather() {
-        // Capture du son pour le score de fluidité (Validation record)
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            const ctx = new AudioContext();
-            const ana = ctx.createAnalyser();
-            ctx.createMediaStreamSource(stream).connect(ana);
-            const data = new Uint8Array(ana.frequencyBinCount);
-            setInterval(() => {
-                ana.getByteFrequencyData(data);
-                const vol = data.reduce((a, b) => a + b) / data.length;
-                document.getElementById('score-fluidite').innerText = Math.floor(vol);
-            }, 100);
-        }).catch(() => console.log("Microphone OFF"));
+    startLightSensor() {
+        try {
+            // Vérification si l'API est disponible (grâce au réglage Chrome://flags)
+            if ('AmbientLightSensor' in window) {
+                this.lightSensor = new AmbientLightSensor();
+                
+                this.lightSensor.onreading = () => {
+                    const lux = this.lightSensor.illuminance;
+                    // Mise à jour HTML
+                    const luxElem = document.getElementById('env-lux'); // Assure-toi que cet ID existe dans ton HTML
+                    if (luxElem) luxElem.innerText = lux.toFixed(1);
+                    
+                    // Injection dans WeatherEngine pour l'UKF (fusion optique)
+                    if (typeof WeatherEngine !== 'undefined') {
+                        WeatherEngine.updateLux(lux);
+                    }
+                };
+
+                this.lightSensor.onerror = (event) => {
+                    console.warn("Erreur Capteur Lumière:", event.error.name, event.error.message);
+                    this.fallbackLight();
+                };
+
+                this.lightSensor.start();
+                console.log("☀️ Capteur de lumière connecté.");
+            } else {
+                throw new Error("API AmbientLightSensor non trouvée");
+            }
+        } catch (err) {
+            console.log("⚠️ Mode Lumière dégradé (Webcam/Simulé) : " + err.message);
+            this.fallbackLight();
+        }
     },
 
-    initExport() {
-        document.getElementById('btn-export-all').onclick = () => {
-            const report = {
-                timestamp: new Date().toISOString(),
-                v_max: document.getElementById('speed-main-display').innerText,
-                lorentz: document.getElementById('lorentz-factor').innerText,
-                status: "CERTIFIED"
-            };
-            const blob = new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "Omniscience_Record.json";
-            a.click();
-        };
+    fallbackLight() {
+        // Si le capteur matériel échoue, on met 0 ou on utilise la webcam (voir WeatherEngine)
+        const luxElem = document.getElementById('env-lux');
+        if (luxElem) luxElem.innerText = "0.0 (Sim)";
     }
 };
 
-// Liaison avec le bouton géant de ton HUD
-document.getElementById('start-btn-final').onclick = () => MainApp.init();
+// LIAISON DU BOUTON INIT (CRUCIAL POUR iOS/ANDROID)
+document.getElementById('start-btn-final').addEventListener('click', () => {
+    MainApp.init();
+});
