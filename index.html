@@ -248,6 +248,11 @@ button {
     transform: translate(-50%, -50%);
     box-shadow: 0 0 10px var(--accent-green);
     }
+    .nano-display {
+    font-size: 0.6rem;
+    color: var(--accent-cyan);
+    word-break: break-all; /* Pour que les 308 chiffres ne cassent pas le layout */
+    }
 </style>    
 </head>
  
@@ -387,7 +392,8 @@ button {
                 <div class="data-point"><span>Vitesse Moyenne (Totale)</span><span id="speed-avg-total">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">-.-- m/s</span></div>
                 <div class="data-point"><span>Statut Vol:</span> <span id="air-time-s" style="color:#0f0;">SOL</span></div>
-                <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>    
+                <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>
+                <div class="data-point"><span>Vitesse Stable (1024-bit)</span><span id="speed-stable-ms">--</span></div>    
                 <hr>
                 </div>
                 <h3>Physique & Relativité</h3>
@@ -395,7 +401,10 @@ button {
                 <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
-                <div class="data-point"><span>Facteur de Lorentz</span><span id="lorentz-factor">-.--------</span></div>
+                <div class="data-point"><span>Facteur de Lorentz (Extrême)</span><span id="lorentz-factor">--</span></div>
+                <div class="data-point"><span>Friction du Vide</span><span id="quantum-drag">--</span></div>
+                <div class="data-point"><span>Densité de Trame</span><span id="planck-density">--</span></div>
+                <div class="data-point"><span>Statut Réalité</span><b id="reality-status">Analyse...</b></div>
                 <div class="data-point"><span>Dilatation du Temps</span><span id="time-dilation-vitesse">-.-- ns/j</span></div>
                 <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">-.-- ns/s</span></div>    
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">-.-- ns/j</span></div>
@@ -424,6 +433,8 @@ button {
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
                 <div class="data-point"><span>Distance Horizon (s)</span><span id="horizon-distance-km">--</span></div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
+                <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
+                <div class="data-point"><span>Distance Précise (UKF)</span><span id="distance-3d-precise-ukf">--</span></div>
             </section>
 
             <section class="panel" aria-labelledby="map-heading">
@@ -515,6 +526,10 @@ button {
                 <div class="data-point"><span>Mode Dynamique Master</span><span id="status-physique" style="color: #00ff00;">Initialisation...</span></div>    
                 <div class="data-point"><span>Fréquence d'Échantillonnage</span><span id="nyquist-limit">-- Hz</span></div>
                 <div class="data-point"><span>Bruit Accel. (R)</span> <span id="acc-bias">-.-- mg</span></div>
+                <hr>
+                <h3>Signature Biologique</h3>
+                <div class="data-point"><span>Type de Mouvement</span><span id="bio-signature-type">--</span></div>
+                <div class="data-point"><span>Vibration (Jitter)</span><span id="vibration-jitter">--</span></div>
             </section>
 
             <section class="panel" aria-labelledby="bubble-heading">
