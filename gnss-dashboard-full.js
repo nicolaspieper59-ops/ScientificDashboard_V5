@@ -1,33 +1,40 @@
 /**
- * OMNISCIENCE V100 PRO - MASTER SINGULARITY (FINAL EDITION)
+ * OMNISCIENCE V100 PRO - MASTER SINGULARITY EDITION (FINAL)
  * --------------------------------------------------------
- * - Précision 1024-bit (math.js BigNumber)
- * - Fusion Sensorielle : Son (Friction) & Lumière (Référentiel)
- * - Affichage Scientifique Intelligent (Lorentz & Décimales extrêmes)
- * - Auto-Unit Scaling : nm, µm, mm, m, km, UA
- * - Anti-Toon Physics : Injection de bruit de Planck
- * - Inversion de vecteur Accélération/Décélération
+ * Système de Navigation Universel à Précision 1024-bit.
+ * Intégration : Poids Newtonien, Friction Fluide, Bruit de Planck,
+ * Inversion de Vecteur et Unités Automatiques.
  */
 
-// 1. CONFIGURATION MATHÉMATIQUE MAXIMALE
+// 1. CONFIGURATION MATHÉMATIQUE (PRÉCISION 308 DÉCIMALES)
 math.config({ number: 'BigNumber', precision: 308 });
 const BN = (n) => math.bignumber(n);
 
 const State = {
+    // Constantes Universelles
     c: BN("299792458"),
     h: BN("6.62607015e-34"),
     G: BN("6.67430e-11"),
-    vGalaxy: BN("370000"), // Dérive galactique m/s
+    M_Earth: BN("5.972e24"),
+    R_Earth: BN("6371000"),
+    vGalaxy: BN("370000"), // Dérive vers le Grand Attracteur (m/s)
+
+    // États de Navigation
     vInertialMS: BN(0),
     distTotalM: BN(0),
     lastTime: performance.now(),
-    mass: BN(70),
-    isToon: false
+    mass: BN(70), // Masse par défaut (kg)
+    airDensity: BN("1.225"), // Densité air standard (kg/m³)
+    
+    // Capteurs
+    currentLux: 0,
+    currentDb: 30,
+    currentAlt: 0
 };
 
-// 2. MOTEUR D'AFFICHAGE INTELLIGENT ET UNITÉS
+// 2. MOTEUR D'AFFICHAGE INTELLIGENT (Unités & Notation Scientifique)
 const SmartDisplay = {
-    // Paliers pour les distances (du nanomètre à l'espace profond)
+    // Échelles de distance
     distUnits: [
         { limit: BN("1.496e+11"), div: BN("1.496e+11"), s: "UA" },
         { limit: BN("1000"), div: BN("1000"), s: "km" },
@@ -46,7 +53,7 @@ const SmartDisplay = {
         
         let converted = math.divide(valueBN, unit.div);
         
-        // Affichage scientifique si trop de décimales (seuil de complexité)
+        // Bascule scientifique si le nombre est trop complexe
         if (math.abs(converted).lt(0.001) || math.abs(converted).gt(10000)) {
             return math.format(converted, { notation: 'exponential', precision: 6 }) + " " + unit.s;
         }
@@ -54,93 +61,134 @@ const SmartDisplay = {
     }
 };
 
-// 3. MOTEUR SENSORIEL ET PHYSIQUE
+// 3. CORE ENGINE (Moteur de Réalité)
 const OmniscienceEngine = {
     init: function() {
-        this.bindHardware();
+        this.bindSensors();
         this.startRelativityLoop();
     },
 
-    bindHardware: function() {
-        // Écoute du mouvement
-        window.addEventListener('devicemotion', (event) => {
-            const acc = event.accelerationIncludingGravity || {y:0};
-            // On récupère aussi la lumière et le son (simulés ou via API si dispos)
-            const lux = window.currentLux || 0; 
-            const db = window.currentDb || 30;
-            this.process(acc, lux, db);
+    bindSensors: function() {
+        // Accéléromètre & Gyroscope
+        window.addEventListener('devicemotion', (e) => {
+            const acc = e.accelerationIncludingGravity || {y: 0};
+            this.processMotion(acc);
         });
+
+        // Lumière (Ambiante)
+        if ('AmbientLightSensor' in window) {
+            const sensor = new AmbientLightSensor();
+            sensor.onreading = () => { State.currentLux = sensor.illuminance; };
+            sensor.start();
+        }
+
+        // Son (Analyse de friction)
+        this.initAudio();
     },
 
-    process: function(acc, lux, db) {
+    initAudio: function() {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            const audioContext = new AudioContext();
+            const analyser = audioContext.createAnalyser();
+            const microphone = audioContext.createMediaStreamSource(stream);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            setInterval(() => {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = dataArray.reduce((a, b) => a + b, 0);
+                State.currentDb = (sum / dataArray.length) * 2; // Simulation dB
+            }, 100);
+        }).catch(err => console.log("Micro non dispo"));
+    },
+
+    processMotion: function(acc) {
         const now = performance.now();
         const dt = math.divide(BN(now - State.lastTime), 1000);
         State.lastTime = now;
 
-        // --- ANTI TOON-PHYSICS (Non-Simplicité) ---
-        // Injection d'un bruit de Planck pour éviter le 0.000 absolu
+        // --- NON-SIMPLICITÉ (Anti-Toon) ---
+        // Injection de bruit rose de Planck pour garder les décimales "vivantes"
         let ay = BN(acc.y || 0);
-        const noise = math.multiply(State.h, math.random() - 0.5, 1e30);
-        ay = math.add(ay, noise);
+        const pinkNoise = math.multiply(State.h, math.random() - 0.5, 1e31);
+        ay = math.add(ay, pinkNoise);
 
-        // --- LOGIQUE SON & LUMIÈRE ---
-        // La friction de l'air est validée par le niveau sonore
-        const expectedFriction = math.abs(math.multiply(State.vInertialMS, 0.1));
-        State.isToon = (db < 40 && math.abs(State.vInertialMS).gt(10)); // Silence à haute vitesse = Simulation
+        // --- FRICTION FLUIDE (Aérodynamisme) ---
+        // La vitesse décroît naturellement selon la densité de l'air
+        const dragCoeff = BN("0.47");
+        const dragForce = math.multiply(0.5, State.airDensity, math.square(State.vInertialMS), dragCoeff);
+        
+        // Si aucune force majeure, la traînée freine l'objet
+        if (math.abs(ay).lt(0.05)) {
+            const dragDecel = math.divide(dragForce, State.mass);
+            State.vInertialMS = (State.vInertialMS.gt(0)) ? 
+                math.subtract(State.vInertialMS, math.multiply(dragDecel, dt)) :
+                math.add(State.vInertialMS, math.multiply(dragDecel, dt));
+        }
 
-        // --- INTÉGRATION 1024-BIT (VERLET) ---
-        const deltaV = math.multiply(ay, dt);
-        State.vInertialMS = math.add(State.vInertialMS, deltaV);
+        // --- INTÉGRATION 1024-BIT ---
+        State.vInertialMS = math.add(State.vInertialMS, math.multiply(ay, dt));
         State.distTotalM = math.add(State.distTotalM, math.multiply(State.vInertialMS, dt));
 
-        this.render(ay, lux, db);
+        this.updateUI(ay);
     },
 
-    render: function(ay, lux, db) {
-        // 1. FACTEUR DE LORENTZ (Affichage Scientifique Impératif)
+    updateUI: function(ay) {
+        // 1. Poids & Gravité Locale (basé sur altitude UKF imaginaire ou GPS)
+        const r_total = math.add(State.R_Earth, BN(State.currentAlt));
+        const g_local = math.divide(math.multiply(State.G, State.M_Earth), math.square(r_total));
+        const weight_N = math.multiply(State.mass, g_local);
+
+        document.getElementById('gravite-locale-g').innerText = math.format(g_local, {precision: 10}) + " m/s²";
+        document.getElementById('poids-newton').innerText = math.format(weight_N, {notation: 'exponential', precision: 6}) + " N";
+
+        // 2. Facteur de Lorentz (Notation Scientifique 1.000...e+0)
         const beta = math.divide(State.vInertialMS, State.c);
         const gamma = math.divide(1, math.sqrt(math.subtract(1, math.square(beta))));
         document.getElementById('lorentz-factor').innerText = math.format(gamma, { notation: 'exponential', precision: 12 });
 
-        // 2. VITESSE ET DISTANCE (Auto-Scaling)
-        document.getElementById('total-path-inf').innerText = SmartDisplay.format(State.distTotalM, 'dist');
+        // 3. Vitesse & Promenade Microscopique (Auto-Units)
+        document.getElementById('total-path-inf').innerText = SmartDisplay.format(State.distTotalM);
+        document.getElementById('distance-absolute-nm').innerText = SmartDisplay.format(State.distTotalM);
         
         const vKMH = math.multiply(State.vInertialMS, 3.6);
         document.getElementById('speed-main-display').innerText = math.format(vKMH, {precision: 8}) + " km/h";
 
-        // 3. INVERSION ACCÉLÉRATION / DÉCÉLÉRATION
+        // 4. Inversion de Poussée (Visualisation Rouge/Vert)
         const accEl = document.getElementById('acc-y');
-        accEl.innerText = math.format(ay, { notation: 'exponential', precision: 4 }) + " m/s²";
+        accEl.innerText = math.format(ay, { notation: 'exponential', precision: 5 }) + " m/s²";
         
-        // Couleur dynamique pour l'inversion
         const direction = math.multiply(ay, State.vInertialMS);
-        accEl.style.color = direction.lt(0) ? "#ff4444" : "#00ff88"; // Rouge = Freinage, Vert = Poussée
+        accEl.style.color = (direction.lt(0)) ? "#ff4444" : "#00ff88"; // Rouge = Freinage, Vert = Accélération
 
-        // 4. STATUT RÉALITÉ (Basé sur le son/lumière)
+        // 5. Statut Réalité (Fusion Son/Lumière)
         const status = document.getElementById('reality-status');
-        if (State.isToon) {
-            status.innerText = "SIMULATION (ERREUR FRICTION SONORE)";
-            status.style.color = "red";
+        if (State.currentLux < 2 && math.abs(State.vInertialMS).gt(2)) {
+            status.innerText = "NAVIGATION INERTIELLE (MODE POCHE)";
+            status.style.color = "#00d4ff";
+        } else if (State.currentDb < 35 && math.abs(State.vInertialMS).gt(5)) {
+            status.innerText = "ALERTE : SIMULATION (ABSENCE DE VENT)";
+            status.style.color = "orange";
         } else {
             status.innerText = "RÉALITÉ PHYSIQUE VALIDÉE";
             status.style.color = "#00ff88";
         }
-
-        // 5. VITESSE COSMIQUE
+        
+        // 6. Vitesse Cosmique
         const vC = math.multiply(math.add(State.vInertialMS, State.vGalaxy), 3.6);
-        document.getElementById('v-cosmic').innerText = math.format(vC, {notation: 'exponential', precision: 6}) + " km/h";
+        document.getElementById('v-cosmic').innerText = math.format(vC, {notation: 'exponential', precision: 7}) + " km/h";
     },
 
     startRelativityLoop: function() {
         setInterval(() => {
-            // Friction du vide permanente
+            // Mise à jour de la friction du vide (Bruit de Planck)
             const fv = math.multiply(State.h, math.random());
             document.getElementById('quantum-drag').innerText = math.format(fv, {notation: 'exponential', precision: 4}) + " Planck/s";
         }, 200);
     }
 };
 
-// Initialisation au clic
-document.getElementById('start-btn-final').addEventListener('click', () => {
+// INITIALISATION AU CLIC SUR LE BOUTON HTML
+document.getElementById('start-btn-final').addEventListener('click', function() {
+    this.style.display = 'none';
     OmniscienceEngine.init();
 });
