@@ -253,6 +253,9 @@ button {
     color: var(--accent-cyan);
     word-break: break-all; /* Pour que les 308 chiffres ne cassent pas le layout */
     }
+    thermal-alert { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        #treasure-log-display { border: 1px solid #333; background:
 </style>    
 </head>
  
@@ -288,6 +291,10 @@ button {
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
+                <div class="panel">
+               <div id="thermal-status" style="color: #00ff88;">THERMIQUE : OPTIMAL (1024-BIT)</div>
+               <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
+                </div>
                 <hr>
                 <div class="controls-grid" role="group">
                     <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
@@ -393,7 +400,11 @@ button {
                 <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">-.-- m/s</span></div>
                 <div class="data-point"><span>Statut Vol:</span> <span id="air-time-s" style="color:#0f0;">SOL</span></div>
                 <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>
-                <div class="data-point"><span>Vitesse Stable (1024-bit)</span><span id="speed-stable-ms">--</span></div>    
+                <div class="panel">
+                <div>Vitesse Stable (1024-bit): <span class="val" id="vitesse-stable-1024">0</span></div>
+                <div>Distance Maison: <span class="val" id="dist-3d-precise" style="color:#ffcc00;">0.000 m</span></div>
+                <div>Accélération Y: <span class="val" id="acc-y">0.000</span></div>
+                </div>    
                 <hr>
                 </div>
                 <h3>Physique & Relativité</h3>
@@ -601,6 +612,10 @@ button {
                 <section class="panel" style="grid-column: 1 / -1;">
     <h2><i class="fas fa-chart-line"></i> Télémétrie Inertielle (64-bit)</h2>
     <canvas id="telemetry-canvas" width="800" height="200" style="width:100%; height:200px; background:#000;"></canvas>
+                    <div class="panel">
+    <div class="label" style="color:#ffcc00;">📜 JOURNAL DES ANOMALIES & TRÉSORS</div>
+    <div id="treasure-log-display">En attente de détection...</div>
+                    </div>
              </section>
         </main>
                     
