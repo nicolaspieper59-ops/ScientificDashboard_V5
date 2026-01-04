@@ -1,200 +1,184 @@
 /**
- * OMNISCIENCE V100 PRO - SINGULARITY CORE
- * Moteur de Fusion Inertielle & Relativiste (1024-bit)
+ * OMNISCIENCE V100 PRO - SINGULARITY NERVOUS CORE (v1024-Ultra-Final)
+ * Moteur de Réalité : Physique Inertielle, Acoustique & Haute Précision
  */
 
-// Configuration de la précision millimétrée
+// 1. CONFIGURATION MATHÉMATIQUE 1024-BIT
 math.config({ number: 'BigNumber', precision: 308 });
 const BN = (n) => math.bignumber(n);
 
-const PHYS = {
+const UNIVERSE = {
     C: BN("299792458"),           // Célérité de la lumière
-    G_REF: BN("9.80665"),         // Gravité terrestre standard
-    RHO_AIR: BN("1.225"),         // Densité de l'air au niveau de la mer (kg/m3)
-    CD_HUMAN: BN("0.47"),         // Coefficient de traînée moyen
+    G_REF: BN("9.80665"),         // Gravité standard
+    RHO_AIR: BN("1.225"),         // Densité air (kg/m3)
+    CD_HUMAN: BN("0.47"),         // Traînée
     AREA_HUMAN: BN("0.7"),        // Surface frontale (m2)
-    JOULE_TO_KCAL: BN("0.000239006")
+    TECTONIC_DRIFT: BN("0.0000000000015"), // Dérive tectonique (m/s)
+    J_TO_KCAL: BN("0.000239006")
 };
 
 const State = {
     active: false,
-    v: BN(0),                     // Vitesse scalaire (m/s)
+    v: BN(0),                     // Vitesse réelle (m/s)
+    v_old: BN(0),                 // Pour Verlet
+    a_old: BN(0),                 // Pour Verlet
     dist: BN(0),                  // Distance cumulée (m)
-    calories: BN(0),              // Calories brûlées (kcal)
+    calories: BN(0),              // Énergie (kcal)
     lastT: null,
-    gpsAcc: 100,
+    mass: BN(70),                 // Valeur par défaut
     dbLevel: 0,
-    mass: BN(70),                 // Masse par défaut (kg)
-    biasY: BN(0),                 // Auto-calibration accéléromètre
-    history: []
+    isNight: false,
+    kalman: { q: 0.001, r: 0.04, p: 1.0, x: 0.0 } // Filtre de lissage nerveux
 };
 
-// --- INITIALISATION DES CAPTEURS ---
+// 2. MOTEUR AUDIO (SIFFLEMENT DU VENT)
+const WindAudio = {
+    ctx: null, osc: null, gain: null, filter: null,
+    init() {
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.osc = this.ctx.createOscillator();
+            this.gain = this.ctx.createGain();
+            this.filter = this.ctx.createBiquadFilter();
+            this.filter.type = "bandpass";
+            this.osc.type = "pink"; 
+            this.osc.connect(this.filter);
+            this.filter.connect(this.gain);
+            this.gain.connect(this.ctx.destination);
+            this.gain.gain.value = 0;
+            this.osc.start();
+        } catch(e) { console.error("Audio bloqué"); }
+    },
+    update(v) {
+        if (!this.gain) return;
+        const speed = Math.abs(v.toNumber());
+        const volume = Math.min(speed / 40, 0.2); 
+        const freq = 150 + (speed * 12);
+        this.gain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.1);
+        this.filter.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.1);
+    }
+};
 
+// 3. INITIALISATION DU SYSTÈME
 async function initSingularity() {
-    // 1. Demande de permission (iOS 13+)
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
         const permission = await DeviceMotionEvent.requestPermission();
-        if (permission !== 'granted') {
-            alert("Accès aux capteurs refusé.");
-            return;
-        }
+        if (permission !== 'granted') return;
     }
 
     State.active = true;
     State.lastT = BN(performance.now());
     
-    // 2. Démarrage du microphone (Acoustique/Vent)
+    // Démarrage Audio
+    WindAudio.init();
+
+    // Démarrage Microphone (Pression Acoustique)
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioCtx = new AudioContext();
         const analyser = audioCtx.createAnalyser();
         const source = audioCtx.createMediaStreamSource(stream);
         source.connect(analyser);
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
+        const data = new Uint8Array(analyser.frequencyBinCount);
         setInterval(() => {
-            analyser.getByteFrequencyData(dataArray);
-            State.dbLevel = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-            const dbDisplay = document.getElementById('sound-level') || document.getElementById('env-noise');
-            if(dbDisplay) dbDisplay.innerText = State.dbLevel.toFixed(1) + " dB";
+            analyser.getByteFrequencyData(data);
+            State.dbLevel = data.reduce((a, b) => a + b, 0) / data.length;
         }, 100);
-    } catch (e) { console.warn("Microphone non disponible."); }
+    } catch(e) {}
 
-    // 3. Écouteurs d'événements
     window.addEventListener('devicemotion', realityLoop);
-    navigator.geolocation.watchPosition(processGPS, null, { 
-        enableHighAccuracy: true, 
-        maximumAge: 0 
-    });
-
     document.getElementById('start-btn-final').style.display = 'none';
     document.getElementById('reality-status').innerText = "VÉROUILLAGE 1024-BIT ACTIF";
 }
 
-// --- FUSION GPS / EKF (Filtre de Kalman Étendu) ---
-
-function processGPS(pos) {
-    if (!State.active) return;
-    
-    const gpsV = BN(pos.coords.speed || 0);
-    State.gpsAcc = pos.coords.accuracy;
-    
-    // Si le signal est bon (< 15m), on réduit la dérive de l'accéléromètre
-    if (State.gpsAcc < 15) {
-        const weight = BN(0.15); // Facteur de confiance GPS
-        State.v = math.add(
-            math.multiply(State.v, math.subtract(BN(1), weight)),
-            math.multiply(gpsV, weight)
-        );
-        
-        // Mise à jour de la carte Leaflet si présente
-        if (window.map) {
-            const latlng = [pos.coords.latitude, pos.coords.longitude];
-            if (!window.pathLine) {
-                window.pathLine = L.polyline([], {color: '#00ff88'}).addTo(window.map);
-            }
-            window.map.panTo(latlng);
-            window.pathLine.addLatLng(latlng);
-        }
-    }
-}
-
-// --- BOUCLE DE RÉALITÉ PHYSIQUE (60Hz+) ---
-
+// 4. BOUCLE PHYSIQUE (MÉTHODE DE VERLET)
 function realityLoop(e) {
     if (!State.active) return;
 
     const now = BN(performance.now());
-    const dt = math.divide(math.subtract(now, State.lastT), BN(1000)); // Delta temps en s
+    const dt = math.divide(math.subtract(now, State.lastT), BN(1000));
     State.lastT = now;
-
     if (dt.isZero()) return;
 
-    // 1. ACQUISITION IMU (Accélération pure)
+    // A. ACQUISITION NERVEUSE
     let ay = BN(e.accelerationIncludingGravity.y || 0);
+    if (math.abs(ay).lt(BN("0.02"))) ay = BN(0); // Noise Gate ultra-sensible
+
+    // B. INTÉGRATION DE VERLET (Réalisme de l'inertie)
+    // On calcule la vitesse en fonction de la moyenne de l'accélération
+    let a_avg = math.divide(math.add(ay, State.a_old), 2);
+    let deltaV = math.multiply(a_avg, dt);
     
-    // Filtrage du bruit de quantification (Noise Gate)
-    if (math.abs(ay).lt(BN("0.12"))) ay = BN(0);
+    // C. DYNAMIQUE DES FLUIDES & DÉRIVE
+    // Ajout de la dérive tectonique + impact du vent acoustique sur la traînée
+    const windFactor = math.divide(BN(State.dbLevel), BN(100));
+    const drag = math.multiply(BN(0.5), math.add(UNIVERSE.RHO_AIR, windFactor), UNIVERSE.CD_HUMAN, UNIVERSE.AREA_HUMAN, math.square(State.v));
+    const deccelDrag = math.divide(drag, State.mass);
 
-    // 2. MÉCANIQUE DES FLUIDES (Résistance de l'air)
-    // On ajoute le niveau sonore (dB) pour simuler l'impact du vent sur la traînée
-    const windEffect = math.divide(BN(State.dbLevel), BN(100));
-    const dragForce = math.multiply(
-        BN(0.5), 
-        math.add(PHYS.RHO_AIR, windEffect), 
-        PHYS.CD_HUMAN, 
-        PHYS.AREA_HUMAN, 
-        math.square(State.v)
-    );
+    State.v = math.add(State.v, deltaV, UNIVERSE.TECTONIC_DRIFT);
+    if (State.v.gt(0)) State.v = math.subtract(State.v, math.multiply(deccelDrag, dt));
+    if (State.v.lt(0)) State.v = BN(0);
 
-    // 3. INTÉGRATION 1024-BIT
-    // a = F/m -> accélération résultante = ay - (drag / masse)
-    const netAccel = math.subtract(ay, math.divide(dragForce, State.mass));
-    
-    // v = v + a*dt
-    State.v = math.add(State.v, math.multiply(netAccel, dt));
-    if (State.v.lt(0)) State.v = BN(0); // Empêche la marche arrière physique
+    State.a_old = ay;
 
-    // Distance = v*dt
-    const dStep = math.multiply(State.v, dt);
-    State.dist = math.add(State.dist, dStep);
+    // D. CALCUL V-MAX THÉORIQUE (400W de puissance humaine)
+    const vMaxTheo = math.cbrt(math.divide(math.multiply(BN(2), BN(400)), math.multiply(UNIVERSE.RHO_AIR, UNIVERSE.CD_HUMAN, BN(0.7))));
 
-    // 4. MODULE CALORIES (Travail Mécanique)
-    // E = F * d (Travail en Joules)
-    const forceN = math.multiply(State.mass, math.abs(netAccel));
-    const workJ = math.multiply(forceN, dStep);
-    const kcal = math.multiply(workJ, PHYS.JOULE_TO_KCAL, BN(4)); // Facteur 4 pour le rendement métabolique humain
-    State.calories = math.add(State.calories, kcal);
+    // E. DISTANCE & CALORIES (Travail Mécanique)
+    const stepDist = math.multiply(State.v, dt);
+    State.dist = math.add(State.dist, stepDist);
+    const work = math.multiply(math.abs(ay), State.mass, stepDist);
+    State.calories = math.add(State.calories, math.multiply(work, UNIVERSE.J_TO_KCAL, BN(4)));
 
-    // 5. RELATIVITÉ (Lorentz)
-    const betaSq = math.square(math.divide(State.v, PHYS.C));
-    const lorentz = math.divide(BN(1), math.sqrt(math.subtract(BN(1), betaSq)));
+    // F. RELATIVITÉ
+    const lorentz = math.divide(BN(1), math.sqrt(math.subtract(BN(1), math.square(math.divide(State.v, UNIVERSE.C)))));
 
-    updateUI(ay, lorentz, dt);
+    updateUI(ay, lorentz, vMaxTheo, dt);
+    WindAudio.update(State.v);
 }
 
-// --- RENDU INTERFACE (SYNCHRONISATION HTML) ---
-
-function updateUI(ay, lorentz, dt) {
+// 5. RENDU ET EFFETS DE COCKPIT
+function updateUI(ay, lorentz, vMax, dt) {
     const vKmh = math.multiply(State.v, BN("3.6"));
-    
-    // HUD Principal
+    const speedNum = vKmh.toNumber();
+
+    // HUD ET VITESSE (NERVOSITÉ MAX)
     safeSet('sp-main-hud', vKmh.toFixed(1));
-    
-    // Dynamique
     safeSet('v1024-val', vKmh.toFixed(15));
     safeSet('vitesse-stable-1024', vKmh.toFixed(15));
-    safeSet('dist-val', State.dist.toFixed(3) + " m");
-    safeSet('dist-3d-precise', State.dist.toFixed(3) + " m");
-    safeSet('g-val', math.divide(ay, PHYS.G_REF).toFixed(3));
+
+    // DYNAMIQUE
+    safeSet('dist-val', State.dist.toFixed(4) + " m");
+    safeSet('g-val', math.divide(ay, UNIVERSE.G_REF).toFixed(3));
     safeSet('acc-y', ay.toFixed(4));
-    
-    // Énergie & Bio
+    safeSet('vmax-theo', math.multiply(vMax, BN(3.6)).toFixed(1) + " km/h");
+
+    // SYSTÈME ET BIO
     safeSet('cal-val', State.calories.toFixed(2));
-    safeSet('calories-burn', State.calories.toFixed(2));
-    
-    // Système & Astro
     safeSet('hz-val', math.round(math.divide(BN(1), dt)).toString());
     safeSet('lorentz-val', lorentz.toFixed(18));
-    safeSet('lorentz-factor', lorentz.toFixed(18));
-    
-    // Fluides
-    const pa = math.multiply(BN(0.5), PHYS.RHO_AIR, math.square(State.v));
-    safeSet('pa-val', pa.toFixed(1));
-    safeSet('dynamic-pressure', pa.toFixed(2));
+
+    // EFFET DE VIBRATION (STRESS G-FORCE)
+    if (speedNum > 10) {
+        const shake = Math.random() * (speedNum / 50);
+        document.getElementById('main-container').style.transform = `translate(${shake}px, ${shake}px)`;
+    }
+
+    // IMPACT FLASH (Si G > 4)
+    if (math.abs(ay).gt(math.multiply(UNIVERSE.G_REF, 4))) {
+        document.body.style.backgroundColor = "#fff";
+        setTimeout(() => document.body.style.backgroundColor = "", 50);
+    }
 
     drawTelemetry(ay.toNumber());
 }
 
-// Aide pour éviter les erreurs si un ID est manquant
 function safeSet(id, val) {
     const el = document.getElementById(id);
     if (el) el.innerText = val;
 }
 
-// --- GRAPHIQUE DE TÉLÉMÉTRIE (JERK/ACROBATIES) ---
-
+// 6. GRAPHIQUE BRUT (TÉLÉMÉTRIE)
 const canvas = document.getElementById('telemetry-canvas');
 const ctx = canvas.getContext('2d');
 let points = [];
@@ -202,39 +186,28 @@ let points = [];
 function drawTelemetry(val) {
     points.push(val);
     if (points.length > 200) points.shift();
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = document.body.classList.contains('night-mode') ? '#ff0000' : '#00ff88';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    
     points.forEach((p, i) => {
         const x = (i / 200) * canvas.width;
-        const y = (canvas.height / 2) - (p * 15);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        const y = (canvas.height / 2) - (p * 20);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     });
     ctx.stroke();
 }
 
-// --- GESTION DES BOUTONS ---
-
+// 7. LISTENERS
 document.getElementById('start-btn-final').addEventListener('click', initSingularity);
 
-document.getElementById('reset-dist-btn')?.addEventListener('click', () => {
-    State.dist = BN(0);
-    State.calories = BN(0);
-});
-
-// Mode Grotte Automatique (Luxmètre)
+// Mode Grotte via API Light
 if ('AmbientLightSensor' in window) {
     const sensor = new AmbientLightSensor();
     sensor.onreading = () => {
-        const lux = sensor.illuminance;
-        safeSet('env-lux', lux.toFixed(1));
-        const isDark = lux < 5;
+        const isDark = sensor.illuminance < 5;
         document.body.classList.toggle('night-mode', isDark);
-        safeSet('cave-status', isDark ? "ACTIF (OBSCURITÉ)" : "OFF");
+        safeSet('cave-status', isDark ? "ACTIF (OBSCURITÉ)" : "AUTO");
     };
     sensor.start();
-    }
+        }
