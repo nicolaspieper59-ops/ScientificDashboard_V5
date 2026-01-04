@@ -12,174 +12,125 @@
           
 <style>
 /* ============================================================
-   OMNISCIENCE V100 PRO - MASTER SCIENTIFIC STYLING
-   Optimisé pour : Navigation Extrême, Acrobaties & Grottes
+   OMNISCIENCE V100 PRO - ERGONOMIC PILOT INTERFACE
    ============================================================ */
 
 :root {
-    --bg-dark: #050507;
-    --panel-bg: rgba(12, 12, 18, 0.98);
-    --border-color: #252533;
-    --accent-cyan: #00d2ff;   /* Système */
-    --accent-green: #00ff88;  /* Dynamique/Vitesse */
-    --accent-pink: #ff00ff;   /* Fluides/Calories */
-    --accent-gold: #ffcc00;   /* Astro/Navigation */
-    --text-main: #e0e0e0;
-    --danger: #ff4444;
-    --hud-bg: rgba(0, 0, 0, 0.95);
+    --bg: #000000;
+    --card: #15151a;
+    --accent: #00ff88;
+    --text: #ffffff;
+    --subtext: #8888b0;
+    --radius: 12px;
 }
 
-/* --- MODE GROTTE AUTOMATIQUE (VISION NOCTURNE) --- */
+/* MODE GROTTE TACTIQUE */
 body.night-mode {
-    --bg-dark: #0a0000;
-    --panel-bg: rgba(20, 0, 0, 0.98);
-    --accent-cyan: #ff4400;
-    --accent-green: #ff0000; /* Le vert devient rouge pour la rhodopsine */
-    --accent-gold: #ff5500;
-    --text-main: #ffaaaa;
-    filter: contrast(1.1) brightness(0.8);
+    --accent: #ff0000;
+    --card: #1a0505;
 }
 
 body {
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    font-family: 'Consolas', 'Monaco', monospace;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Roboto, sans-serif;
     margin: 0;
-    padding-bottom: 240px; /* Espace vital pour le HUD fixe */
-    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow-x: hidden;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-sizing: border-box;
 }
 
-/* --- GRILLE 4 COLONNES SINGULARITY --- */
+/* GRILLE PRATIQUE : 2 COLONNES LARGES */
 main {
     display: grid;
-    /* Adaptation intelligente : 4 col sur PC, 2 col sur tablette, 1 col sur mobile */
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
     gap: 12px;
-    padding: 12px;
+    flex: 1;
 }
 
 .panel {
-    background: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    background: var(--card);
+    border-radius: var(--radius);
     padding: 15px;
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(10px);
-}
-
-/* Indicateurs de bordure par colonne */
-.col-sys { border-top: 4px solid var(--accent-cyan); }
-.col-dyn { border-top: 4px solid var(--accent-green); }
-.col-env { border-top: 4px solid var(--accent-pink); }
-.col-nav { border-top: 4px solid var(--accent-gold); }
-
-h3 {
-    margin: 0 0 15px 0;
-    font-size: 0.85rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    opacity: 0.9;
-}
-
-/* --- AFFICHAGE DES DONNÉES (MÉTROLOGIE) --- */
-.data-point {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
-.data-point span:first-child {
-    font-size: 0.7rem;
-    color: #888;
-    text-transform: uppercase;
-}
-
-.val {
-    font-weight: bold;
-    font-size: 0.9rem;
-    color: #fff;
-    text-shadow: 0 0 5px rgba(255,255,255,0.2);
-}
-
-/* Spécificité pour les chiffres 1024-bit longs */
-.val-long {
-    font-size: 0.55rem !important;
-    letter-spacing: 0px;
-    color: var(--accent-green);
-}
-
-/* --- HUD FIXE (COCKPIT) --- */
+/* HUD DE VITESSE : PREND TOUTE LA LARGEUR EN HAUT */
 .master-hud-fixed {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: var(--hud-bg);
-    border-top: 2px solid var(--accent-green);
+    grid-column: 1 / span 2;
+    background: linear-gradient(180deg, #1a1a20 0%, #000 100%);
+    border-radius: var(--radius);
     padding: 20px;
-    box-sizing: border-box;
-    z-index: 9999;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+    text-align: center;
+    border-bottom: 3px solid var(--accent);
+    margin-bottom: 10px;
 }
 
 #sp-main-hud {
-    font-size: 5.5rem;
-    font-weight: 900;
-    text-align: center;
-    color: var(--accent-green);
+    font-size: 6rem;
+    font-weight: 800;
+    color: var(--accent);
     line-height: 1;
-    margin-bottom: 5px;
-    font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 30px var(--accent-green);
 }
 
-#telemetry-canvas {
-    width: 100%;
-    height: 60px;
-    background: #000;
-    border-radius: 2px;
-    margin: 10px 0;
+/* DONNÉES CLÉES EN GROS */
+.data-point {
+    text-align: center;
+    margin-bottom: 10px;
 }
 
-/* --- BOUTONS D'ACTION --- */
-button {
-    background: var(--accent-green);
+.data-point span:first-child {
+    display: block;
+    color: var(--subtext);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.val {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.val-long {
+    font-size: 0.6rem; /* On garde les 1024 bits discrets */
+    color: var(--accent);
+}
+
+/* BOUTON D'ACTION GÉANT */
+#start-btn-final {
+    grid-column: 1 / span 2;
+    background: var(--accent);
     color: #000;
     border: none;
-    padding: 15px;
-    font-weight: 900;
+    border-radius: var(--radius);
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 20px;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
 }
 
-button:active {
-    transform: scale(0.98);
-    filter: brightness(1.2);
-}
-
-#reset-btn {
-    background: transparent;
-    border: 1px solid var(--accent-cyan);
-    color: var(--accent-cyan);
-    font-size: 0.7rem;
-    padding: 8px;
-}
-
-/* --- CARTE & GRAPHIQUES --- */
+/* CARTE SIMPLIFIÉE */
 #map {
-    height: 150px;
+    height: 100px;
+    border-radius: 8px;
+    margin-top: 10px;
+    filter: grayscale(1) invert(1);
+}
+
+/* OSCILLOSCOPE DISCRET */
+#telemetry-canvas {
     width: 100%;
-    filter: invert(1) hue-rotate(180deg) brightness(0.8); /* Look Dark Pro */
-    border-radius: 3px;
+    height: 40px;
+    opacity: 0.5;
 }
 
 </style>    
@@ -193,7 +144,9 @@ button:active {
     <div class="master-hud-fixed">
     <div class="hud-display">
         <div id="sp-main-hud">0.0</div>
-        <button id="start-btn-final">▶️ INITIALISER OMNISCIENCE</button>
+    <div class="hud-label">km/h • SINGULARITY CORE</div>
+    <canvas id="telemetry-canvas"></canvas>
+    <button id="start-btn-final">DÉMARRER LE NOYAU</button>
     </div>
 </div>
     
