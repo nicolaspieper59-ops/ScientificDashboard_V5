@@ -256,6 +256,7 @@ button {
     thermal-alert { animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         #treasure-log-display { border: 1px solid #333; background:
+    }
 </style>    
 </head>
  
@@ -308,6 +309,7 @@ button {
                     <button id="reset-max-btn"><i class="fas fa-tachometer-alt"></i> Réinit. V-Max</button>
                     <button id="capture-data-btn" style="background-color: #ffc107; color: black;"><i class="fas fa-camera"></i> Capturer données</button>
                     <button id="reset-all-btn" style="grid-column: 1 / -1;"><i class="fas fa-power-off"></i> TOUT RÉINITIALISER</button>
+                    <button id="reinit-vmax-btn">
                     
                     <div class="control-input-full">
                         <label for="gps-accuracy-override">Forcer Précision GPS (m) [0=Auto]</label>
@@ -619,7 +621,7 @@ button {
              </section>
         </main>
                     
-<script src="vendor/math.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
 <script src="vendor/leaflet.js"></script>    
