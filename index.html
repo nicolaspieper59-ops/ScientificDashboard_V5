@@ -131,7 +131,7 @@ body.night-mode {
     </header>
     <div class="master-hud-fixed">
     <div class="hud-display">
-        <div id="sp-main-hud">0.0</div>
+        <div id="sp-main-hud">-.-----</div>
     <div class="hud-label">km/h • SINGULARITY CORE</div>
     <canvas id="telemetry-canvas"></canvas>
     <button id="start-btn-final">DÉMARRER LE NOYAU</button>
@@ -244,7 +244,7 @@ body.night-mode {
                 <div class="data-point"><span>Niveau Sonore (dB)</span><span id="sound-level">--</span></div>
                 <div class="data-point"><span>Son (Max)</span><span id="sound-level-max">-- dB</span></div>
                 <div class="data-point"><span>Statut Thermique CPU</span><span id="status-thermal">STABLE</span></div>
-                <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">1.000 G</span></div>
+                <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </section>
         </div>
 
@@ -270,8 +270,8 @@ body.night-mode {
                 <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>
                 <div class="panel">
                 <div>Vitesse Stable (1024-bit): <span class="val" id="vitesse-stable-1024">0</span></div>
-                <div>Distance Maison: <span class="val" id="dist-3d-precise" style="color:#ffcc00;">0.000 m</span></div>
-                <div>Accélération Y: <span class="val" id="acc-y">0.000</span></div>
+                <div>Distance Maison: <span class="val" id="dist-3d-precise" style="color:#ffcc00;">-.--- m</span></div>
+                <div>Accélération Y: <span class="val" id="acc-y">-.---</span></div>
                 </div>    
                 <hr>
                 </div>
@@ -297,9 +297,9 @@ body.night-mode {
                 <hr>
                 <h3>Distance (3D)</h3>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
-                <div class="data-point"><span>Distance Absolue (nm)</span> <span id="distance-3d-precise-ukf">0.000000000</span> m</div>
+                <div class="data-point"><span>Distance Absolue (nm)</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
                 <div class="data-point"><span>Distance 3D Précise (UKF)</span><span id="total-distance-3d-2">-.---- km</span></div>
-                <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">1.000</span></div>
+                <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
                 <span id="nether-mode-status" style="display:none;">1.000</span> 
                     
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">-.--e+-- s</span></div>
@@ -362,7 +362,7 @@ body.night-mode {
                 <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">--</span></div>
                 <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">--</span></div>
                 <div class="data-point"><span>Coeff. Balistique (Inertie)</span><span id="ballistic-coeff">--</span></div>
-                <div class="data-point"><span>Force G Résultante</span><span id="g-force-resultant">1.000 G</span></div>
+                <div class="data-point"><span>Force G Résultante</span><span id="g-force-resultant">-.--- G</span></div>
                 <hr>
                 <h3>Mécanique des Fluides</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">-.-- Pa</span></div>
@@ -436,31 +436,31 @@ body.night-mode {
                     <div class="clock-display"><span id="astro-phase" aria-live="polite">Nuit/Crépuscule (🌙)</span></div> </div>
                 <hr>
                 <h3>Positionnement EKF</h3>
-                <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">43.284559</span></div> 
-                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">5.345678</span></div>
-                <div class="data-point"><span>Altitude (UKF) (Z)</span> <span id="alt-display">100.00 m</span></div>
+                <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">--.-----</span></div> 
+                <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">---.-----</span></div>
+                <div class="data-point"><span>Altitude (UKF) (Z)</span> <span id="alt-display">---.-- m</span></div>
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt"></span></div>
                 <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">--</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">--</span></div>
                 <div class="data-point"><span>Coord. X (Géocentrique)</span><span id="coord-x">--</span></div>
                 <div class="data-point"><span>Coord. Y (Géocentrique)</span><span id="coord-y">--</span></div>
                 <div class="data-point"><span>Coord. Z (Géocentrique)</span><span id="coord-z">--</span></div>
-                <div class="data-point"><span>Distance 3D Cumulée</span><span id="dist-3d">0.000 m</span></div>
+                <div class="data-point"><span>Distance 3D Cumulée</span><span id="dist-3d">-.--- m</span></div>
                 <hr>
                 <div class="astro-visual-container">
     <canvas id="mc-clock-canvas" width="120" height="120"></canvas>
                 </div>
                 <h3>Temps Solaire & Sidéral</h3>
-                <div class="data-point"><span>Date (Astro)</span><span id="date-display-astro">...</span></div>
-                <div class="data-point"><span>Date Solaire Moyenne</span><span id="date-solar-mean">...</span></div>
-                <div class="data-point"><span>Date Solaire Vraie</span><span id="date-solar-true">...</span></div>
-                <div class="data-point"><span>Heure Solaire Vraie (TST)</span><span id="tst-time">...</span></div>
-                <div class="data-point"><span>Heure Solaire Moyenne (MST)</span><span id="mst-time">...</span></div>
-                <div class="data-point"><span>Midi Solaire Local (UTC)</span><span id="noon-solar">...</span></div>
-                <div class="data-point"><span>Équation du Temps (EOT)</span><span id="equation-of-time">...</span></div>
-                <div class="data-point"><span>Temps Sidéral Local Vrai</span><span id="tslv">...</span></div>
-                <div class="data-point"><span>Temps Sidéral (TSLV)</span><span id="tslv-1">...</span></div>
-                <div class="data-point"><span>Longitude Écliptique</span><span id="ecl-long">...</span></div>
+                <div class="data-point"><span>Date (Astro)</span><span id="date-display-astro">--</span></div>
+                <div class="data-point"><span>Date Solaire Moyenne</span><span id="date-solar-mean">--</span></div>
+                <div class="data-point"><span>Date Solaire Vraie</span><span id="date-solar-true">--</span></div>
+                <div class="data-point"><span>Heure Solaire Vraie (TST)</span><span id="tst-time">--</span></div>
+                <div class="data-point"><span>Heure Solaire Moyenne (MST)</span><span id="mst-time">--</span></div>
+                <div class="data-point"><span>Midi Solaire Local (UTC)</span><span id="noon-solar">--</span></div>
+                <div class="data-point"><span>Équation du Temps (EOT)</span><span id="equation-of-time">--</span></div>
+                <div class="data-point"><span>Temps Sidéral Local Vrai</span><span id="tslv">--</span></div>
+                <div class="data-point"><span>Temps Sidéral (TSLV)</span><span id="tslv-1">--</span></div>
+                <div class="data-point"><span>Longitude Écliptique</span><span id="ecl-long">--</span></div>
                 <hr>
                 <h3><i class="fas fa-sun"></i> Soleil</h3>
                 <div class="data-point"><span>Altitude (Soleil)</span><span id="hud-sun-alt">--</span></div>
