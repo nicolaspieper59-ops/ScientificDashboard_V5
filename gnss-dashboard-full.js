@@ -157,4 +157,4 @@ document.getElementById('nether-toggle-btn').addEventListener('click', function(
 // SERVICE WORKER (Intégration Offline)
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js');
-}
+                                  }
