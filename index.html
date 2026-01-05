@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GNSS SpaceTime Dashboard • UKF 21 États Fusion Professionnel</title>
     
     <link rel="stylesheet" href="css/style.css" />
@@ -12,7 +12,7 @@
           
 <style>
 /* ============================================================
-   OMNISCIENCE V100 PRO - ÉQUILIBRE 4 COLONNES
+   OMNISCIENCE V100 PRO - FIX STRUCTUREL & RESPONSIVE
    ============================================================ */
 
 :root {
@@ -32,97 +32,91 @@ body {
     flex-direction: column;
     height: 100vh;
     box-sizing: border-box;
+    overflow-x: hidden; /* Empêche le scroll horizontal parasite */
 }
 
-/* LE HUD : Toujours en haut, bien large */
-.master-hud-fixed {
-    width: 100%;
-    background: #000;
-    border-bottom: 2px solid var(--accent);
-    padding: 10px 0;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-#sp-main-hud {
-    font-size: 4rem;
-    font-weight: 900;
-    color: var(--accent);
-    line-height: 1;
-}
-
-/* LA GRILLE : 4 Colonnes strictement égales */
+/* GRILLE PRINCIPALE : 4 COLONNES STRICTES */
 main {
     display: grid;
-    /* On force 4 colonnes de taille identique (1fr chacune) */
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-    flex: 1;
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* Force l'égalité parfaite */
+    gap: 8px;
+    width: 100%;
+    flex-grow: 1;
 }
 
+/* ADAPTATION MOBILE (RÉVOLUTIONNAIRE) */
+@media (max-width: 1100px) {
+    main { grid-template-columns: repeat(2, 1fr); } /* 2 colonnes sur tablettes */
+}
+@media (max-width: 650px) {
+    main { grid-template-columns: 1fr; } /* 1 seule colonne sur téléphones */
+}
+
+/* PANELS & DATA POINTS */
 .panel {
     background: var(--card);
     border: 1px solid #222;
     border-radius: 4px;
-    padding: 8px 4px;
+    padding: 10px 5px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    overflow: hidden; /* Empêche les chiffres longs de casser la boîte */
+    min-width: 0; /* Empêche le contenu de pousser les murs */
 }
 
-/* Titres de colonnes */
-h3 {
-    font-size: 0.6rem;
-    margin: 0 0 8px 0;
-    text-transform: uppercase;
-    color: #888;
-    text-align: center;
-}
-
-/* Points de données empilés pour tenir dans la largeur */
 .data-point {
     width: 100%;
-    text-align: center;
-    margin-bottom: 8px;
-    border-bottom: 1px solid #1a1a1a;
+    margin-bottom: 6px;
+    white-space: nowrap; /* Empêche le texte de sauter à la ligne */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Ajoute "..." si le texte est trop long */
 }
 
 .data-point span:first-child {
     display: block;
-    font-size: 0.55rem;
-    color: #555;
-    margin-bottom: 2px;
-}
-
-.val {
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: #eee;
-    word-break: break-all; /* Force le retour à la ligne si 1024-bit */
-}
-
-/* Bouton START plein écran en bas */
-#start-btn-final {
-    margin-top: 10px;
-    width: 100%;
-    padding: 15px;
-    background: var(--accent);
-    color: #000;
-    border: none;
-    font-weight: bold;
-    border-radius: 4px;
+    font-size: 0.65rem;
+    color: #888;
     text-transform: uppercase;
 }
 
-/* Mode Nuit */
-body.night-mode {
-    --accent: #ff0000;
-    --card: #150000;
+.val {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--accent);
 }
-input { font-size: 16px; padding: 8px; }   
-margin-bottom: 20px;    
+
+/* FIX DE LA CARTE (DOMPTAGE) */
+#map {
+    width: 100% !important;
+    height: 180px; /* Hauteur fixe pour éviter les sauts de page */
+    max-width: 100%;
+    border: 1px solid #333;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+/* HUD FIXE */
+.master-hud-fixed {
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    background: #000;
+    padding: 10px;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 10px;
+}
+
+#sp-main-hud {
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--accent);
+}
+
+/* CANVAS TÉLÉMÉTRIE */
+canvas {
+    width: 100% !important; /* Force le canvas à rester dans sa colonne */
+    height: auto;
+    background: #000;
+    }
 </style>    
 </head>
  
@@ -483,12 +477,11 @@ margin-bottom: 20px;
     <div class="label" style="color:#ffcc00;">📜 JOURNAL DES ANOMALIES & TRÉSORS</div>
     <div id="treasure-log-display">En attente de détection...</div>
                     </div>
-             </section>
-            <section class="panel" style="grid-column: 1 / -1;">
+             </section>            
     <h2><i class="fas fa-chart-line"></i> Télémétrie Inertielle (64-bit)</h2>
-    <canvas id="telemetry-main" width="800" height="200" style="width:100%; height:200px; background:#000;"></canvas>
+    <canvas id="telemetry-canvas" width="800" height="200" style="width:100%; height:200px; background:#000;"></canvas>
         </main>
-                    
+        <section class="panel" style="grid-column: 1 / -1;">            
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
