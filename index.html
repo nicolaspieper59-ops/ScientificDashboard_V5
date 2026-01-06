@@ -11,124 +11,269 @@
     <link rel="manifest" href="manifest.json">
           
 <style>
-/* ============================================================
-   OMNISCIENCE V100 PRO - FIX STRUCTUREL & RESPONSIVE
-   ============================================================ */
+/* ==========================================================================
+   OMNISCIENCE V200 PRO - CSS FINAL (RESPONSIVE & THÉMATIQUE)
+   ========================================================================== */
 
+/* 1. VARIABLES & THÈMES (JOUR / NUIT) */
 :root {
-    --bg: #000000;
-    --card: #111115;
-    --accent: #00ff88;
-    --text: #ffffff;
+    /* --- THÈME PAR DÉFAUT (NUIT / DARK MODE) --- */
+    --bg: #050505;              /* Fond noir profond */
+    --card: #121216;            /* Panneaux gris sombre */
+    --border: #2a2a30;          /* Bordures discrètes */
+    --text: #e0e0e0;            /* Texte principal clair */
+    --text-dim: #888890;        /* Libellés grisés */
+    --accent: #00ff88;          /* Vert Matrix (Valeurs) */
+    --alert: #ffcc00;           /* Jaune (Boutons actifs) */
+    --danger: #ff3333;          /* Rouge (Erreurs) */
+    --hud-bg: rgba(0, 0, 0, 0.95); /* Fond du HUD semi-transparent */
+}
+
+/* --- THÈME JOUR (LIGHT MODE) - Activé via la classe .light-mode --- */
+body.light-mode {
+    --bg: #f0f2f5;              /* Fond gris très clair */
+    --card: #ffffff;            /* Panneaux blancs */
+    --border: #ccc;             /* Bordures grises */
+    --text: #1a1a1a;            /* Texte noir */
+    --text-dim: #555;           /* Libellés gris moyen */
+    --accent: #0066cc;          /* Bleu Profond (plus lisible sur blanc) */
+    --alert: #ff9900;           /* Orange vif */
+    --danger: #cc0000;          /* Rouge sombre */
+    --hud-bg: rgba(255, 255, 255, 0.95);
+}
+
+/* 2. CONFIGURATION GÉNÉRALE */
+* {
+    box-sizing: border-box; /* Empêche les padding de casser la largeur */
 }
 
 body {
-    background: var(--bg);
+    background-color: var(--bg);
     color: var(--text);
-    font-family: 'Consolas', monospace;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace; /* Police technique */
     margin: 0;
     padding: 5px;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    box-sizing: border-box;
-    overflow-x: hidden; /* Empêche le scroll horizontal parasite */
+    padding-bottom: 40px; /* Espace pour scroller jusqu'en bas */
+    transition: background-color 0.3s ease, color 0.3s ease; /* Transition douce Jour/Nuit */
+    overflow-x: hidden; /* Interdit le scroll horizontal */
 }
 
-/* GRILLE PRINCIPALE : 4 COLONNES STRICTES */
+/* 3. LE HUD (AFFICHAGE TÊTE HAUTE) - FIXE EN HAUT */
+.master-hud-fixed {
+    position: sticky;
+    top: 0;
+    z-index: 1000; /* Reste toujours au-dessus */
+    background: var(--hud-bg);
+    border-bottom: 3px solid var(--accent);
+    padding: 10px 0;
+    text-align: center;
+    margin: -5px -5px 15px -5px; /* Compense le padding du body */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+#sp-main-hud {
+    font-size: 3.5rem; /* Très gros pour la vitesse */
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+    text-shadow: 0 0 10px var(--accent); /* Effet néon */
+}
+
+.hud-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+/* 4. LA GRILLE INTELLIGENTE (LAYOUT) */
 main {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr)); /* Force 4 colonnes égales */
-    gap: 10px;
+    /* PC : 4 colonnes strictement égales */
+    grid-template-columns: repeat(4, minmax(0, 1fr)); 
+    gap: 8px;
     width: 100%;
-    box-sizing: border-box;
 }
 
-/* ADAPTATION MOBILE (RÉVOLUTIONNAIRE) */
-@media (max-width: 1100px) {
-    main { grid-template-columns: repeat(2, 1fr); } /* 2 colonnes sur tablettes */
-}
-@media (max-width: 650px) {
-    main { grid-template-columns: 1fr; } /* 1 seule colonne sur téléphones */
+/* --- ADAPTATION MOBILE (LE SECRET DU CONFORT) --- */
+/* Tablettes (iPad, etc.) : Passe à 2 colonnes */
+@media (max-width: 1024px) {
+    main {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
-/* PANELS & DATA POINTS */
+/* Mobiles (iPhone, Android) : Passe à 1 colonne (Empilement) */
+/* C'est ce qui rend la lecture confortable sur petit écran */
+@media (max-width: 600px) {
+    main {
+        grid-template-columns: 1fr; /* Une seule colonne large */
+        gap: 12px;
+    }
+    
+    #sp-main-hud {
+        font-size: 2.8rem; /* Réduit un peu la vitesse pour mobile */
+    }
+}
+
+/* 5. LES PANNEAUX (PANELS) */
 .panel {
     background: var(--card);
-    border: 1px solid #222;
-    border-radius: 4px;
-    padding: 10px 5px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    min-width: 0; /* Empêche le contenu de pousser les murs */
+    /* Important : empêche le contenu de forcer la largeur */
+    min-width: 0; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.panel.full-width {
+    /* La section télémétrie prend toute la largeur disponible */
+    grid-column: 1 / -1;
+    margin-top: 10px;
+}
+
+h3, h2 {
+    margin: 0 0 8px 0;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+/* 6. LES DONNÉES (DATA POINTS) */
 .data-point {
+    display: flex;
+    flex-direction: column; /* Label au-dessus, Valeur en dessous */
+    align-items: center;
     width: 100%;
-    margin-bottom: 6px;
-    white-space: nowrap; /* Empêche le texte de sauter à la ligne */
-    overflow: hidden;
-    text-overflow: ellipsis; /* Ajoute "..." si le texte est trop long */
+    margin-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 4px;
 }
 
 .data-point span:first-child {
-    display: block;
-    font-size: 0.65rem;
-    color: #888;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-bottom: 2px;
     text-transform: uppercase;
 }
 
 .val {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: bold;
-    color: var(--accent);
-}
-
-/* FIX DE LA CARTE (DOMPTAGE) */
-#map {
-    width: 100% !important;
-    height: 180px; /* Hauteur fixe pour éviter les sauts de page */
-    max-width: 100%;
-    border: 1px solid #333;
-    border-radius: 4px;
-    margin-top: 5px;
-}
-
-/* HUD FIXE */
-.master-hud-fixed {
-    position: sticky;
-    top: 0;
-    z-index: 9999;
-    background: #000;
-    padding: 10px;
-    border-bottom: 2px solid var(--accent);
-    margin-bottom: 10px;
-}
-
-#sp-main-hud {
-    font-size: 3rem;
-    font-weight: 900;
-    color: var(--accent);
-}
-
-/* CANVAS TÉLÉMÉTRIE */
-canvas {
-    width: 100% !important; /* Force le canvas à rester dans sa colonne */
-    height: auto;
-    background: #000;
-    }
-    
-    #map {
-    width: 100% !important; /* Empêche le débordement */
-    height: 200px;
-    border-radius: 4px;
-    }
-
-    .data-point {
+    color: var(--text);
+    /* Gère les nombres trop longs (1024-bit) */
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap; /* Empêche le texte de pousser les murs */
-    }
+    max-width: 100%;
+}
+
+/* Met en valeur les chiffres importants */
+.val[id="speed-stable-kmh"],
+.val[id="lorentz-factor"] {
+    color: var(--accent);
+    font-size: 1.1rem;
+}
+
+/* 7. ÉLÉMENTS GRAPHIQUES (CANVAS & MAP) */
+canvas {
+    width: 100% !important; /* Force le graphique à tenir dans la boite */
+    height: auto;
+    background: #000; /* Toujours noir pour le contraste du graph */
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: block;
+}
+
+#map {
+    width: 100% !important;
+    height: 200px; /* Hauteur fixe confortable */
+    background-color: #222;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    z-index: 1;
+}
+
+/* 8. INTERACTIVITÉ (BOUTONS & INPUTS) */
+button {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 12px; /* Zone de touche large pour les doigts */
+    margin-top: 5px;
+    width: 100%;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+button:active {
+    transform: scale(0.98); /* Effet de clic */
+}
+
+/* Bouton principal (Démarrer) */
+#start-btn-final {
+    background: var(--accent);
+    color: #000; /* Texte noir sur fond néon */
+    border: none;
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+/* Inputs (Champs de saisie masse, etc.) */
+input, select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px;
+    width: 100%;
+    text-align: center;
+    font-family: inherit;
+    border-radius: 4px;
+}
+
+/* 9. UTILITAIRES & ICÔNES */
+hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    width: 100%;
+    margin: 10px 0;
+}
+
+/* Niveau à bulle (Spécifique) */
+.spirit-level-container {
+    width: 100px;
+    height: 100px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    position: relative;
+    background: var(--bg);
+    margin: 10px auto;
+}
+.spirit-level-bubble {
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    margin-top: -10px; margin-left: -10px;
+    transition: transform 0.1s linear;
+}
+
+/* --- FIN DU CSS --- */
 </style>    
 </head>
  
@@ -489,12 +634,11 @@ canvas {
     <div id="treasure-log-display">En attente de détection...</div>
                     </div>
              </section>            
-    <section class="panel full-width">
+    <section class="panel full-width" style="grid-column: 1 / -1; margin-top: 10px;">
         <h2><i class="fas fa-chart-line"></i> Télémétrie Inertielle (64-bit)</h2>
         <canvas id="telemetry-canvas"></canvas>
     </section>
-        </main>            
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+</main><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
 <script src="vendor/leaflet.js"></script>    
