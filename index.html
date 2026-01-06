@@ -38,10 +38,10 @@ body {
 /* GRILLE PRINCIPALE : 4 COLONNES STRICTES */
 main {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr)); /* Force l'égalité parfaite */
-    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* Force 4 colonnes égales */
+    gap: 10px;
     width: 100%;
-    flex-grow: 1;
+    box-sizing: border-box;
 }
 
 /* ADAPTATION MOBILE (RÉVOLUTIONNAIRE) */
@@ -117,6 +117,18 @@ canvas {
     height: auto;
     background: #000;
     }
+    
+    #map {
+    width: 100% !important; /* Empêche le débordement */
+    height: 200px;
+    border-radius: 4px;
+    }
+
+    .data-point {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; /* Empêche le texte de pousser les murs */
+    }
 </style>    
 </head>
  
@@ -136,7 +148,7 @@ canvas {
     
     <main class="dashboard-container">
         
-        <div class="column-1">
+        <div class="column">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
@@ -244,7 +256,7 @@ canvas {
             </section>
         </div>
 
-        <div class="column-2">
+        <div class="column">
             <section class="panel" aria-labelledby="speed-heading">
                 <h2 id="speed-heading"><i class="fas fa-tachometer-alt"></i> Vitesse, Distance & Relativité</h2>
                 <div class="speed-display" role="status" aria-live="polite">
@@ -289,7 +301,6 @@ canvas {
                 <div class="data-point"><span>Rayon de Schwarzschild (Rs)</span><span id="schwarzschild-radius">--</span></div>
                 <div class="data-point"><span>Vitesse de la lumière (c)</span><span id="const-c">299792458 m/s</span></div>
                 <div class="data-point"><span>Gravitation Universelle (G)</span><span id="const-G">6.67430e-11 m³/kg/s²</span></div>
-                
                 <hr>
                 <h3>Distance (3D)</h3>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
@@ -322,7 +333,7 @@ canvas {
              </section>
         </div>
 
-        <div class="column-3">
+        <div class="column">
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
                 <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">INACTIF</span></div>
@@ -502,10 +513,10 @@ canvas {
         <section class="panel"> ... POSITION ... </section>
         <div id="map"></div> </div>
 
-    <section class="panel" style="grid-column: 1 / -1;">
+    
         <canvas id="telemetry-canvas"></canvas>
     </section>
-
+<section class="panel" style="grid-column: 1 / -1;">
         </main>            
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
