@@ -10,65 +10,204 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
     <link rel="manifest" href="manifest.json">
 <style>
+/* ==========================================================================
+   OMNISCIENCE V200 PRO - ARCHITECTURE GRID 4-COLONNES
+   ========================================================================== */
+
 :root {
+    /* --- MODE NUIT (Default) --- */
     --bg: #050505;
     --card: #121216;
     --border: #2a2a30;
     --text: #e0e0e0;
+    --text-dim: #888890;
     --accent: #00ff88;
+    --hud-bg: rgba(0, 0, 0, 0.9);
 }
 
+body.light-mode {
+    /* --- MODE JOUR --- */
+    --bg: #f0f2f5;
+    --card: #ffffff;
+    --border: #d1d1d6;
+    --text: #1a1a1a;
+    --text-dim: #666666;
+    --accent: #0066cc;
+    --hud-bg: rgba(255, 255, 255, 0.95);
+}
+
+* { box-sizing: border-box; }
+
 body {
-    background: var(--bg);
+    background-color: var(--bg);
     color: var(--text);
-    font-family: 'Consolas', monospace;
+    font-family: 'Consolas', 'Monaco', monospace;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    transition: background 0.3s, color 0.3s;
 }
 
-/* HUD Fixe en haut */
+/* 1. HUD FIXE (Header) */
 .master-hud-fixed {
     position: sticky;
     top: 0;
-    width: 100%;
-    background: rgba(0,0,0,0.9);
-    border-bottom: 2px solid var(--accent);
-    z-index: 1000;
-    padding: 15px 0;
+    z-index: 2000;
+    background: var(--hud-bg);
+    border-bottom: 3px solid var(--accent);
+    padding: 10px 0;
+    text-align: center;
+    backdrop-filter: blur(10px); /* Effet premium */
 }
 
-/* GRILLE PROFESSIONNELLE 4 COLONNES */
+#sp-main-hud {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: var(--accent);
+    margin: 0;
+    text-shadow: 0 0 15px var(--accent);
+}
+
+/* 2. LA GRILLE (Le cœur du Layout) */
 main {
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* Force 4 colonnes */
-    gap: 8px;
+    /* 4 Colonnes égales sur PC */
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 10px;
     padding: 10px;
     width: 100%;
-    box-sizing: border-box;
 }
 
-/* Responsive : On ne passe en 1 colonne que sur tout petit écran */
-@media (max-width: 800px) {
-    main { grid-template-columns: repeat(2, 1fr); }
+/* RESPONSIVE : Adaptation aux petits écrans */
+@media (max-width: 1100px) {
+    main { grid-template-columns: repeat(2, 1fr); } /* 2 colonnes sur tablette */
 }
 
+@media (max-width: 650px) {
+    main { 
+        grid-template-columns: 1fr; /* 1 colonne sur mobile */
+        padding: 8px;
+    }
+    #sp-main-hud { font-size: 2.5rem; }
+}
+
+/* 3. LES PANNEAUX */
 .panel {
     background: var(--card);
     border: 1px solid var(--border);
-    padding: 10px;
-    border-radius: 4px;
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Empêche le contenu de casser la grille */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
-.full-width { grid-column: 1 / -1; }
+/* Éléments pleine largeur (Télémétrie, Journal) */
+.full-width, .panel[style*="grid-column: 1 / -1"] {
+    grid-column: 1 / -1 !important;
+}
+
+/* 4. DONNÉES ET VALEURS */
+h2, h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+    margin: 0 0 10px 0;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
 .data-point {
     display: flex;
     justify-content: space-between;
-    font-size: 0.75rem;
-    margin-bottom: 4px;
-    border-bottom: 1px solid #1a1a1a;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
 }
+
+.data-point span:first-child {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+}
+
+.val {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--text);
+    font-variant-numeric: tabular-nums; /* Chiffres alignés */
+}
+
+/* 5. ÉLÉMENTS SPÉCIFIQUES */
+#map {
+    width: 100%;
+    height: 250px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    margin-top: 10px;
+}
+
+canvas#telemetry-canvas {
+    width: 100% !important;
+    height: 150px !important;
+    background: #000;
+    border-radius: 4px;
+}
+
+button {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+#start-btn-final {
+    background: var(--accent);
+    color: #000;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+}
+
+/* Niveau à bulle */
+.spirit-level-container {
+    width: 80px;
+    height: 80px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    margin: 10px auto;
+    position: relative;
+    background: rgba(0,0,0,0.2);
+}
+
+.spirit-level-bubble {
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--accent);
+}
+
+/* Fix pour les colonnes imbriquées */
+.column-fix {
+    display: contents; /* Supprime l'influence du div parent sur la grille main */
+    }
 </style>    
 </head>
  
