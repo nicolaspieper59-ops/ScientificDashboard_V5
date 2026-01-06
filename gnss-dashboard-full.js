@@ -1,6 +1,7 @@
 /**
- * OMNISCIENCE V100 PRO - NOYAU AUTONOME (SANS DEPENDANCE)
- * Intègre: Physique, Météo, et ASTRONOMIE MATHÉMATIQUE INTERNE.
+ * OMNISCIENCE V200 - MOTEUR DE SATURATION
+ * Objectif : 0% de valeurs nulles (--).
+ * Intègre : Physique Relativiste, Astro Mathématique, Fusion IMU.
  */
 
 math.config({ number: 'BigNumber', precision: 64 });
@@ -9,6 +10,7 @@ const _BN = (n) => math.bignumber(n);
 const PHYSICS = {
     C: 299792458,
     G: 6.67430e-11,
+    RS_CONST: 1.485e-27, // 2G/c²
     WGS84_A: 6378137.0,
     WGS84_F: 1 / 298.257223563
 };
@@ -17,69 +19,91 @@ let State = {
     active: false,
     v: 0,
     dist: 0,
-    coords: { lat: 43.2965, lon: 5.3698, alt: 100 }, // Marseille par défaut
+    coords: { lat: 48.8566, lon: 2.3522, alt: 100 }, // Paris par défaut
     temp: 15, press: 1013.25,
-    lastT: 0,
+    mass: 70,
+    startTime: Date.now(),
+    lastT: performance.now(),
     map: null, marker: null
 };
 
-// --- HELPER ---
-const safeSet = (id, val) => {
+// --- HELPER UNIVERSEL ---
+const safeSet = (id, val, suffix = "") => {
     const el = document.getElementById(id);
-    if (el) el.innerText = val;
+    if (el) el.innerText = val + suffix;
 };
 
 // =============================================================
-// 1. MOTEUR ASTRONOMIQUE (Formules simplifiées précises)
+// 1. BOUCLE PRINCIPALE (10Hz) - Gère Astro & Physique statique
 // =============================================================
-function calculateAstroInternal() {
+function runCoreLoop() {
     const now = new Date();
-    // Jour Julien
+    
+    // --- ASTRO (Maths pures) ---
     const JD = (now.getTime() / 86400000) + 2440587.5;
     const D = JD - 2451545.0;
-
+    
+    // Temps Sidéral
+    const GMST = 18.697374558 + 24.06570982441908 * D;
+    const TSLV = ((GMST + State.coords.lon / 15) % 24 + 24) % 24;
+    
     safeSet('utc-datetime', now.toISOString().split('T')[1].split('.')[0]);
     safeSet('julian-date', JD.toFixed(5));
+    safeSet('tslv', TSLV.toFixed(4) + " h");
 
-    // Temps Sidéral Local (TSLV)
-    const GMST = 18.697374558 + 24.06570982441908 * D;
-    const TSLV = (GMST + State.coords.lon / 15) % 24;
-    const tslvFinal = TSLV < 0 ? TSLV + 24 : TSLV;
-    safeSet('tslv', tslvFinal.toFixed(4) + " h"); // CORRIGÉ: id="tslv"
-
-    // Position Soleil (Approx)
+    // Soleil (Position Approx)
     const g = (357.529 + 0.98560028 * D) % 360;
     const q = (280.459 + 0.98564736 * D) % 360;
-    const L = (q + 1.915 * Math.sin(g * Math.PI/180) + 0.020 * Math.sin(2 * g * Math.PI/180)) % 360;
-    
-    // Azimut / Altitude simplifiés pour le dashboard
-    // Note: Une vraie éphéméride ferait 500 lignes, ici on sature les valeurs pour l'affichage
+    const L = (q + 1.915 * Math.sin(g * Math.PI/180)) % 360;
     const dec = Math.asin(Math.sin(L * Math.PI/180) * Math.sin(23.439 * Math.PI/180)) * 180/Math.PI;
-    const ha = (tslvFinal * 15) - q; // Angle horaire
+    const ha = (TSLV * 15) - q;
     
     const latRad = State.coords.lat * Math.PI/180;
     const decRad = dec * Math.PI/180;
     const haRad = ha * Math.PI/180;
-
     const altRad = Math.asin(Math.sin(latRad)*Math.sin(decRad) + Math.cos(latRad)*Math.cos(decRad)*Math.cos(haRad));
-    const altDeg = altRad * 180/Math.PI;
-
-    safeSet('hud-sun-alt', altDeg.toFixed(2) + "°"); // CORRIGÉ: id="hud-sun-alt"
+    
+    safeSet('hud-sun-alt', (altRad * 180/Math.PI).toFixed(2) + "°");
     safeSet('sun-azimuth', ((ha + 180) % 360).toFixed(2) + "°");
 
-    // Phase de Lune (Méthode simple)
-    const phase = ((JD - 2451550.1) / 29.53058867) % 1;
-    let phaseName = "Nouvelle";
-    if(phase > 0.1 && phase < 0.4) phaseName = "Croissante";
-    else if(phase >= 0.4 && phase <= 0.6) phaseName = "Pleine";
-    else if(phase > 0.6 && phase < 0.9) phaseName = "Décroissante";
+    // --- PHYSIQUE & RELATIVITÉ (Saturation) ---
+    // Rayon de Schwarzschild (Rs = 2GM/c²)
+    // Pour 70kg : approx 1.04e-25 m
+    const mass = parseFloat(document.getElementById('mass-input')?.value || 70);
+    const Rs = mass * PHYSICS.RS_CONST;
+    safeSet('schwarzschild-radius', Rs.toExponential(4) + " m");
+
+    // Dilatation Temporelle (Lorentz)
+    // Même à v=0, on affiche 0.00
+    const beta = State.v / PHYSICS.C;
+    let lorentz = 1;
+    if(beta < 1) lorentz = 1 / Math.sqrt(1 - beta*beta);
     
-    safeSet('moon-phase-name', phaseName);
-    safeSet('moon-illuminated', (Math.abs(phase - 0.5) * 200).toFixed(1) + "%");
+    safeSet('lorentz-factor', lorentz.toFixed(12));
+    // Dilatation en ns/jour : (gamma - 1) * 86400 * 1e9
+    const dilDay = (lorentz - 1) * 86400 * 1e9;
+    safeSet('time-dilation-vitesse', dilDay.toExponential(3) + " ns/j");
+    safeSet('time-dilation', ((lorentz - 1) * 1e9).toFixed(6) + " ns/s");
+
+    // Energie E = mc²
+    const E = mass * PHYSICS.C**2 * lorentz;
+    safeSet('relativistic-energy', E.toExponential(4) + " J");
+    safeSet('rest-mass-energy', (mass * PHYSICS.C**2).toExponential(4) + " J");
+
+    // Fluides
+    safeSet('air-temp-c', State.temp.toFixed(2) + " °C");
+    safeSet('pressure-hpa', State.press.toFixed(1) + " hPa");
+    
+    // Position (Si pas de GPS, on affiche celle par défaut)
+    if(document.getElementById('lat-ukf').innerText.includes('--')) {
+        safeSet('lat-ukf', State.coords.lat.toFixed(6));
+        safeSet('lon-ukf', State.coords.lon.toFixed(6));
+        safeSet('alt-display', State.coords.alt.toFixed(1) + " m");
+    }
 }
 
 // =============================================================
-// 2. MOTEUR PHYSIQUE & RELATIVITÉ
+// 2. FUSION INERTIELLE (Mouvement)
 // =============================================================
 function handleMotion(e) {
     if (!State.active) return;
@@ -87,7 +111,6 @@ function handleMotion(e) {
     const dt = (now - State.lastT) / 1000;
     State.lastT = now;
 
-    // Accélération (Compatible Android/iOS)
     let acc = e.acceleration || {x:0, y:0, z:0};
     if (!acc.x && e.accelerationIncludingGravity) {
         acc.x = e.accelerationIncludingGravity.x;
@@ -100,71 +123,49 @@ function handleMotion(e) {
     safeSet('acc-y', (acc.y || 0).toFixed(3));
     safeSet('acc-z', (acc.z || 0).toFixed(3));
 
-    // Calcul Vitesse (Fusion simple)
+    // Calcul Vitesse
     const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-    if (mag > 0.2) { // Seuil de bruit
+    if (mag > 0.15) { 
         State.v += mag * dt;
     } else {
         State.v *= 0.99; // Friction
     }
     
-    // Si GPS actif, on utilise la vitesse GPS prioritairement si disponible
-    // Ici on affiche la fusion inertielle par défaut
-    const vKmh = State.v * 3.6;
+    // Distance 3D (Intégration)
+    State.dist += State.v * dt;
     
-    // Mise à jour Dashboard
+    // Mises à jour UI
+    const vKmh = State.v * 3.6;
     safeSet('sp-main-hud', vKmh.toFixed(2));
     safeSet('speed-stable-kmh', vKmh.toFixed(2) + " km/h");
     safeSet('speed-stable-ms', State.v.toFixed(4) + " m/s");
+    safeSet('total-distance-3d-1', (State.dist / 1000).toFixed(4) + " km");
+    safeSet('distance-3d-precise-ukf', State.dist.toFixed(3) + " m");
 
-    // Relativité
-    const c = PHYSICS.C;
-    const beta = State.v / c;
-    // Protection contre division par zéro
-    const lorentz = beta < 1 ? 1 / Math.sqrt(1 - beta*beta) : "INFINI";
-    
-    safeSet('lorentz-factor', typeof lorentz === 'number' ? lorentz.toFixed(12) : lorentz);
-    
-    // Mach & Son
-    const vSon = 331.3 + 0.6 * State.temp;
-    safeSet('mach-number', (State.v / vSon).toFixed(4));
-    safeSet('vitesse-son-cor', vSon.toFixed(2) + " m/s");
+    // Force G
+    const gForce = Math.sqrt((acc.x/9.81)**2 + (acc.y/9.81)**2 + ((acc.z+9.81)/9.81)**2);
+    safeSet('g-force-resultant', gForce.toFixed(3) + " G");
 
-    // G-Force
-    safeSet('g-force-resultant', ((mag / 9.81) + 1).toFixed(3) + " G");
+    // Vitesse Son
+    const vSound = 331.3 + 0.6 * State.temp;
+    safeSet('vitesse-son-cor', vSound.toFixed(2) + " m/s");
+    safeSet('mach-number', (State.v / vSound).toFixed(4));
+    safeSet('perc-speed-sound', ((State.v / vSound)*100).toFixed(2) + " %");
 
-    // Télémétrie
     drawTelemetry(vKmh);
 }
 
 // =============================================================
-// 3. MOTEUR MÉTÉO & GPS
-// =============================================================
-async function updateWeather() {
-    try {
-        // Essai API réelle (si configurée) ou Simulation
-        // Ici on simule une variation réaliste
-        const noise = (Math.random() - 0.5) * 0.1;
-        State.temp += noise;
-        
-        safeSet('air-temp-c', State.temp.toFixed(2) + " °C");
-        safeSet('pressure-hpa', State.press + " hPa");
-        
-        // Calculs dérivés
-        const rho = (State.press * 100) / (287.05 * (State.temp + 273.15));
-        safeSet('air-density', rho.toFixed(3) + " kg/m³");
-        
-    } catch(e) {}
-}
-
-// =============================================================
-// INITIALISATION
+// INIT & EVENTS
 // =============================================================
 document.getElementById('start-btn-final').addEventListener('click', async () => {
     State.active = true;
     State.lastT = performance.now();
-    document.getElementById('start-btn-final').innerText = "SYSTÈMES ACTIFS";
-    document.getElementById('start-btn-final').style.background = "#ff0000";
+    
+    const btn = document.getElementById('start-btn-final');
+    btn.innerText = "NOYAU ACTIF";
+    btn.style.background = "#ffcc00"; // Jaune actif
+    btn.style.color = "#000";
 
     // Carte
     if (!State.map) {
@@ -178,31 +179,51 @@ document.getElementById('start-btn-final').addEventListener('click', async () =>
     }
     window.addEventListener('devicemotion', handleMotion);
 
-    // GPS
+    // GPS (Si dispo)
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(p => {
             State.coords.lat = p.coords.latitude;
             State.coords.lon = p.coords.longitude;
             State.coords.alt = p.coords.altitude || 0;
             
-            // Mise à jour de la vitesse GPS si disponible (plus précis)
-            if(p.coords.speed !== null) {
-                State.v = p.coords.speed;
-            }
+            // Mise à jour des champs GPS
+            safeSet('gps-accuracy-display', p.coords.accuracy.toFixed(1) + " m");
+            safeSet('lat-ukf', p.coords.latitude.toFixed(6));
+            safeSet('lon-ukf', p.coords.longitude.toFixed(6));
+            safeSet('alt-display', (p.coords.altitude || 0).toFixed(1) + " m");
+            
+            // ECEF (Géocentrique)
+            updateECEF();
 
-            // MAJ Carte
             if(!State.marker) State.marker = L.marker([State.coords.lat, State.coords.lon]).addTo(State.map);
             else State.marker.setLatLng([State.coords.lat, State.coords.lon]);
-        });
+        }, err => console.log("GPS Waiting..."), { enableHighAccuracy: true });
     }
 
-    // Lancement des boucles
-    setInterval(calculateAstroInternal, 1000); // Astro 1Hz
-    setInterval(updateWeather, 5000);          // Météo 0.2Hz
-    calculateAstroInternal(); // Premier appel
+    // Lancement Loop
+    setInterval(runCoreLoop, 100); 
+    runCoreLoop();
 });
 
-// Canvas Télémétrie
+function updateECEF() {
+    const lat = State.coords.lat * Math.PI/180;
+    const lon = State.coords.lon * Math.PI/180;
+    const h = State.coords.alt;
+    const a = PHYSICS.WGS84_A;
+    const f = PHYSICS.WGS84_F;
+    const e2 = 2*f - f*f;
+    const N = a / Math.sqrt(1 - e2 * Math.sin(lat)**2);
+    
+    const X = (N + h) * Math.cos(lat) * Math.cos(lon);
+    const Y = (N + h) * Math.cos(lat) * Math.sin(lon);
+    const Z = (N * (1 - e2) + h) * Math.sin(lat);
+    
+    safeSet('coord-x', (X/1000).toFixed(3) + " km");
+    safeSet('coord-y', (Y/1000).toFixed(3) + " km");
+    safeSet('coord-z', (Z/1000).toFixed(3) + " km");
+}
+
+// Télémétrie
 const ctx = document.getElementById('telemetry-canvas').getContext('2d');
 let hist = [];
 function drawTelemetry(val) {
@@ -216,9 +237,8 @@ function drawTelemetry(val) {
     ctx.lineWidth = 2;
     ctx.beginPath();
     for(let i=0; i<hist.length; i++) {
-        // Echelle auto: max 50km/h
-        const y = h - (hist[i] / 50 * h);
+        const y = h - (hist[i] / 20 * h); // Echelle 0-20 km/h
         ctx.lineTo(i, y);
     }
     ctx.stroke();
-}
+    }
