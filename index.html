@@ -214,7 +214,10 @@ button:hover {
 <body class="dark-mode">
 <div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>   
     <header>
-        <h1 style="text-align: center; color: var(--accent-color);">GNSS SpaceTime Dashboard • UKF 21 États Fusion Professionnel</h1>
+<h1><i class="fas fa-atom"></i> OMNISCIENCE V200 PRO</h1>
+<div id="world-reference-badge" class="badge-sci">
+    BODY: <span id="current-world-id">EARTH (WGS84)</span>
+</div>
     </header>
     <div class="master-hud-fixed">
     <div class="hud-display">
@@ -239,7 +242,7 @@ button:hover {
                 <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
                 <div class="data-point"><span>Heure NTP:</span> <span id="ntp-status-val">Sync...</span></div>
                 <div class="data-point"><span>Batterie Appareil:</span> <span id="batt-level">-- %</span></div>
-                <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal-1">OPTIMAL</span></div>
+                <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal-main">OPTIMAL</span></div>
                 <div class="data-point"><span>Vibration (Jerk):</span> <span id="jerk-vector">-.- m/s³</span></div>
                 <div class="data-point"><span>Latence (Est.):</span> <span id="wifi-latency">-- ms</span></div>  
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
@@ -320,6 +323,21 @@ button:hover {
                 <div class="data-point"><span>Champ Magnétique X</span><span id="mag-x">--</span></div>
                 <div class="data-point"><span>Champ Magnétique Y</span><span id="mag-y">--</span></div>
                 <div class="data-point"><span>Champ Magnétique Z</span><span id="mag-z">--</span></div>
+                <div class="label" style="color:var(--accent);">🛠️ CALIBRATION INTERNE (21-ÉTATS)</div>
+<div class="data-grid">
+    <div class="data-point">
+        <span>Biais Acc (X/Y/Z)</span>
+        <span id="bias-acc-val" class="tabular">0.000 / 0.000 / 0.000</span>
+    </div>
+    <div class="data-point">
+        <span>Dérive Gyro</span>
+        <span id="bias-gyro-val" class="tabular">0.000°/s</span>
+    </div>
+    <div class="data-point">
+        <span>Confiance P-Matrix</span>
+        <span id="kalman-certainty">100%</span>
+    </div>
+</div>
             </section>
             
             <section class="panel" aria-labelledby="env-sensors-heading">
@@ -330,7 +348,7 @@ button:hover {
                 <div class="data-point"><span>Niveau Sonore / Vibration</span><span id="env-noise">--</span></div>
                 <div class="data-point"><span>Niveau Sonore (dB)</span><span id="sound-level">--</span></div>
                 <div class="data-point"><span>Son (Max)</span><span id="sound-level-max">-- dB</span></div>
-                <div class="data-point"><span>Statut Thermique CPU</span><span id="status-thermal">STABLE</span></div>
+                <div class="data-point"><span>Statut Thermique CPU</span><span id="status-thermal-detail">STABLE</span></div>
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </section>
         </div>
