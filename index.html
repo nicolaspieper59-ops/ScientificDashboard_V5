@@ -278,8 +278,8 @@ input, select {
 </head>
  
 <body class="dark-mode">
-<div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>   
-    <header>
+<div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>  
+<header>    
 <header id="master-hud-fixed">
     <div class="hud-top">
         <div id="ai-mode" class="badge">STASE</div>
@@ -293,7 +293,8 @@ input, select {
         <div class="stat">γ: <span id="gamma-factor-precise">1.0000000000</span></div>
         <div class="stat">STATUS: <span id="reality-status-main">INTEGRITY_OK</span></div>
     </div>
-    <header id="master-hud-fixed">
+    <button id="start-btn-final" onclick="initOmniscience()">🚀 INITIALISER LA SINGULARITÉ</button>
+</header>
     <div class="hud-display">
         <div id="sp-main-hud">-.-----</div>
     <div class="hud-label">km/h • SINGULARITY CORE</div>
@@ -333,14 +334,13 @@ input, select {
                         <option value="HIGH_FREQ">Haute Fréquence</option>
                         <option value="LOW_FREQ">Basse Fréquence</option>
                     </select>
-                    <button id="emergency-stop-btn" title="Arrêt d'urgence" aria-live="assertive">🛑 Arrêt d'urgence: INACTIF 🟢</button>
-                    <button id="toggle-mode-btn" aria-label="Basculer mode jour/nuit"><i class="fas fa-moon"></i> Mode Nuit</button>
-                    <button id="reset-dist-btn"><i class="fas fa-route"></i> Réinit. Dist.</button>
-                    <button id="reset-max-btn"><i class="fas fa-tachometer-alt"></i> Réinit. V-Max</button>
-                    <button id="capture-data-btn" style="background-color: #ffc107; color: black;"><i class="fas fa-camera"></i> Capturer données</button>
-                    <button id="reset-all-btn" style="grid-column: 1 / -1;"><i class="fas fa-power-off"></i> TOUT RÉINITIALISER</button>
-                    <button id="reinit-vmax-btn">
-                    
+                    <button id="emergency-stop" class="critical" onclick="stopSystem()">ARRÊT URGENCE</button>
+                    <button id="toggle-theme-btn" onclick="toggleTheme()">MODE JOUR/NUIT</button>
+                    <button id="reset-dist-btn" onclick="resetDistance()">RESET Distance</button>
+                    <button id="reinit-vmax-btn" onclick="resetMaxSpeed()">RESET V-MAX</button>
+                    <button id="log-export-btn" onclick="exportData()">EXPORT LOGS</button>
+                    <button id="emergency-stop" class="critical" onclick="resetAll()">Tout Rinisialiser</button>
+                    </div>
                     <div class="control-input-full">
                         <label for="gps-accuracy-override">Forcer Précision GPS (m) [0=Auto]</label>
                         <input type="number" id="gps-accuracy-override" value="0" step="1">
@@ -399,31 +399,29 @@ input, select {
     <div class="data-point"><span>Confiance Matrice</span><span id="kalman-p-certainty">--</span></div>
 </div>
 <section class="panel">
-    <h2><i class="fas fa-microchip"></i> Diagnostics 21-États (128-bit)</h2>
+    <h2><i class="fas fa-microchip"></i> Navigation Inertielle (EKF 21-États)</h2>
     <div class="data-grid">
         <div class="data-point">
-            <span>Accélération Filtrée</span>
+            <span>Accélération Filtrée (X/Y/Z)</span>
             <span id="f-acc-xyz" class="tabular">-.-- / -.-- / -.--</span>
         </div>
         <div class="data-point">
-            <span>Biais Acc (Correction)</span>
-            <span id="bias-acc-val" class="warning-text">-.---</span>
+            <span>Biais Accéléromètre (m/s²)</span>
+            <span id="bias-acc-val" class="warning-text">-.------</span>
         </div>
         <div class="data-point">
-            <span>Dérive Gyro (Estimation)</span>
-            <span id="bias-gyro-val" class="warning-text">-.----°/s</span>
+            <span>Dérive Gyroscope (°/s)</span>
+            <span id="bias-gyro-val" class="warning-text">-.------</span>
         </div>
         <div class="data-point">
-            <span>Confiance Matrice P</span>
-            <span id="kalman-p-certainty">-- %</span>
+            <span>Confiance Matrice P (Covariance)</span>
+            <span id="kalman-p-certainty">100.00 %</span>
         </div>
     </div>
-</section>
-                <div class="data-point"><span>Champ Magnétique X</span><span id="mag-x">--</span></div>
-                <div class="data-point"><span>Champ Magnétique Y</span><span id="mag-y">--</span></div>
-                <div class="data-point"><span>Champ Magnétique Z</span><span id="mag-z">--</span></div>
-                <div class="label" style="color:var(--accent);">🛠️ CALIBRATION INTERNE (21-ÉTATS)</div>
-            </section>            
+    <div class="spirit-level-container">
+        <div id="bubble" class="spirit-level-bubble"></div>
+    </div>
+</section>        
             <section class="panel" aria-labelledby="env-sensors-heading">
                 <h2 id="env-sensors-heading"><i class="fas fa-camera-retro"></i> Capteurs Environnementaux </h2>
                 <div class="data-point"><span>Luminosité (Lux/Poche)</span><span id="env-lux">--</span></div>
@@ -571,6 +569,27 @@ input, select {
         </div>
     </div>
 </section>
+                <section class="panel">
+    <h2><i class="fas fa-atom"></i> Physique Relativiste</h2>
+    <div class="data-grid">
+        <div class="data-point">
+            <span>Vitesse Propre (Détail)</span>
+            <span id="speed-detail-val">0.00 m/s</span>
+        </div>
+        <div class="data-point">
+            <span>Facteur Lorentz (Détail)</span>
+            <span id="gamma-detail-val">1.0000</span>
+        </div>
+        <div class="data-point">
+            <span>Énergie Cinétique (Rel.)</span>
+            <span id="rel-kinetic-energy">0.00 J</span>
+        </div>
+        <div class="data-point">
+            <span>Densité de Planck (Locale)</span>
+            <span id="planck-density">--</span>
+        </div>
+    </div>
+                </section>
                 <h3>Mécanique des Fluides</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">-.-- Pa</span></div>
                 <div class="data-point"><span>Force de Traînée</span><span id="drag-force">-.-- N</span></div>
