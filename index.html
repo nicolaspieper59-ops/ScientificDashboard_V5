@@ -292,7 +292,7 @@ input, select {
         <div class="stat">γ: <span id="gamma-factor-precise">-.--------</span></div>
         <div class="stat">STATUS: <span id="reality-status-main">INTEGRITY_OK</span></div>
     </div>
-    <button id="start-btn-final" onclick="initOmniscience()">🚀 INITIALISER LA SINGULARITÉ</button>
+    <button id="start-btn-final" onclick="initCore()">🚀 INITIALISER LA SINGULARITÉ</button>
 </header>    
     <main class="dashboard-container">     
         <div class="column">
@@ -381,24 +381,15 @@ input, select {
 <section class="panel">
     <h2><i class="fas fa-microchip"></i> Navigation Inertielle (EKF 21-États)</h2>
     <div class="data-grid">
-        <div class="data-point">
-            <span>Accélération Filtrée (X/Y/Z)</span>
-            <span id="f-acc-xyz" class="tabular">-.-- / -.-- / -.--</span>
-        </div>
-        <div class="data-point">
-            <span>Biais Accéléromètre (m/s²)</span>
-            <span id="bias-acc-val" class="warning-text">-.------</span>
-        </div>
-        <div class="data-point">
-            <span>Dérive Gyroscope (°/s)</span>
-            <span id="bias-gyro-val" class="warning-text">-.------</span>
-        </div>
-        <div class="data-point">
-            <span>Confiance Matrice P (Covariance)</span>
-            <span id="kalman-p-certainty">100.00 %</span>
-        </div>
+        <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz" class="tabular">-.-- / -.-- / -.--</span></div>
+        <div class="data-point"><span>Biais Accéléromètre</span><span id="bias-acc-val" class="warning-text">-.------</span></div>
+        <div class="data-point"><span>Dérive Gyroscope</span><span id="bias-gyro-val" class="warning-text">-.------</span></div>
+        <div class="data-point"><span>Confiance Matrice P</span><span id="kalman-p-certainty">---.-- %</span></div>
     </div>
-</section>        
+    <div class="spirit-level-container">
+        <div id="bubble-main" class="spirit-level-bubble"></div>
+    </div>
+</section>       
             <section class="panel" aria-labelledby="env-sensors-heading">
                 <h2 id="env-sensors-heading"><i class="fas fa-camera-retro"></i> Capteurs Environnementaux </h2>
                 <div class="data-point"><span>Luminosité (Lux/Poche)</span><span id="env-lux">--</span></div>
@@ -538,20 +529,14 @@ input, select {
         </div>
     </div>
 </section>
-                <div class="sub-panel">
+    <section class="panel">
     <h2><i class="fas fa-atom"></i> Physique Relativiste</h2>
     <div class="data-grid">
-        <div class="data-point">
-            <span>Vitesse Propre (Détail)</span>
-            <span id="speed-detail-val">-.-- m/s</span>
-        </div>
-        <div class="data-point">
-            <span>Facteur Lorentz (Détail)</span>
-            <span id="gamma-detail-val">-.----</span>
-        </div>
-        <div class="data-point">
-            <span>Énergie Cinétique (Rel.)</span>
-            <span id="rel-kinetic-energy">-.-- J</span>
+        <div class="data-point"><span>Vitesse Propre (Détail)</span><span id="speed-detail-val">-.-- m/s</span></div>
+        <div class="data-point"><span>Facteur de Lorentz</span><span id="gamma-detail-val">-.------</span></div>
+        <div class="stat-box">
+            <span>Dilatation Temporelle</span>
+            <div id="time-dilation-vitesse" class="tabular">-.-- ns/jour</div>
         </div>
     </div>
                 </section>
@@ -648,8 +633,7 @@ input, select {
                 <div class="data-point"><span>Heure Solaire Moyenne (MST)</span><span id="mst-time">--</span></div>
                 <div class="data-point"><span>Midi Solaire Local (UTC)</span><span id="noon-solar">--</span></div>
                 <div class="data-point"><span>Équation du Temps (EOT)</span><span id="equation-of-time">--</span></div>
-                <div class="data-point"><span>Temps Sidéral Local Vrai</span><span id="tslv">--</span></div>
-                <div class="data-point"><span>Temps Sidéral (TSLV)</span><span id="tslv-1">--</span></div>
+                <div class="data-point"><span>Temps Sidéral (TSLV)</span><span id="tslv">--</span></div>
                 <div class="data-point"><span>Longitude Écliptique</span><span id="ecl-long">--</span></div>
                 <hr>
                 <h3><i class="fas fa-sun"></i> Soleil</h3>
@@ -685,7 +669,8 @@ input, select {
         </div>
     </div>
     </section>
-</main><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
 <script src="vendor/leaflet.js"></script>    
