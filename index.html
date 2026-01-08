@@ -10,270 +10,118 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
     <link rel="manifest" href="manifest.json">
 <style>
-/* ==========================================================================
-   OMNISCIENCE V200 PRO - ARCHITECTURE SCIENTIFIQUE FINALE
-   Cible : UKF 21 États / Relativité / Géodésie
-   ========================================================================== */
-
 :root {
-    /* --- MODE NUIT (Défaut) --- */
     --bg: #050505;
     --card: #121216;
     --border: #2a2a30;
     --text: #e0e0e0;
     --text-dim: #888890;
-    --accent: #00ff88; /* Vert Science */
-    --warning: #ffcc00; /* Jaune Calibration */
-    --critical: #ff3b30; /* Rouge Alerte */
-    --hud-bg: rgba(0, 0, 0, 0.9);
-    --font-mono: 'JetBrains Mono', 'Consolas', 'Fira Code', monospace;
+    --accent: #00ff88;
+    --hud-bg: rgba(0, 0, 0, 0.95);
+    --font-mono: 'JetBrains Mono', 'Consolas', monospace;
 }
 
-body.light-mode {
-    /* --- MODE JOUR --- */
-    --bg: #f0f2f5;
-    --card: #ffffff;
-    --border: #d1d1d6;
-    --text: #1a1a1a;
-    --text-dim: #666666;
-    --accent: #0066cc;
-    --hud-bg: rgba(255, 255, 255, 0.95);
-}
-
-/* ==========================================================================
-   1. BASE & LAYOUT (GRID 4-COLONNES)
-   ========================================================================== */
-
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
-    background-color: var(--bg);
-    color: var(--text);
-    font-family: var(--font-mono);
     margin: 0;
-    padding: 0;
-    overflow-x: hidden;
-    transition: background 0.3s, color 0.3s;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100vh;
+    overflow: hidden; /* Important : le body ne doit jamais scroller */
 }
 
+/* --- STRUCTURE PRINCIPALE --- */
 main {
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 Colonnes égales */
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
-    padding: 10px;
-    width: 100%;
+    padding: 90px 10px 10px 10px; /* Espace pour le HUD */
+    height: 100vh;
 }
 
-/* Responsive : Adaptation tablettes et mobiles */
-@media (max-width: 1100px) {
-    main { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 650px) {
-    main { grid-template-columns: 1fr; padding: 8px; }
-}
-
-/* ==========================================================================
-   2. HUD FIXE ET ÉLÉMENTS SCIENTIFIQUES
-   ========================================================================== */
-
-#master-hud-fixed {
-    position: sticky;
-    top: 0;
-    z-index: 2000;
-    background: var(--hud-bg);
-    border-bottom: 3px solid var(--accent);
-    padding: 10px 15px;
-    text-align: center;
-    backdrop-filter: blur(10px);
-}
-
-.hud-main {
-    font-size: 3.5rem;
-    font-weight: 900;
-    color: var(--accent);
-    text-shadow: 0 0 15px var(--accent);
-}
-
-.hud-sub {
+.column {
     display: flex;
-    justify-content: center;
-    gap: 20px;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    margin-top: 5px;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto; /* Seule la colonne peut scroller si besoin */
 }
-
-/* Chiffres Tabulaires : Évite le tremblement du texte */
-.tabular {
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.5px;
-}
-
-/* Badges et Textes de Statut */
-.badge-sci {
-    background: var(--accent);
-    color: black;
-    padding: 2px 6px;
-    font-weight: 800;
-    font-size: 0.7rem;
-    border-radius: 3px;
-    text-transform: uppercase;
-}
-
-.warning-text { color: var(--warning) !important; }
-
-/* Animation Alerte Réalité */
-.reality-critical {
-    color: var(--critical) !important;
-    animation: flash-red 0.5s infinite;
-    font-weight: bold;
-}
-
-@keyframes flash-red {
-    50% { opacity: 0.3; text-shadow: 0 0 10px var(--critical); }
-}
-
-/* ==========================================================================
-   3. PANNEAUX ET COMPOSANTS DATA
-   ========================================================================== */
 
 .panel {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
-.full-width { grid-column: 1 / -1 !important; }
-
-h2, h3 {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 5px;
-    margin: 0 0 10px 0;
+/* --- HUD FIXE --- */
+#master-hud-fixed {
+    position: fixed;
+    top: 0; left: 0; width: 100%;
+    height: 80px;
+    background: var(--hud-bg);
+    border-bottom: 1px solid var(--accent);
+    z-index: 10000;
     display: flex;
+    justify-content: space-around;
     align-items: center;
-    gap: 8px;
 }
 
-.data-point {
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 0;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+/* --- NAVIGATION MOBILE (Cachée sur PC) --- */
+.mobile-nav { display: none; }
+
+@media (max-width: 1024px) {
+    main {
+        display: block; /* On casse la grille */
+        padding-top: 85px;
+        height: calc(100vh - 60px);
+    }
+
+    .column {
+        display: none; /* On cache les colonnes */
+        height: 100%;
+    }
+
+    .column.active {
+        display: flex; /* On affiche l'onglet actif */
+    }
+
+    .mobile-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; width: 100%;
+        height: 60px;
+        background: var(--card);
+        border-top: 1px solid var(--border);
+        z-index: 10001;
+    }
+
+    .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        font-family: var(--font-mono);
+    }
+
+    .nav-item.active {
+        color: var(--accent);
+        border-top: 2px solid var(--accent);
+    }
 }
 
-.data-point span:first-child {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-}
-
-.data-point span:last-child {
-    font-size: 0.85rem;
-    font-weight: bold;
-}
-
-/* ==========================================================================
-   4. TÉLÉMÉTRIE ET INSTRUMENTS (Dual-Canvas)
-   ========================================================================== */
-
+/* --- GRAPHIQUES --- */
 .dual-canvas-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-top: 10px;
+    gap: 5px;
+    height: 150px;
 }
-
-.canvas-box {
-    background: #000;
-    border-radius: 4px;
-    padding: 5px;
-    border: 1px solid var(--border);
-}
-
-.canvas-box .label {
-    display: block;
-    font-size: 0.6rem;
-    color: var(--text-dim);
-    margin-bottom: 5px;
-    text-align: center;
-}
-
-canvas { width: 100% !important; height: 150px !important; }
-
-/* Niveau à bulle IMU */
-.spirit-level-container {
-    width: 80px; height: 80px;
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    margin: 10px auto;
-    position: relative;
-    background: rgba(0,0,0,0.2);
-}
-
-.spirit-level-bubble {
-    width: 16px; height: 16px;
-    background: var(--accent);
-    border-radius: 50%;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px var(--accent);
-}
-
-/* ==========================================================================
-   5. BOUTONS ET CONTRÔLES
-   ========================================================================== */
-
-.controls-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-
-button {
-    background: var(--card);
-    color: var(--text);
-    border: 1px solid var(--accent);
-    padding: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    transition: 0.2s;
-}
-
-button:hover {
-    background: var(--accent);
-    color: #000;
-}
-
-#start-btn-final {
-    background: var(--accent);
-    color: #000;
-    font-size: 1.1rem;
-    width: 100%;
-    margin-bottom: 10px;
-}
-
-input, select {
-    background: #1a1a20;
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 5px;
-    width: 100%;
-    border-radius: 3px;
-    font-family: var(--font-mono);
-}
-
-/* Utilitaires */
-.column-fix { display: contents; } /* Supprime l'influence du div parent */
-#map { height: 250px; border-radius: 4px; }
+canvas { width: 100%; height: 100%; background: #000; }    
 </style>    
 </head>
  
@@ -350,7 +198,7 @@ input, select {
                     <div class="control-input-full">
                         <label for="mass-input">Masse de l'objet (kg)</label>
                         <input type="number" id="mass-input" value="70" step="1" aria-labelledby="mass-display">
-                        <div class="data-point"><span>Masse (kg)</span><span id="mass-display">70.000 kg</span></div>
+                        <div class="data-point"><span>Masse (kg)</span><span id="mass-display">--.--- kg</span></div>
                     </div>
                     <div class="control-input-full">
                         <label for="celestial-body-select">Corps Céleste (Gravité)</label>
@@ -429,7 +277,7 @@ input, select {
                 </div>    
                 <hr>
                 <h3>Physique & Relativité</h3>
-                <div class="data-point"><span>Vitesse du Son Locale (Cor.)</span><span id="vitesse-son-cor">--</span></div>
+                <div class="data-point"><span>Vitesse du Son Locale </span><span id="vitesse-son-cor">--</span></div>
                 <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
@@ -443,14 +291,14 @@ input, select {
                 <div class="data-point"><span>Énergie de Masse (E₀)</span><span id="rest-mass-energy">--</span></div>
                 <div class="data-point"><span>Quantité de Mouvement (p)</span><span id="momentum">--</span></div>
                 <div class="data-point"><span>Rayon de Schwarzschild (Rs)</span><span id="schwarzschild-radius">--</span></div>
-                <div class="data-point"><span>Vitesse de la lumière (c)</span><span id="const-c">299792458 m/s</span></div>
-                <div class="data-point"><span>Gravitation Universelle (G)</span><span id="const-G">6.67430e-11 m³/kg/s²</span></div>
+                <div class="data-point"><span>Vitesse de la Lumière locale (c)</span><span id="const-c">--------- m/s</span></div>
+                <div class="data-point"><span>Gravitation Universelle locale (G)</span><span id="const-G">-.-----e-__ m³/kg/s²</span></div>
                 <hr>
                 <h3>Distance (3D)</h3>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
-                <div class="data-point"><span>Distance Absolue (nm)</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
+                <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
-                <span id="nether-mode-status" style="display:none;">1.000</span> 
+                <span id="nether-mode-status" style="display:none;">-.---</span> 
                     
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">-.--e+-- s</span></div>
                 <div class="data-point"><span>Distance (min-lumière)</span><span id="distance-light-min">-.--e+-- min</span></div>
@@ -517,7 +365,7 @@ input, select {
     <div class="data-grid">
         <div class="data-point">
             <span>Gravité (Somigliana)</span>
-            <span id="gravity-theoretical">9.80665 m/s²</span>
+            <span id="gravity-theoretical">-.----- m/s²</span>
         </div>
         <div class="data-point">
             <span>Dilatation Temporelle</span>
@@ -525,7 +373,7 @@ input, select {
         </div>
         <div class="data-point">
             <span>Rayon Ellipsoïde Local</span>
-            <span id="earth-radius-local">6378137 m</span>
+            <span id="earth-radius-local">------ m</span>
         </div>
     </div>
 </section>
@@ -553,7 +401,7 @@ input, select {
                 <div class="data-point"><span>Force de Coriolis</span><span id="coriolis-force">-.-- N</span></div>
                 <hr style="border:1px solid var(--border);">
                 <h3>Performance & Flow</h3>
-                <div class="data-point"><span>Puissance (Watts):</span> <span id="human-power-w">-- W</span></div>
+                <div class="data-point"><span>Puissance en Watts:</span> <span id="human-power-w">-- W</span></div>
                 <div class="data-point"><span>Adrénaline Index:</span> <span id="adrenaline-idx">-.- / 10</span></div>
                 <div class="data-point" style="background:rgba(0,255,0,0.1);"><span>Score Fluidité:</span> <span id="smoothness-score">---/100</span></div>
                 <div class="data-point"><span>Calories (METs):</span> <span id="cal-val">>-.- kcal</span></div>
