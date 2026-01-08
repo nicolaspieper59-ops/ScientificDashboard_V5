@@ -214,10 +214,19 @@ button:hover {
 <body class="dark-mode">
 <div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>   
     <header>
-<h1><i class="fas fa-atom"></i> OMNISCIENCE V200 PRO</h1>
-<div id="world-reference-badge" class="badge-sci">
-    BODY: <span id="current-world-id">EARTH (WGS84)</span>
-</div>
+<header id="master-hud-fixed">
+    <div class="hud-top">
+        <div id="ai-mode" class="badge">STASE</div>
+        <div id="world-reference-badge" class="badge-sci">CORPUS: <span id="current-world-id">EARTH (WGS84)</span></div>
+    </div>
+    <div class="hud-main">
+        <div id="main-speed" class="tabular">0.00000</div>
+        <div class="unit">KM/H</div>
+    </div>
+    <div class="hud-sub">
+        <div class="stat">γ: <span id="gamma-factor-precise">1.0000000000</span></div>
+        <div class="stat">STATUS: <span id="reality-status-main">INTEGRITY_OK</span></div>
+    </div>
     </header>
     <div class="master-hud-fixed">
     <div class="hud-display">
@@ -324,31 +333,27 @@ button:hover {
     <div class="data-point"><span>Dérive Gyro</span><span id="bias-gyro-val" style="color:#ffcc00;">--</span></div>
     <div class="data-point"><span>Confiance Matrice</span><span id="kalman-p-certainty">--</span></div>
 </div>
-                <section class="panel">
-    <h2><i class="fas fa-microchip"></i> Diagnostics 21-États</h2>
-    
+<section class="panel">
+    <h2><i class="fas fa-microchip"></i> Diagnostics 21-États (128-bit)</h2>
     <div class="data-grid">
         <div class="data-point">
-            <span>Accélération Linéaire (m/s²)</span>
-            <span id="f-acc-xyz">0.00 / 0.00 / 0.00</span>
+            <span>Accélération Filtrée</span>
+            <span id="f-acc-xyz" class="tabular">-.-- / -.-- / -.--</span>
         </div>
-        
         <div class="data-point">
-            <span>Biais Capteur (Estimation)</span>
-            <span id="bias-acc-val" style="color:var(--warning);">--</span>
+            <span>Biais Acc (Correction)</span>
+            <span id="bias-acc-val" class="warning-text">-.---</span>
         </div>
-
         <div class="data-point">
-            <span>Dérive Gyro (Zéro-Drift)</span>
-            <span id="bias-gyro-val" style="color:var(--warning);">--</span>
+            <span>Dérive Gyro (Estimation)</span>
+            <span id="bias-gyro-val" class="warning-text">-.----°/s</span>
         </div>
-
         <div class="data-point">
-            <span>Confiance de Mesure</span>
-            <span id="kalman-p-certainty">--</span>
+            <span>Confiance Matrice P</span>
+            <span id="kalman-p-certainty">-- %</span>
         </div>
     </div>
-                </section>
+</section>
                 <div class="data-point"><span>Champ Magnétique X</span><span id="mag-x">--</span></div>
                 <div class="data-point"><span>Champ Magnétique Y</span><span id="mag-y">--</span></div>
                 <div class="data-point"><span>Champ Magnétique Z</span><span id="mag-z">--</span></div>
@@ -423,7 +428,6 @@ button:hover {
                 <div class="data-point"><span>Facteur de Lorentz (Extrême)</span><span id="lorentz-factor">--</span></div>
                 <div class="data-point"><span>Friction du Vide</span><span id="quantum-drag">--</span></div>
                 <div class="data-point"><span>Densité de Trame</span><span id="planck-density">--</span></div>
-                <div class="data-point"><span>Statut Réalité</span><b id="reality-status">Analyse...</b></div>
                 <div class="data-point"><span>Dilatation du Temps</span><span id="time-dilation-vitesse">-.-- ns/j</span></div>
                 <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">-.-- ns/s</span></div>    
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">-.-- ns/j</span></div>
@@ -437,7 +441,6 @@ button:hover {
                 <h3>Distance (3D)</h3>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
                 <div class="data-point"><span>Distance Absolue (nm)</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
-                <div class="data-point"><span>Distance 3D Précise (UKF)</span><span id="total-distance-3d-2">-.---- km</span></div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
                 <span id="nether-mode-status" style="display:none;">1.000</span> 
                     
@@ -501,15 +504,23 @@ button:hover {
                 <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">--</span></div>
                 <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">--</span></div>
                 <div class="data-point"><span>Coeff. Balistique (Inertie)</span><span id="ballistic-coeff">--</span></div>
-                <div class="data-point">
-    <span>g local (Somigliana)</span>
-    <span id="gravity-theoretical">9.80665</span>
-</div>
-<div class="data-point">
-    <span>Anomalie de Bouguer</span>
-    <span id="gravity-anomaly">-.----</span>
-</div>
-                <hr>
+<section class="panel">
+    <h2><i class="fas fa-globe-europe"></i> Géodésie & Espace-Temps</h2>
+    <div class="data-grid">
+        <div class="data-point">
+            <span>Gravité (Somigliana)</span>
+            <span id="gravity-theoretical">9.80665 m/s²</span>
+        </div>
+        <div class="data-point">
+            <span>Dilatation Temporelle</span>
+            <span id="time-dilation-ns">0.00 ns/jour</span>
+        </div>
+        <div class="data-point">
+            <span>Rayon Ellipsoïde Local</span>
+            <span id="earth-radius-local">6378137 m</span>
+        </div>
+    </div>
+</section>
                 <h3>Mécanique des Fluides</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">-.-- Pa</span></div>
                 <div class="data-point"><span>Force de Traînée</span><span id="drag-force">-.-- N</span></div>
@@ -628,14 +639,18 @@ button:hover {
     <div id="treasure-log-display">En attente de détection...</div>
                     </div>
              </section>            
-    <section class="panel full-width" style="grid-column: 1 / -1; margin-top: 10px;">
-        <h2><i class="fas fa-chart-line"></i> Télémétrie Inertielle (64-bit)</h2>
-        <div class="dual-canvas">
-    <div class="canvas-label">BRUIT BRUT (CAPTEUR)</div>
-    <canvas id="canvas-raw"></canvas>
-    <div class="canvas-label">SIGNAL FILTRÉ (21-ÉTATS)</div>
-    <canvas id="canvas-clean"></canvas>
+    <section class="panel full-width">
+    <h2><i class="fas fa-wave-square"></i> Analyse des Signaux (Bruit vs Signal)</h2>
+    <div class="dual-canvas-container">
+        <div class="canvas-box">
+            <span class="label">CAPTEUR BRUT (RAW)</span>
+            <canvas id="canvas-raw"></canvas>
         </div>
+        <div class="canvas-box">
+            <span class="label">SIGNAL FILTRÉ (KALMAN 21)</span>
+            <canvas id="canvas-clean"></canvas>
+        </div>
+    </div>
     </section>
 </main><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
