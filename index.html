@@ -72,19 +72,32 @@ main {
 .mobile-nav { display: none; }
 
 @media (max-width: 1024px) {
+    body { overflow: hidden; position: fixed; width: 100%; }
+    
     main {
-        display: block; /* On casse la grille */
-        padding-top: 85px;
-        height: calc(100vh - 60px);
+        display: grid !important; 
+        grid-template-columns: 1fr 1fr; /* 2 colonnes */
+        grid-template-rows: 1fr 1fr;    /* 2 lignes */
+        gap: 4px;
+        padding: 85px 4px 4px 4px !important;
+        height: 100vh;
     }
 
     .column {
-        display: none; /* On cache les colonnes */
+        display: flex !important; /* On affiche TOUT simultanément */
+        flex-direction: column;
         height: 100%;
+        overflow: hidden; 
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 4px;
     }
 
-    .column.active {
-        display: flex; /* On affiche l'onglet actif */
+    .panel { padding: 4px; margin-bottom: 2px; flex: 1; }
+    h2 { font-size: 0.6rem; margin: 1px 0; }
+    .data-point { font-size: 0.55rem; padding: 2px 0; }
+    .spirit-level-container { height: 40px; } /* Compression du niveau à bulle */
+    canvas { height: 60px !important; } /* Compression des graphiques */
     }
 
     .mobile-nav {
@@ -140,18 +153,13 @@ canvas { width: 100%; height: 100%; background: #000; }
     <button id="start-btn-final" onclick="startAdventure()">🚀 INITIALISER</button>
 </header>
     <main>
-    <div id="col-1" class="column active">
-        </div>
-
-    <div id="col-2" class="column">
-        </div>
-
-    <div id="col-3" class="column">
-        </div>
-
-    <div id="col-4" class="column">
-        </div>
-    </main>
+    <div id="col-1" class="column">
+        <section class="panel">
+            <h2><i class="fas fa-satellite"></i> MOTEUR EKF 21</h2>
+            <div class="data-grid">
+                <div class="data-point"><span>Acc. Filtrée</span><span id="f-acc-xyz">--</span></div>
+                <div class="data-point"><span>Biais Acc.</span><span id="bias-acc-val">--</span></div>
+            </div>
     <div class="mobile-nav">
     <div class="nav-item active" onclick="switchTab(1)">NAV</div>
     <div class="nav-item" onclick="switchTab(2)">PHYS</div>
@@ -284,7 +292,7 @@ canvas { width: 100%; height: 100%; background: #000; }
                 <div class="data-point"><span>Statut Vol:</span> <span id="air-time-s" style="color:#0f0;">SOL</span></div>
                 <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>
                 <div class="panel">
-                <div>Vitesse Stable (1024-bit): <span class="val" id="vitesse-stable-1024">0</span></div>
+                <div>Vitesse Stable (1024-bit): <span class="val" id="vitesse-stable-1024">-</span></div>
                 <div>Distance Maison: <span class="val" id="dist-3d-precise" style="color:#ffcc00;">-.--- m</span></div>
                 <div>Accélération Y: <span class="val" id="acc-y">-.---</span></div>
                 </div>    
@@ -296,7 +304,8 @@ canvas { width: 100%; height: 100%; background: #000; }
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
                 <div class="data-point"><span>Facteur de Lorentz (Extrême)</span><span id="lorentz-factor">--</span></div>
                 <div class="data-point"><span>Friction du Vide</span><span id="quantum-drag">--</span></div>
-                <div class="data-point"><span>Densité de Trame</span><span id="planck-overview">--</span></div>
+                <div class="data-point"><span>Densité Planck</span><span id="planck-density">--</span></div>
+                <div class="data-point"><span>Constante Planck</span><span id="planck-const">6.626e-34</span></div>
                 <div class="data-point"><span>Dilatation du Temps</span><span id="time-dilation-vitesse">-.-- ns/j</span></div>
                 <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">-.-- ns/s</span></div>    
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">-.-- ns/j</span></div>
@@ -476,7 +485,7 @@ canvas { width: 100%; height: 100%; background: #000; }
                 <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">---.-----</span></div>
                 <div class="data-point"><span>Altitude (UKF) (Z)</span> <span id="alt-display">---.-- m</span></div>
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt"></span></div>
-                <div class="data-point"><span>Altitude Corrigée (Baro)</span><span id="alt-corrected-baro">--</span></div>
+                <div class="data-point"><span>Altitude Barométrique</span><span id="alt-corrected-baro">--</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">--</span></div>
                 <div class="data-point"><span>Coord. X (Géocentrique)</span><span id="coord-x">--</span></div>
                 <div class="data-point"><span>Coord. Y (Géocentrique)</span><span id="coord-y">--</span></div>
@@ -530,31 +539,28 @@ canvas { width: 100%; height: 100%; background: #000; }
         </div>
     </div>
     </section>
-    <script>
-function switchTab(idx) {
-    // 1. On cache toutes les colonnes
-    document.querySelectorAll('.column').forEach(c => c.classList.remove('active'));
-    // 2. On éteint tous les boutons du bas
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    
-    // 3. On affiche la colonne demandée
-    document.getElementById('col-' + idx).classList.add('active');
-    // 4. On allume le bouton cliqué
-    document.querySelectorAll('.nav-item')[idx-1].classList.add('active');
-}
+<script>
+let wakeLock = null;
 
-// Fonction Anti-Veille liée au bouton START
 async function startAdventure() {
+    // 1. Verrouillage de l'écran (Anti-veille)
     if ('wakeLock' in navigator) {
         try {
-            const wakeLock = await navigator.wakeLock.request('screen');
-            console.log("Écran verrouillé pour l'aventure");
-        } catch (err) { console.log("Erreur WakeLock"); }
+            wakeLock = await navigator.wakeLock.request('screen');
+            document.getElementById('reality-status-main').innerText = "WAKE_LOCK_ACTIVE";
+            document.getElementById('reality-status-main').style.color = "var(--accent)";
+        } catch (err) { console.log("WakeLock Error"); }
     }
-    // Lancez vos calculs ici
-    if(typeof initCore === "function") initCore();
+    
+    // 2. Initialisation du moteur de calcul
+    if(typeof initCore === "function") {
+        initCore();
+    }
 }
-    </script>         
+
+// Liaison au bouton
+document.getElementById('start-btn-final').onclick = startAdventure;
+</script>         
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
