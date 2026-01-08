@@ -11,18 +11,22 @@
     <link rel="manifest" href="manifest.json">
 <style>
 /* ==========================================================================
-   OMNISCIENCE V200 PRO - ARCHITECTURE GRID 4-COLONNES
+   OMNISCIENCE V200 PRO - ARCHITECTURE SCIENTIFIQUE FINALE
+   Cible : UKF 21 États / Relativité / Géodésie
    ========================================================================== */
 
 :root {
-    /* --- MODE NUIT (Default) --- */
+    /* --- MODE NUIT (Défaut) --- */
     --bg: #050505;
     --card: #121216;
     --border: #2a2a30;
     --text: #e0e0e0;
     --text-dim: #888890;
-    --accent: #00ff88;
+    --accent: #00ff88; /* Vert Science */
+    --warning: #ffcc00; /* Jaune Calibration */
+    --critical: #ff3b30; /* Rouge Alerte */
     --hud-bg: rgba(0, 0, 0, 0.9);
+    --font-mono: 'JetBrains Mono', 'Consolas', 'Fira Code', monospace;
 }
 
 body.light-mode {
@@ -36,79 +40,114 @@ body.light-mode {
     --hud-bg: rgba(255, 255, 255, 0.95);
 }
 
+/* ==========================================================================
+   1. BASE & LAYOUT (GRID 4-COLONNES)
+   ========================================================================== */
+
 * { box-sizing: border-box; }
 
 body {
     background-color: var(--bg);
     color: var(--text);
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-mono);
     margin: 0;
     padding: 0;
     overflow-x: hidden;
     transition: background 0.3s, color 0.3s;
 }
 
-/* 1. HUD FIXE (Header) */
-.master-hud-fixed {
-    position: sticky;
-    top: 0;
-    z-index: 2000;
-    background: var(--hud-bg);
-    border-bottom: 3px solid var(--accent);
-    padding: 10px 0;
-    text-align: center;
-    backdrop-filter: blur(10px); /* Effet premium */
-}
-
-#sp-main-hud {
-    font-size: 3.5rem;
-    font-weight: 900;
-    color: var(--accent);
-    margin: 0;
-    text-shadow: 0 0 15px var(--accent);
-}
-
-/* 2. LA GRILLE (Le cœur du Layout) */
 main {
     display: grid;
-    /* 4 Colonnes égales sur PC */
-    grid-template-columns: repeat(4, 1fr); 
+    grid-template-columns: repeat(4, 1fr); /* 4 Colonnes égales */
     gap: 10px;
     padding: 10px;
     width: 100%;
 }
 
-/* RESPONSIVE : Adaptation aux petits écrans */
+/* Responsive : Adaptation tablettes et mobiles */
 @media (max-width: 1100px) {
-    main { grid-template-columns: repeat(2, 1fr); } /* 2 colonnes sur tablette */
+    main { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 650px) {
-    main { 
-        grid-template-columns: 1fr; /* 1 colonne sur mobile */
-        padding: 8px;
-    }
-    #sp-main-hud { font-size: 2.5rem; }
+    main { grid-template-columns: 1fr; padding: 8px; }
 }
 
-/* 3. LES PANNEAUX */
+/* ==========================================================================
+   2. HUD FIXE ET ÉLÉMENTS SCIENTIFIQUES
+   ========================================================================== */
+
+#master-hud-fixed {
+    position: sticky;
+    top: 0;
+    z-index: 2000;
+    background: var(--hud-bg);
+    border-bottom: 3px solid var(--accent);
+    padding: 10px 15px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.hud-main {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 15px var(--accent);
+}
+
+.hud-sub {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 5px;
+}
+
+/* Chiffres Tabulaires : Évite le tremblement du texte */
+.tabular {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+}
+
+/* Badges et Textes de Statut */
+.badge-sci {
+    background: var(--accent);
+    color: black;
+    padding: 2px 6px;
+    font-weight: 800;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.warning-text { color: var(--warning) !important; }
+
+/* Animation Alerte Réalité */
+.reality-critical {
+    color: var(--critical) !important;
+    animation: flash-red 0.5s infinite;
+    font-weight: bold;
+}
+
+@keyframes flash-red {
+    50% { opacity: 0.3; text-shadow: 0 0 10px var(--critical); }
+}
+
+/* ==========================================================================
+   3. PANNEAUX ET COMPOSANTS DATA
+   ========================================================================== */
+
 .panel {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 12px;
-    display: flex;
-    flex-direction: column;
-    min-width: 0; /* Empêche le contenu de casser la grille */
     box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
-/* Éléments pleine largeur (Télémétrie, Journal) */
-.full-width, .panel[style*="grid-column: 1 / -1"] {
-    grid-column: 1 / -1 !important;
-}
+.full-width { grid-column: 1 / -1 !important; }
 
-/* 4. DONNÉES ET VALEURS */
 h2, h3 {
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -116,7 +155,6 @@ h2, h3 {
     border-bottom: 1px solid var(--border);
     padding-bottom: 5px;
     margin: 0 0 10px 0;
-    letter-spacing: 1px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -125,8 +163,7 @@ h2, h3 {
 .data-point {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 4px 0;
+    padding: 5px 0;
     border-bottom: 1px solid rgba(128, 128, 128, 0.1);
 }
 
@@ -135,27 +172,67 @@ h2, h3 {
     color: var(--text-dim);
 }
 
-.val {
+.data-point span:last-child {
     font-size: 0.85rem;
     font-weight: bold;
-    color: var(--text);
-    font-variant-numeric: tabular-nums; /* Chiffres alignés */
 }
 
-/* 5. ÉLÉMENTS SPÉCIFIQUES */
-#map {
-    width: 100%;
-    height: 250px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
+/* ==========================================================================
+   4. TÉLÉMÉTRIE ET INSTRUMENTS (Dual-Canvas)
+   ========================================================================== */
+
+.dual-canvas-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
     margin-top: 10px;
 }
 
-canvas#telemetry-canvas {
-    width: 100% !important;
-    height: 150px !important;
+.canvas-box {
     background: #000;
     border-radius: 4px;
+    padding: 5px;
+    border: 1px solid var(--border);
+}
+
+.canvas-box .label {
+    display: block;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+canvas { width: 100% !important; height: 150px !important; }
+
+/* Niveau à bulle IMU */
+.spirit-level-container {
+    width: 80px; height: 80px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    margin: 10px auto;
+    position: relative;
+    background: rgba(0,0,0,0.2);
+}
+
+.spirit-level-bubble {
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--accent);
+}
+
+/* ==========================================================================
+   5. BOUTONS ET CONTRÔLES
+   ========================================================================== */
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
 }
 
 button {
@@ -165,6 +242,7 @@ button {
     padding: 10px;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 0.75rem;
     font-weight: bold;
     text-transform: uppercase;
     transition: 0.2s;
@@ -179,35 +257,23 @@ button:hover {
     background: var(--accent);
     color: #000;
     font-size: 1.1rem;
-    margin-bottom: 15px;
+    width: 100%;
+    margin-bottom: 10px;
 }
 
-/* Niveau à bulle */
-.spirit-level-container {
-    width: 80px;
-    height: 80px;
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    margin: 10px auto;
-    position: relative;
-    background: rgba(0,0,0,0.2);
+input, select {
+    background: #1a1a20;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px;
+    width: 100%;
+    border-radius: 3px;
+    font-family: var(--font-mono);
 }
 
-.spirit-level-bubble {
-    width: 16px;
-    height: 16px;
-    background: var(--accent);
-    border-radius: 50%;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px var(--accent);
-}
-
-/* Fix pour les colonnes imbriquées */
-.column-fix {
-    display: contents; /* Supprime l'influence du div parent sur la grille main */
-    }
+/* Utilitaires */
+.column-fix { display: contents; } /* Supprime l'influence du div parent */
+#map { height: 250px; border-radius: 4px; }
 </style>    
 </head>
  
@@ -227,8 +293,7 @@ button:hover {
         <div class="stat">γ: <span id="gamma-factor-precise">1.0000000000</span></div>
         <div class="stat">STATUS: <span id="reality-status-main">INTEGRITY_OK</span></div>
     </div>
-    </header>
-    <div class="master-hud-fixed">
+    <header id="master-hud-fixed">
     <div class="hud-display">
         <div id="sp-main-hud">-.-----</div>
     <div class="hud-label">km/h • SINGULARITY CORE</div>
@@ -268,7 +333,7 @@ button:hover {
                         <option value="HIGH_FREQ">Haute Fréquence</option>
                         <option value="LOW_FREQ">Basse Fréquence</option>
                     </select>
-                    <button id="emergency-stop-btn" title="Arrêt d'urgence" aria-live="polite">🛑 Arrêt d'urgence: INACTIF 🟢</button>
+                    <button id="emergency-stop-btn" title="Arrêt d'urgence" aria-live="assertive">🛑 Arrêt d'urgence: INACTIF 🟢</button>
                     <button id="toggle-mode-btn" aria-label="Basculer mode jour/nuit"><i class="fas fa-moon"></i> Mode Nuit</button>
                     <button id="reset-dist-btn"><i class="fas fa-route"></i> Réinit. Dist.</button>
                     <button id="reset-max-btn"><i class="fas fa-tachometer-alt"></i> Réinit. V-Max</button>
@@ -358,22 +423,7 @@ button:hover {
                 <div class="data-point"><span>Champ Magnétique Y</span><span id="mag-y">--</span></div>
                 <div class="data-point"><span>Champ Magnétique Z</span><span id="mag-z">--</span></div>
                 <div class="label" style="color:var(--accent);">🛠️ CALIBRATION INTERNE (21-ÉTATS)</div>
-<div class="data-grid">
-    <div class="data-point">
-        <span>Biais Acc (X/Y/Z)</span>
-        <span id="bias-acc-val" class="tabular">-.--- / -.--- / -.---</span>
-    </div>
-    <div class="data-point">
-        <span>Dérive Gyro</span>
-        <span id="bias-gyro-val" class="tabular">-.---°/s</span>
-    </div>
-    <div class="data-point">
-        <span>Confiance P-Matrix</span>
-        <span id="kalman-certainty">100%</span>
-    </div>
-</div>
-            </section>
-            
+            </section>            
             <section class="panel" aria-labelledby="env-sensors-heading">
                 <h2 id="env-sensors-heading"><i class="fas fa-camera-retro"></i> Capteurs Environnementaux </h2>
                 <div class="data-point"><span>Luminosité (Lux/Poche)</span><span id="env-lux">--</span></div>
