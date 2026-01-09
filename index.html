@@ -68,35 +68,37 @@ main {
     align-items: center;
 }
 
-/* --- NAVIGATION MOBILE (Cachée sur PC) --- */
-.mobile-nav { dis@media (max-width: 1024px) {
-    body { overflow: hidden; position: fixed; width: 100%; }
+@media (max-width: 1024px) {
+    body { overflow: hidden; position: fixed; width: 100%; height: 100vh; }
     
     main {
         display: grid !important; 
-        grid-template-columns: 1fr 1fr; 
-        grid-template-rows: 1fr 1fr;
-        gap: 4px;
-        padding: 85px 4px 4px 4px !important;
-        height: 100vh;
+        grid-template-columns: 1fr 1fr !important; 
+        grid-template-rows: 1fr 1fr !important;
+        gap: 5px !important;
+        padding: 85px 5px 5px 5px !important;
+        height: 100vh !important;
         box-sizing: border-box;
     }
 
-    /* Force chaque colonne à rester dans son quart d'écran */
     .column {
         display: flex !important;
         flex-direction: column;
         height: 100%;
-        min-height: 0; /* Important pour le scroll interne */
-        overflow: hidden; 
+        min-height: 0; 
+        overflow-y: auto; 
+        border: 1px solid var(--border);
+        border-radius: 4px;
     }
 
     .panel { 
         padding: 4px; 
-        flex: 1; 
-        min-height: 0; 
-        overflow-y: auto; /* Permet de voir tout le contenu d'un panel si trop long */
+        margin-bottom: 2px;
+        font-size: 0.65rem;
     }
+
+    h2 { font-size: 0.7rem; margin: 2px 0; }
+    canvas { height: 60px !important; }
 }
     .mobile-nav {
         display: flex;
@@ -138,7 +140,6 @@ canvas { width: 100%; height: 100%; background: #000; }
  
 <body class="dark-mode">
 <div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>  
-<he. 2 ader id="master-hud-fixed">
 <header id="master-hud-fixed">
     <div class="hud-main">
         <div id="main-speed" class="tabular">-.-----</div>
@@ -149,7 +150,7 @@ canvas { width: 100%; height: 100%; background: #000; }
         <div id="reality-status-main">INTEGRITY_OK</div>
     <button id="start-btn-final" onclick="startAdventure()">🚀 INITIALISER</button>
 </header>
-    <main>
+<main>
     <div id="col-1" class="column">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
@@ -280,17 +281,14 @@ canvas { width: 100%; height: 100%; background: #000; }
                 <div>Accélération Y: <span class="val" id="acc-y">-.---</span></div>
                 </div>    
                 <hr>
-                <div id="col-2" class="column">
                 <h3>Physique & Relativité</h3>
                 <div class="data-point"><span>Vitesse du Son Locale </span><span id="vitesse-son-cor">--</span></div>
                 <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
-                <div class="data-point"><span>Facteur de Lorentz (Extrême)</span><span id="lorentz-factor">--</span></div>
                 <div class="data-point"><span>Friction du Vide</span><span id="quantum-drag">--</span></div>
-                <div class="data-point"><span>Densité Planck</span><span id="planck-constanty">--</span></div>
+                <div class="data-point"><span>Densité Planck</span><span id="planck-static-const">--</span></div>
                 <div class="data-point"><span>Constante Planck</span><span id="planck-const">6.626e-34</span></div>
-                <div class="data-point"><span>Dilatation du Temps</span><span id="time-dilation-vitesse">-.-- ns/j</span></div>
                 <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">-.-- ns/s</span></div>    
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">-.-- ns/j</span></div>
                 <div class="data-point"><span>Énergie Relativiste (E)</span><span id="relativistic-energy">--</span></div>
@@ -361,7 +359,7 @@ canvas { width: 100%; height: 100%; background: #000; }
             <section class="panel" aria-labelledby="dynamics-heading">
                  <h2 id="dynamics-heading"><i class="fas fa-balance-scale-right"></i> Dynamique & Forces</h2>
                 <div class="data-point"><span>Gravité Locale (g)</span><span id="local-gravity">--</span></div>                 
-                <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vel-z-1">-.-- m/s</span></div>
+                <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vel-z-ekf">-.-- m/s</span></div>
                 <div class="data-point"><span>Accel. Verticale (IMU)</span><span id="accel-verticale-imu">--</span></div>
                 <div class="data-point"><span>Force G (Verticale)</span><span id="force-g-vert">--</span></div>
                 <div class="data-point"><span>Vitesse Angulaire (Gyro)</span><span id="angular-speed">--</span></div>
@@ -476,7 +474,6 @@ canvas { width: 100%; height: 100%; background: #000; }
                 <div class="data-point"><span>Coord. Z (Géocentrique)</span><span id="coord-z">--</span></div>
                 <div class="data-point"><span>Distance 3D Cumulée</span><span id="dist-3d">-.--- m</span></div>
                 <hr>
-                <div id="col-4" class="column">
                 <div class="astro-visual-container">
     <canvas id="mc-clock-canvas" width="120" height="120"></canvas>
                 </div>
@@ -523,8 +520,8 @@ canvas { width: 100%; height: 100%; background: #000; }
             <canvas id="canvas-clean"></canvas>
         </div>
     </div>
-    </section>
-    </main>        
+    </section>  
+</main>            
 <script>
 let wakeLock = null;
 
