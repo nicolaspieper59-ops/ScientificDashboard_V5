@@ -50,14 +50,21 @@ h2 {
 
 .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 
+/* Modifiez cette règle dans votre CSS */
 .data-point {
-    display: flex; flex-direction: column; font-size: 0.6rem;
-    border-bottom: 1px solid #1a1a20; padding: 2px 0;
+    display: flex; 
+    flex-direction: row; /* Force l'alignement horizontal */
+    justify-content: space-between; /* Libellé à gauche, Valeur à droite */
+    align-items: center;
+    font-size: 0.65rem;
+    border-bottom: 1px solid #1a1a20;
+    padding: 3px 0;
+    white-space: nowrap; /* Empêche le texte de revenir à la ligne */
 }
 
-.label { color: #888; font-size: 0.5rem; text-transform: uppercase; }
-.value { font-family: monospace; color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; }
-
+.label { flex-shrink: 1; } /* Le nom peut se réduire */
+.value { flex-shrink: 0; } /* La valeur reste toujours entière et visible */
+    
 #map-container { flex: 1.5; background: #000; border-radius: 4px; overflow: hidden; }
 #map { height: 100%; width: 100%; }
 
@@ -84,7 +91,7 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
-                <div class="data-point"><span>Heure UTC Synchro</span><span id="gmt-time-display-1">--:--:--</span></div>
+                <div class="data-point"><span>Heure UTC Syncspan id="gmt-time-display-1">--:--:--</span></div>
                 <div class="data-point"><span>Précision Synchro</span><span id="clock-accuracy-1">--ms</span></div>
                 <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display-2">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy-2">± --ms</span></div>
