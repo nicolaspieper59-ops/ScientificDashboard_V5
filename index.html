@@ -91,7 +91,7 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
-                <div class="data-point"><span>Heure UTC Syncspan id="gmt-time-display-1">--:--:--</span></div>
+                <div class="data-point"><span>Heure UTC Sync</span><span id="gmt-time-display-1">--:--:--</span></div>
                 <div class="data-point"><span>Précision Synchro</span><span id="clock-accuracy-1">--ms</span></div>
                 <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display-2">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy-2">± --ms</span></div>
@@ -189,7 +189,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Statut Thermique CPU</span><span id="status-thermal-detail">STABLE</span></div>
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </section>
-        </div>
 
         <div class="column">
             <section class="panel" aria-labelledby="speed-heading">
@@ -257,13 +256,10 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <h2 id="map-heading"><i class="fas fa-map-marked-alt"></i> Carte GNSS / Globe Interactif</h2>
                 <div class="data-point"><span>Précision GPS (Acc)</span><span id="gps-accuracy-display">--</span></div> <div id="map-container">
                     <div id="globe-container" style="display:none; width: 100%; height: 350px; background: #000; border-radius: 8px;"></div>
-                    <div id="map" role="img" aria-label="Carte interactive affichant la position GPS en temps réel.">Chargement de la carte...</div>
                     <button id="toggle-globe-btn" style="position: absolute; top: 25px; left: 10px; z-index: 1000; background: rgba(0,0,0,0.6); color: white; padding: 5px; border-radius: 4px;">Globe</button>
                     <button id="xray-button" title="Rayons X : Biome transparent" aria-label="Basculer le mode Rayons X de l'horloge céleste" style="position: absolute; top: 25px; right: 10px; z-index: 1000; background-color: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; padding: 0; font-size: 0.8em; line-height: 30px; text-align: center;">X</button>
                 </div>
              </section>
-        </div>
-
         <div class="column">
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
