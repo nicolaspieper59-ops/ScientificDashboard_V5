@@ -9,105 +9,59 @@
     <link rel="stylesheet" href="leaflet.css" />
     <link rel="stylesheet" href="fontawesome.min.css" />
     <link rel="manifest" href="manifest.json">
-<style>
-:root {
+<style>  
+    :root {
     --bg: #050505; --card: #121216; --border: #2a2a30;
     --text: #e0e0e0; --accent: #00ff88; --hud-bg: rgba(0, 0, 0, 0.95);
 }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body { 
+    margin: 0; background: var(--bg); color: var(--text); 
+    font-family: 'Segoe UI', sans-serif; height: 100vh; width: 100vw; 
+    overflow: hidden; position: fixed;
+}
+
+header {
+    position: fixed; top: 0; left: 0; width: 100%; height: 80px;
+    background: var(--hud-bg); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 15px; z-index: 1000;
+}
 
 main {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    padding: 90px 10px 10px 10px;
-    height: 100vh;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    padding: 85px 6px 6px 6px; height: 100vh; width: 100%;
 }
 
-@media (max-width: 1024px) {
-    body { 
-        overflow: hidden; 
-        position: fixed; 
-        height: 100vh; 
-        width: 100%; 
-    }
+.column { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
-    main {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important; /* 2 colonnes égales */
-        grid-template-rows: 100% !important;      /* Une seule ligne de toute la hauteur */
-        gap: 6px;
-        padding: 85px 6px 10px 6px !important;
-        height: 100vh !important;
-        box-sizing: border-box;
-    }
-
-    .column {
-        display: flex !important;
-        flex-direction: column;
-        height: 100%;
-        overflow: hidden; /* INTERDIT LE SCROLL */
-    }
-
-    .panel {
-        flex: 1; /* Chaque panneau prend une part égale de la hauteur */
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between; /* Distribue les données pour remplir l'espace */
-        padding: 4px;
-        border: 1px solid var(--border);
-        background: var(--card);
-        margin-bottom: 4px;
-        min-height: 0; /* Empêche le panneau de pousser */
-    }
-
-    /* Réduction de la police pour que tout tienne */
-    .data-point {
-        font-size: 0.6rem !important;
-        line-height: 1.1;
-        margin: 1px 0;
-    }
+.panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px; margin-bottom: 6px;
+    flex: 1; display: flex; flex-direction: column; min-height: 0;
 }
 
-    h2 { font-size: 0.7rem; margin: 2px 0; }
-    canvas { height: 60px !important; }
-}
-    .mobile-nav {
-        display: flex;
-        position: fixed;
-        bottom: 0; left: 0; width: 100%;
-        height: 60px;
-        background: var(--card);
-        border-top: 1px solid var(--border);
-        z-index: 10001;
-    }
-
-    .nav-item {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        color: var(--text-dim);
-        font-family: var(--font-mono);
-    }
-
-    .nav-item.active {
-        color: var(--accent);
-        border-top: 2px solid var(--accent);
-    }
+h2 { 
+    font-size: 0.7rem; margin: 0 0 5px 0; color: var(--accent); 
+    text-transform: uppercase; border-bottom: 1px solid var(--border);
 }
 
-/* --- GRAPHIQUES --- */
-.dual-canvas-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
-    height: 150px;
+.data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+.data-point {
+    display: flex; flex-direction: column; font-size: 0.6rem;
+    border-bottom: 1px solid #1a1a20; padding: 2px 0;
 }
-canvas { width: 100%; height: 100%; background: #000; }    
+
+.label { color: #888; font-size: 0.5rem; text-transform: uppercase; }
+.value { font-family: monospace; color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; }
+
+#map-container { flex: 1.5; background: #000; border-radius: 4px; overflow: hidden; }
+#map { height: 100%; width: 100%; }
+
+canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-top: 5px; }
 </style>    
 </head>
  
@@ -115,13 +69,14 @@ canvas { width: 100%; height: 100%; background: #000; }
 <div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>  
 <header id="master-hud-fixed">
     <div class="hud-main">
-        <div id="main-speed" class="tabular">-.-----</div>
-        <div class="unit">KM/H</div>
+        <div id="main-speed" style="font-family: monospace; font-size: 1.8rem; color: var(--accent); font-weight: bold;">-.---</div>
+        <div class="unit" style="font-size: 0.7rem;">Vitesse KM/H</div>
     </div>
-    <div class="hud-sub">
-        <div class="stat">γ: <span id="gamma-factor-precise">-.----------</span></div>
-        <div id="reality-status-main">INTEGRITY_OK</div>
-    <button id="start-btn-final" onclick="startAdventure()">🚀 INITIALISER</button>
+    <div class="hud-sub" style="text-align: center;">
+        <div class="stat" style="font-size: 0.6rem;">γ Factor: <span id="gamma-factor-precise" style="color:var(--accent)">-.----------</span></div>
+        <div id="reality-status-main" style="font-size: 0.6rem; color: #555;">SYSTEM_READY</div>
+    </div>
+    <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold;">🚀 INITIALISER</button>
 </header>
 <main>
     <div id="col-1" class="column">
@@ -500,7 +455,6 @@ canvas { width: 100%; height: 100%; background: #000; }
 let wakeLock = null;
 
 async function startAdventure() {
-    // 1. Verrouillage de l'écran (Anti-veille)
     if ('wakeLock' in navigator) {
         try {
             wakeLock = await navigator.wakeLock.request('screen');
@@ -509,14 +463,16 @@ async function startAdventure() {
         } catch (err) { console.log("WakeLock Error"); }
     }
     
-    // 2. Initialisation du moteur de calcul
     if(typeof initCore === "function") {
         initCore();
     }
 }
 
-// Liaison au bouton
-document.getElementById('start-btn-final').onclick = startAdventure;
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        wakeLock = await navigator.wakeLock.request('screen');
+    }
+});
 </script>         
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
