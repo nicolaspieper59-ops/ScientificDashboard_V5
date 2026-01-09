@@ -26,14 +26,19 @@ main {
 }
 
 @media (max-width: 1024px) {
-    body { overflow: hidden; position: fixed; width: 100%; height: 100vh; }
-    
+    body { 
+        overflow: hidden; 
+        position: fixed; 
+        height: 100vh; 
+        width: 100%; 
+    }
+
     main {
-        display: grid !important; 
-        grid-template-columns: 1fr 1fr !important; 
-        grid-template-rows: 1fr 1fr !important;
-        gap: 5px !important;
-        padding: 85px 5px 5px 5px !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important; /* 2 colonnes égales */
+        grid-template-rows: 100% !important;      /* Une seule ligne de toute la hauteur */
+        gap: 6px;
+        padding: 85px 6px 10px 6px !important;
         height: 100vh !important;
         box-sizing: border-box;
     }
@@ -42,17 +47,28 @@ main {
         display: flex !important;
         flex-direction: column;
         height: 100%;
-        min-height: 0; 
-        overflow-y: auto; 
-        border: 1px solid var(--border);
-        border-radius: 4px;
+        overflow: hidden; /* INTERDIT LE SCROLL */
     }
 
-    .panel { 
-        padding: 4px; 
-        margin-bottom: 2px;
-        font-size: 0.65rem;
+    .panel {
+        flex: 1; /* Chaque panneau prend une part égale de la hauteur */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between; /* Distribue les données pour remplir l'espace */
+        padding: 4px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        margin-bottom: 4px;
+        min-height: 0; /* Empêche le panneau de pousser */
     }
+
+    /* Réduction de la police pour que tout tienne */
+    .data-point {
+        font-size: 0.6rem !important;
+        line-height: 1.1;
+        margin: 1px 0;
+    }
+}
 
     h2 { font-size: 0.7rem; margin: 2px 0; }
     canvas { height: 60px !important; }
