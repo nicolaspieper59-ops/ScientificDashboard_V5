@@ -11,48 +11,28 @@
     <link rel="manifest" href="manifest.json">
 <style>
 :root {
-    --bg: #050505;
-    --card: #121216;
-    --border: #2a2a30;
-    --text: #e0e0e0;
-    --text-dim: #888890;
-    --accent: #00ff88;
-    --hud-bg: rgba(0, 0, 0, 0.95);
-    --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+    --bg: #050505; --card: #121216; --border: #2a2a30;
+    --text: #e0e0e0; --accent: #00ff88; --hud-bg: rgba(0, 0, 0, 0.95);
 }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    height: 100vh;
-    overflow: hidden; /* Important : le body ne doit jamais scroller */
-}
-
-/* --- STRUCTURE PRINCIPALE --- */
 main {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
-    padding: 90px 10px 10px 10px; /* Espace pour le HUD */
+    padding: 90px 10px 10px 10px;
     height: 100vh;
 }
 
-.column {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-y: auto; /* Seule la colonne peut scroller si besoin */
-}
-
-.panel {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
+@media (max-width: 1024px) {
+    main {
+        grid-template-columns: 1fr 1fr !important;
+        grid-template-rows: 1fr 1fr !important;
+        padding: 85px 5px 5px 5px !important;
+    }
+    .column { height: 100%; overflow-y: auto; min-height: 0; }
+    .panel { font-size: 0.65rem; padding: 5px; }
 }
 
 /* --- HUD FIXE --- */
@@ -318,6 +298,7 @@ canvas { width: 100%; height: 100%; background: #000; }
             </section>
             <div id="col-3" class="column">
             <section class="panel" aria-labelledby="map-heading">
+            <div id="map" style="height: 200px; width: 100%;"></div>
                 <h2 id="map-heading"><i class="fas fa-map-marked-alt"></i> Carte GNSS / Globe Interactif</h2>
                 <div class="data-point"><span>Précision GPS (Acc)</span><span id="gps-accuracy-display">--</span></div> <div id="map-container">
                     <div id="globe-container" style="display:none; width: 100%; height: 350px; background: #000; border-radius: 8px;"></div>
