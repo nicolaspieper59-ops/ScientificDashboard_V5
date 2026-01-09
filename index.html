@@ -53,17 +53,22 @@ h2 {
 /* Modifiez cette règle dans votre CSS */
 .data-point {
     display: flex; 
-    flex-direction: row; /* Force l'alignement horizontal */
-    justify-content: space-between; /* Libellé à gauche, Valeur à droite */
+    flex-direction: row; 
+    justify-content: space-between; 
     align-items: center;
     font-size: 0.65rem;
     border-bottom: 1px solid #1a1a20;
     padding: 3px 0;
-    white-space: nowrap; /* Empêche le texte de revenir à la ligne */
+    white-space: nowrap; 
+    overflow: hidden; /* Ajouté pour le Zéro Scroll */
 }
-
-.label { flex-shrink: 1; } /* Le nom peut se réduire */
-.value { flex-shrink: 0; } /* La valeur reste toujours entière et visible */
+.label { 
+    flex: 1; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    margin-right: 5px; 
+}
+.value { flex-shrink: 0; }
     
 #map-container { flex: 1.5; background: #000; border-radius: 4px; overflow: hidden; }
 #map { height: 100%; width: 100%; }
@@ -107,7 +112,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="panel">
                <div id="thermal-status" style="color: #00ff88;">THERMIQUE : OPTIMAL (1024-BIT)</div>
                <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
-                </div>
                 <hr>
                 <div class="controls-grid" role="group">
                     <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
@@ -121,7 +125,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                     <button id="reinit-vmax-btn" onclick="resetMaxSpeed()">RESET V-MAX</button>
                     <button id="log-export-btn" onclick="exportData()">EXPORT LOGS</button>
                     <button id="reset-all-btn" class="critical" onclick="resetAll()">Tout Rinisialiser</button>
-                    </div>
                     <div class="control-input-full">
                         <label for="gps-accuracy-override">Forcer Précision GPS (m) [0=Auto]</label>
                         <input type="number" id="gps-accuracy-override" value="0" step="1">
@@ -189,8 +192,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Statut Thermique CPU</span><span id="status-thermal-detail">STABLE</span></div>
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </section>
-
-        <div class="column">
             <section class="panel" aria-labelledby="speed-heading">
                 <h2 id="speed-heading"><i class="fas fa-tachometer-alt"></i> Vitesse, Distance & Relativité</h2>
                 <div class="speed-display" role="status" aria-live="polite">
@@ -250,9 +251,8 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
                 <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
             </section>
-            <div id="col-3" class="column">
-            <section class="panel" aria-labelledby="map-heading">
-            <div id="map" style="height: 200px; width: 100%;"></div>
+            <div id="map-container">
+    <div id="map"style="height: 200px; width: 100%;"></div>Chargement de la carte...</div>
                 <h2 id="map-heading"><i class="fas fa-map-marked-alt"></i> Carte GNSS / Globe Interactif</h2>
                 <div class="data-point"><span>Précision GPS (Acc)</span><span id="gps-accuracy-display">--</span></div> <div id="map-container">
                     <div id="globe-container" style="display:none; width: 100%; height: 350px; background: #000; border-radius: 8px;"></div>
@@ -260,7 +260,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                     <button id="xray-button" title="Rayons X : Biome transparent" aria-label="Basculer le mode Rayons X de l'horloge céleste" style="position: absolute; top: 25px; right: 10px; z-index: 1000; background-color: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; padding: 0; font-size: 0.8em; line-height: 30px; text-align: center;">X</button>
                 </div>
              </section>
-        <div class="column">
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
                 <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">INACTIF</span></div>
