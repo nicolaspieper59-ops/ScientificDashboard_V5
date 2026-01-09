@@ -91,15 +91,13 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
     <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold;">🚀 INITIALISER</button>
 </header>
 <main>
-    <div id="col-1" class="column">
+    <div class="column">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
-                <div class="data-point"><span>Heure UTC Sync</span><span id="gmt-time-display-1">--:--:--</span></div>
-                <div class="data-point"><span>Précision Synchro</span><span id="clock-accuracy-1">--ms</span></div>
-                <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display-2">--:--:--.---</span></div>
-                <div class="data-point"><span>Précision</span><span id="clock-accuracy-2">± --ms</span></div>
+                <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display">--:--:--.---</span></div>
+                <div class="data-point"><span>Précision</span><span id="clock-accuracy">± --ms</span></div>
                 <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
                 <div class="data-point"><span>Heure NTP:</span> <span id="ntp-status-val">Sync...</span></div>
                 <div class="data-point"><span>Batterie Appareil:</span> <span id="batt-level">-- %</span></div>
@@ -189,7 +187,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Niveau Sonore / Vibration</span><span id="env-noise">--</span></div>
                 <div class="data-point"><span>Niveau Sonore (dB)</span><span id="sound-level">--</span></div>
                 <div class="data-point"><span>Son (Max)</span><span id="sound-level-max">-- dB</span></div>
-                <div class="data-point"><span>Statut Thermique CPU</span><span id="status-thermal-detail">STABLE</span></div>
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </section>
             <section class="panel" aria-labelledby="speed-heading">
@@ -210,10 +207,7 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">-.-- m/s</span></div>
                 <div class="data-point"><span>Statut Vol:</span> <span id="air-time-s" style="color:#0f0;">SOL</span></div>
                 <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>
-                <div class="panel">
-                <div>Vitesse Stable (1024-bit): <span class="val" id="vitesse-stable-1024">-</span></div>
-                <div>Distance Maison: <span class="val" id="dist-3d-precise" style="color:#ffcc00;">-.--- m</span></div>
-                <div>Accélération Y: <span class="val" id="acc-y">-.---</span></div>
+                <div class="panel"> 
                 </div>    
                 <hr>
                 <h3>Physique & Relativité</h3>
@@ -251,15 +245,24 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
                 <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
             </section>
-            <div id="map-container">
-    <div id="map"style="height: 200px; width: 100%;"></div>Chargement de la carte...</div>
-                <h2 id="map-heading"><i class="fas fa-map-marked-alt"></i> Carte GNSS / Globe Interactif</h2>
-                <div class="data-point"><span>Précision GPS (Acc)</span><span id="gps-accuracy-display">--</span></div> <div id="map-container">
-                    <div id="globe-container" style="display:none; width: 100%; height: 350px; background: #000; border-radius: 8px;"></div>
-                    <button id="toggle-globe-btn" style="position: absolute; top: 25px; left: 10px; z-index: 1000; background: rgba(0,0,0,0.6); color: white; padding: 5px; border-radius: 4px;">Globe</button>
-                    <button id="xray-button" title="Rayons X : Biome transparent" aria-label="Basculer le mode Rayons X de l'horloge céleste" style="position: absolute; top: 25px; right: 10px; z-index: 1000; background-color: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; padding: 0; font-size: 0.8em; line-height: 30px; text-align: center;">X</button>
-                </div>
-             </section>
+    </div>
+    <div class="column"> <section class="panel" aria-labelledby="map-heading">
+        <h2 id="map-heading"><i class="fas fa-map-marked-alt"></i> Carte & Globe Interactif</h2>
+        
+        <div id="map-container" style="position: relative; flex: 1; min-height: 200px;">
+            <div id="map" style="height: 100%; width: 100%;">Chargement de la carte...</div>
+            
+            <div id="globe-container" style="display:none; width: 100%; height: 100%; background: #000; border-radius: 8px;"></div>
+            
+            <button id="toggle-globe-btn" style="position: absolute; top: 10px; left: 10px; z-index: 1000; background: rgba(0,0,0,0.6); color: white; padding: 5px; border-radius: 4px;">Globe</button>
+            <button id="xray-button" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background-color: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; padding: 0;">X</button>
+        </div>
+
+        <div class="data-point">
+            <span>Précision GPS (Acc)</span>
+            <span id="gps-accuracy-display">-- m</span>
+        </div>
+    </section>
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
                 <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">INACTIF</span></div>
@@ -303,10 +306,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
             <span id="gravity-theoretical">-.----- m/s²</span>
         </div>
         <div class="data-point">
-            <span>Dilatation Temporelle</span>
-            <span id="time-dilation-ns">-.-- ns/jour</span>
-        </div>
-        <div class="data-point">
             <span>Rayon Ellipsoïde Local</span>
             <span id="earth-radius-local">------ m</span>
         </div>
@@ -315,13 +314,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
     <section class="panel">
     <h2><i class="fas fa-atom"></i> Physique Relativiste</h2>
     <div class="data-grid">
-        <div class="data-point"><span>Vitesse Propre (Détail)</span><span id="speed-detail-val">-.-- m/s</span></div>
-        <div class="data-point"><span>Facteur de Lorentz</span><span id="gamma-detail-val">-.------</span></div>
-        <div class="stat-box">
-            <span>Dilatation Temporelle</span>
-            <div id="time-dilation-vitesse" class="tabular">-.-- ns/jour</div>
-        </div>
-    </div>
                 </section>
                 <h3>Mécanique des Fluides</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">-.-- Pa</span></div>
