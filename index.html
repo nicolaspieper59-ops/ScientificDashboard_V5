@@ -36,41 +36,42 @@ header#master-hud-fixed {
 .header-item .value { font-family: monospace; font-weight: bold; color: var(--accent); }
 
 /* GRILLE PRINCIPALE (STRICTE) */
+/* Forcer la grille à occuper tout l'espace disponible sans dépasser */
 main {
     display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px;
-    height: calc(100vh - 80px); /* 100% de la vue moins le header */
-    margin-top: 80px;
-    padding: 8px;
-    overflow: hidden;
+    grid-template-columns: 1fr 1fr !important; /* 2 colonnes strictes */
+    gap: 10px;
+    height: calc(100vh - 85px); /* Hauteur dynamique après le header */
+    margin-top: 85px;
+    padding: 10px;
+    overflow: hidden; /* Interdiction de scroller au niveau global */
 }
 
+/* Permettre aux colonnes de se compresser */
 .column {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    min-height: 0; /* Important pour la compression flex */
+    gap: 10px;
     height: 100%;
+    min-height: 0; /* CRUCIAL : autorise les éléments flex à être plus petits que leur contenu */
 }
 
+/* Ajuster les panneaux pour qu'ils se partagent l'espace proprement */
 .panel {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px;
+    border-radius: 8px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Permet au panel de réduire sa taille */
-    flex: 1;
-    overflow: hidden;
+    min-height: 0; /* Autorise la réduction si l'écran est petit */
+    flex: 1; /* Par défaut, chaque panel prend une part égale */
 }
 
-h2 { 
-    font-size: 0.6rem; margin: 0 0 6px 0; color: #555; 
-    text-transform: uppercase; letter-spacing: 1px;
-    display: flex; align-items: center; gap: 5px;
-}
+/* Donner plus d'importance visuelle à la carte */
+#map-panel {
+    flex: 2.5 !important; 
+}   display: flex; align-items: center; gap: 5px;
 
 .data-point {
     display: flex; justify-content: space-between; align-items: center;
@@ -137,6 +138,7 @@ canvas {
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
+                </div> 
                 <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
                 <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
                     <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
@@ -237,10 +239,12 @@ canvas {
                 <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
+                <hr>
                 <div class="data-point"><span>Friction du Vide</span><span id="quantum-drag">--</span></div>
                 <div class="data-point"><span>Densité Planck</span><span id="planck-static-const">--</span></div>
                 <div class="data-point"><span>Constante Planck</span><span id="planck-const">6.626e-34</span></div>
-                <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">-.-- ns/s</span></div>    
+                <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">-.-- ns/s</span></div>  
+                <div class="data-point"><span>Lorentz (γ)</span><span id="gamma-factor-precise">-.----</span></div>
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">-.-- ns/j</span></div>
                 <div class="data-point"><span>Énergie Relativiste (E)</span><span id="relativistic-energy">--</span></div>
                 <div class="data-point"><span>Énergie de Masse (E₀)</span><span id="rest-mass-energy">--</span></div>
@@ -473,6 +477,7 @@ canvas {
 
             <div class="treasure-log-container" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 5px;">
                 <div class="label" style="color:#ffcc00; font-size: 0.6rem; margin-bottom: 3px;">📜 JOURNAL DES ANOMALIES</div>
+                <h2><i class="fas fa-history"></i> Journal</h2>
                 <div id="treasure-log-display" style="font-size: 0.55rem; color: #aaa; height: 40px; overflow-y: auto; background: rgba(255,204,0,0.05); padding: 3px;">
                     En attente de détection...
                 </div>
