@@ -89,9 +89,23 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
         <div id="reality-status-main" style="font-size: 0.6rem; color: #555;">SYSTEM_READY</div>
     </div>
     <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold;">🚀 INITIALISER</button>
+<header>
+    <div class="header-item">
+        <div class="label">VITESSE</div>
+        <div id="main-speed" class="value" style="font-size: 1.5rem;">-.--</div>
+    </div>
+    <div class="header-item">
+        <button id="init-btn" onclick="startAdventure()">INITIALISER</button>
+    </div>
+    <div class="header-item">
+        <div class="label">STATUS</div>
+        <div id="reality-status-main" class="value">STANDBY</div>
+    </div>
 </header>
+    
 <main>
     <div class="column">
+        <section class="panel">
             <section class="panel" aria-labelledby="controls-heading">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
@@ -107,8 +121,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
-                <div class="panel">
-               <div id="thermal-status" style="color: #00ff88;">THERMIQUE : OPTIMAL (1024-BIT)</div>
                <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
                 <hr>
                 <div class="controls-grid" role="group">
@@ -170,7 +182,6 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                     </div>
                 </div>
             </section>
-<section class="panel">
     <h2><i class="fas fa-microchip"></i> Navigation Inertielle (EKF 21-États)</h2>
     <div class="data-grid">
         <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz" class="tabular">-.-- / -.-- / -.--</span></div>
@@ -189,15 +200,14 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Son (Max)</span><span id="sound-level-max">-- dB</span></div>
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </section>
-            <section class="panel" aria-labelledby="speed-heading">
-                <h2 id="speed-heading"><i class="fas fa-tachometer-alt"></i> Vitesse, Distance & Relativité</h2>
-                <div class="speed-display" role="status" aria-live="polite">
-                </div>
 
-                <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff;">
-                <span style="color: #00ffff;">🚀 Vitesse Cosmique</span>
-                <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff;">- km/h</span>
-                </div>         
+            <section class="panel">
+            <h2><i class="fas fa-tachometer-alt"></i> Vitesse & Relativité</h2>
+            <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid #00ffff;">
+                <span style="color: #00ffff; font-weight: bold;">🚀 V-COSMIQUE</span>
+                <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff;">-- km/h</span>
+            </div>    
+                
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">-.-- m/s</span></div>
                 <div class="data-point"><span>Vitesse Brute (m/s)</span><span id="speed-raw-ms">-.-- m/s</span></div> 
@@ -226,13 +236,15 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Rayon de Schwarzschild (Rs)</span><span id="schwarzschild-radius">--</span></div>
                 <div class="data-point"><span>Vitesse de la Lumière locale (c)</span><span id="const-c">--------- m/s</span></div>
                 <div class="data-point"><span>Gravitation Universelle locale (G)</span><span id="const-G">-.-----e-__ m³/kg/s²</span></div>
-                <hr>
-                <h3>Distance (3D)</h3>
+                </section>
+
+        <section class="panel">
+            <h2><i class="fas fa-ruler-combined"></i> Distance & Parcours</h2>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
                 <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
                 <span id="nether-mode-status" style="display:none;">-.---</span> 
-                    
+                <hr>    
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">-.--e+-- s</span></div>
                 <div class="data-point"><span>Distance (min-lumière)</span><span id="distance-light-min">-.--e+-- min</span></div>
                 <div class="data-point"><span>Distance (h-lumière)</span><span id="distance-light-h">-.--e+-- h</span></div>
@@ -246,15 +258,14 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
             </section>
     </div>
-    <div class="column"> <section class="panel" aria-labelledby="map-heading">
-        <h2 id="map-heading"><i class="fas fa-map-marked-alt"></i> Carte & Globe Interactif</h2>
-        
-        <div id="map-container" style="position: relative; flex: 1; min-height: 200px;">
-            <div id="map" style="height: 100%; width: 100%;">Chargement de la carte...</div>
-            
-            <div id="globe-container" style="display:none; width: 100%; height: 100%; background: #000; border-radius: 8px;"></div>
-            
-            <button id="toggle-globe-btn" style="position: absolute; top: 10px; left: 10px; z-index: 1000; background: rgba(0,0,0,0.6); color: white; padding: 5px; border-radius: 4px;">Globe</button>
+    
+<div class="column">
+        <section class="panel" style="flex: 2.5;">
+            <h2><i class="fas fa-map-marked-alt"></i> Cartographie GNSS</h2>
+            <div id="map-container">
+                <div id="map">Chargement carte...</div>
+                <button id="toggle-globe-btn" style="position:absolute; top:10px; left:10px; z-index:1000; background:rgba(0,0,0,0.7); color:#fff; border:1px solid var(--border); padding:4px;">GLOBE</button>
+            </div>
             <button id="xray-button" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background-color: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; padding: 0;">X</button>
         </div>
 
@@ -263,6 +274,13 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
             <span id="gps-accuracy-display">-- m</span>
         </div>
     </section>
+    
+        <section class="panel">
+            <h2><i class="fas fa-satellite-dish"></i> Signaux Filtrés</h2>
+            <canvas id="canvas-clean"></canvas>
+            <div class="data-point"><span>SNR Global</span><span id="snr-ratio">-- dB</span></div>
+        </section>
+    
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
                 <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">INACTIF</span></div>
@@ -289,7 +307,8 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>PM 10 (µg/m³)</span><span id="pm10-val">--</span></div>
                 <div class="data-point"><span>O₃ (µg/m³)</span><span id="o3-val">--</span></div>
             </section>
-            <div class="column">
+
+        <section class="panel">
             <section class="panel" aria-labelledby="dynamics-heading">
                  <h2 id="dynamics-heading"><i class="fas fa-balance-scale-right"></i> Dynamique & Forces</h2>
                 <div class="data-point"><span>Gravité Locale (g)</span><span id="local-gravity">--</span></div>                 
@@ -441,10 +460,10 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
         <div class="canvas-box">
             <span class="label">SIGNAL FILTRÉ (KALMAN 21)</span>
             <canvas id="canvas-clean"></canvas>
-        </div>
+        </section>
     </div>
-    </section>  
-</main>            
+</main>
+
 <script>
 let wakeLock = null;
 
