@@ -10,70 +10,132 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
     <link rel="manifest" href="manifest.json">
 <style>  
-    :root {
-    --bg: #050505; --card: #121216; --border: #2a2a30;
-    --text: #e0e0e0; --accent: #00ff88; --hud-bg: rgba(0, 0, 0, 0.95);
+:root {
+    --bg: #050505; 
+    --card: #121216; 
+    --border: #2a2a30;
+    --text: #e0e0e0; 
+    --accent: #00ff88; 
+    --hud-bg: rgba(0, 0, 0, 0.95);
 }
 
+/* 1. Verrouillage du corps de page */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-body { 
-    margin: 0; background: var(--bg); color: var(--text); 
-    font-family: 'Segoe UI', sans-serif; height: 100vh; width: 100vw; 
-    overflow: hidden; position: fixed;
+html, body { 
+    margin: 0; 
+    padding: 0;
+    background: var(--bg); 
+    color: var(--text); 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    height: 100vh; /* Force la hauteur de l'écran */
+    width: 100vw; 
+    overflow: hidden; /* Interdiction formelle de scroller */
+    position: fixed; /* Empêche le rebond élastique sur mobile */
 }
 
+/* 2. Header Fixe */
 header {
-    position: fixed; top: 0; left: 0; width: 100%; height: 80px;
-    background: var(--hud-bg); border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0 15px; z-index: 1000;
-}
-
-main {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-    padding: 85px 6px 6px 6px; height: 100vh; width: 100%;
-}
-
-.column { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-
-.panel {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 6px; padding: 6px; margin-bottom: 6px;
-    flex: 1; display: flex; flex-direction: column; min-height: 0;
-}
-
-h2 { 
-    font-size: 0.7rem; margin: 0 0 5px 0; color: var(--accent); 
-    text-transform: uppercase; border-bottom: 1px solid var(--border);
-}
-
-.data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-
-/* Modifiez cette règle dans votre CSS */
-.data-point {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 80px;
+    background: var(--hud-bg); 
+    border-bottom: 1px solid var(--border);
     display: flex; 
-    flex-direction: row; 
-    justify-content: space-between; 
+    justify-content: space-around; 
+    align-items: center; 
+    z-index: 2000;
+}
+
+/* 3. Grille Principale */
+main {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Deux colonnes égales */
+    gap: 10px;
+    height: calc(100vh - 85px); /* Hauteur restante après le header */
+    margin-top: 85px;
+    padding: 10px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* 4. Colonnes Flexibles */
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    min-height: 0; /* Crucial : permet aux enfants de se réduire */
+}
+
+/* 5. Panneaux (Widgets) */
+.panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Partage équitable de l'espace */
+    min-height: 0;
+    overflow: hidden; /* Coupe le contenu si débordement */
+}
+
+/* 6. Hiérarchie et Texte */
+h2 { 
+    font-size: 0.65rem; 
+    margin: 0 0 8px 0; 
+    color: #888; 
+    text-transform: uppercase; 
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.data-point {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    font-size: 0.65rem;
+    padding: 4px 0;
     border-bottom: 1px solid #1a1a20;
-    padding: 3px 0;
-    white-space: nowrap; 
-    overflow: hidden; /* Ajouté pour le Zéro Scroll */
+    font-size: 0.65rem;
+    white-space: nowrap;
 }
-.label { 
-    flex: 1; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    margin-right: 5px; 
+
+.label { color: #666; font-size: 0.55rem; }
+.value { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: bold; }
+
+/* 7. Spécificités (Carte et Graphiques) */
+#map-container {
+    flex: 2.5; /* Donne la priorité de hauteur à la carte */
+    position: relative;
+    background: #000;
+    border-radius: 4px;
+    min-height: 150px;
 }
-.value { flex-shrink: 0; }
-    
-#map-container { flex: 1.5; background: #000; border-radius: 4px; overflow: hidden; }
+
 #map { height: 100%; width: 100%; }
 
-canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-top: 5px; }
+canvas {
+    display: block;
+    width: 100% !important;
+    height: 50px !important; /* Taille fixe pour les graphiques Kalman */
+    background: #000;
+    margin-top: 5px;
+    flex-shrink: 0;
+}
+
+/* Journal des anomalies */
+#treasure-log-display {
+    font-family: monospace;
+    font-size: 0.55rem;
+    line-height: 1.2;
+    overflow-y: auto;
+    flex: 1;
+    }
 </style>    
 </head>
  
