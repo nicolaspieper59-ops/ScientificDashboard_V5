@@ -80,26 +80,23 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
 <body class="dark-mode">
 <div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>  
 <header id="master-hud-fixed">
-    <div class="hud-main">
-        <div id="main-speed" style="font-family: monospace; font-size: 1.8rem; color: var(--accent); font-weight: bold;">-.---</div>
-        <div class="unit" style="font-size: 0.7rem;">Vitesse KM/H</div>
-    </div>
-    <div class="hud-sub" style="text-align: center;">
-        <div class="stat" style="font-size: 0.6rem;">γ Factor: <span id="gamma-factor-precise" style="color:var(--accent)">-.----------</span></div>
-        <div id="reality-status-main" style="font-size: 0.6rem; color: #555;">SYSTEM_READY</div>
-    </div>
-    <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold;">🚀 INITIALISER</button>
-<header>
     <div class="header-item">
         <div class="label">VITESSE</div>
-        <div id="main-speed" class="value" style="font-size: 1.5rem;">-.--</div>
+        <div id="main-speed" class="value" style="font-size: 1.5rem;">0.00</div>
     </div>
+    <div class="header-item">
+        <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 INITIALISER</button>
+    </div>
+    <div class="header-item">
+        <div class="label">STATUS</div>
+        <div id="reality-status-main" class="value" style="font-size: 0.7rem;">SYSTEM_READY</div>
+    </div>
+</header>
     
-<main>
+< main>
+        <div class="column">
         <section class="panel">
-           <div class="column">
-               <section id="system-control" class="panel">
-                <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
+            <h2><i class="fas fa-cog"></i> Système & Contrôles</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
                 <div class="data-point"><span>Heure UTC Sync</span><span id="gmt-time-display-1">--:--:--.---</span></div>
@@ -113,14 +110,13 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
-               <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
-                <hr>
-                <div class="controls-grid" role="group">
+                <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
+                <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
                     <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
                     <select id="freq-select" aria-label="Fréquence GPS">
                         <option value="HIGH_FREQ">Haute Fréquence</option>
                         <option value="LOW_FREQ">Basse Fréquence</option>
-                    </select>
+                    </div>
                     <button id="emergency-stop" class="critical" onclick="stopSystem()">ARRÊT URGENCE</button>
                     <button id="toggle-theme-btn" onclick="toggleTheme()">MODE JOUR/NUIT</button>
                     <button id="reset-dist-btn" onclick="resetDistance()">RESET Distance</button>
@@ -191,16 +187,15 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Niveau Sonore (dB)</span><span id="sound-level">--</span></div>
                 <div class="data-point"><span>Son (Max)</span><span id="sound-level-max">-- dB</span></div>
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
-            </section>
+            </div>
+        </section>
 
-            <section class="panel" aria-labelledby="speed-heading">
-    <h2 id="speed-heading"><i class="fas fa-tachometer-alt"></i> Vitesse & Physique</h2>
-    
-    <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid #00ffff; margin-bottom: 5px; padding: 6px;">
-        <span style="color: #00ffff; font-weight: bold; font-size: 0.6rem;">🚀 V-COSMIQUE</span>
-        <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff; font-family: monospace; font-weight: bold;">-- km/h</span>
-    </div>
-                
+        <section class="panel">
+            <h2><i class="fas fa-tachometer-alt"></i> Vitesse & Physique</h2>
+            <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid #00ffff; padding: 5px;">
+                <span style="color: #00ffff; font-weight: bold;">🚀 V-COSMIQUE</span>
+                <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff; font-weight: bold;">-- km/h</span>
+            </div>                
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">-.-- m/s</span></div>
                 <div class="data-point"><span>Vitesse Brute (m/s)</span><span id="speed-raw-ms">-.-- m/s</span></div> 
@@ -229,10 +224,8 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Rayon de Schwarzschild (Rs)</span><span id="schwarzschild-radius">--</span></div>
                 <div class="data-point"><span>Vitesse de la Lumière locale (c)</span><span id="const-c">--------- m/s</span></div>
                 <div class="data-point"><span>Gravitation Universelle locale (G)</span><span id="const-G">-.-----e-__ m³/kg/s²</span></div>
-                </section>
-
-        <section class="panel">
-            <h2><i class="fas fa-ruler-combined"></i> Distance & Parcours</h2>
+                </div>
+                <h2><i class="fas fa-ruler-combined"></i> Distance & Parcours</h2>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
                 <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
@@ -436,22 +429,32 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Azimut (Lune)</span><span id="moon-azimuth">--</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">--</span></div>
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
-                
-                    <div class="panel">
-    <div class="label" style="color:#ffcc00;">📜 JOURNAL DES ANOMALIES & TRÉSORS</div>
-    <div id="treasure-log-display">En attente de détection...</div>
-                    </div>
-             </section>            
-    <section class="panel full-width">
-    <h2><i class="fas fa-wave-square"></i> Analyse des Signaux (Bruit vs Signal)</h2>
-    <div class="dual-canvas-container">
-        <div class="canvas-box">
-            <span class="label">CAPTEUR BRUT (RAW)</span>
-            <canvas id="canvas-raw"></canvas>
-        </section> 
+                </section>
+    
+        <section class="panel">
+            <h2><i class="fas fa-wave-square"></i> Signaux & Anomalies</h2>
             
-  </div> 
-    </main> 
+            <div class="dual-canvas-container" style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
+                <div class="canvas-box" style="flex: 1; min-height: 50px;">
+                    <span class="label" style="font-size: 0.5rem; color: #888;">CAPTEUR BRUT (RAW)</span>
+                    <canvas id="canvas-raw" style="width: 100%; height: 100%; background: #000;"></canvas>
+                </div>
+                <div class="canvas-box" style="flex: 1; min-height: 50px;">
+                    <span class="label" style="font-size: 0.5rem; color: #888;">SIGNAL FILTRÉ (KALMAN)</span>
+                    <canvas id="canvas-clean" style="width: 100%; height: 100%; background: #000;"></canvas>
+                </div>
+            </div>
+
+            <div class="treasure-log-container" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 5px;">
+                <div class="label" style="color:#ffcc00; font-size: 0.6rem; margin-bottom: 3px;">📜 JOURNAL DES ANOMALIES</div>
+                <div id="treasure-log-display" style="font-size: 0.55rem; color: #aaa; height: 40px; overflow-y: auto; background: rgba(255,204,0,0.05); padding: 3px;">
+                    En attente de détection...
+                </div>
+            </div>
+        </section>
+
+    </div>
+</main> 
         <script>
 let wakeLock = null;
 
