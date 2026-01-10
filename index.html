@@ -94,23 +94,15 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
         <div class="label">VITESSE</div>
         <div id="main-speed" class="value" style="font-size: 1.5rem;">-.--</div>
     </div>
-    <div class="header-item">
-        <button id="init-btn" onclick="startAdventure()">INITIALISER</button>
-    </div>
-    <div class="header-item">
-        <div class="label">STATUS</div>
-        <div id="reality-status-main" class="value">STANDBY</div>
-    </div>
-</header>
     
 <main>
-    <div class="column">
         <section class="panel">
-            <section class="panel" aria-labelledby="controls-heading">
+           <div class="column">
+               <section id="system-control" class="panel">
                 <h2 id="controls-heading"><i class="fas fa-cog"></i> Contrôles & Système</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
-                <div class="data-point"><span>Heure GMT (Synchro)</span><span id="gmt-time-display">--:--:--.---</span></div>
+                <div class="data-point"><span>Heure UTC Sync</span><span id="gmt-time-display-1">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy">± --ms</span></div>
                 <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
                 <div class="data-point"><span>Heure NTP:</span> <span id="ntp-status-val">Sync...</span></div>
@@ -201,12 +193,13 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </section>
 
-            <section class="panel">
-            <h2><i class="fas fa-tachometer-alt"></i> Vitesse & Relativité</h2>
-            <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid #00ffff;">
-                <span style="color: #00ffff; font-weight: bold;">🚀 V-COSMIQUE</span>
-                <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff;">-- km/h</span>
-            </div>    
+            <section class="panel" aria-labelledby="speed-heading">
+    <h2 id="speed-heading"><i class="fas fa-tachometer-alt"></i> Vitesse & Physique</h2>
+    
+    <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid #00ffff; margin-bottom: 5px; padding: 6px;">
+        <span style="color: #00ffff; font-weight: bold; font-size: 0.6rem;">🚀 V-COSMIQUE</span>
+        <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff; font-family: monospace; font-weight: bold;">-- km/h</span>
+    </div>
                 
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">-.-- m/s</span></div>
@@ -256,10 +249,9 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
                 <div class="data-point"><span>Distance Horizon (s)</span><span id="horizon-distance-km">--</span></div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
                 <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
-            </section>
-    </div>
-    
-<div class="column">
+    </section> 
+</div>
+    <div class="column"> 
         <section class="panel" style="flex: 2.5;">
             <h2><i class="fas fa-map-marked-alt"></i> Cartographie GNSS</h2>
             <div id="map-container">
@@ -456,37 +448,40 @@ canvas { width: 100%; flex: 1; background: #080808; border-radius: 3px; margin-t
         <div class="canvas-box">
             <span class="label">CAPTEUR BRUT (RAW)</span>
             <canvas id="canvas-raw"></canvas>
-        </div>
-        <div class="canvas-box">
-            <span class="label">SIGNAL FILTRÉ (KALMAN 21)</span>
-            <canvas id="canvas-clean"></canvas>
-        </section>
-    </div>
-</main>
-
-<script>
+        </section> 
+            
+  </div> 
+    </main> 
+        <script>
 let wakeLock = null;
 
+// Empêche l'écran de s'éteindre
 async function startAdventure() {
     if ('wakeLock' in navigator) {
         try {
             wakeLock = await navigator.wakeLock.request('screen');
-            document.getElementById('reality-status-main').innerText = "WAKE_LOCK_ACTIVE";
-            document.getElementById('reality-status-main').style.color = "var(--accent)";
-        } catch (err) { console.log("WakeLock Error"); }
+            const status = document.getElementById('reality-status-main');
+            if(status) {
+                status.innerText = "WAKE_LOCK_ACTIVE";
+                status.style.color = "var(--accent)";
+            }
+        } catch (err) { console.log("WakeLock Error:", err); }
     }
     
+    // Lance le moteur de calcul GNSS
     if(typeof initCore === "function") {
         initCore();
     }
 }
 
+// Réactive le verrouillage si on change d'onglet/app
 document.addEventListener('visibilitychange', async () => {
     if (wakeLock !== null && document.visibilityState === 'visible') {
         wakeLock = await navigator.wakeLock.request('screen');
     }
 });
 </script>         
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
@@ -495,6 +490,8 @@ document.addEventListener('visibilitychange', async () => {
 <script src="lib/ephem.js"></script>
 <script src="lib/astro.js"></script>    
     
-<script src="gnss-dashboard-full.js"></script>                  
-</body>
-</html>
+<script src="gnss-dashboard-full.js">
+    
+</script>
+    </body>
+    </html>
