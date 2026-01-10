@@ -48,94 +48,60 @@ header {
     align-items: center; 
     z-index: 2000;
 }
-
-/* 3. Grille Principale */
+/* REMPLACEMENT DU BLOC MAIN & COLUMN */
 main {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Deux colonnes égales */
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: 10px;
-    height: calc(100vh - 85px); /* Hauteur restante après le header */
+    height: calc(100vh - 85px); /* Hauteur exacte sous le header */
     margin-top: 85px;
     padding: 10px;
     overflow: hidden;
     box-sizing: border-box;
 }
 
-/* 4. Colonnes Flexibles */
 .column {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-height: 0; /* FORCE le respect de la hauteur parente */
     height: 100%;
-    min-height: 0; /* Crucial : permet aux enfants de se réduire */
 }
 
-/* 5. Panneaux (Widgets) */
 .panel {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 10px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    flex: 1; /* Partage équitable de l'espace */
-    min-height: 0;
-    overflow: hidden; /* Coupe le contenu si débordement */
+    min-height: 0; /* Permet au panel de se compresser */
+    flex: 1; /* Répartition égale par défaut */
 }
 
-/* 6. Hiérarchie et Texte */
-h2 { 
-    font-size: 0.65rem; 
-    margin: 0 0 8px 0; 
-    color: #888; 
-    text-transform: uppercase; 
-    letter-spacing: 1px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 4px;
-    flex-shrink: 0;
-}
-
-.data-point {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 0;
-    border-bottom: 1px solid #1a1a20;
-    font-size: 0.65rem;
-    white-space: nowrap;
-}
-
-.label { color: #666; font-size: 0.55rem; }
-.value { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: bold; }
-
-/* 7. Spécificités (Carte et Graphiques) */
+/* PRIORITÉ À LA CARTE */
 #map-container {
-    flex: 2.5; /* Donne la priorité de hauteur à la carte */
+    flex: 2.5 !important; /* La carte prend plus de place */
     position: relative;
+    min-height: 120px;
     background: #000;
-    border-radius: 4px;
-    min-height: 150px;
 }
 
-#map { height: 100%; width: 100%; }
-
+/* PROTECTION DES GRAPHIQUES */
 canvas {
-    display: block;
+    max-height: 45px !important; /* Empêche les graphiques de manger tout l'espace */
     width: 100% !important;
-    height: 50px !important; /* Taille fixe pour les graphiques Kalman */
     background: #000;
-    margin-top: 5px;
-    flex-shrink: 0;
 }
 
-/* Journal des anomalies */
+/* JOURNAL AUTO-ADAPTATIF */
 #treasure-log-display {
-    font-family: monospace;
-    font-size: 0.55rem;
-    line-height: 1.2;
-    overflow-y: auto;
     flex: 1;
-    }
+    overflow-y: auto;
+    font-size: 0.55rem;
+    background: rgba(0,0,0,0.2);
+    padding: 4px;
+}
 </style>    
 </head>
  
@@ -257,7 +223,8 @@ canvas {
             <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid #00ffff; padding: 5px;">
                 <span style="color: #00ffff; font-weight: bold;">🚀 V-COSMIQUE</span>
                 <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff; font-weight: bold;">-- km/h</span>
-            </div>                
+                </div>         
+                <h3>Physique & Relativité</h3>
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">-.-- m/s</span></div>
                 <div class="data-point"><span>Vitesse Brute (m/s)</span><span id="speed-raw-ms">-.-- m/s</span></div> 
@@ -266,11 +233,7 @@ canvas {
                 <div class="data-point"><span>Vitesse Moyenne (Totale)</span><span id="speed-avg-total">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">-.-- m/s</span></div>
                 <div class="data-point"><span>Statut Vol:</span> <span id="air-time-s" style="color:#0f0;">SOL</span></div>
-                <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>
-                <div class="panel"> 
-                </div>    
-                <hr>
-                <h3>Physique & Relativité</h3>
+                <div class="data-point"><span>Pente (%):</span> <span id="slope-percent" style="color:#ff00ff;">-.- %</span></div>           
                 <div class="data-point"><span>Vitesse du Son Locale </span><span id="vitesse-son-cor">--</span></div>
                 <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
@@ -286,7 +249,9 @@ canvas {
                 <div class="data-point"><span>Rayon de Schwarzschild (Rs)</span><span id="schwarzschild-radius">--</span></div>
                 <div class="data-point"><span>Vitesse de la Lumière locale (c)</span><span id="const-c">--------- m/s</span></div>
                 <div class="data-point"><span>Gravitation Universelle locale (G)</span><span id="const-G">-.-----e-__ m³/kg/s²</span></div>
-                </div>
+                </section>
+
+                <section class="panel">
                 <h2><i class="fas fa-ruler-combined"></i> Distance & Parcours</h2>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
                 <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
@@ -301,7 +266,7 @@ canvas {
                 <div class="data-point"><span>Distance (mois-lumière)</span><span id="distance-light-month">-.--e+-- mois</span></div>
                 <div class="data-point"><span>Distance (UA / al)</span><span id="distance-cosmic">-.-- UA</span></div>
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
-                <div class="data-point"><span>Distance Horizon (s)</span><span id="horizon-distance-km">--</span></div>
+                <div class="data-point"><span>Distance Horizon (s)</span><span id="horizon-distance-km">--</span></div
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
                 <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
     </section> 
