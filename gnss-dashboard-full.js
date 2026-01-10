@@ -72,34 +72,37 @@ function computeScientificCore(v_mps) {
 function handlePhysicsUpdate(event) {
     if (!App.state.active) return;
 
-    const acc = event.accelerationIncludingGravity;
+    // 1. Récupération des données linéaires (sans gravité si possible)
+    // Utiliser 'acceleration' au lieu de 'accelerationIncludingGravity' est préférable
+    const acc = event.acceleration || event.accelerationIncludingGravity;
     const now = performance.now();
     const dt = (now - App.state.lastT) / 1000;
     App.state.lastT = now;
 
-    // Calcul G-Force avec compensation de la gravité terrestre
-    const gMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-    const gForce = gMag / 9.80665;
+    // 2. FILTRE DE SEUIL (Deadzone Logic)
+    // Si l'accélération est trop faible, on considère qu'on est immobile ou à vitesse constante
+    let ax = acc.x;
+    const threshold = 0.2; // m/s² (Ajustez selon la sensibilité du capteur)
 
-    // Intégration de la vitesse avec seuil de bruit (Gate Logic)
-    if (gMag > 0.15) {
-        const dv = math.multiply(_BN(acc.x), _BN(dt));
-        App.state.v = math.abs(math.add(App.state.v, dv));
-    } else {
-        // Amortissement pour éviter la dérive à l'arrêt (Drift Compensation)
-        App.state.v = math.multiply(App.state.v, _BN(0.95));
+    if (Math.abs(ax) < threshold) {
+        ax = 0;
+        // 3. AMORTISSEMENT ACTIF (Friction Logic)
+        // Force la vitesse à revenir vers zéro si aucune force n'est détectée
+        App.state.v = math.multiply(App.state.v, _BN(0.92)); 
     }
 
+    // 4. INTÉGRATION SYMÉTRIQUE
+    // La décélération (ax négatif) soustrait maintenant correctement de la vitesse
+    const dv = math.multiply(_BN(ax), _BN(dt));
+    App.state.v = math.add(App.state.v, dv);
+
+    // Empêcher une vitesse négative (absurde physiquement ici)
+    if (App.state.v.isNegative()) App.state.v = _BN(0);
+
+    // 5. CALCULS RELATIVISTES ET UI
     const sci = computeScientificCore(App.state.v);
-
-    // Mise à jour de l'UI
-    updateUI(gForce, sci);
-    
-    // Données pour les Canvas
-    App.state.history.raw.push(gMag);
-    if(App.state.history.raw.length > 100) App.state.history.raw.shift();
-}
-
+    updateUI(Math.abs(ax) / 9.81, sci);
+} 
 
 
 // =============================================================
