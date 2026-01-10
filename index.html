@@ -11,98 +11,97 @@
     <link rel="manifest" href="manifest.json">
 <style>  
 :root {
-    --bg: #050505; 
-    --card: #121216; 
-    --border: #2a2a30;
-    --text: #e0e0e0; 
-    --accent: #00ff88; 
-    --hud-bg: rgba(0, 0, 0, 0.95);
+    --bg: #050505; --card: #121216; --border: #2a2a30;
+    --text: #e0e0e0; --accent: #00ff88; --hud-bg: rgba(0, 0, 0, 0.98);
 }
 
-/* 1. Verrouillage du corps de page */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body { 
-    margin: 0; 
-    padding: 0;
-    background: var(--bg); 
-    color: var(--text); 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    height: 100vh; /* Force la hauteur de l'écran */
-    width: 100vw; 
-    overflow: hidden; /* Interdiction formelle de scroller */
-    position: fixed; /* Empêche le rebond élastique sur mobile */
+    margin: 0; padding: 0; background: var(--bg); color: var(--text); 
+    font-family: 'Segoe UI', system-ui, sans-serif; 
+    height: 100vh; width: 100vw; overflow: hidden; position: fixed;
 }
 
-/* 2. Header Fixe */
-header {
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 80px;
-    background: var(--hud-bg); 
-    border-bottom: 1px solid var(--border);
-    display: flex; 
-    justify-content: space-around; 
-    align-items: center; 
-    z-index: 2000;
+/* HEADER FIXE */
+header#master-hud-fixed {
+    position: fixed; top: 0; left: 0; width: 100%; height: 75px;
+    background: var(--hud-bg); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-around; align-items: center; z-index: 2000;
+    padding: 0 10px;
 }
-/* REMPLACEMENT DU BLOC MAIN & COLUMN */
+
+.header-item { text-align: center; flex: 1; }
+.header-item .label { font-size: 0.5rem; color: #666; margin-bottom: 2px; }
+.header-item .value { font-family: monospace; font-weight: bold; color: var(--accent); }
+
+/* GRILLE PRINCIPALE (STRICTE) */
 main {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 10px;
-    height: calc(100vh - 85px); /* Hauteur exacte sous le header */
-    margin-top: 85px;
-    padding: 10px;
+    gap: 8px;
+    height: calc(100vh - 80px); /* 100% de la vue moins le header */
+    margin-top: 80px;
+    padding: 8px;
     overflow: hidden;
-    box-sizing: border-box;
 }
 
 .column {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    min-height: 0; /* FORCE le respect de la hauteur parente */
+    gap: 8px;
+    min-height: 0; /* Important pour la compression flex */
     height: 100%;
 }
 
 .panel {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 8px;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Permet au panel de se compresser */
-    flex: 1; /* Répartition égale par défaut */
-}
-
-/* PRIORITÉ À LA CARTE */
-#map-container {
-    flex: 2.5 !important; /* La carte prend plus de place */
-    position: relative;
-    min-height: 120px;
-    background: #000;
-}
-
-/* PROTECTION DES GRAPHIQUES */
-canvas {
-    max-height: 45px !important; /* Empêche les graphiques de manger tout l'espace */
-    width: 100% !important;
-    background: #000;
-}
-
-/* JOURNAL AUTO-ADAPTATIF */
-#treasure-log-display {
+    min-height: 0; /* Permet au panel de réduire sa taille */
     flex: 1;
-    overflow-y: auto;
-    font-size: 0.55rem;
-    background: rgba(0,0,0,0.2);
-    padding: 4px;
+    overflow: hidden;
 }
-</style>    
+
+h2 { 
+    font-size: 0.6rem; margin: 0 0 6px 0; color: #555; 
+    text-transform: uppercase; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 5px;
+}
+
+.data-point {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; border-bottom: 1px solid #1a1a20;
+    font-size: 0.65rem; white-space: nowrap;
+}
+
+.data-point span:first-child { color: #888; }
+.data-point span:last-child { font-family: monospace; color: var(--accent); font-weight: bold; }
+
+/* SPÉCIFICITÉS */
+#map-container { flex: 2.5 !important; position: relative; background: #000; border-radius: 4px; }
+#map { height: 100%; width: 100%; }
+
+canvas {
+    max-height: 40px !important; width: 100% !important;
+    background: #000; margin-top: 4px; border: 1px solid #1a1a20;
+}
+
+#treasure-log-display {
+    flex: 1; overflow-y: auto; font-family: monospace; font-size: 0.55rem;
+    background: rgba(0,0,0,0.3); padding: 5px; color: #aaa;
+}
+
+#start-btn-final {
+    background: transparent; border: 1px solid var(--accent); color: var(--accent);
+    padding: 6px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;
+    cursor: pointer; transition: 0.3s;
+}
+#start-btn-final:hover { background: var(--accent); color: #000; }
+    </style>    
 </head>
  
 <body class="dark-mode">
