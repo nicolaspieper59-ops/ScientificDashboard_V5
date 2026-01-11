@@ -110,18 +110,23 @@ canvas {
 <header id="master-hud-fixed">
     <div class="header-item">
         <div class="label">VITESSE</div>
-        <div id="main-speed" class="value" style="font-size: 1.5rem;">0.00</div>
+        <div id="main-speed" class="value" style="font-size: 1.5rem;">-.--</div>
     </div>
     <div class="header-item">
         <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 INITIALISER</button>
     </div>
     <div class="header-item">
         <div class="label">STATUS</div>
-        <div id="reality-status-main" class="value" style="font-size: 0.7rem;">SYSTEM_READY</div>
+        <div style="display: flex; gap: 15px; font-size: 0.7rem; color: var(--accent);">
+    <span>PRECISION: 128-BIT BIGNUM</span>
+    <span>REF: WGS84 / EGM96</span>
+    <span>CLOCK: ATOMIC SYNC (GPS/PPS)</span>
+</div>
+<div id="reality-status-main" onclick="startAdventure()" style="cursor:pointer; border:1px solid var(--accent); padding:2px 8px;">INIT_CORE</div>
     </div>
 </header>
     
-< main>
+<main>
         <div class="column">
         <section class="panel">
             <h2><i class="fas fa-cog"></i> Système & Contrôles</h2>
@@ -360,6 +365,13 @@ canvas {
                 <div class="data-point"><span>Puissance Mécanique (W)</span><span id="mechanical-power">-.-- W</span></div>
                 <div class="data-point"><span>Pression de Radiation</span><span id="pression-radiation">--</span></div>
                 <div class="data-point"><span>Force de Coriolis</span><span id="coriolis-force">-.-- N</span></div>
+                <div class="data-point"><span>Poussée d'Archimède :</span><span class="val" id="ui-f-arch">0.00 N</span></div>
+                <div class="data-point"><span>Traînée de Rayleigh :</span><span class="val" id="ui-f-drag" style="color: #ff4444;">0.00 N</span></div>
+                <div class="data-point"><span>Composante de Pente :</span><span class="val" id="ui-f-slope">0.00 N</span></div>
+                <div class="data-point"><span>Friction de Surface :</span><span class="val" id="ui-f-roll">0.00 N</span></div>
+                <hr style="border:0; border-top:1px solid #222;">
+                <div class="data-point"><span>Accélération Nette :</span><span class="val" id="ui-real-accel" style="color:var(--accent)">0.000 m/s²</span></div>
+        </section>
                 <hr style="border:1px solid var(--border);">
                 <h3>Performance & Flow</h3>
                 <div class="data-point"><span>Puissance en Watts:</span> <span id="human-power-w">-- W</span></div>
@@ -478,7 +490,7 @@ canvas {
             <div class="treasure-log-container" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 5px;">
                 <div class="label" style="color:#ffcc00; font-size: 0.6rem; margin-bottom: 3px;">📜 JOURNAL DES ANOMALIES</div>
                 <h2><i class="fas fa-history"></i> Journal</h2>
-                <div id="treasure-log-display" style="font-size: 0.55rem; color: #aaa; height: 40px; overflow-y: auto; background: rgba(255,204,0,0.05); padding: 3px;">
+                <div id="anomaly-log" style="height:100px; overflow-y:auto; font-size:0.7rem;"></div>
                     En attente de détection...
                 </div>
             </div>
