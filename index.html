@@ -467,56 +467,85 @@
     </aside>
  </main>
 
+    </main>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="vendor/three.min.js"></script>
-    <script src="vendor/turf.min.js"></script>
-    <script src="vendor/leaflet.js"></script>    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <script src="lib/ephem.js"></script>
     <script src="lib/astro.js"></script>    
-    
     <script src="gnss-dashboard-full.js"></script>
 
     <script>
+    /**
+     * LOGIQUE DE CONTRÔLE DE MISSION V17
+     */
     let wakeLock = null;
 
+    // Fonction d'initialisation globale
     async function startAdventure() {
-        console.log("Tentative de démarrage du système...");
+        console.log("Séquence d'initialisation V17 lancée...");
+        const log = document.getElementById('anomaly-log');
         
-        // 1. Verrouillage de l'écran (WakeLock)
-        try {
-            if ('wakeLock' in navigator) {
+        // 1. Demande de WakeLock (Maintien de l'écran allumé)
+        if ('wakeLock' in navigator) {
+            try {
                 wakeLock = await navigator.wakeLock.request('screen');
-                document.getElementById('reality-status-main').innerText = "CORE_LOCKED";
-                document.getElementById('reality-status-main').style.color = "var(--accent)";
+                updateStatus("CORE_LOCKED", "var(--accent)");
+                if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > WAKELOCK ACTIVÉ</div>` + log.innerHTML;
+            } catch (err) {
+                console.warn("WakeLock refusé.");
             }
-        } catch (err) { 
-            console.warn("WakeLock Error: Protocol non sécurisé ou refusé."); 
         }
 
-        // 2. Démarrage du moteur GNSS 128-bit
+        // 2. Démarrage du moteur Physique/GNSS
+        // On vérifie si initCore (V16) ou METROLOGY.startSystem (V17) existe
         if (typeof initCore === "function") {
             initCore();
-            
-            // 3. Lancement de la surveillance santé système
-            if (typeof enforceMemoryLimits === "function") {
-                setInterval(enforceMemoryLimits, 5000);
-            }
-            
-            // Notification dans le journal
-            const log = document.getElementById('anomaly-log');
-            if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > MOTEUR V16 OPÉRATIONNEL</div>` + log.innerHTML;
+            if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > MOTEUR V16/V17 CHARGÉ</div>` + log.innerHTML;
+        } else if (window.METROLOGY && typeof METROLOGY.startSystem === "function") {
+            METROLOGY.startSystem();
         } else {
-            alert("ERREUR CRITIQUE : Le fichier 'gnss-dashboard-full.js' est introuvable ou corrompu.");
+            console.error("Moteur introuvable.");
+            alert("ERREUR : Système de calcul introuvable.");
+            return;
+        }
+
+        // 3. Gestion de la Mémoire et Performance
+        if (typeof enforceMemoryLimits === "function") {
+            setInterval(enforceMemoryLimits, 5000);
+        }
+
+        // 4. Initialisation des Graphiques
+        if (typeof initCharts === "function") initCharts();
+    }
+
+    // Utilitaire de mise à jour du statut dans le Header
+    function updateStatus(text, color) {
+        const statusEl = document.getElementById('reality-status-main');
+        if (statusEl) {
+            statusEl.innerText = text;
+            statusEl.style.color = color;
         }
     }
 
-    // Gestion de la visibilité pour le WakeLock
+    // Gestion automatique du WakeLock lors du changement d'onglet
     document.addEventListener('visibilitychange', async () => {
         if (wakeLock !== null && document.visibilityState === 'visible') {
             try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
         }
     });
+
+    // Écouteur pour le redimensionnement des canvas
+    window.addEventListener('resize', () => {
+        const canvases = document.querySelectorAll('canvas');
+        canvases.forEach(c => {
+            c.width = c.clientWidth;
+            c.height = c.clientHeight;
+        });
+    });
     </script>
 </body>
-</html>
+                </html>
