@@ -453,57 +453,76 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
         <section class="panel">
             <h2><i class="fas fa-wave-square"></i> Signaux & Anomalies</h2>
             
-            <div class="dual-canvas-container" style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
-                <div class="canvas-box" style="flex: 1; min-height: 50px;">
-                    <span class="label" style="font-size: 0.5rem; color: #888;">CAPTEUR BRUT (RAW)</span>
-                    <canvas id="canvas-raw" style="width: 100%; height: 100%; background: #000;"></canvas>
+            <div class="dual-canvas-container" style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                <div class="canvas-box" style="flex: 1; min-height: 60px; border: 1px solid #1a1a1a; position: relative;">
+                    <span class="label" style="position: absolute; top: 2px; left: 5px; font-size: 0.5rem; color: #555; z-index: 10;">CAPTEUR BRUT (RAW)</span>
+                    <canvas id="canvas-raw" style="width: 100%; height: 100%; background: #000; display: block;"></canvas>
                 </div>
-                <div class="canvas-box" style="flex: 1; min-height: 50px;">
-                    <span class="label" style="font-size: 0.5rem; color: #888;">SIGNAL FILTRÉ (KALMAN)</span>
-                    <canvas id="canvas-clean" style="width: 100%; height: 100%; background: #000;"></canvas>
+                <div class="canvas-box" style="flex: 1; min-height: 60px; border: 1px solid #1a1a1a; position: relative;">
+                    <span class="label" style="position: absolute; top: 2px; left: 5px; font-size: 0.5rem; color: var(--accent); z-index: 10;">SIGNAL FILTRÉ (KALMAN)</span>
+                    <canvas id="canvas-clean" style="width: 100%; height: 100%; background: #000; display: block;"></canvas>
                 </div>
             </div>
 
-            <div class="treasure-log-container" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 5px;">
-                <div class="label" style="color:#ffcc00; font-size: 0.6rem; margin-bottom: 3px;">📜 JOURNAL DES ANOMALIES</div>
-                <h2><i class="fas fa-history"></i> Journal</h2>
-                <div id="anomaly-log" style="height:100px; overflow-y:auto; font-size:0.7rem;"></div>
-                    En attente de détection...
+            <div class="treasure-log-container" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px;">
+                <h2><i class="fas fa-history"></i> Journal de Bord</h2>
+                <div id="anomaly-log" style="height:120px; overflow-y:auto; font-size:0.7rem; background: rgba(0,0,0,0.3); padding: 5px; font-family: 'JetBrains Mono', monospace;">
+                    <span style="color: #444;">[SYSTEM] Initialisation du noyau...</span>
                 </div>
             </div>
         </section>
+    </main> 
 
-    </div>
-</main> 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-<script src="vendor/three.min.js"></script>
-<script src="vendor/turf.min.js"></script>
-<script src="vendor/leaflet.js"></script>    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="vendor/three.min.js"></script>
+    <script src="vendor/turf.min.js"></script>
+    <script src="vendor/leaflet.js"></script>    
 
-<script src="lib/ephem.js"></script>
-<script src="lib/astro.js"></script>    
+    <script src="lib/ephem.js"></script>
+    <script src="lib/astro.js"></script>    
     
-<script src="gnss-dashboard-full.js">
+    <script src="gnss-dashboard-full.js"></script>
 
-<script>
-async function startAdventure() {
-    // Demande du WakeLock (Écran allumé)
-    try {
-        if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-            document.getElementById('reality-status-main').innerText = "SYSTEM_LOCKED_ON";
+    <script>
+    let wakeLock = null;
+
+    async function startAdventure() {
+        console.log("Tentative de démarrage du système...");
+        
+        // 1. Verrouillage de l'écran (WakeLock)
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                document.getElementById('reality-status-main').innerText = "CORE_LOCKED";
+                document.getElementById('reality-status-main').style.color = "var(--accent)";
+            }
+        } catch (err) { 
+            console.warn("WakeLock Error: Protocol non sécurisé ou refusé."); 
         }
-    } catch (err) { console.warn("WakeLock non supporté."); }
 
-    // Démarrage du moteur GNSS
-    if (typeof initCore === "function") {
-        initCore();
-        // Lancement de la surveillance mémoire
-        setInterval(enforceMemoryLimits, 5000);
-    } else {
-        alert("Erreur critique : Le moteur GNSS n'est pas chargé.");
+        // 2. Démarrage du moteur GNSS 128-bit
+        if (typeof initCore === "function") {
+            initCore();
+            
+            // 3. Lancement de la surveillance santé système
+            if (typeof enforceMemoryLimits === "function") {
+                setInterval(enforceMemoryLimits, 5000);
+            }
+            
+            // Notification dans le journal
+            const log = document.getElementById('anomaly-log');
+            if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > MOTEUR V16 OPÉRATIONNEL</div>` + log.innerHTML;
+        } else {
+            alert("ERREUR CRITIQUE : Le fichier 'gnss-dashboard-full.js' est introuvable ou corrompu.");
+        }
     }
-}
-</script>
+
+    // Gestion de la visibilité pour le WakeLock
+    document.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+        }
+    });
+    </script>
 </body>
 </html>
