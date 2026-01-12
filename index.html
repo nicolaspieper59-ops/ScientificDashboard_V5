@@ -241,9 +241,15 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
     <span>PRECISION: 128-BIT BIGNUM</span>
     <span>REF: WGS84 / EGM96</span>
     <span>CLOCK: ATOMIC SYNC (GPS/PPS)</span>
+    <span id="ui-mode">MODE: GNSS_METROLOGY</span>
+    <span id="ui-precision-lock" style="color:var(--accent); font-size:0.5rem;">[128-BIT_LOCKED]</span>        
+       <div id="ui-mode" style="font-size: 0.6rem; color: var(--accent); border: 1px solid var(--accent); padding: 2px 5px;">
+    MODE: STANDBY
+       </div>        
 </div>
 <div id="reality-status-main" onclick="startAdventure()" style="cursor:pointer; border:1px solid var(--accent); padding:2px 8px;">INIT_CORE</div>
     </div>
+ 
 </header>
     
 <main>
@@ -382,6 +388,13 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Rayon de Schwarzschild (Rs)</span><span id="schwarzschild-radius">--</span></div>
                 <div class="data-point"><span>Vitesse de la Lumière locale (c)</span><span id="const-c">--------- m/s</span></div>
                 <div class="data-point"><span>Gravitation Universelle locale (G)</span><span id="const-G">-.-----e-__ m³/kg/s²</span></div>
+                <div class="data-point"><span>Pression (hPa)</span><span id="ui-pressure">1013.25</span></div>
+                <div class="data-point"><span>Densité réelle ($\rho$)</span><span id="ui-rho-dynamic">1.2250</span>
+                <div class="data-point"><span>Potentiel Gravitationnel (Φ)</span><span id="ui-grav-phi">1.0000000000</span> 
+                <div class="data-point"><span>Dérive Totale (RR+RG)</span><span id="ui-lorentz">0.000000 ns/s</span>   
+                <div class="data-point"><span>Altitude (Ref. Géoïde)</span><input id="in-alt" type="text" value="0" style="width: 50px; background: none; border: 1px solid var(--border); color: var(--accent); text-align: right;"> 
+                <div class="data-point"><span>Potentiel de Schwarzschild (Φ)</span><span id="ui-grav-phi">0.9999999993</span>
+                <div class="data-point"><span>Dérive Gravitationnelle</span><span id="ui-grav-dilation">-0.0000000 ns/s</span>
                 </section>
 
                 <section class="panel">
@@ -396,7 +409,8 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Distance (j-lumière)</span><span id="distance-light-day">-.--e+-- j</span></div>
                 <div class="data-point"><span>Distance (sem-lumière)</span><span id="distance-light-week">-.--e+-- sem</span></div>
                 <div class="data-point"><span>Distance (mois-lumière)</span><span id="distance-light-month">-.--e+-- mois</span></div>
-                <div class="data-point"><span>Distance (UA / al)</span><span id="distance-cosmic">-.-- UA</span></div>
+                <div class="data-point"><span>Distance (al-lumière)</span><span id="distance-light-year">-.--e+-- année</span></div>
+                <div class="data-point"><span>Distance UA</span><span id="ui-sun-dist">-.---------- UA</span></div>    
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
                 <div class="data-point"><span>Horizon Dist. (km)</span><span id="horizon-distance-km">-.---</span> </div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
@@ -467,13 +481,13 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
         <div class="data-point"><span>Gravité (Somigliana)</span><span id="gravity-theoretical">-.----- m/s²</span>
         <div class="data-point"><span>Rayon Ellipsoïde Local</span><span id="earth-radius-local">------ m</span>
         </div>
-    </div>
+            
 </section>
     <section class="panel">
     <h2><i class="fas fa-atom"></i> Physique Relativiste</h2>
     <div class="data-grid">
                 </section>
-                <h3>Mécanique des Fluides,Champs & Forces</h3>
+                <h3>Mécanique des Fluides,Champs & Forces et Performance & Flow</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">-.-- Pa</span></div>
                 <div class="data-point"><span>Force de Traînée</span><span id="drag-force">-.-- N</span></div>
                 <div class="data-point"><span>Puissance de Traînée (kW)</span><span id="drag-power-kw">-.-- kW</span></div>
@@ -488,9 +502,8 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Friction de Surface :</span><span class="val" id="ui-f-roll">0.00 N</span></div>
                 <hr style="border:0; border-top:1px solid #222;">
                 <div class="data-point"><span>Accélération Nette :</span><span class="val" id="ui-real-accel" style="color:var(--accent)">0.000 m/s²</span></div>
-        </section>
                 <hr style="border:1px solid var(--border);">
-                <h3>Performance & Flow</h3>
+                <div class="data-point"><span>Force de Traînée</span><span id="ui-drag-force">0.00000000 N</span>
                 <div class="data-point"><span>Puissance en Watts:</span> <span id="human-power-w">-- W</span></div>
                 <div class="data-point"><span>Adrénaline Index:</span> <span id="adrenaline-idx">-.- / 10</span></div>
                 <div class="data-point" style="background:rgba(0,255,0,0.1);"><span>Score Fluidité:</span> <span id="smoothness-score">---/100</span></div>
@@ -513,12 +526,12 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ukf-status-display">--</span></div>
                 <div class="data-point"><span id="filter-status-2" class="status-wait">Initialisation...</span></div>
                 <div class="data-point"><span>Incertitude Vitesse (P)</span><span id="ukf-velocity-uncertainty">--</span></div> 
-                <div class="data-point"><span>Incertitude Alt. (σ)</span><span id="ukf-alt-uncertainty">--</span></div> 
+                <div class="data-point"><span>Incertitude Altitude (σ)</span><span id="ukf-alt-uncertainty">--</span></div> 
                 <div class="data-point"><span>Bruit Mesure Vitesse (R)</span><span id="ukf-r-noise">--</span></div>
                 <div class="data-point"><span>Bande Passante (Nyquist)</span><span id="bande-passante">--</span></div>
                 <div class="data-point"><span>Mode Dynamique Master</span><span id="status-physique" style="color: #00ff00;">Initialisation...</span></div>    
                 <div class="data-point"><span>Fréquence d'Échantillonnage</span><span id="nyquist-limit">-- Hz</span></div>
-                <div class="data-point"><span>Bruit Accel. (R)</span> <span id="acc-bias">-.-- mg</span></div>
+                <div class="data-point"><span>Bruit Accéléromètre (R)</span> <span id="acc-bias">-.-- mg</span></div>
                 <div class="data-point"><span>Type de Mouvement</span><span id="bio-signature-type">--</span></div>
                 <div class="data-point"><span>Vibration (Jitter)</span><span id="vibration-jitter">--</span></div>
             </section>
@@ -551,6 +564,7 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">--.-----</span></div> 
                 <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">---.-----</span></div>
                 <div class="data-point"><span>Altitude (UKF) (Z)</span> <span id="alt-display">---.-- m</span></div>
+                <div class="data-point"><span>Altitude (Saisie/GPS)</span><input id="in-alt" type="number" value="0" style="width:50px; background:none; color:var(--accent); border:1px solid var(--border);">
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt"></span></div>
                 <div class="data-point"><span>Altitude Barométrique</span><span id="alt-corrected-baro">--</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">--</span></div>
@@ -573,18 +587,20 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Temps Sidéral (TSLV)</span><span id="tslv">--</span></div>
                 <div class="data-point"><span>Longitude Écliptique</span><span id="ecl-long">--</span></div>
                 <h3><i class="fas fa-sun"></i> Soleil</h3>
-                <div class="data-point"><span>Altitude (Soleil)</span><span id="hud-sun-alt">--</span></div>
-                <div class="data-point"><span>Azimut (Soleil)</span><span id="sun-azimuth">--</span></div>
+                <div class="data-point"><span>Élévation Solaire</span><span id="ui-sun-el">--.--°</span></div>
+                <div class="data-point"><span>Azimut Solaire</span><span id="sun-azimuth">--.--°</span></div>
                 <div class="data-point"><span>Durée du Jour</span><span id="day-duration">--</span></div>
                 <div class="data-point"><span>Lever (TSM/TST)</span><span id="sunrise-times">--</span></div>
                 <div class="data-point"><span>Coucher (TSM/TST)</span><span id="sunset-times">--</span></div>
                 <h3><i class="fas fa-moon"></i> Lune</h3>
                 <div class="data-point"><span>Phase</span><span id="moon-phase-name">--</span></div>
                 <div class="data-point"><span>Illumination</span><span id="moon-illuminated">--</span></div>
-                <div class="data-point"><span>Altitude (Lune)</span><span id="moon-alt">--</span></div>
-                <div class="data-point"><span>Azimut (Lune)</span><span id="moon-azimuth">--</span></div>
+                <div class="data-point"><span>Élévation Lunaire</span><span id="moon-alt">--.--°</span></div>
+                <div class="data-point"><span>Azimut Lunaire </span><span id="moon-azimuth">--.--°</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">--</span></div>
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
+                <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span>
+                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">0.000°</span>    
                 </section>
     
         <section class="panel">
