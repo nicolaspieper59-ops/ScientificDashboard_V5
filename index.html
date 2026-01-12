@@ -92,9 +92,13 @@
     
 <main>
     <div class="column">
-        <div id="map-container" style="flex: 2; border: 1px solid var(--border);">
-            <div id="map" style="height: 100%;"></div>
-        </div>
+        <section class="panel" style="flex: 2; display: flex; flex-direction: column;">
+            <h2><i class="fas fa-map"></i> NAVIGATION_MAP</h2>
+            <div id="map-container" style="flex: 1; min-height: 200px; position: relative;">
+                <div id="map" style="height: 100%;"></div>
+            </div>
+        </section>
+
         <section class="panel">
             <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
@@ -257,21 +261,26 @@
     </section> 
 </div>
     <div class="column"> 
-        <section class="panel" style="flex: 2.5;">
-            <h2><i class="fas fa-map-marked-alt"></i> Cartographie GNSS</h2>
-            <div id="map-container" style="position: relative;">
-    <div id="map"></div>
-    <button id="toggle-globe-btn" style="position:absolute; top:10px; left:10px; z-index:1000; background:rgba(0,0,0,0.7); color:#fff; border:1px solid var(--border); padding:4px;">GLOBE</button>           
-    <button id="xray-button" style="position: absolute; z-index: 1000;">X-RAY</button>
-            </div>
-            <aside id="data-sidebar">
+    <section class="panel" style="flex: 1; display: flex; flex-direction: column; min-height: 350px;">
+        <h2><i class="fas fa-map-marked-alt"></i> CARTOGRAPHIE_GNSS_CORE</h2>
+        <div id="map-container" style="flex: 1; position: relative; border: 1px solid var(--border); background: #000;">
+            <div id="map" style="height: 100%;"></div>
             
-            <section class="panel" style="border-left: 3px solid var(--accent);">
-                <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY</h2>
-                <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy">-- m</span></div>
-                <div class="data-point"><span>Analyse Vibrations</span><span id="ui-vrt">0.00 Hz</span></div>
-            </section>
-                
+            <div style="position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 5px;">
+                <button id="toggle-globe-btn" style="background:rgba(0,0,0,0.8); color:var(--accent); border:1px solid var(--accent); padding:4px 8px; font-size:0.6rem; cursor:pointer; font-family:'JetBrains Mono';">GLOBE_VIEW</button>
+                <button id="xray-button" style="background:rgba(0,0,0,0.8); color:#ff3300; border:1px solid #ff3300; padding:4px 8px; font-size:0.6rem; cursor:pointer; font-family:'JetBrains Mono';">X-RAY_SCAN</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel" style="border-left: 3px solid var(--accent);">
+        <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY_METRICS</h2>
+        <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy" class="val-scientifique">-- m</span></div>
+        <div class="data-point"><span>Analyse Vibrations</span><span id="ui-vrt" class="val-scientifique">0.00 Hz</span></div>
+        <div class="data-point"><span>Promenade Micro.</span><span id="total-path-inf" class="val-scientifique">--</span></div>
+    </section> 
+    </div>
+                    
         <div class="data-point">
             <span>Précision GPS (Acc)</span>
             <span id="gps-accuracy-display">-- m</span>
