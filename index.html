@@ -10,222 +10,140 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
     <link rel="manifest" href="manifest.json">
 <style>  
-/* --- OPTIMISATION DU LAYOUT RÉACTIF --- */
-/* --- BASE & THÈME HUD --- */
-:root {
-    --bg: #050505; 
-    --card: #121216; 
-    --border: #2a2a30;
-    --text: #e0e0e0; 
-    --accent: #00ff88; /* Vert GNSS par défaut */
-    --critical: #ff3300;
-}
+        :root {
+            --bg: #050505;
+            --card: #0a0a0c;
+            --border: #1a1a1f;
+            --text: #e0e0e0;
+            --accent: #00ff88;
+            --critical: #ff3300;
+        }
 
-body {
-    background-color: var(--bg);
-    color: var(--text);
-    margin: 0;
-    overflow: hidden; /* Empêche le scroll global */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
+        body {
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+            font-variant-numeric: tabular-nums;
+        }
 
-/* --- HEADER HUD --- */
-header#master-hud-fixed {
-    height: 60px;
-    background: rgba(0, 0, 0, 0.9);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    z-index: 1000;
-}
+        /* --- HEADER HUD COMPACT --- */
+        header#master-hud-fixed {
+            height: 50px;
+            background: rgba(0,0,0,0.95);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 1000;
+        }
 
-/* --- GRILLE PRINCIPALE --- */
-/* --- NOUVELLE STRUCTURE 2 COLONNES --- */
-main {
-    display: grid;
-    grid-template-columns: 1fr 380px; /* Carte à gauche, Data à droite */
-    gap: 15px;
-    padding: 15px;
-    height: calc(100vh - 60px);
-    box-sizing: border-box;
-}
+        #ui-v-scalar { font-size: 1.8rem; font-weight: bold; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
 
-#map-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
+        /* --- LAYOUT 2 COLONNES --- */
+        main {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 10px;
+            padding: 10px;
+            height: calc(100vh - 50px);
+            box-sizing: border-box;
+        }
 
-#data-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    overflow-y: auto;
-    padding-right: 5px;
-}
+        /* --- PANNEAU GAUCHE (CARTE) --- */
+        #viewport-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
 
-.canvas-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    height: 120px;
-}
+        #map-container {
+            flex: 1;
+            background: var(--card);
+            border: 1px solid var(--border);
+            position: relative;
+        }
 
-.canvas-box {
-    background: #000;
-    border: 1px solid var(--border);
-    position: relative;
-}
+        /* --- SIDEBAR DROITE (DENSE) --- */
+        #data-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            justify-content: flex-start; /* Supprime le vide vertical */
+        }
 
-canvas { width: 100%; height: 100%; }
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 2px;
+        }
 
-@media (max-width: 1000px) {
-    main { grid-template-columns: 1fr; overflow-y: auto; }
-    }
+        .panel h2 {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #555;
+            margin: 0 0 6px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
 
-/* --- CONTENEURS GRAPHIQUES --- */
-.canvas-box {
-    background: #000;
-    border: 1px solid var(--border);
-    position: relative;
-    border-radius: 2px;
-}
+        .data-point {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            padding: 2px 0;
+            border-bottom: 1px dotted #1a1a1a;
+        }
 
-.canvas-box canvas {
-    display: block;
-}
+        .data-point span:last-child { font-family: 'JetBrains Mono', monospace; color: var(--accent); }
 
-/* --- CARTE & INTERFACE CENTRALE --- */
-#map-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
+        /* --- GRAPHIQUES --- */
+        .dual-canvas-container {
+            display: grid;
+            grid-template-rows: 60px 60px;
+            gap: 5px;
+        }
 
-#map-container {
-    flex: 1;
-    border: 1px solid var(--border);
-    position: relative;
-    background: #080808;
-}
+        .canvas-box {
+            background: #000;
+            border: 1px solid #151515;
+            position: relative;
+        }
 
-#map {
-    height: 100%;
-    width: 100%;
-}
+        canvas { width: 100%; height: 100%; display: block; }
 
-/* --- TERMINAL / JOURNAL --- */
-#anomaly-log {
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid #1a1a1a;
-    padding: 8px;
-    color: #00ff44; /* Vert Matrix pour le log */
-    line-height: 1.4;
-}
+        .canvas-label {
+            position: absolute; top: 2px; left: 5px;
+            font-size: 0.5rem; color: #444; pointer-events: none;
+        }
 
-/* --- BOUTON DE LANCEMENT --- */
-#btn-start {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    padding: 10px 20px;
-    font-weight: bold;
-    cursor: pointer;
-    text-transform: uppercase;
-    border-radius: 2px;
-    transition: all 0.2s;
-}
+        /* --- JOURNAL --- */
+        #anomaly-log {
+            height: 100px;
+            background: #000;
+            border: 1px solid #151515;
+            font-size: 0.65rem;
+            color: #888;
+            padding: 5px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+        }
 
-#btn-start:hover {
-    filter: brightness(1.2);
-    box-shadow: 0 0 15px var(--accent);
-    }
-/* 1. Gestion de la Grille Principale */
-@media (max-width: 360px) {
-    main {
-        grid-template-columns: 1fr !important; /* Passage en une seule colonne */
-        overflow-y: auto !important; /* Autorise le défilement vertical sur mobile */
-        height: calc(100vh - 80px); /* Ajuste selon la taille du header */
-    }
-    
-    .panel {
-        max-height: none !important; /* Laisse les panneaux prendre leur place */
-        margin-bottom: 10px;
-    }
+        input {
+            background: none; border: 1px solid var(--border);
+            color: var(--accent); text-align: right; width: 60px;
+            font-family: inherit; font-size: 0.8rem;
+        }
 
-    #map-panel {
-        height: 40vh !important; /* Fixe une hauteur minimale pour la carte sur mobile */
-        order: -1; /* Place la carte tout en haut sur mobile */
-    }
-}
-
-/* 2. Compactage des Données pour éviter le chevauchement */
-.data-point {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    padding: 3px 0;
-    font-size: 0.8rem; /* Police de base */
-}
-
-@media (max-width: 1100px) {
-    .data-point {
-        font-size: 0.7rem; /* Police plus petite sur petit écran */
-    }
-    
-    h2 {
-        font-size: 0.55rem !important; /* Titres de section ultra-compacts */
-        letter-spacing: 1px;
-    }
-}
-
-/* 3. Protection des valeurs 128-bit (Tabular Numbers) */
-span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-variant-numeric: tabular-nums; /* Empêche l'UI de "sauter" */
-    word-break: break-all; /* Force le retour à la ligne si le chiffre est trop long */
-    text-align: right;
-    color: var(--accent);
-}
-
-/* 4. Nettoyage des éléments superflus sur mobile */
-@media (max-width: 600px) {
-    .hide-mobile {
-        display: none !important;
-    }
-    
-    /* On réduit le padding interne pour gagner chaque pixel */
-    .panel {
-        padding: 8px !important;
-    }
-    
-    header#master-hud-fixed {
-        padding: 5px 10px;
-    }
-}
-
-/* 5. Scrollbar Invisible mais fonctionnelle pour le Terminal */
-#anomaly-log {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
-}
-#anomaly-log::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
-}   
-header#master-hud-fixed {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    overflow: hidden;
-}
-
-#ui-v-scalar {
-    font-size: clamp(1.2rem, 5vw, 2.2rem); /* Taille fluide */
-    font-family: 'JetBrains Mono', monospace;
-}    
+        @media (max-width: 900px) {
+            main { grid-template-columns: 1fr; }
+            #data-sidebar { display: none; } /* Mode cockpit simplifié sur mobile */
+            }
 </style>    
 </head>
  
@@ -426,6 +344,14 @@ header#master-hud-fixed {
     <button id="toggle-globe-btn" style="position:absolute; top:10px; left:10px; z-index:1000; background:rgba(0,0,0,0.7); color:#fff; border:1px solid var(--border); padding:4px;">GLOBE</button>           
     <button id="xray-button" style="position: absolute; z-index: 1000;">X-RAY</button>
             </div>
+            <aside id="data-sidebar">
+            
+            <section class="panel" style="border-left: 3px solid var(--accent);">
+                <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY</h2>
+                <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy">-- m</span></div>
+                <div class="data-point"><span>Analyse Vibrations</span><span id="ui-vrt">0.00 Hz</span></div>
+            </section>
+                
         <div class="data-point">
             <span>Précision GPS (Acc)</span>
             <span id="gps-accuracy-display">-- m</span>
