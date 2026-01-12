@@ -11,7 +11,144 @@
     <link rel="manifest" href="manifest.json">
 <style>  
 /* --- OPTIMISATION DU LAYOUT RÉACTIF --- */
+/* --- BASE & THÈME HUD --- */
+:root {
+    --bg: #050505; 
+    --card: #121216; 
+    --border: #2a2a30;
+    --text: #e0e0e0; 
+    --accent: #00ff88; /* Vert GNSS par défaut */
+    --critical: #ff3300;
+}
 
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    overflow: hidden; /* Empêche le scroll global */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* --- HEADER HUD --- */
+header#master-hud-fixed {
+    height: 60px;
+    background: rgba(0, 0, 0, 0.9);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 1000;
+}
+
+/* --- GRILLE PRINCIPALE --- */
+main {
+    display: grid;
+    grid-template-columns: 320px 1fr 320px; /* 3 colonnes standard */
+    gap: 10px;
+    padding: 10px;
+    height: calc(100vh - 60px);
+}
+
+/* --- PANNEAUX SCIENTIFIQUES --- */
+.panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.panel h2 {
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin: 0 0 5px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+}
+
+/* --- DATA POINTS (LIGNES DE DONNÉES) --- */
+.data-point {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.data-point span:first-child {
+    color: #888;
+}
+
+.data-point span:last-child {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+}
+
+/* --- CONTENEURS GRAPHIQUES --- */
+.canvas-box {
+    background: #000;
+    border: 1px solid var(--border);
+    position: relative;
+    border-radius: 2px;
+}
+
+.canvas-box canvas {
+    display: block;
+}
+
+/* --- CARTE & INTERFACE CENTRALE --- */
+#map-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#map-container {
+    flex: 1;
+    border: 1px solid var(--border);
+    position: relative;
+    background: #080808;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+/* --- TERMINAL / JOURNAL --- */
+#anomaly-log {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #1a1a1a;
+    padding: 8px;
+    color: #00ff44; /* Vert Matrix pour le log */
+    line-height: 1.4;
+}
+
+/* --- BOUTON DE LANCEMENT --- */
+#btn-start {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+
+#btn-start:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 15px var(--accent);
+    }
 /* 1. Gestion de la Grille Principale */
 @media (max-width: 1100px) {
     main {
