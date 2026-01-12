@@ -10,106 +10,82 @@
     <link rel="stylesheet" href="fontawesome.min.css" />
     <link rel="manifest" href="manifest.json">
 <style>  
-:root {
-    --bg: #050505; --card: #121216; --border: #2a2a30;
-    --text: #e0e0e0; --accent: #00ff88; --hud-bg: rgba(0, 0, 0, 0.98);
+/* --- OPTIMISATION DU LAYOUT RÉACTIF --- */
+
+/* 1. Gestion de la Grille Principale */
+@media (max-width: 1100px) {
+    main {
+        grid-template-columns: 1fr !important; /* Passage en une seule colonne */
+        overflow-y: auto !important; /* Autorise le défilement vertical sur mobile */
+        height: calc(100vh - 80px); /* Ajuste selon la taille du header */
+    }
+    
+    .panel {
+        max-height: none !important; /* Laisse les panneaux prendre leur place */
+        margin-bottom: 10px;
+    }
+
+    #map-panel {
+        height: 40vh !important; /* Fixe une hauteur minimale pour la carte sur mobile */
+        order: -1; /* Place la carte tout en haut sur mobile */
+    }
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-html, body { 
-    margin: 0; padding: 0; background: var(--bg); color: var(--text); 
-    font-family: 'Segoe UI', system-ui, sans-serif; 
-    height: 100vh; width: 100vw; overflow: hidden; position: fixed;
-}
-
-/* HEADER FIXE */
-header#master-hud-fixed {
-    position: fixed; top: 0; left: 0; width: 100%; height: 75px;
-    background: var(--hud-bg); border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-around; align-items: center; z-index: 2000;
-    padding: 0 10px;
-}
-
-.header-item { text-align: center; flex: 1; }
-.header-item .label { font-size: 0.5rem; color: #666; margin-bottom: 2px; }
-.header-item .value { font-family: monospace; font-weight: bold; color: var(--accent); }
-
-/* GRILLE PRINCIPALE (STRICTE) */
-/* Forcer la grille à occuper tout l'espace disponible sans dépasser */
-main {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important; /* 2 colonnes strictes */
-    gap: 10px;
-    height: calc(100vh - 85px); /* Hauteur dynamique après le header */
-    margin-top: 85px;
-    padding: 10px;
-    overflow: hidden; /* Interdiction de scroller au niveau global */
-}
-
-/* Permettre aux colonnes de se compresser */
-.column {
+/* 2. Compactage des Données pour éviter le chevauchement */
+.data-point {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    height: 100%;
-    min-height: 0; /* CRUCIAL : autorise les éléments flex à être plus petits que leur contenu */
-}
-
-/* Ajuster les panneaux pour qu'ils se partagent l'espace proprement */
-.panel {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* Autorise la réduction si l'écran est petit */
-    flex: 1; /* Par défaut, chaque panel prend une part égale */
-}
-
-/* Donner plus d'importance visuelle à la carte */
-/* CORRIGÉ : Propriétés regroupées dans le sélecteur */
-#map-panel { 
-    flex: 2.5 !important; 
-    display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 3px 0;
+    font-size: 0.8rem; /* Police de base */
 }
 
-/* AJOUT : Protection contre le débordement des textes longs (Physique) */
-.data-point span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
+@media (max-width: 480px) {
+    .data-point {
+        font-size: 0.7rem; /* Police plus petite sur petit écran */
+    }
+    
+    h2 {
+        font-size: 0.55rem !important; /* Titres de section ultra-compacts */
+        letter-spacing: 1px;
+    }
 }
 
-.data-point span:first-child { color: #888; }
-.data-point span:last-child { font-family: monospace; color: var(--accent); font-weight: bold; }
-
-/* SPÉCIFICITÉS */
-#map-container { flex: 2.5 !important; position: relative; background: #000; border-radius: 4px; }
-#map { height: 100%; width: 100%; }
-
-canvas {
-    max-height: 40px !important; width: 100% !important;
-    background: #000; margin-top: 4px; border: 1px solid #1a1a20;
+/* 3. Protection des valeurs 128-bit (Tabular Numbers) */
+span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums; /* Empêche l'UI de "sauter" */
+    word-break: break-all; /* Force le retour à la ligne si le chiffre est trop long */
+    text-align: right;
+    color: var(--accent);
 }
 
-#treasure-log-display {
-    flex: 1; overflow-y: auto; font-family: monospace; font-size: 0.55rem;
-    background: rgba(0,0,0,0.3); padding: 5px; color: #aaa;
+/* 4. Nettoyage des éléments superflus sur mobile */
+@media (max-width: 600px) {
+    .hide-mobile {
+        display: none !important;
+    }
+    
+    /* On réduit le padding interne pour gagner chaque pixel */
+    .panel {
+        padding: 8px !important;
+    }
+    
+    header#master-hud-fixed {
+        padding: 5px 10px;
+    }
 }
 
-#start-btn-final {
-    background: transparent; border: 1px solid var(--accent); color: var(--accent);
-    padding: 6px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;
-    cursor: pointer; transition: 0.3s;
+/* 5. Scrollbar Invisible mais fonctionnelle pour le Terminal */
+#anomaly-log {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
 }
-#start-btn-final:hover { background: var(--accent); color: #000; }
-    </style>    
+#anomaly-log::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}    
+</style>    
 </head>
  
 <body class="dark-mode">
@@ -154,8 +130,8 @@ canvas {
                 <div class="panel">
     <h2>Synchronisation Éphémérides</h2>
     <div class="data-point"><span>Temps Terrestre (TT)</span><span id="ast-tt">--:--:--</span></div>
-    <div class="data-point"><span>JD (128-bit)</span><span id="ast-jd">0.00000000</span></div>
-    <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">69.2s</span></div>
+    <div class="data-point"><span>JD (128-bit)</span><span id="ast-jd">-.--------</span></div>
+    <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">--.-s</span></div>
                 </div>
                 <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
                 <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
@@ -257,7 +233,6 @@ canvas {
                 <div class="data-point"><span>% de la Vitesse du Son</span><span id="perc-speed-sound">-.-- %</span></div>
                 <div class="data-point"><span>Nombre de Mach</span><span id="mach-number">-.----</span></div>
                 <div class="data-point"><span>% Vitesse Lumière (c)</span><span id="pct-speed-of-light">-.-- %</span></div>
-                <hr>
                 <div class="data-point"><span>Friction du Vide</span><span id="quantum-drag">--</span></div>
                 <div class="data-point"><span>Densité Planck</span><span id="planck-static-const">--</span></div>
                 <div class="data-point"><span>Constante Planck</span><span id="planck-const">6.626e-34</span></div>
@@ -278,7 +253,6 @@ canvas {
                 <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
                 <span id="nether-mode-status" style="display:none;">-.---</span> 
-                <hr>    
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">-.--e+-- s</span></div>
                 <div class="data-point"><span>Distance (min-lumière)</span><span id="distance-light-min">-.--e+-- min</span></div>
                 <div class="data-point"><span>Distance (h-lumière)</span><span id="distance-light-h">-.--e+-- h</span></div>
@@ -300,7 +274,6 @@ canvas {
     <button id="toggle-globe-btn" style="position:absolute; top:10px; left:10px; z-index:1000; background:rgba(0,0,0,0.7); color:#fff; border:1px solid var(--border); padding:4px;">GLOBE</button>           
     <button id="xray-button" style="position: absolute; z-index: 1000;">X-RAY</button>
             </div>
-
         <div class="data-point">
             <span>Précision GPS (Acc)</span>
             <span id="gps-accuracy-display">-- m</span>
@@ -316,7 +289,7 @@ canvas {
             <canvas id="canvas-clean" class="vibration-chart"></canvas>
             <div class="data-point"><span>SNR Global</span><span id="snr-ratio">-- dB</span></div>
         </section>
-    
+            <h3>Météo/Bio/SVT</h3>
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
                 <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">INACTIF</span></div>
@@ -327,8 +300,6 @@ canvas {
                 <div class="data-point"><span>Point de Rosée</span><span id="dew-point">--</span></div>
                 <div class="data-point"><span>Gradient Thermique</span><span id="temp-gradient">-.-°C/km</span></div>
                 <div class="data-point"><span>Source Pression</span><span id="pressure-filter-status">Initialisation...</span></div>
-                <hr>
-                <h3>Bio/SVT </h3>
                 <div class="data-point"><span>Humidité Absolue </span><span id="abs-humidity">--</span></div>
                 <div class="data-point"><span>Temp. Bulbe Humide </span><span id="wet-bulb-temp">--</span></div>
                 <div class="data-point"><span>CAPE </span><span id="CAPE">--</span></div>
@@ -346,7 +317,7 @@ canvas {
 
         <section class="panel">
             <section class="panel" aria-labelledby="dynamics-heading">
-                 <h2 id="dynamics-heading"><i class="fas fa-balance-scale-right"></i> Dynamique & Forces</h2>
+                <h2 id="dynamics-heading"><i class="fas fa-balance-scale-right"></i> Dynamique & Forces</h2>
                 <div class="data-point"><span>Gravité Locale (g)</span><span id="local-gravity">--</span></div>                 
                 <div class="data-point"><span>Vitesse Verticale (EKF)</span><span id="vel-z-ekf">-.-- m/s</span></div>
                 <div class="data-point"><span>Accel. Verticale (IMU)</span><span id="accel-verticale-imu">--</span></div>
@@ -355,14 +326,9 @@ canvas {
                 <div class="data-point"><span>Coeff. Balistique (Inertie)</span><span id="ballistic-coeff">--</span></div>
     <div class="sub-panel">
     <h2><i class="fas fa-globe-europe"></i> Géodésie & Espace-Temps</h2>
-    <div class="data-grid">
-        <div class="data-point">
-            <span>Gravité (Somigliana)</span>
-            <span id="gravity-theoretical">-.----- m/s²</span>
-        </div>
-        <div class="data-point">
-            <span>Rayon Ellipsoïde Local</span>
-            <span id="earth-radius-local">------ m</span>
+        <div class="data-grid">
+        <div class="data-point"><span>Gravité (Somigliana)</span><span id="gravity-theoretical">-.----- m/s²</span>
+        <div class="data-point"><span>Rayon Ellipsoïde Local</span><span id="earth-radius-local">------ m</span>
         </div>
     </div>
 </section>
@@ -370,13 +336,11 @@ canvas {
     <h2><i class="fas fa-atom"></i> Physique Relativiste</h2>
     <div class="data-grid">
                 </section>
-                <h3>Mécanique des Fluides</h3>
+                <h3>Mécanique des Fluides,Champs & Forces</h3>
                 <div class="data-point"><span>Pression Dynamique (q)</span><span id="dynamic-pressure">-.-- Pa</span></div>
                 <div class="data-point"><span>Force de Traînée</span><span id="drag-force">-.-- N</span></div>
                 <div class="data-point"><span>Puissance de Traînée (kW)</span><span id="drag-power-kw">-.-- kW</span></div>
-                <div class="data-point"><span>Nombre de Reynolds</span><span id="reynolds-number">--</span></div>
-                <hr>
-                <h3>Champs & Forces</h3>
+                <div class="data-point"><span>Nombre de Reynolds</span><span id="reynolds-number">--</span></div>     
                 <div class="data-point"><span>Énergie Cinétique (J)</span><span id="kinetic-energy">-.-- J</span></div>
                 <div class="data-point"><span>Puissance Mécanique (W)</span><span id="mechanical-power">-.-- W</span></div>
                 <div class="data-point"><span>Pression de Radiation</span><span id="pression-radiation">--</span></div>
@@ -407,6 +371,7 @@ canvas {
                         <option value="STABLE">Microscopique (x2.5)</option>
                     </select>
                 </div>
+                <h3>Signature Biologique</h3>
                 <div class="data-point"><span>Statut GPS</span><span id="gps-status">--</span></div>
                 <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ukf-status-display">--</span></div>
                 <div class="data-point"><span id="filter-status-2" class="status-wait">Initialisation...</span></div>
@@ -417,8 +382,6 @@ canvas {
                 <div class="data-point"><span>Mode Dynamique Master</span><span id="status-physique" style="color: #00ff00;">Initialisation...</span></div>    
                 <div class="data-point"><span>Fréquence d'Échantillonnage</span><span id="nyquist-limit">-- Hz</span></div>
                 <div class="data-point"><span>Bruit Accel. (R)</span> <span id="acc-bias">-.-- mg</span></div>
-                <hr>
-                <h3>Signature Biologique</h3>
                 <div class="data-point"><span>Type de Mouvement</span><span id="bio-signature-type">--</span></div>
                 <div class="data-point"><span>Vibration (Jitter)</span><span id="vibration-jitter">--</span></div>
             </section>
@@ -472,14 +435,12 @@ canvas {
                 <div class="data-point"><span>Équation du Temps (EOT)</span><span id="equation-of-time">--</span></div>
                 <div class="data-point"><span>Temps Sidéral (TSLV)</span><span id="tslv">--</span></div>
                 <div class="data-point"><span>Longitude Écliptique</span><span id="ecl-long">--</span></div>
-                <hr>
                 <h3><i class="fas fa-sun"></i> Soleil</h3>
                 <div class="data-point"><span>Altitude (Soleil)</span><span id="hud-sun-alt">--</span></div>
                 <div class="data-point"><span>Azimut (Soleil)</span><span id="sun-azimuth">--</span></div>
                 <div class="data-point"><span>Durée du Jour</span><span id="day-duration">--</span></div>
                 <div class="data-point"><span>Lever (TSM/TST)</span><span id="sunrise-times">--</span></div>
                 <div class="data-point"><span>Coucher (TSM/TST)</span><span id="sunset-times">--</span></div>
-                <hr>
                 <h3><i class="fas fa-moon"></i> Lune</h3>
                 <div class="data-point"><span>Phase</span><span id="moon-phase-name">--</span></div>
                 <div class="data-point"><span>Illumination</span><span id="moon-illuminated">--</span></div>
@@ -514,36 +475,6 @@ canvas {
 
     </div>
 </main> 
-        <script>
-let wakeLock = null;
-
-// Empêche l'écran de s'éteindre
-async function startAdventure() {
-    if ('wakeLock' in navigator) {
-        try {
-            wakeLock = await navigator.wakeLock.request('screen');
-            const status = document.getElementById('reality-status-main');
-            if(status) {
-                status.innerText = "WAKE_LOCK_ACTIVE";
-                status.style.color = "var(--accent)";
-            }
-        } catch (err) { console.log("WakeLock Error:", err); }
-    }
-    
-    // Lance le moteur de calcul GNSS
-    if(typeof initCore === "function") {
-        initCore();
-    }
-}
-
-// Réactive le verrouillage si on change d'onglet/app
-document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        wakeLock = await navigator.wakeLock.request('screen');
-    }
-});
-</script>         
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/turf.min.js"></script>
@@ -553,7 +484,26 @@ document.addEventListener('visibilitychange', async () => {
 <script src="lib/astro.js"></script>    
     
 <script src="gnss-dashboard-full.js">
-    
+
+<script>
+async function startAdventure() {
+    // Demande du WakeLock (Écran allumé)
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            document.getElementById('reality-status-main').innerText = "SYSTEM_LOCKED_ON";
+        }
+    } catch (err) { console.warn("WakeLock non supporté."); }
+
+    // Démarrage du moteur GNSS
+    if (typeof initCore === "function") {
+        initCore();
+        // Lancement de la surveillance mémoire
+        setInterval(enforceMemoryLimits, 5000);
+    } else {
+        alert("Erreur critique : Le moteur GNSS n'est pas chargé.");
+    }
+}
 </script>
-    </body>
-    </html>
+</body>
+</html>
