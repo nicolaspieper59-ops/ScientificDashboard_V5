@@ -69,14 +69,21 @@ main {
 }
 
 /* Donner plus d'importance visuelle à la carte */
-#map-panel {
+/* CORRIGÉ : Propriétés regroupées dans le sélecteur */
+#map-panel { 
     flex: 2.5 !important; 
-}   display: flex; align-items: center; gap: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
 
-.data-point {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 3px 0; border-bottom: 1px solid #1a1a20;
-    font-size: 0.65rem; white-space: nowrap;
+/* AJOUT : Protection contre le débordement des textes longs (Physique) */
+.data-point span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .data-point span:first-child { color: #888; }
@@ -144,6 +151,12 @@ canvas {
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
                 </div> 
+                <div class="panel">
+    <h2>Synchronisation Éphémérides</h2>
+    <div class="data-point"><span>Temps Terrestre (TT)</span><span id="ast-tt">--:--:--</span></div>
+    <div class="data-point"><span>JD (128-bit)</span><span id="ast-jd">0.00000000</span></div>
+    <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">69.2s</span></div>
+                </div>
                 <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
                 <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
                     <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
@@ -175,7 +188,7 @@ canvas {
                     </div>
                     <div class="control-input-full">
                         <label for="mass-input">Masse de l'objet (kg)</label>
-                        <input type="number" id="mass-input" value="70" step="1" aria-labelledby="mass-display">
+                        <input type="text" id="in-mass" value="75.00000000000000" inputmode="decimal">
                         <div class="data-point"><span>Masse (kg)</span><span id="mass-display">--.--- kg</span></div>
                     </div>
                     <div class="control-input-full">
@@ -274,7 +287,7 @@ canvas {
                 <div class="data-point"><span>Distance (mois-lumière)</span><span id="distance-light-month">-.--e+-- mois</span></div>
                 <div class="data-point"><span>Distance (UA / al)</span><span id="distance-cosmic">-.-- UA</span></div>
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
-                <div class="data-point"><span>Distance Horizon (s)</span><span id="horizon-distance-km">--</span></div
+                <div class="data-point"><span>Horizon Dist. (km)</span><span id="horizon-distance-km">-.---</span> </div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
                 <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
     </section> 
@@ -282,22 +295,25 @@ canvas {
     <div class="column"> 
         <section class="panel" style="flex: 2.5;">
             <h2><i class="fas fa-map-marked-alt"></i> Cartographie GNSS</h2>
-            <div id="map-container">
-                <div id="map">Chargement carte...</div>
-                <button id="toggle-globe-btn" style="position:absolute; top:10px; left:10px; z-index:1000; background:rgba(0,0,0,0.7); color:#fff; border:1px solid var(--border); padding:4px;">GLOBE</button>
+            <div id="map-container" style="position: relative;">
+    <div id="map"></div>
+    <button id="toggle-globe-btn" style="position:absolute; top:10px; left:10px; z-index:1000; background:rgba(0,0,0,0.7); color:#fff; border:1px solid var(--border); padding:4px;">GLOBE</button>           
+    <button id="xray-button" style="position: absolute; z-index: 1000;">X-RAY</button>
             </div>
-            <button id="xray-button" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background-color: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; padding: 0;">X</button>
-        </div>
 
         <div class="data-point">
             <span>Précision GPS (Acc)</span>
             <span id="gps-accuracy-display">-- m</span>
         </div>
+            <div class="chart-container">
+    <div class="label">ANALYSE DES VIBRATIONS (VRT)</div>
+    <canvas id="canvas-vibration" class="vibration-chart"></canvas> 
+            </div>
     </section>
     
         <section class="panel">
             <h2><i class="fas fa-satellite-dish"></i> Signaux Filtrés</h2>
-            <canvas id="canvas-clean"></canvas>
+            <canvas id="canvas-clean" class="vibration-chart"></canvas>
             <div class="data-point"><span>SNR Global</span><span id="snr-ratio">-- dB</span></div>
         </section>
     
