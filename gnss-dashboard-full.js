@@ -180,4 +180,4 @@ function drawSignal(id, data, color) {
 function enforceMemoryLimits() {
     if (CORE.channels.raw.length > 100) CORE.channels.raw = [];
     console.log("[SYSTEM] Garbage Collector: Memory Cleaned.");
-}
+    }
