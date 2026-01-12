@@ -221,6 +221,17 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
 }
 #anomaly-log::-webkit-scrollbar {
     display: none; /* Chrome/Safari */
+}   
+header#master-hud-fixed {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+}
+
+#ui-v-scalar {
+    font-size: clamp(1.2rem, 5vw, 2.2rem); /* Taille fluide */
+    font-family: 'JetBrains Mono', monospace;
 }    
 </style>    
 </head>
@@ -255,12 +266,12 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
 <main>
         <div class="column">
         <section class="panel">
-            <h2><i class="fas fa-cog"></i> Système & Contrôles</h2>
+            <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
                 <div class="data-point"><span>Heure UTC Sync</span><span id="gmt-time-display-1">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy">± --ms</span></div>
-                <div class="data-point"><span>Date Julienne</span> <span id="julian-date">--</span></div>
+                <div class="data-point"><span>Temps Julien (JD)</span><span id="ast-jd">-.----------</span></div>
                 <div class="data-point"><span>Heure NTP:</span> <span id="ntp-status-val">Sync...</span></div>
                 <div class="data-point"><span>Batterie Appareil:</span> <span id="batt-level">-- %</span></div>
                 <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal-main">OPTIMAL</span></div>
@@ -269,12 +280,9 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Temps écoulé (Session)</span><span id="elapsed-time">-.-- s</span></div>
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
-                </div> 
-                <div class="panel">
-    <h2>Synchronisation Éphémérides</h2>
-    <div class="data-point"><span>Temps Terrestre (TT)</span><span id="ast-tt">--:--:--</span></div>
-    <div class="data-point"><span>JD (128-bit)</span><span id="ast-jd">-.--------</span></div>
-    <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">--.-s</span></div>
+                <div class="data-point"><span>Temps Terrestre (TT)</span><span id="ast-tt">--:--:--</span></div>
+                <div class="data-point"><span>JD (128-bit)</span><span id="ast-jd">-.--------</span></div>
+                <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">--.-s</span></div>
                 </div>
                 <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
                 <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
@@ -309,6 +317,7 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                         <label for="mass-input">Masse de l'objet (kg)</label>
                         <input type="text" id="in-mass" value="75.00000000000000" inputmode="decimal">
                         <div class="data-point"><span>Masse (kg)</span><span id="mass-display">--.--- kg</span></div>
+                        <div class="data-point"><span>Cx (Aéro)</span><input id="in-cx" type="number" value="0.45" step="0.01" style="width:40px; background:none; border:none; color:#fff; text-align:right;"></div>
                     </div>
                     <div class="control-input-full">
                         <label for="celestial-body-select">Corps Céleste (Gravité)</label>
@@ -380,7 +389,7 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Densité Planck</span><span id="planck-static-const">--</span></div>
                 <div class="data-point"><span>Constante Planck</span><span id="planck-const">6.626e-34</span></div>
                 <div class="data-point"><span>Dilatation Temps</span> <span id="time-dilation">-.-- ns/s</span></div>  
-                <div class="data-point"><span>Lorentz (γ)</span><span id="gamma-factor-precise">-.----</span></div>
+                <div class="data-point"><span>Lorentz (Gamma)</span><span id="ui-gamma">-.----------</span></div>
                 <div class="data-point"><span>Temps Dilation (Gravité)</span><span id="time-dilation-gravite">-.-- ns/j</span></div>
                 <div class="data-point"><span>Énergie Relativiste (E)</span><span id="relativistic-energy">--</span></div>
                 <div class="data-point"><span>Énergie de Masse (E₀)</span><span id="rest-mass-energy">--</span></div>
@@ -388,13 +397,13 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Rayon de Schwarzschild (Rs)</span><span id="schwarzschild-radius">--</span></div>
                 <div class="data-point"><span>Vitesse de la Lumière locale (c)</span><span id="const-c">--------- m/s</span></div>
                 <div class="data-point"><span>Gravitation Universelle locale (G)</span><span id="const-G">-.-----e-__ m³/kg/s²</span></div>
-                <div class="data-point"><span>Pression (hPa)</span><span id="ui-pressure">1013.25</span></div>
-                <div class="data-point"><span>Densité réelle ($\rho$)</span><span id="ui-rho-dynamic">1.2250</span>
-                <div class="data-point"><span>Potentiel Gravitationnel (Φ)</span><span id="ui-grav-phi">1.0000000000</span> 
-                <div class="data-point"><span>Dérive Totale (RR+RG)</span><span id="ui-lorentz">0.000000 ns/s</span>   
+                <div class="data-point"><span>Pression (hPa)</span><span id="ui-pressure">----.---</span></div>
+                <div class="data-point"><span>Densité réelle ($\rho$)</span><span id="ui-rho-dynamic">-.----</span>
+                <div class="data-point"><span>Potentiel Gravitationnel (Φ)</span><span id="ui-grav-phi">-.----------</span> 
+                <div class="data-point"><span>Dérive Totale (RR+RG)</span><span id="ui-lorentz">-.---------- ns/s</span>   
                 <div class="data-point"><span>Altitude (Ref. Géoïde)</span><input id="in-alt" type="text" value="0" style="width: 50px; background: none; border: 1px solid var(--border); color: var(--accent); text-align: right;"> 
-                <div class="data-point"><span>Potentiel de Schwarzschild (Φ)</span><span id="ui-grav-phi">0.9999999993</span>
-                <div class="data-point"><span>Dérive Gravitationnelle</span><span id="ui-grav-dilation">-0.0000000 ns/s</span>
+                <div class="data-point"><span>Potentiel de Schwarzschild (Φ)</span><span id="ui-grav-phi">-.----------</span>
+                <div class="data-point"><span>Dérive Gravitationnelle</span><span id="ui-grav-dilation">-.---------- ns/s</span>
                 </section>
 
                 <section class="panel">
@@ -573,6 +582,11 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Coord. Z (Géocentrique)</span><span id="coord-z">--</span></div>
                 <div class="data-point"><span>Distance 3D Cumulée</span><span id="dist-3d">-.--- m</span></div>
                 <hr>
+                <div style="border-top:1px solid var(--border); margin-top:5px; padding-top:5px;">
+        <div class="data-point">
+            <span>Altitude (H)</span>
+            <input id="in-alt" type="number" value="0" style="width:60px; background:none; border:1px solid var(--accent); color:var(--accent); text-align:right;">
+        </div>    
                 <div class="astro-visual-container">
     <canvas id="mc-clock-canvas" width="120" height="120"></canvas>
                 </div>
@@ -592,6 +606,7 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Durée du Jour</span><span id="day-duration">--</span></div>
                 <div class="data-point"><span>Lever (TSM/TST)</span><span id="sunrise-times">--</span></div>
                 <div class="data-point"><span>Coucher (TSM/TST)</span><span id="sunset-times">--</span></div>
+                <div class="data-point"><span>Dist. Soleil (UA)</span><span id="ui-sun-dist" style="color:var(--accent);">-.---------</span></div>    
                 <h3><i class="fas fa-moon"></i> Lune</h3>
                 <div class="data-point"><span>Phase</span><span id="moon-phase-name">--</span></div>
                 <div class="data-point"><span>Illumination</span><span id="moon-illuminated">--</span></div>
@@ -600,7 +615,8 @@ span[id^="ui-"], span[id^="ast-"], #ast-jd, #ast-tt {
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">--</span></div>
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
                 <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span>
-                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">0.000°</span>    
+                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">0.000°</span>
+                <div id="mini-map-container" style="height:150px; margin-top:10px; border:1px solid var(--border);">    
                 </section>
     
         <section class="panel">
