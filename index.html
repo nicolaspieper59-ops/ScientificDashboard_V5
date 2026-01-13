@@ -81,67 +81,74 @@
                 <div class="data-point"><span>JD (128-bit)</span><span id="ast-jd">-.--------</span></div>
                 <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">--.-s</span></div>
                 </div>
-                <div id="reality-status" style="font-weight: bold;">MODE : ANALYSE...</div>
-                <div class="data-grid" style="grid-template-columns: 1fr 1fr; gap: 4px;">
-                    <button id="gps-pause-toggle" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
-                    <select id="freq-select" aria-label="Fréquence GPS">
-                        <option value="HIGH_FREQ">Haute Fréquence</option>
-                        <option value="LOW_FREQ">Basse Fréquence</option>
-                    </div>
-                    <button id="emergency-stop" class="critical" onclick="stopSystem()">ARRÊT URGENCE</button>
-                    <button id="toggle-theme-btn" onclick="toggleTheme()">MODE JOUR/NUIT</button>
-                    <button id="reset-dist-btn" onclick="resetDistance()">RESET Distance</button>
-                    <button id="reinit-vmax-btn" onclick="resetMaxSpeed()">RESET V-MAX</button>
-                    <button id="log-export-btn" onclick="exportData()">EXPORT LOGS</button>
-                    <button id="reset-all-btn" class="critical" onclick="resetAll()">Tout Rinisialiser</button>
-                    <div class="control-input-full">
-                        <label for="gps-accuracy-override">Forcer Précision GPS (m) [0=Auto]</label>
-                        <input type="number" id="gps-accuracy-override" value="0" step="1">
-                    </div>
-                    <div class="control-input-full">
-                        <label for="environment-select">Environnement (Filtre Kalman)</label>
-                        <select id="environment-select" aria-describedby="env-factor">
-                            <option value="NORMAL">Normal (x1.0)</option>
-                            <option value="FOREST">Forêt (x2.5)</option>
-                            <option value="CONCRETE">Grotte/Tunnel (x7.0)</option>
-                            <option value="METAL">Métal/Bâtiment (x5.0)</option>
-                        </select>
-                    </div>
-                    <div class="control-input-full">
-                        <div class="data-point"><span>Facteur d'environnement</span><span id="env-factor">Normal (x1.0)</span></div>
-                    </div>
-                    <div class="control-input-full">
-                        <label for="mass-input">Masse de l'objet (kg)</label>
-                        <input type="text" id="in-mass" value="75.00000000000000" inputmode="decimal">
-                        <div class="data-point"><span>Masse (kg)</span><span id="mass-display">--.--- kg</span></div>
-                        <div class="data-point"><span>Cx (Aéro)</span><input id="in-cx" type="number" value="0.45" step="0.01" style="width:40px; background:none; border:none; color:#fff; text-align:right;"></div>
-                    </div>
-                    <div class="control-input-full">
-                        <label for="celestial-body-select">Corps Céleste (Gravité)</label>
-                        <select id="celestial-body-select">
-                            <option value="EARTH">Terre</option>
-                            <option value="MOON">Lune</option>
-                            <option value="MARS">Mars</option>
-                            <option value="ROTATING">Station Spatiale</option>
-                        </select>
-                        <div class="data-point"><span>Gravité de Base</span><span id="gravity-base">-.----- m/s²</span></div>
-                    </div>
-                    <div class="control-input-full">
-                        <label for="rotation-radius">Rayon de Rotation (m) [Station]</label>
-                        <input type="number" id="rotation-radius" value="100" step="10">
-                    </div>
-                    <div class="control-input-full">
-                        <label for="angular-velocity">Vitesse Angulaire (rad/s) [Station]</label>
-                        <input type="number" id="angular-velocity" value="0.0" step="0.1">
-                    </div>
-                    <div class="control-input-full">
-                        <button id="distance-ratio-toggle-btn" style="width: 100%;">Rapport Distance: SURFACE (1.000)</button>
-                    </div>
-                    <div class="control-input-full">
-                         <button id="nether-toggle-btn" style="width: 100%;">Mode Nether: DÉSACTIVÉ (1:1)</button>
-                    </div>
-                </div>
-            </section>
+    <section class="panel" aria-labelledby="head-controls">
+    <h2 id="head-controls"><i class="fas fa-terminal"></i> CENTRE_DE_COMMANDE_V17</h2>
+    
+    <div id="reality-status" style="font-weight: bold; font-size: 0.6rem; color: var(--accent); margin-bottom: 8px; border: 1px solid #1a1a1a; padding: 4px; text-align: center;">
+        MODE : ANALYSE_SYSTÈME_ACTIVE
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px;">
+        <button id="gps-pause-toggle" style="background: #ffcc00; color: #000; font-weight: bold;">▶️ MARCHE GPS</button>
+        <select id="freq-select" aria-label="Fréquence GPS" style="background: #111; color: #fff; border: 1px solid var(--border);">
+            <option value="HIGH_FREQ">HAUTE_FRÉQ (10Hz)</option>
+            <option value="LOW_FREQ">BASSE_FRÉQ (1Hz)</option>
+        </select>
+        
+        <button id="emergency-stop" style="background: var(--critical); color: #fff;" onclick="stopSystem()">ARRÊT URGENCE</button>
+        <button id="toggle-theme-btn" onclick="toggleTheme()">JOUR / NUIT</button>
+        <button id="reset-dist-btn" onclick="resetDistance()">RESET DISTANCE</button>
+        <button id="reinit-vmax-btn" onclick="resetMaxSpeed()">RESET V-MAX</button>
+        <button id="log-export-btn" onclick="exportData()">EXPORT LOGS</button>
+        <button id="reset-all-btn" style="border: 1px solid var(--critical); color: var(--critical);" onclick="resetAll()">RÉINIT_TOTAL</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        
+        <div class="control-group" style="border-top: 1px solid #1a1a1a; pt: 5px;">
+            <label class="label">Filtrage Kalman (Environnement)</label>
+            
+            <select id="environment-select" style="width: 100%; background: #000; color: var(--accent); border: 1px solid #333;">
+                <option value="NORMAL">Normal (Standard x1.0)</option>
+                <option value="FOREST">Forêt / Dense (x2.5)</option>
+                <option value="CONCRETE">Grotte / Tunnel (x7.0)</option>
+                <option value="METAL">Métal / Bâtiment (x5.0)</option>
+            </select>
+            <div class="data-point"><span>Facteur actuel</span><span id="env-factor" class="val-scientifique">Normal (x1.0)</span></div>
+        </div>
+
+        <div class="control-group" style="border-top: 1px solid #1a1a1a; pt: 5px;">
+            <label class="label">Gravité & Corps Céleste</label>
+            
+            <select id="celestial-body-select" style="width: 100%; background: #000; color: #fff;">
+                <option value="EARTH">TERRE (9.806 m/s²)</option>
+                <option value="MOON">LUNE (1.622 m/s²)</option>
+                <option value="MARS">MARS (3.711 m/s²)</option>
+                <option value="ROTATING">STATION SPATIALE (Centrifuge)</option>
+            </select>
+            <div class="data-point"><span>Gravité de Base</span><span id="gravity-base" class="val-scientifique">-.----- m/s²</span></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+                <label class="label">Masse (kg)</label>
+                <input type="number" id="in-mass" value="75.00" style="width: 100%; background: #111; color: var(--accent); border: 1px solid #333;">
+            </div>
+            <div>
+                <label class="label">Cx Aéro</label>
+                <input type="number" id="in-cx" value="0.45" step="0.01" style="width: 100%; background: #111; color: var(--accent); border: 1px solid #333;">
+            </div>
+        </div>
+
+        <div id="station-params" style="background: rgba(0,255,136,0.05); padding: 5px; border-radius: 2px;">
+            <div class="data-point"><span>Rayon (m)</span><input type="number" id="rotation-radius" value="100" style="width:60px;"></div>
+            <div class="data-point"><span>Vitesse Ang. (rad/s)</span><input type="number" id="angular-velocity" value="0.0" step="0.1" style="width:60px;"></div>
+        </div>
+
+        <button id="distance-ratio-toggle-btn" style="width: 100%; background: #111; font-size: 0.6rem;">Rapport Distance: SURFACE (1.000)</button>
+        <button id="nether-toggle-btn" style="width: 100%; background: #111; font-size: 0.6rem; border-color: #ff3300; color: #ff3300;">Mode Nether: DÉSACTIVÉ (1:1)</button>
+    </div>
+    </section>
     <h2><i class="fas fa-microchip"></i> Navigation Inertielle (EKF 21-États)</h2>
     <div class="data-grid">
         <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz" class="tabular">-.-- / -.-- / -.--</span></div>
