@@ -7,6 +7,8 @@
     
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 <style>
     :root {
         --bg: #030303; --card: #0a0a0c; --border: #1a1a1f;
@@ -18,7 +20,7 @@
         overflow: hidden; font-variant-numeric: tabular-nums;
     }
 
-    /* GRID TRIPLE COLONNE SANS DÉBORDEMENT */
+    /* GRID 3 COLONNES - PROTECTION CONTRE LE DÉBORDEMENT */
     main {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -27,47 +29,35 @@
     }
 
     .column {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        height: 100%;
-        min-width: 0; /* Important pour empêcher l'élargissement forcé */
+        display: flex; flex-direction: column; gap: 6px;
+        height: 100%; min-width: 0; /* Empêche la colonne de s'élargir */
     }
 
-    /* PANNEAUX DENSES */
     .panel {
-        background: var(--card);
-        border: 1px solid var(--border);
-        padding: 8px;
-        border-radius: 2px;
-        flex-shrink: 0;
+        background: var(--card); border: 1px solid var(--border);
+        padding: 8px; border-radius: 2px; flex-shrink: 0;
     }
 
     .panel h2 {
-        font-size: 0.6rem; color: var(--accent);
-        margin: 0 0 6px 0; border-bottom: 1px solid #1a1a1a;
-        display: flex; align-items: center; gap: 5px; text-transform: uppercase;
+        font-size: 0.6rem; color: var(--accent); margin: 0 0 6px 0;
+        border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; gap: 5px;
     }
 
-    /* AFFICHAGE DES DONNÉES */
     .data-point {
         display: flex; justify-content: space-between;
-        font-size: 0.65rem; padding: 1px 0; border-bottom: 1px solid #0d0d0d;
+        font-size: 0.65rem; border-bottom: 1px solid #0d0d0d;
     }
 
+    /* CLASSE CRITIQUE POUR L'AFFICHAGE SCIENTIFIQUE */
     .val-scientifique {
         color: #fff; font-weight: bold;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        max-width: 140px; text-align: right;
+        max-width: 130px; /* Limite la largeur pour éviter de casser la ligne */
+        text-align: right;
     }
 
-    #map-container { flex: 1; min-height: 250px; background: #000; border: 1px solid var(--border); position: relative; }
+    #map-container { flex: 1; min-height: 200px; position: relative; border: 1px solid var(--border); }
     #map { height: 100%; width: 100%; }
-
-    #anomaly-log {
-        flex: 1; font-size: 0.55rem; color: #00ff00; background: #000;
-        padding: 5px; overflow-y: auto; border: 1px solid #111;
-    }
 </style>
 </head>
  
@@ -491,7 +481,6 @@
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
@@ -501,9 +490,12 @@
 
     <script>
     // Formateur universel pour affichage scientifique auto
-function formatVal(value, prec = 6) {
-    const n = Number(value);
-    if (isNaN(n)) return "--";
+function updateDisplay(id, value, unit = "") {
+    const el = document.getElementById(id);
+    if (!el) return;
+    
+    let n = Number(value);
+    if (isNaN(n)) { el.innerText = "--"; return; };
     // Si le nombre est minuscule (Relativité) ou immense (Reynolds), mode scientifique
     if (Math.abs(n) < 0.001 || Math.abs(n) > 999999) {
         return n.toExponential(prec);
