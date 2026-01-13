@@ -229,43 +229,58 @@
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
                 <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
     </section> 
-</div>
-    <div class="column"> 
-    <section class="panel" style="flex: 1; display: flex; flex-direction: column; min-height: 350px;">
+</div> 
+    
+    <section class="panel" style="flex: 1.5; display: flex; flex-direction: column; min-height: 300px;">
         <h2><i class="fas fa-map-marked-alt"></i> CARTOGRAPHIE_GNSS_CORE</h2>
         <div id="map-container" style="flex: 1; position: relative; border: 1px solid var(--border); background: #000;">
             <div id="map" style="height: 100%;"></div>
             
             <div style="position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 5px;">
-                <button id="toggle-globe-btn" style="background:rgba(0,0,0,0.8); color:var(--accent); border:1px solid var(--accent); padding:4px 8px; font-size:0.6rem; cursor:pointer; font-family:'JetBrains Mono';">GLOBE_VIEW</button>
-                <button id="xray-button" style="background:rgba(0,0,0,0.8); color:#ff3300; border:1px solid #ff3300; padding:4px 8px; font-size:0.6rem; cursor:pointer; font-family:'JetBrains Mono';">X-RAY_SCAN</button>
+                <button id="toggle-globe-btn" class="btn-hud">GLOBE_VIEW</button>
+                <button id="xray-button" class="btn-hud" style="color:#ff3300; border-color:#ff3300;">X-RAY_SCAN</button>
             </div>
         </div>
     </section>
 
     <section class="panel" style="border-left: 3px solid var(--accent);">
         <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY_METRICS</h2>
-        <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy" class="val-scientifique">-- m</span></div>
-        <div class="data-point"><span>Analyse Vibrations</span><span id="ui-vrt" class="val-scientifique">0.00 Hz</span></div>
-        <div class="data-point"><span>Promenade Micro.</span><span id="total-path-inf" class="val-scientifique">--</span></div>
-    </section> 
-    </div>
-                    
         <div class="data-point">
             <span>Précision GPS (Acc)</span>
-            <span id="gps-accuracy-display">-- m</span>
+            <span id="ui-gps-accuracy" class="val-scientifique">-- m</span>
         </div>
-            <div class="chart-container">
-    <div class="label">ANALYSE DES VIBRATIONS (VRT)</div>
-    <canvas id="canvas-vibration" class="vibration-chart"></canvas> 
-            </div>
+        <div class="data-point">
+            <span>Fréquence Vibrations</span>
+            <span id="ui-vrt" class="val-scientifique">0.00 Hz</span>
+        </div>
+        <div class="data-point">
+            <span>Promenade Micro.</span>
+            <span id="total-path-inf" class="val-scientifique">--</span>
+        </div>
     </section>
-    
-        <section class="panel">
-            <h2><i class="fas fa-satellite-dish"></i> Signaux Filtrés</h2>
-            <canvas id="canvas-clean" class="vibration-chart"></canvas>
-            <div class="data-point"><span>SNR Global</span><span id="snr-ratio">-- dB</span></div>
-        </section>
+
+    <section class="panel">
+        <h2><i class="fas fa-wave-square"></i> SIGNAL_PROCESSING_UNIT</h2>
+        
+        <div class="chart-container" style="margin-bottom: 10px;">
+            <div class="label" style="font-size: 0.5rem; color: #666;">RAW_VIBRATION_DATA</div>
+            <canvas id="canvas-vibration" style="width: 100%; height: 80px; background: #000; border: 1px solid #111;"></canvas> 
+        </div>
+
+        
+
+        <div class="chart-container">
+            <div class="label" style="font-size: 0.5rem; color: var(--accent);">CLEAN_FILTERED_SIGNAL</div>
+            <canvas id="canvas-clean" style="width: 100%; height: 80px; background: #000; border: 1px solid #111;"></canvas>
+            <div class="data-point" style="margin-top: 5px; border-top: 1px solid #1a1a1a;">
+                <span>SNR Global (Signal/Bruit)</span>
+                <span id="snr-ratio" class="val-scientifique">-- dB</span>
+            </div>
+        </div>
+
+        
+    </section>
+</div>
             <h3>Météo/Bio/SVT</h3>
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
