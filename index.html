@@ -202,18 +202,18 @@
                 <div class="data-point"><span>Vitesse de la Lumière locale (c)</span><span id="const-c">--------- m/s</span></div>
                 <div class="data-point"><span>Gravitation Universelle locale (G)</span><span id="const-G">-.-----e-__ m³/kg/s²</span></div>
                 <div class="data-point"><span>Pression (hPa)</span><span id="ui-pressure">----.---</span></div>
-                <div class="data-point"><span>Densité réelle ($\rho$)</span><span id="ui-rho-dynamic">-.----</span>
-                <div class="data-point"><span>Potentiel Gravitationnel (Φ)</span><span id="ui-grav-phi">-.----------</span> 
-                <div class="data-point"><span>Dérive Totale (RR+RG)</span><span id="ui-lorentz">-.---------- ns/s</span>   
+                <div class="data-point"><span>Densité réelle ($\rho$)</span><span id="ui-rho-dynamic">-.----</span></div>
+                <div class="data-point"><span>Potentiel Gravitationnel (Φ)</span><span id="ui-grav-phi">-.----------</span></div> 
+                <div class="data-point"><span>Dérive Totale (RR+RG)</span><span id="ui-lorentz">-.---------- ns/s</span></div>   
                 <div class="data-point"><span>Altitude (Ref. Géoïde)</span><input id="in-alt" type="text" value="0" style="width: 50px; background: none; border: 1px solid var(--border); color: var(--accent); text-align: right;"> 
-                <div class="data-point"><span>Potentiel de Schwarzschild (Φ)</span><span id="ui-grav-phi">-.----------</span>
-                <div class="data-point"><span>Dérive Gravitationnelle</span><span id="ui-grav-dilation">-.---------- ns/s</span>
+                <div class="data-point"><span>Potentiel de Schwarzschild (Φ)</span><span id="ui-grav-phi">-.----------</span></div>
+                <div class="data-point"><span>Dérive Gravitationnelle</span><span id="ui-grav-dilation">-.---------- ns/s</span></div>
                 </section>
 
                 <section class="panel">
                 <h2><i class="fas fa-ruler-combined"></i> Distance & Parcours</h2>
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
-                <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------</span> m</div>
+                <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------m</span></div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
                 <span id="nether-mode-status" style="display:none;">-.---</span> 
                 <div class="data-point"><span>Distance (s-lumière)</span><span id="distance-light-s">-.--e+-- s</span></div>
@@ -251,7 +251,7 @@
         </div>
         <div class="data-point">
             <span>Fréquence Vibrations</span>
-            <span id="ui-vrt" class="val-scientifique">0.00 Hz</span>
+            <span id="ui-vrt" class="val-scientifique">-.-- Hz</span>
         </div>
         <div class="data-point">
             <span>Promenade Micro.</span>
@@ -344,7 +344,7 @@
                 <hr style="border:0; border-top:1px solid #222;">
                 <div class="data-point"><span>Accélération Nette :</span><span class="val" id="ui-real-accel" style="color:var(--accent)">0.000 m/s²</span></div>
                 <hr style="border:1px solid var(--border);">
-                <div class="data-point"><span>Force de Traînée</span><span id="ui-drag-force">0.00000000 N</span>
+                <div class="data-point"><span>Force de Traînée</span><span id="ui-drag-force">-.--------- N</span></div>
                 <div class="data-point"><span>Puissance en Watts:</span> <span id="human-power-w">-- W</span></div>
                 <div class="data-point"><span>Adrénaline Index:</span> <span id="adrenaline-idx">-.- / 10</span></div>
                 <div class="data-point" style="background:rgba(0,255,0,0.1);"><span>Score Fluidité:</span> <span id="smoothness-score">---/100</span></div>
@@ -377,30 +377,47 @@
                 <div class="data-point"><span>Vibration (Jitter)</span><span id="vibration-jitter">--</span></div>
             </section>
 
-            <section class="panel" aria-labelledby="bubble-heading">
-                <h2 id="bubble-heading"><i class="fas fa-compass"></i> Niveau à Bulle (IMU)</h2>
-                <div class="spirit-level-container" id="spirit-level">
-                     <div class="crosshair-h"></div>
-                    <div class="crosshair-v"></div>
-                </div>
-                <div class="data-point">
-                    <span>Inclinaison (Pitch)</span>
-                    <span id="pitch">-.-°</span> </div>
-                <div class="data-point">
-                    <span>Roulis (Roll)</span>
-                    <span id="roll">-.-°</span> </div>
-            </section>
+<section class="panel" aria-labelledby="bubble-heading">
+    <h2 id="bubble-heading"><i class="fas fa-compass"></i> Niveau à Bulle (IMU)</h2>
+    
+    <div class="spirit-level-container" id="spirit-level" style="position: relative; width: 150px; height: 150px; background: #000; border: 2px solid var(--border); border-radius: 50%; margin: 10px auto; overflow: hidden;">
+        <div class="crosshair-h" style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: #333;"></div>
+        <div class="crosshair-v" style="position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #333;"></div>
+        
+        <div id="imu-bubble" style="position: absolute; width: 20px; height: 20px; background: var(--accent); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px var(--accent); transition: 0.1s ease-out;"></div>
+        
+        <div style="position: absolute; top: 25%; left: 25%; width: 50%; height: 50%; border: 1px dashed #222; border-radius: 50%;"></div>
+    </div>
 
-            <section class="panel" aria-labelledby="astro-heading">
-                <h2 id="astro-heading"><i class="fas fa-globe-americas"></i> Position & Astro</h2>
-                <div id="minecraft-clock-container" role="timer" aria-label="Horloge céleste affichant la position du Soleil">
-                    <div id="minecraft-clock">
-                        <div id="biome-half"></div>
-                        <div id="sun-element" class="sun-element"><i class="fas fa-sun sun-icon" aria-label="Icône Soleil"></i></div>
-                        <div id="moon-element" class="moon-element" style="transform: rotate(180deg);"><i class="fas fa-moon moon-icon" aria-label="Icône Lune"></i></div>
-                    </div>
-                    <div class="clock-display"><span id="astro-phase" aria-live="polite">Nuit/Crépuscule (🌙)</span></div> </div>
-                <hr>
+    
+
+    <div class="data-point">
+        <span>Inclinaison (Pitch)</span>
+        <span id="pitch" class="val-scientifique">-.--°</span>
+    </div>
+    <div class="data-point">
+        <span>Roulis (Roll)</span>
+        <span id="roll" class="val-scientifique">-.--°</span>
+    </div>
+</section>
+
+<section class="panel" aria-labelledby="astro-heading">
+    <h2 id="astro-heading"><i class="fas fa-globe-americas"></i> Position & Astro-Physique</h2>
+    
+    <div id="minecraft-clock-container" role="timer" aria-label="Horloge céleste" style="position: relative; height: 100px; background: linear-gradient(to bottom, #001122, #000); overflow: hidden; border-radius: 4px; border: 1px solid #1a1a1a;">
+        <div id="celestial-orbit" style="position: absolute; width: 200%; height: 200%; top: 50%; left: -50%; transition: transform 1s linear;">
+            <div id="sun-element" style="position: absolute; top: 10%; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 1.5rem;">
+                <i class="fas fa-sun"></i>
+            </div>
+            <div id="moon-element" style="position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); color: #dddddd; font-size: 1.2rem;">
+                <i class="fas fa-moon"></i>
+            </div>
+        </div>
+        
+        <div class="clock-display" style="position: absolute; bottom: 5px; width: 100%; text-align: center; font-size: 0.6rem; text-shadow: 1px 1px #000;">
+            <span id="astro-phase">SCAN_CÉLESTE_EN_COURS...</span>
+        </div>
+    </div>   
                 <h3>Positionnement EKF</h3>
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">--.-----</span></div> 
                 <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">---.-----</span></div>
@@ -414,13 +431,34 @@
                 <div class="data-point"><span>Coord. Z (Géocentrique)</span><span id="coord-z">--</span></div>
                 <div class="data-point"><span>Distance 3D Cumulée</span><span id="dist-3d">-.--- m</span></div>
                 <hr>
-                <div style="border-top:1px solid var(--border); margin-top:5px; padding-top:5px;">
-        <div class="data-point">
-            <span>Altitude (H)</span>
-            <input id="in-alt" type="number" value="0" style="width:60px; background:none; border:1px solid var(--accent); color:var(--accent); text-align:right;">
-        </div>    
-                <div class="astro-visual-container">
-    <canvas id="mc-clock-canvas" width="120" height="120"></canvas>
+                <div style="border-top:1px solid var(--border); margin-top:10px; padding-top:10px; background: rgba(0,255,136,0.02); border-radius: 4px; padding: 8px;">
+    
+    <div class="data-point" style="margin-bottom: 12px;">
+        <label for="in-alt" style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Altitude_Référentielle (m)</label>
+        <input id="in-alt" type="number" value="0" step="0.1" 
+               style="width:80px; background:#000; border:1px solid var(--accent); color:var(--accent); text-align:right; font-family: 'JetBrains Mono'; font-weight: bold; border-radius: 2px;">
+    </div>
+
+    
+
+    <div class="astro-visual-container" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div style="font-size: 0.55rem; color: var(--accent); letter-spacing: 1px; font-weight: bold;">
+            <i class="fas fa-microchip"></i> REAL-TIME_ORBITAL_RENDERER
+        </div>
+        
+        <div style="position: relative; width: 120px; height: 120px; background: radial-gradient(circle, #0a0a10 0%, #000 70%); border-radius: 50%; border: 1px solid #1a1a1a; box-shadow: inset 0 0 15px rgba(0,255,136,0.1);">
+            <canvas id="mc-clock-canvas" width="120" height="120" style="display: block;"></canvas>
+            
+            <div id="zenith-indicator" style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 0.4rem; color: #333;">ZÉNITH</div>
+        </div>
+
+        
+
+        <div class="data-point" style="width: 100%; border-top: 1px solid #0d0d0d; pt: 4px;">
+            <span>Phase_Actuelle</span>
+            <span id="ui-celestial-phase" style="color: #fff; font-size: 0.6rem;">CALCUL...</span>
+        </div>
+    </div>
                 </div>
                 <h3>Temps Solaire & Sidéral</h3>
                 <div class="data-point"><span>Date (Astro)</span><span id="date-display-astro">--</span></div>
@@ -446,112 +484,124 @@
                 <div class="data-point"><span>Azimut Lunaire </span><span id="moon-azimuth">--.--°</span></div>
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">--</span></div>
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
-                <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span>
-                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">0.000°</span>
+                <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span></div>
+                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">-.---°</span></div>
                 <div id="mini-map-container1" style="height:150px; margin-top:10px; border:1px solid var(--border);">    
             </section>
     
-        <section class="panel" style="margin-top: auto;">
+         <section class="panel" style="margin-top: auto;">
             <h2><i class="fas fa-terminal"></i> JOURNAL_ANOMALIES</h2>
-            <div id="anomaly-log" style="height: 120px; background: rgba(0,0,0,0.8); border: 1px solid #1a1a1a; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 5px; overflow-y: auto;">
-                <div style="color:#444;">[SYSTEM] Standby...</div>
+            <div id="anomaly-log" style="height: 120px; background: rgba(0,0,0,0.9); border: 1px solid #1a1a1a; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 5px; overflow-y: auto; color: #00ff88;">
+                <div style="color:#666;">[SYSTEM] Standby - Waiting for Core...</div>
             </div>
-            <button onclick="startAdventure()" style="width: 100%; background: var(--accent); color: #000; border: none; font-weight: bold; padding: 8px; margin-top: 5px; cursor: pointer; text-transform: uppercase; font-size: 0.7rem;">Réinitialiser_Moteur_V16</button>
+            <button id="main-init-btn" onclick="startAdventure()" style="width: 100%; background: var(--accent); color: #000; border: none; font-weight: bold; padding: 10px; margin-top: 5px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px;">
+                Initialiser_Moteur_V17_PRO
+            </button>
         </section>
-    </aside>
- </main>
+    </div> </main> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-    </main>
+<script src="lib/ephem.js"></script>
+<script src="lib/astro.js"></script>    
+<script src="gnss-dashboard-full.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-    <script src="lib/ephem.js"></script>
-    <script src="lib/astro.js"></script>    
-    <script src="gnss-dashboard-full.js"></script>
-
-    <script>
-    // Formateur universel pour affichage scientifique auto
-function updateDisplay(id, value, unit = "") {
+<script>
+/**
+ * LOGIQUE DE MISE À JOUR ET FORMATAGE (CORRIGÉE)
+ */
+function updateDisplay(id, value, prec = 6) {
     const el = document.getElementById(id);
     if (!el) return;
     
     let n = Number(value);
-    if (isNaN(n)) { el.innerText = "--"; return; };
-    // Si le nombre est minuscule (Relativité) ou immense (Reynolds), mode scientifique
-    if (Math.abs(n) < 0.001 || Math.abs(n) > 999999) {
-        return n.toExponential(prec);
+    if (isNaN(n) || value === null) { 
+        el.innerText = "--"; 
+        return; 
     }
-    return n.toLocaleString('fr-FR', { maximumFractionDigits: prec });
-        }    
-    /**
-     * LOGIQUE DE CONTRÔLE DE MISSION V17
-     */
-    let wakeLock = null;
 
-    // Fonction d'initialisation globale
-    async function startAdventure() {
-        console.log("Séquence d'initialisation V17 lancée...");
-        const log = document.getElementById('anomaly-log');
-        
-        // 1. Demande de WakeLock (Maintien de l'écran allumé)
-        if ('wakeLock' in navigator) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-                updateStatus("CORE_LOCKED", "var(--accent)");
-                if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > WAKELOCK ACTIVÉ</div>` + log.innerHTML;
-            } catch (err) {
-                console.warn("WakeLock refusé.");
-            }
+    // Bascule automatique en notation scientifique pour la précision extrême
+    if (Math.abs(n) < 0.0001 && n !== 0) {
+        el.innerText = n.toExponential(prec);
+    } else {
+        el.innerText = n.toLocaleString('fr-FR', { 
+            maximumFractionDigits: prec, 
+            minimumFractionDigits: 2 
+        });
+    }
+}
+
+/**
+ * SÉQUENCE D'INITIALISATION MISSION V17
+ */
+let wakeLock = null;
+
+async function startAdventure() {
+    const log = document.getElementById('anomaly-log');
+    const btn = document.getElementById('main-init-btn');
+    
+    console.log("Séquence V17 lancée...");
+    if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > INITIALISATION_CORE...</div>` + log.innerHTML;
+
+    // 1. Activation WakeLock (Maintien de l'écran pour suivi GNSS long)
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            updateStatus("LOCKED_ON", "var(--accent)");
+            if(log) log.innerHTML = `<div style="color:var(--accent)">[OK] WAKELOCK_SCREEN_ACTIVE</div>` + log.innerHTML;
+        } catch (err) {
+            console.warn("WakeLock Error:", err);
         }
+    }
 
-        // 2. Démarrage du moteur Physique/GNSS
-        // On vérifie si initCore (V16) ou METROLOGY.startSystem (V17) existe
+    // 2. Lancement du Moteur Physique
+    try {
         if (typeof initCore === "function") {
             initCore();
-            if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > MOTEUR V16/V17 CHARGÉ</div>` + log.innerHTML;
         } else if (window.METROLOGY && typeof METROLOGY.startSystem === "function") {
             METROLOGY.startSystem();
         } else {
-            console.error("Moteur introuvable.");
-            alert("ERREUR : Système de calcul introuvable.");
-            return;
+            throw new Error("MOTEUR_NON_DÉTECTÉ");
         }
+        
+        if(log) log.innerHTML = `<div style="color:var(--accent)">[OK] ENGINE_V17_STABLE</div>` + log.innerHTML;
+        btn.style.display = "none"; // Cacher le bouton après succès
+        updateStatus("ACTIVE_MISSION", "var(--accent)");
 
-        // 3. Gestion de la Mémoire et Performance
-        if (typeof enforceMemoryLimits === "function") {
-            setInterval(enforceMemoryLimits, 5000);
-        }
-
-        // 4. Initialisation des Graphiques
-        if (typeof initCharts === "function") initCharts();
+    } catch (e) {
+        if(log) log.innerHTML = `<div style="color:var(--critical)">[ERREUR] ${e.message}</div>` + log.innerHTML;
+        updateStatus("CRITICAL_FAIL", "var(--critical)");
+        return;
     }
 
-    // Utilitaire de mise à jour du statut dans le Header
-    function updateStatus(text, color) {
-        const statusEl = document.getElementById('reality-status-main');
-        if (statusEl) {
-            statusEl.innerText = text;
-            statusEl.style.color = color;
-        }
+    // 3. Initialisation des Graphiques & Monitoring
+    if (typeof initCharts === "function") initCharts();
+    if (typeof enforceMemoryLimits === "function") setInterval(enforceMemoryLimits, 5000);
+}
+
+// Utilitaire Statut Header
+function updateStatus(text, color) {
+    const statusEl = document.getElementById('reality-status-main');
+    if (statusEl) {
+        statusEl.innerText = text;
+        statusEl.style.color = color;
     }
+}
 
-    // Gestion automatique du WakeLock lors du changement d'onglet
-    document.addEventListener('visibilitychange', async () => {
-        if (wakeLock !== null && document.visibilityState === 'visible') {
-            try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
-        }
-    });
+// Gestion automatique du WakeLock lors du retour sur l'onglet
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+    }
+});
 
-    // Écouteur pour le redimensionnement des canvas
-    window.addEventListener('resize', () => {
-        const canvases = document.querySelectorAll('canvas');
-        canvases.forEach(c => {
-            c.width = c.clientWidth;
-            c.height = c.clientHeight;
-        });
+// Redimensionnement fluide des Canvas
+window.addEventListener('resize', () => {
+    document.querySelectorAll('canvas').forEach(c => {
+        c.width = c.clientWidth;
+        c.height = c.clientHeight;
+        // Redessiner si une fonction de dessin est liée
+        if (typeof drawAll === "function") drawAll(); 
     });
-    </script>
-</body>
-                </html>
+});
+</script>
