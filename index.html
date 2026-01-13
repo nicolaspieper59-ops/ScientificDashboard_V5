@@ -29,7 +29,7 @@
     <header id="master-hud-fixed">
         <div class="header-item">
             <div class="label">VITESSE_RÉELLE</div>
-            <div id="main-speed" style="font-size: 1.5rem; color: var(--accent); font-weight: bold;">0.00</div>
+            <div id="main-speed" style="font-size: 1.5rem; color: var(--accent); font-weight: bold;">-.--</div>
         </div>
 
         <div class="header-item" style="align-items: center;">
@@ -42,7 +42,6 @@
             <div class="label">SYSTÈME_MÉTRIQUE</div>
             <div style="display: flex; flex-direction: column; gap: 2px;">
                 <span id="ui-precision-lock" style="color:var(--accent); font-size:0.55rem;">[128-BIT_LOCKED]</span>
-                <div id="reality-status-main" style="cursor:pointer; border:1px solid var(--accent); padding:2px 8px; font-size: 0.6rem; color: var(--accent);">
                     STATUS: STANDBY
                 </div>
             </div>
@@ -78,7 +77,6 @@
                 <div class="data-point"><span>Temps de Mouvement</span><span id="movement-time">-.-- s</span></div>
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
                 <div class="data-point"><span>Temps Terrestre (TT)</span><span id="ast-tt">--:--:--</span></div>
-                <div class="data-point"><span>JD (128-bit)</span><span id="ast-jd">-.--------</span></div>
                 <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">--.-s</span></div>
                 </div>
     <section class="panel" aria-labelledby="head-controls">
@@ -227,7 +225,6 @@
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
                 <div class="data-point"><span>Horizon Dist. (km)</span><span id="horizon-distance-km">-.---</span> </div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
-                <div class="data-point"><span>Promenade Microscopique</span><span id="total-path-inf">--</span></div>
     </section> 
 </div> 
     
@@ -348,9 +345,7 @@
                 <div class="data-point"><span>Puissance en Watts:</span> <span id="human-power-w">-- W</span></div>
                 <div class="data-point"><span>Adrénaline Index:</span> <span id="adrenaline-idx">-.- / 10</span></div>
                 <div class="data-point" style="background:rgba(0,255,0,0.1);"><span>Score Fluidité:</span> <span id="smoothness-score">---/100</span></div>
-                <div class="data-point"><span>Calories (METs):</span> <span id="cal-val">>-.- kcal</span></div>
-            </section>
-    
+                <div class="data-point"><span>Calories (METs):</span> <span id="cal-val">>-.- kcal</span></div>  
             <section class="panel" aria-labelledby="ekf-heading">
                 <h2 id="ekf-heading"><i class="fas fa-brain"></i> Filtre EKF/UKF & Debug</h2>
                 <div class="control-input-full" style="padding-bottom: 10px;">
@@ -459,7 +454,7 @@
             <span id="ui-celestial-phase" style="color: #fff; font-size: 0.6rem;">CALCUL...</span>
         </div>
     </div>
-                </div>
+</div>
                 <h3>Temps Solaire & Sidéral</h3>
                 <div class="data-point"><span>Date (Astro)</span><span id="date-display-astro">--</span></div>
                 <div class="data-point"><span>Date Solaire Moyenne</span><span id="date-solar-mean">--</span></div>
@@ -485,8 +480,7 @@
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">--</span></div>
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
                 <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span></div>
-                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">-.---°</span></div>
-                <div id="mini-map-container1" style="height:150px; margin-top:10px; border:1px solid var(--border);">    
+                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">-.---°</span></div>    
             </section>
     
          <section class="panel" style="margin-top: auto;">
