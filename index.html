@@ -10,18 +10,117 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 <style>
-    .btn-hud {
-        background: rgba(0, 0, 0, 0.8);
-        color: var(--accent);
-        border: 1px solid var(--accent);
-        padding: 4px 8px;
-        font-size: 0.6rem;
-        cursor: pointer;
-        font-family: 'JetBrains Mono', monospace;
-        transition: 0.2s;
+    :root {
+    --bg: #030303; 
+    --card: rgba(10, 10, 12, 0.9); 
+    --border: #1a1a1f;
+    --text: #e0e0e0; 
+    --accent: #00ff88; 
+    --critical: #ff3300;
+    --panel-gap: 8px;
 }
-        .btn-hud:hover { background: var(--accent); color: #000; }
-        .data-grid { display: grid; grid-template-columns: 1fr; gap: 2px; }
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden; /* Désactive le scroll global */
+}
+
+/* HEADER FIXE */
+#master-hud-fixed {
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+}
+
+/* GRILLE PRINCIPALE DYNAMIQUE */
+main.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 colonnes égales */
+    gap: var(--panel-gap);
+    padding: var(--panel-gap);
+    height: calc(100vh - 60px); /* Hauteur totale moins le header */
+    box-sizing: border-box;
+}
+
+/* COLONNE FLEXIBLE */
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--panel-gap);
+    height: 100%;
+    overflow: hidden;
+}
+
+/* PANNEAUX AUTO-AJUSTABLES */
+.panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 10px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Chaque panneau prend une part égale de la hauteur */
+    min-height: 0; /* Important pour permettre le rétrécissement */
+}
+
+.panel h2 {
+    margin: 0 0 8px 0;
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #1a1a1a;
+    padding-bottom: 4px;
+}
+
+/* AJUSTEMENT DES COMPOSANTS INTERNES */
+.data-point {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem; /* Police plus petite pour tout faire tenir */
+    margin: 2px 0;
+    line-height: 1.2;
+}
+
+canvas {
+    width: 100% !important;
+    height: auto !important;
+    flex-grow: 1; /* Les graphiques mangent l'espace restant */
+    max-height: 120px;
+}
+
+/* CAS PARTICULIER : LA CARTE */
+#map-container {
+    flex: 2; /* Donne plus d'importance à la carte (2 parts de hauteur) */
+    min-height: 150px;
+}
+
+/* JOURNAL D'ANOMALIES */
+#anomaly-log {
+    flex: 1;
+    font-size: 0.6rem;
+    background: rgba(0,0,0,0.5);
+    overflow-y: auto; /* Autorise le scroll uniquement dans les logs */
+}
+
+/* RESPONSIVE : PASSAGE EN 1 COLONNE SI ÉCRAN TROP PETIT (Mobile) */
+@media (max-width: 900px) {
+    main.dashboard-grid {
+        grid-template-columns: 1fr;
+        overflow-y: auto; /* Scroll réactivé sur mobile uniquement */
+    }
+    body { overflow: auto; }
+        }
 </style>
 </head>
     
@@ -157,7 +256,7 @@
                 <div class="data-point"><span>Lumière Ambiante (API)</span><span id="ambient-light">--</span></div>
                 <div class="data-point"><span>Lumière (Max)</span><span id="ambient-light-max">-- Lux</span></div>
                 <div class="data-point"><span>Niveau Sonore / Vibration</span><span id="env-noise">--</span></div>
-                <div class="data-point"><span>Niveau Sonore (dB)</span><span id="sound-level">--</span></div>
+                <div class="data-point"><span>Niveau Sonore </span><span id="sound-level">--dB</span></div>
                 <div class="data-point"><span>Son (Max)</span><span id="sound-level-max">-- dB</span></div>
                 <div class="data-point"><span>Force G Résultante</span> <span id="g-force-resultant">-.--- G</span></div>
             </div>
@@ -200,7 +299,6 @@
                 <div class="data-point"><span>Potentiel Gravitationnel (Φ)</span><span id="ui-grav-phi">-.----------</span></div> 
                 <div class="data-point"><span>Dérive Totale (RR+RG)</span><span id="ui-lorentz">-.---------- ns/s</span></div>   
                 <div class="data-point"><span>Altitude (Ref. Géoïde)</span><input id="in-alt" type="text" value="0" style="width: 50px; background: none; border: 1px solid var(--border); color: var(--accent); text-align: right;"> 
-                <div class="data-point"><span>Potentiel de Schwarzschild (Φ)</span><span id="ui-grav-phi">-.----------</span></div>
                 <div class="data-point"><span>Dérive Gravitationnelle</span><span id="ui-grav-dilation">-.---------- ns/s</span></div>
                 </section>
 
@@ -316,7 +414,6 @@
         <div class="data-point"><span>Rayon Ellipsoïde Local</span><span id="earth-radius-local">------ m</span>
         </div>
             
-</section>
     <section class="panel">
     <h2><i class="fas fa-atom"></i> Physique Relativiste</h2>
     <div class="data-grid">
@@ -330,29 +427,53 @@
                 <div class="data-point"><span>Puissance Mécanique (W)</span><span id="mechanical-power">-.-- W</span></div>
                 <div class="data-point"><span>Pression de Radiation</span><span id="pression-radiation">--</span></div>
                 <div class="data-point"><span>Force de Coriolis</span><span id="coriolis-force">-.-- N</span></div>
-                <div class="data-point"><span>Poussée d'Archimède :</span><span class="val" id="ui-f-arch">0.00 N</span></div>
-                <div class="data-point"><span>Traînée de Rayleigh :</span><span class="val" id="ui-f-drag" style="color: #ff4444;">0.00 N</span></div>
-                <div class="data-point"><span>Composante de Pente :</span><span class="val" id="ui-f-slope">0.00 N</span></div>
-                <div class="data-point"><span>Friction de Surface :</span><span class="val" id="ui-f-roll">0.00 N</span></div>
+                <div class="data-point"><span>Poussée d'Archimède :</span><span class="val" id="ui-f-arch">-.-- N</span></div>
+                <div class="data-point"><span>Traînée de Rayleigh :</span><span class="val" id="ui-f-drag" style="color: #ff4444;">-.-- N</span></div>
+                <div class="data-point"><span>Composante de Pente :</span><span class="val" id="ui-f-slope">-.-- N</span></div>
+                <div class="data-point"><span>Friction de Surface :</span><span class="val" id="ui-f-roll">-.-- N</span></div>
                 <hr style="border:0; border-top:1px solid #222;">
-                <div class="data-point"><span>Accélération Nette :</span><span class="val" id="ui-real-accel" style="color:var(--accent)">0.000 m/s²</span></div>
-                <hr style="border:1px solid var(--border);">
-                <div class="data-point"><span>Force de Traînée</span><span id="ui-drag-force">-.--------- N</span></div>
-                <div class="data-point"><span>Puissance en Watts:</span> <span id="human-power-w">-- W</span></div>
-                <div class="data-point"><span>Adrénaline Index:</span> <span id="adrenaline-idx">-.- / 10</span></div>
-                <div class="data-point" style="background:rgba(0,255,0,0.1);"><span>Score Fluidité:</span> <span id="smoothness-score">---/100</span></div>
-                <div class="data-point"><span>Calories (METs):</span> <span id="cal-val">>-.- kcal</span></div>  
-            <section class="panel" aria-labelledby="ekf-heading">
-                <h2 id="ekf-heading"><i class="fas fa-brain"></i> Filtre EKF/UKF & Debug</h2>
-                <div class="control-input-full" style="padding-bottom: 10px;">
-                    <label for="ukf-reactivity-mode">Réactivité UKF (Facteur R)</label>
-                    <select id="ukf-reactivity-mode" style="width: 100%;">
-                        <option value="AUTO">Automatique (Adaptatif)</option>
-                        <option value="NORMAL">Normal (x1.0)</option>
-                        <option value="FAST">Rapide (x0.2)</option>
-                        <option value="STABLE">Microscopique (x2.5)</option>
-                    </select>
-                </div>
+              <section class="panel" aria-labelledby="bio-heading">
+    <h2 id="bio-heading"><i class="fas fa-skating"></i> Dynamique & Bio-Score</h2>
+    
+    <div class="data-point">
+        <span>Accélération Nette</span>
+        <span class="val" id="ui-real-accel" style="color:var(--accent)">-.--- m/s²</span>
+    </div>
+    
+    <hr style="border:0; border-top:1px solid var(--border); margin: 8px 0;">
+    
+    <div class="data-grid">
+        <div class="data-point"><span>Force Traînée</span><span id="ui-drag-force">-.--- N</span></div>
+        <div class="data-point"><span>Puissance</span><span id="human-power-w">-- W</span></div>
+        <div class="data-point"><span>Indice Adrénaline</span><span id="adrenaline-idx">0.0</span></div>
+        <div class="data-point" style="background:rgba(0,255,136,0.1); border-radius: 2px;">
+            <span style="padding-left:4px;">Score Fluidité</span>
+            <span id="smoothness-score" style="padding-right:4px;">--/100</span>
+        </div>
+        <div class="data-point"><span>Énergie (METs)</span><span id="cal-val">-- kcal</span></div>
+    </div>
+</section>
+
+<section class="panel" aria-labelledby="ekf-heading">
+    <h2 id="ekf-heading"><i class="fas fa-brain"></i> Intelligence UKF (Filtre)</h2>
+    
+    <div class="control-input-full" style="padding-bottom: 10px;">
+        <label for="ukf-reactivity-mode" class="label">Réactivité UKF (Facteur de Bruit R)</label>
+        <select id="ukf-reactivity-mode" style="width: 100%; background: #000; color: var(--accent); border: 1px solid #333; font-family: 'JetBrains Mono';">
+            <option value="AUTO">Adaptatif (Auto-IA)</option>
+            <option value="NORMAL">Standard (Lissage x1.0)</option>
+            <option value="FAST">Sportif (Brut x0.2)</option>
+            <option value="STABLE">Cinématique (Ultra-Lisse x2.5)</option>
+        </select>
+    </div>
+
+    
+
+    <div class="data-point">
+        <span>Statut Filtre</span>
+        <span id="filter-status" style="color:var(--accent)">CONVERGENT</span>
+    </div>
+         </section>
                 <h3>Signature Biologique</h3>
                 <div class="data-point"><span>Statut GPS</span><span id="gps-status">--</span></div>
                 <div class="data-point"><span>Statut EKF (Fusion)</span><span id="ukf-status-display">--</span></div>
@@ -366,8 +487,6 @@
                 <div class="data-point"><span>Bruit Accéléromètre (R)</span> <span id="acc-bias">-.-- mg</span></div>
                 <div class="data-point"><span>Type de Mouvement</span><span id="bio-signature-type">--</span></div>
                 <div class="data-point"><span>Vibration (Jitter)</span><span id="vibration-jitter">--</span></div>
-            </section>
-
 <section class="panel" aria-labelledby="bubble-heading">
     <h2 id="bubble-heading"><i class="fas fa-compass"></i> Niveau à Bulle (IMU)</h2>
     
