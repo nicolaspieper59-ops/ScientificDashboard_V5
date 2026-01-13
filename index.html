@@ -10,96 +10,57 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 <style>
-    :root {
-        --bg: #030303; --card: #0a0a0c; --border: #1a1a1f;
-        --text: #e0e0e0; --accent: #00ff88; --critical: #ff3300;
-    }
-    body {
-        background: var(--bg); color: var(--text); margin: 0;
+    .btn-hud {
+        background: rgba(0, 0, 0, 0.8);
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        padding: 4px 8px;
+        font-size: 0.6rem;
+        cursor: pointer;
         font-family: 'JetBrains Mono', monospace;
-        overflow: hidden; font-variant-numeric: tabular-nums;
+        transition: 0.2s;
     }
-
-    /* GRID 3 COLONNES - PROTECTION CONTRE LE DÉBORDEMENT */
-    main {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        height: calc(100vh - 50px);
-        gap: 6px; padding: 6px; box-sizing: border-box;
-    }
-
-    .column {
-        display: flex; flex-direction: column; gap: 6px;
-        height: 100%; min-width: 0; /* Empêche la colonne de s'élargir */
-    }
-
-    .panel {
-        background: var(--card); border: 1px solid var(--border);
-        padding: 8px; border-radius: 2px; flex-shrink: 0;
-    }
-
-    .panel h2 {
-        font-size: 0.6rem; color: var(--accent); margin: 0 0 6px 0;
-        border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; gap: 5px;
-    }
-
-    .data-point {
-        display: flex; justify-content: space-between;
-        font-size: 0.65rem; border-bottom: 1px solid #0d0d0d;
-    }
-
-    /* CLASSE CRITIQUE POUR L'AFFICHAGE SCIENTIFIQUE */
-    .val-scientifique {
-        color: #fff; font-weight: bold;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        max-width: 130px; /* Limite la largeur pour éviter de casser la ligne */
-        text-align: right;
-    }
-
-    #map-container { flex: 1; min-height: 200px; position: relative; border: 1px solid var(--border); }
-    #map { height: 100%; width: 100%; }
+    .btn-hud:hover { background: var(--accent); color: #000; }
 </style>
-</head>
- 
+
 <body class="dark-mode">
-<div id="poi-alert" style="display:none;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>  
-<header id="master-hud-fixed">
-    <div class="header-item">
-        <div class="label">VITESSE</div>
-        <div id="main-speed" class="value" style="font-size: 1.5rem;">-.--</div>
-    </div>
-    <div class="header-item">
-        <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 INITIALISER</button>
-    </div>
-    <div class="header-item">
-        <div class="label">STATUS</div>
-        <div style="display: flex; gap: 15px; font-size: 0.7rem; color: var(--accent);">
-    <span>PRECISION: 128-BIT BIGNUM</span>
-    <span>REF: WGS84 / EGM96</span>
-    <span>CLOCK: ATOMIC SYNC (GPS/PPS)</span>
-    <span id="ui-mode">MODE: GNSS_METROLOGY</span>
-    <span id="ui-precision-lock" style="color:var(--accent); font-size:0.5rem;">[128-BIT_LOCKED]</span>        
-       <div id="ui-mode" style="font-size: 0.6rem; color: var(--accent); border: 1px solid var(--accent); padding: 2px 5px;">
-    MODE: STANDBY
-       </div>        
-</div>
-<div id="reality-status-main" onclick="startAdventure()" style="cursor:pointer; border:1px solid var(--accent); padding:2px 8px;">INIT_CORE</div>
-    </div>
- 
-</header>
-    
-<main>
-    <div class="column">
-        <section class="panel" style="flex: 1; display: flex; flex-direction: column;" aria-labelledby="head-nav">
-            <h2 id="head-nav"><i class="fas fa-map-marked-alt"></i> Cartographie GNSS</h2>
-            <div id="map-container">
-                <div id="map"></div>
-                <div style="position: absolute; top: 5px; left: 5px; z-index: 1000; display: flex; gap: 4px;">
-                    <button id="toggle-globe-btn" class="btn-hud">GLOBE</button>
-                    <button id="xray-button" class="btn-hud">X-RAY</button>
+    <div id="poi-alert" style="display:none; position: fixed; top: 60px; right: 20px; background: var(--critical); color: #fff; padding: 10px; z-index: 9999;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>
+
+    <header id="master-hud-fixed">
+        <div class="header-item">
+            <div class="label">VITESSE_RÉELLE</div>
+            <div id="main-speed" style="font-size: 1.5rem; color: var(--accent); font-weight: bold;">0.00</div>
+        </div>
+
+        <div class="header-item" style="align-items: center;">
+            <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                🚀 INITIALISER_V17
+            </button>
+        </div>
+
+        <div class="header-item" style="text-align: right;">
+            <div class="label">SYSTÈME_MÉTRIQUE</div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span id="ui-precision-lock" style="color:var(--accent); font-size:0.55rem;">[128-BIT_LOCKED]</span>
+                <div id="reality-status-main" style="cursor:pointer; border:1px solid var(--accent); padding:2px 8px; font-size: 0.6rem; color: var(--accent);">
+                    STATUS: STANDBY
                 </div>
             </div>
-        </section>
+        </div>
+    </header>
+
+    <main>
+        <div class="column">
+            <section class="panel" style="flex: 1.5; display: flex; flex-direction: column;" aria-labelledby="head-nav">
+                <h2 id="head-nav"><i class="fas fa-map-marked-alt"></i> Cartographie GNSS</h2>
+                <div id="map-container">
+                    <div id="map"></div>
+                    <div style="position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; gap: 6px;">
+                        <button id="toggle-globe-btn" class="btn-hud">GLOBE</button>
+                        <button id="xray-button" class="btn-hud">X-RAY</button>
+                    </div>
+                </div>
+            </section>
 
         <section class="panel">
             <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
