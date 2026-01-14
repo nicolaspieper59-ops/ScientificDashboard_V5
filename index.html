@@ -450,48 +450,49 @@
                 <div class="data-point"><span>Bruit Accéléromètre (R)</span> <span id="acc-bias">-.-- mg</span></div>
                 <div class="data-point"><span>Type de Mouvement</span><span id="bio-signature-type">--</span></div>
                 <div class="data-point"><span>Vibration (Jitter)</span><span id="vibration-jitter">--</span></div>
-<section class="panel" aria-labelledby="bubble-heading">
-    <h2 id="bubble-heading"><i class="fas fa-compass"></i> Niveau à Bulle (IMU)</h2>
-    
-    <div class="spirit-level-container" id="spirit-level" style="position: relative; width: 150px; height: 150px; background: #000; border: 2px solid var(--border); border-radius: 50%; margin: 10px auto; overflow: hidden;">
-        <div class="crosshair-h" style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: #333;"></div>
-        <div class="crosshair-v" style="position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #333;"></div>
-        
-        <div id="imu-bubble" style="position: absolute; width: 20px; height: 20px; background: var(--accent); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px var(--accent); transition: 0.1s ease-out;"></div>
-        
-        <div style="position: absolute; top: 25%; left: 25%; width: 50%; height: 50%; border: 1px dashed #222; border-radius: 50%;"></div>
-    </div>
-
-    
-
-    <div class="data-point">
-        <span>Inclinaison (Pitch)</span>
-        <span id="pitch" class="val-scientifique">-.--°</span>
-    </div>
-    <div class="data-point">
-        <span>Roulis (Roll)</span>
-        <span id="roll" class="val-scientifique">-.--°</span>
-    </div>
-</section>
-
-</div> <div class="column"> <section class="panel">
-            <h2><i class="fas fa-globe-americas"></i> POSITION & ASTRO</h2>
-    
-    <div id="minecraft-clock-container" role="timer" aria-label="Horloge céleste" style="position: relative; height: 100px; background: linear-gradient(to bottom, #001122, #000); overflow: hidden; border-radius: 4px; border: 1px solid #1a1a1a;">
-        <div id="celestial-orbit" style="position: absolute; width: 200%; height: 200%; top: 50%; left: -50%; transition: transform 1s linear;">
-            <div id="sun-element" style="position: absolute; top: 10%; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 1.5rem;">
-                <i class="fas fa-sun"></i>
+            <section class="panel" aria-labelledby="bubble-heading">
+            <h2 id="bubble-heading"><i class="fas fa-compass"></i> STABILISATION IMU (NIVEAU)</h2>
+            
+            <div class="spirit-level-container" id="spirit-level" style="position: relative; width: 120px; height: 120px; background: #000; border: 2px solid var(--border); border-radius: 50%; margin: 10px auto; overflow: hidden;">
+                <div class="crosshair-h" style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: #222;"></div>
+                <div class="crosshair-v" style="position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #222;"></div>
+                <div id="imu-bubble" style="position: absolute; width: 18px; height: 18px; background: var(--accent); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px var(--accent); transition: 0.1s ease-out;"></div>
+                <div style="position: absolute; top: 25%; left: 25%; width: 50%; height: 50%; border: 1px dashed #333; border-radius: 50%;"></div>
             </div>
-            <div id="moon-element" style="position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); color: #dddddd; font-size: 1.2rem;">
-                <i class="fas fa-moon"></i>
+
+            <div class="data-point"><span>Inclinaison (Pitch)</span><span id="pitch" class="val-scientifique">0.00°</span></div>
+            <div class="data-point"><span>Roulis (Roll)</span><span id="roll" class="val-scientifique">0.00°</span></div>
+            <div class="data-point"><span>Vibration (Jitter)</span><span id="vibration-jitter" class="val-scientifique">-- Hz</span></div>
+        </section>
+    </div> <div class="column">
+        <section class="panel">
+            <h2><i class="fas fa-globe-americas"></i> POSITIONNEMENT UKF / EKF</h2>
+            <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf" class="val-scientifique">--.-----</span></div>
+            <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf" class="val-scientifique">--.-----</span></div>
+            <div class="data-point"><span>Confiance Spatiale</span><span id="uk-certainty" class="val-scientifique">-- %</span></div>
+        </section>
+
+        <section class="panel">
+            <h2><i class="fas fa-moon"></i> HORLOGE CÉLESTE & ASTRO</h2>
+            <div id="minecraft-clock-container" style="position: relative; height: 80px; background: linear-gradient(to bottom, #001122, #000); overflow: hidden; border-radius: 4px; border: 1px solid #1a1a1a; margin-bottom: 10px;">
+                <div id="celestial-orbit" style="position: absolute; width: 200%; height: 200%; top: 50%; left: -50%;">
+                    <div id="sun-element" style="position: absolute; top: 10%; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 1.2rem;"><i class="fas fa-sun"></i></div>
+                    <div id="moon-element" style="position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); color: #dddddd; font-size: 1rem;"><i class="fas fa-moon"></i></div>
+                </div>
+                <div id="astro-phase" style="position: absolute; bottom: 5px; width: 100%; text-align: center; font-size: 0.55rem; color: #aaa;">SYNC_CÉLESTE_OK</div>
             </div>
-        </div>
-        
-        <div class="clock-display" style="position: absolute; bottom: 5px; width: 100%; text-align: center; font-size: 0.6rem; text-shadow: 1px 1px #000;">
-            <span id="astro-phase">SCAN_CÉLESTE_EN_COURS...</span>
-        </div>
-    </div>   
-                <h3>Positionnement EKF</h3>
+            
+            <div class="data-point"><span>Phase de rotation</span><span id="rotation-phase">--</span></div>
+            <div class="data-point"><span>ΔT (Relativiste)</span><span id="ast-deltat">--.- ns</span></div>
+        </section>
+
+        <section class="panel" style="flex: 1.5;">
+            <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
+            <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto; flex: 1;"></div>
+        </section>
+    </div>
+                <section class="panel">
+                <h2><i class="fas fa-ukf"></i>Positionnement EKF</h3>
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">--.-----</span></div> 
                 <div class="data-point"><span>Longitude (UKF)</span><span id="lon-ukf">---.-----</span></div>
                 <div class="data-point"><span>Altitude (UKF) (Z)</span> <span id="alt-display">---.-- m</span></div>
@@ -499,41 +500,36 @@
                 <div class="data-point"><span>Altitude Géopotentielle</span><span id="geopotential-alt"></span></div>
                 <div class="data-point"><span>Altitude Barométrique</span><span id="alt-corrected-baro">--</span></div>
                 <div class="data-point"><span>Cap (Direction)</span><span id="heading-display">--</span></div>
-                <div class="data-point"><span>Coord. X (Géocentrique)</span><span id="coord-x">--</span></div>
-                <div class="data-point"><span>Coord. Y (Géocentrique)</span><span id="coord-y">--</span></div>
-                <div class="data-point"><span>Coord. Z (Géocentrique)</span><span id="coord-z">--</span></div>
-                <div class="data-point"><span>Distance 3D Cumulée</span><span id="dist-3d">-.--- m</span></div>
-                <hr>
-                <div style="border-top:1px solid var(--border); margin-top:10px; padding-top:10px; background: rgba(0,255,136,0.02); border-radius: 4px; padding: 8px;">
+                <div class="data-point"><span>Coord. X (Radial)</span><span id="coord-x" class="val-scientifique">--</span></div>
+                <div class="data-point"><span>Coord. Y (Tang.)</span><span id="coord-y" class="val-scientifique">--</span></div>
+                <div class="data-point"><span>Coord. Z (Polaire)</span><span id="coord-z" class="val-scientifique">--</span></div>
+                <div class="data-point" style="border-top: 1px solid #222; margin-top: 5px; padding-top: 5px;">
+        <span>Distance 3D Cumulée</span><span id="dist-3d" class="val-scientifique" style="color:var(--accent)">0.000 m</span>
+    </div>
+<section class="panel" style="background: rgba(0,255,136,0.02);">
+    <h2><i class="fas fa-microchip"></i> REAL-TIME ORBITAL RENDERER</h2>
     
-    <div class="data-point" style="margin-bottom: 12px;">
-        <label for="in-alt" style="font-size: 0.6rem; color: #888; text-transform: uppercase;">Altitude_Référentielle (m)</label>
+    <div class="data-point" style="margin-bottom: 10px;">
+        <label for="in-alt" style="font-size: 0.55rem; color: #888; text-transform: uppercase;">Altitude_Réf (m)</label>
         <input id="in-alt" type="number" value="0" step="0.1" 
-               style="width:80px; background:#000; border:1px solid var(--accent); color:var(--accent); text-align:right; font-family: 'JetBrains Mono'; font-weight: bold; border-radius: 2px;">
+               style="width:70px; background:#000; border:1px solid var(--accent); color:var(--accent); text-align:right; font-family: 'JetBrains Mono'; font-weight: bold; border-radius: 2px;">
     </div>
 
-    
-
-    <div class="astro-visual-container" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <div style="font-size: 0.55rem; color: var(--accent); letter-spacing: 1px; font-weight: bold;">
-            <i class="fas fa-microchip"></i> REAL-TIME_ORBITAL_RENDERER
+    <div class="astro-visual-container" style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+        <div style="position: relative; width: 100px; height: 100px; background: #000; border-radius: 50%; border: 1px solid #1a1a1a; box-shadow: inset 0 0 10px rgba(0,255,136,0.1);">
+            <canvas id="mc-clock-canvas" width="100" height="100" style="display: block;"></canvas>
+            <div id="zenith-indicator" style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 0.4rem; color: #444;">ZÉNITH</div>
         </div>
         
-        <div style="position: relative; width: 120px; height: 120px; background: radial-gradient(circle, #0a0a10 0%, #000 70%); border-radius: 50%; border: 1px solid #1a1a1a; box-shadow: inset 0 0 15px rgba(0,255,136,0.1);">
-            <canvas id="mc-clock-canvas" width="120" height="120" style="display: block;"></canvas>
-            
-            <div id="zenith-indicator" style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 0.4rem; color: #333;">ZÉNITH</div>
-        </div>
-
-        
-
-        <div class="data-point" style="width: 100%; border-top: 1px solid #0d0d0d; pt: 4px;">
-            <span>Phase_Actuelle</span>
-            <span id="ui-celestial-phase" style="color: #fff; font-size: 0.6rem;">CALCUL...</span>
+        <div class="data-point" style="width: 100%; border-top: 1px solid #111; padding-top: 4px;">
+            <span>Phase_Céleste</span>
+            <span id="ui-celestial-phase" style="color: #fff; font-size: 0.6rem;">SYNCHRONISATION...</span>
         </div>
     </div>
-</div>
-                <h3>Temps Solaire & Sidéral</h3>
+</section>
+                    
+<section class="panel">
+    <h2><i class="fas fa-clock"></i> TEMPS SOLAIRE & SIDÉRAL</h2>                    
                 <div class="data-point"><span>Date (Astro)</span><span id="date-display-astro">--</span></div>
                 <div class="data-point"><span>Date Solaire Moyenne</span><span id="date-solar-mean">--</span></div>
                 <div class="data-point"><span>Date Solaire Vraie</span><span id="date-solar-true">--</span></div>
@@ -559,135 +555,49 @@
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
                 <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span></div>
                 <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">-.---°</span></div>    
-        </section>
-    
-    <div class="column">
-    <section class="panel">
-        <h2><i class="fas fa-wave-square"></i> SPECTROMÉTRIE</h2>
-        <div class="data-point"><span>Flux Infrarouge</span><span id="ui-ir-flux">-- mW/m²</span></div>
-        <div class="data-point"><span>Indice UV</span><span id="ui-uv-index">0.0</span></div>
-        <div class="data-point"><span>Pression Photon</span><span id="ui-photon-p">-- nPa</span></div>
-    </section>
+        <div class="column">
+            
+            <section class="panel">
+                <h2><i class="fas fa-wave-square"></i> SPECTROMÉTRIE FLUX</h2>
+                <div class="data-point"><span>Flux Infrarouge</span><span id="ui-ir-flux" class="val-scientifique">-- mW/m²</span></div>
+                <div class="data-point"><span>Indice UV</span><span id="ui-uv-index" class="val-scientifique">0.0</span></div>
+                <div class="data-point"><span>Pression Photon</span><span id="ui-photon-p" class="val-scientifique">-- nPa</span></div>
+                
+                <div class="data-point" style="border-top:1px solid #1a1a1a; padding-top:4px;">
+                    <span>Anomalie Nodale Lune</span><span id="ui-moon-node" class="val-scientifique">-.---°</span>
+                </div>
+            </section>
 
-    <section class="panel" style="flex: 2;">
-        <h2><i class="fas fa-terminal"></i> MISSION_LOG</h2>
-        <div id="anomaly-log"></div>
-        <button onclick="exportData()" style="margin-top:5px; font-size:0.6rem;">EXPORT_METRICS</button>
-    </section>
-    </div>
-    
-         <section class="panel" style="margin-top: auto;">
-            <h2><i class="fas fa-terminal"></i> JOURNAL_ANOMALIES</h2>
-            <div id="anomaly-log" style="height: 120px; background: rgba(0,0,0,0.9); border: 1px solid #1a1a1a; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 5px; overflow-y: auto; color: #00ff88;">
-                <div style="color:#666;">[SYSTEM] Standby - Waiting for Core...</div>
-            </div>
-            <button id="main-init-btn" onclick="startAdventure()" style="width: 100%; background: var(--accent); color: #000; border: none; font-weight: bold; padding: 10px; margin-top: 5px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px;">
-                Initialiser_Moteur_V17_PRO
-            </button>
-        </section> </div> </main> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+            <section class="panel" style="flex: 2; display: flex; flex-direction: column;">
+                <h2><i class="fas fa-terminal"></i> JOURNAL_MISSION_V17</h2>
+                
+                <div id="anomaly-log" style="flex: 1; background: rgba(0,0,0,0.9); border: 1px solid #1a1a1a; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 8px; overflow-y: auto; color: #00ff88; margin-bottom: 8px;">
+                    <div style="color:#666;">[SYSTEM] Standby - Waiting for Core...</div>
+                </div>
 
-<script src="lib/ephem.js"></script>
-<script src="lib/astro.js"></script>    
-<script src="gnss-dashboard-full.js"></script>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                    <button onclick="exportData()" style="font-size: 0.6rem; background: #111; color: #eee; border: 1px solid #333; padding: 5px; cursor: pointer;">EXPORT_METRICS</button>
+                    <button id="clear-log-btn" onclick="document.getElementById('anomaly-log').innerHTML=''" style="font-size: 0.6rem; background: #111; color: #eee; border: 1px solid #333; padding: 5px; cursor: pointer;">CLEAR_LOGS</button>
+                </div>
+
+                <button id="main-init-btn" onclick="startAdventure()" style="width: 100%; background: var(--accent); color: #000; border: none; font-weight: bold; padding: 12px; margin-top: 10px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; border-radius: 4px; transition: 0.2s;">
+                    Initialiser_Moteur_V17_PRO
+                </button>
+            </section> 
+
+        </div> </main> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <script src="lib/ephem.js"></script>
+    <script src="lib/astro.js"></script>    
+    <script src="gnss-dashboard-full.js"></script>
 
 <script>
-/**
- * LOGIQUE DE MISE À JOUR ET FORMATAGE (CORRIGÉE)
- */
-function updateDisplay(id, value, prec = 6) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    
-    let n = Number(value);
-    if (isNaN(n) || value === null) { 
-        el.innerText = "--"; 
-        return; 
-    }
+        // Logique d'initialisation spécifique à la V17
+        console.log("METROLOGY_CORE: V17 Loaded. Ready for orbital fusion.");
+    </script>
+</body>
+</html>
 
-    // Bascule automatique en notation scientifique pour la précision extrême
-    if (Math.abs(n) < 0.0001 && n !== 0) {
-        el.innerText = n.toExponential(prec);
-    } else {
-        el.innerText = n.toLocaleString('fr-FR', { 
-            maximumFractionDigits: prec, 
-            minimumFractionDigits: 2 
-        });
-    }
-}
-
-/**
- * SÉQUENCE D'INITIALISATION MISSION V17
- */
-let wakeLock = null;
-
-async function startAdventure() {
-    const log = document.getElementById('anomaly-log');
-    const btn = document.getElementById('main-init-btn');
-    
-    console.log("Séquence V17 lancée...");
-    if(log) log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > INITIALISATION_CORE...</div>` + log.innerHTML;
-
-    // 1. Activation WakeLock (Maintien de l'écran pour suivi GNSS long)
-    if ('wakeLock' in navigator) {
-        try {
-            wakeLock = await navigator.wakeLock.request('screen');
-            updateStatus("LOCKED_ON", "var(--accent)");
-            if(log) log.innerHTML = `<div style="color:var(--accent)">[OK] WAKELOCK_SCREEN_ACTIVE</div>` + log.innerHTML;
-        } catch (err) {
-            console.warn("WakeLock Error:", err);
-        }
-    }
-
-    // 2. Lancement du Moteur Physique
-    try {
-        if (typeof initCore === "function") {
-            initCore();
-        } else if (window.METROLOGY && typeof METROLOGY.startSystem === "function") {
-            METROLOGY.startSystem();
-        } else {
-            throw new Error("MOTEUR_NON_DÉTECTÉ");
-        }
         
-        if(log) log.innerHTML = `<div style="color:var(--accent)">[OK] ENGINE_V17_STABLE</div>` + log.innerHTML;
-        btn.style.display = "none"; // Cacher le bouton après succès
-        updateStatus("ACTIVE_MISSION", "var(--accent)");
-
-    } catch (e) {
-        if(log) log.innerHTML = `<div style="color:var(--critical)">[ERREUR] ${e.message}</div>` + log.innerHTML;
-        updateStatus("CRITICAL_FAIL", "var(--critical)");
-        return;
-    }
-
-    // 3. Initialisation des Graphiques & Monitoring
-    if (typeof initCharts === "function") initCharts();
-    if (typeof enforceMemoryLimits === "function") setInterval(enforceMemoryLimits, 5000);
-}
-
-// Utilitaire Statut Header
-function updateStatus(text, color) {
-    const statusEl = document.getElementById('reality-status-main');
-    if (statusEl) {
-        statusEl.innerText = text;
-        statusEl.style.color = color;
-    }
-}
-
-// Gestion automatique du WakeLock lors du retour sur l'onglet
-document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
-    }
-});
-
-// Redimensionnement fluide des Canvas
-window.addEventListener('resize', () => {
-    document.querySelectorAll('canvas').forEach(c => {
-        c.width = c.clientWidth;
-        c.height = c.clientHeight;
-        // Redessiner si une fonction de dessin est liée
-        if (typeof drawAll === "function") drawAll(); 
-    });
-});
-</script>
