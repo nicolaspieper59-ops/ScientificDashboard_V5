@@ -22,14 +22,14 @@
         --critical: #ff3300;
     }
 
-    * { box-sizing: border-box; } /* Crucial pour éviter le débordement */
+    * { box-sizing: border-box; outline: none; }
 
     body, html {
         margin: 0; padding: 0;
         width: 100vw; height: 100vh;
         background: var(--bg); color: var(--text);
         font-family: 'JetBrains Mono', monospace;
-        overflow: hidden; /* Désactive le scroll global */
+        overflow: hidden; /* Désactivation totale du scroll */
     }
 
     header {
@@ -39,18 +39,18 @@
 
     .dashboard-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr); /* 3 colonnes égales */
-        gap: 10px; padding: 10px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px; padding: 8px;
         height: calc(100vh - 50px);
     }
 
-    .column { display: flex; flex-direction: column; gap: 10px; height: 100%; min-width: 0; }
+    .column { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; }
 
     .panel {
         background: var(--card); border: 1px solid var(--border);
         padding: 10px; border-radius: 4px;
         display: flex; flex-direction: column;
-        flex: 1; min-height: 0; /* Permet aux panneaux de s'ajuster sans pousser */
+        flex: 1; min-height: 0; /* Important pour le redimensionnement */
     }
 
     .panel h2 {
@@ -60,9 +60,10 @@
 
     .data-point {
         display: flex; justify-content: space-between;
-        font-size: 0.65rem; margin: 2px 0;
+        font-size: 0.65rem; margin: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
     }
 
+    .val { color: #fff; font-weight: bold; }
     #anomaly-log { flex: 1; overflow-y: auto; font-size: 0.6rem; color: #888; }
 </style>
 </head>
@@ -70,40 +71,58 @@
 <body class="dark-mode">
     <div id="poi-alert" style="display:none; position: fixed; top: 60px; right: 20px; background: var(--critical); color: #fff; padding: 10px; z-index: 9999;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>
 
-    <header id="master-hud-fixed">
+    <header id="master-hud-fixed" style="height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border);">
         <div class="header-item">
-            <div class="label">VITESSE_RÉELLE</div>
-            <div id="main-speed" style="font-size: 1.5rem; color: var(--accent); font-weight: bold;">-.--</div>
+            <div class="label" style="font-size: 0.6rem; color: #888;">VITESSE_RÉELLE</div>
+            <div style="display: flex; align-items: baseline; gap: 5px;">
+                <div id="main-speed" style="font-size: 1.5rem; color: var(--accent); font-weight: bold;">0.00</div>
+                <small style="font-size: 0.7rem;">km/h</small>
+            </div>
         </div>
 
-        <div class="header-item" style="align-items: center;">
-            <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+        <div class="header-item">
+            <button id="start-btn-final" onclick="startAdventure()" style="background: #1a1a1a; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.3s;">
                 🚀 INITIALISER_V17
             </button>
         </div>
 
- <div class="header-item" style="text-align: right;">
-            <div class="label">SYSTÈME</div>
-            <div id="reality-status-main" style="color:var(--accent); font-size:0.7rem;">STATUS: STANDBY</div>
+        <div class="header-item" style="text-align: right;">
+            <div class="label" style="font-size: 0.6rem; color: #888;">SYSTÈME</div>
+            <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                <div id="v-light-sensor" style="width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow: 0 0 8px var(--accent);"></div>
+                <div id="reality-status-main" style="color:var(--accent); font-size:0.7rem; font-weight: bold;">STATUS: STANDBY</div>
+            </div>
         </div>
     </header>
 
-<div class="column">
-    <section class="panel" style="flex: 2;">
-        <h2><i class="fas fa-map"></i> CARTOGRAPHIE_GNSS</h2>
-        <div id="map" style="flex: 1; background: #000;"></div>
-        <div class="data-point"><span>Lat/Lon</span><span id="ui-lat">--</span> / <span id="ui-lon">--</span></div>
-    </section>
+    <main class="dashboard-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; height: calc(100vh - 60px); overflow: hidden;">
+        
+        <div class="column" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
+            
+            <section class="panel" style="flex: 2; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--border); padding: 15px;">
+                <h2 style="font-size: 0.8rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase;"><i class="fas fa-map"></i> CARTOGRAPHIE_GNSS</h2>
+                <div id="map" style="flex: 1; background: #000; border-radius: 4px; border: 1px solid #111;"></div>
+                <div class="data-point" style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.75rem;">
+                    <span>Coordonnées WGS84</span>
+                    <span class="val" style="color: #fff;"><span id="ui-lat">0.0000</span> / <span id="ui-lon">0.0000</span></span>
+                </div>
+            </section>
 
-    <section class="panel">
-        <h2><i class="fas fa-broadcast-tower"></i> ÉCHOLOCALISATION</h2>
-        <div class="data-point"><span>Echo-Delay</span><span id="ui-echo-dist">-- ms</span></div>
-        <div class="data-point" style="color:var(--accent)">
-            <span>V-Doppler Sonar</span><span id="ui-v-sonar">-.--- m/s</span>
+            <section class="panel" style="flex: 1; background: var(--card); border: 1px solid var(--border); padding: 15px;">
+                <h2 style="font-size: 0.8rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase;"><i class="fas fa-broadcast-tower"></i> ÉCHOLOCALISATION</h2>
+                <div class="data-point" style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.75rem;">
+                    <span>Echo-Delay (Reflexion)</span>
+                    <span class="val" id="ui-echo-dist" style="color: #fff;">-- ms</span>
+                </div>
+                <div class="data-point" style="display: flex; justify-content: space-between; padding: 5px; background: rgba(0,255,136,0.05); border-radius: 4px; font-size: 0.8rem;">
+                    <span style="color:var(--accent); font-weight: bold;">V-Doppler Sonar</span>
+                    <span class="val" id="ui-v-sonar" style="color:var(--accent); font-weight: bold;">0.000 m/s</span>
+                </div>
+            </section>
         </div>
-    </section>
-</div>
 
+    </main>
+   
         <section class="panel">
             <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
@@ -121,74 +140,82 @@
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
                 <div class="data-point"><span>Temps Terrestre (TT)</span><span id="ast-tt">--:--:--</span></div>
                 <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">--.-s</span></div>
+          <div class="column">
+    <section class="panel" id="head-controls-panel">
+        <h2><i class="fas fa-terminal"></i> CENTRE_DE_COMMANDE_V17</h2>
+        
+        <div id="reality-status" style="font-weight: bold; font-size: 0.6rem; color: var(--accent); margin-bottom: 8px; border: 1px solid #1a1a1a; padding: 4px; text-align: center;">
+            MODE : ANALYSE_SYSTÈME_ACTIVE
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px;">
+            <button id="gps-pause-toggle" style="background: #ffcc00; color: #000; font-weight: bold; font-size: 0.6rem;">▶️ MARCHE GPS</button>
+            <select id="freq-select" style="background: #111; color: #fff; border: 1px solid var(--border); font-size: 0.6rem;">
+                <option value="HIGH_FREQ">HAUTE_FRÉQ (10Hz)</option>
+                <option value="LOW_FREQ">BASSE_FRÉQ (1Hz)</option>
+            </select>
+            <button id="emergency-stop" style="background: var(--critical); color: #fff; font-size: 0.6rem;" onclick="stopSystem()">ARRÊT URGENCE</button>
+            <button id="reset-all-btn" style="border: 1px solid var(--critical); color: var(--critical); font-size: 0.6rem;" onclick="resetAll()">RÉINIT_TOTAL</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div class="control-group" style="border-top: 1px solid #1a1a1a; padding-top: 5px;">
+                <label class="label">Filtrage Kalman (Milieu)</label>
+                <select id="environment-select" style="width: 100%; background: #000; color: var(--accent); border: 1px solid #333;">
+                    <option value="NORMAL">Normal (x1.0)</option>
+                    <option value="FOREST">Dense / Forêt (x2.5)</option>
+                    <option value="CONCRETE">Tunnel / Grotte (x7.0)</option>
+                </select>
+            </div>
+
+            <div class="control-group" style="border-top: 1px solid #1a1a1a; padding-top: 5px;">
+                <label class="label">Référentiel Gravitationnel</label>
+                <select id="celestial-body-select" style="width: 100%; background: #000; color: #fff;">
+                    <option value="EARTH">TERRE (9.81 m/s²)</option>
+                    <option value="MOON">LUNE (1.62 m/s²)</option>
+                    <option value="ROTATING">STATION (Centrifuge)</option>
+                </select>
+                <div id="station-params" style="background: rgba(0,255,136,0.05); padding: 5px; border-radius: 2px; margin-top: 5px; display: none;">
+                    <div class="data-point"><span>Rayon (m)</span><input type="number" id="rotation-radius" value="100" style="width:50px;"></div>
+                    <div class="data-point"><span>ω (rad/s)</span><input type="number" id="angular-velocity" value="0.0" step="0.1" style="width:50px;"></div>
                 </div>
-    <section class="panel" aria-labelledby="head-controls">
-    <h2 id="head-controls"><i class="fas fa-terminal"></i> CENTRE_DE_COMMANDE_V17</h2>
+                
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div><label class="label">Masse (kg)</label><input type="number" id="in-mass" value="75.0" style="width:100%;"></div>
+                <div><label class="label">Cx Aéro</label><input type="number" id="in-cx" value="0.45" step="0.01" style="width:100%;"></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2><i class="fas fa-microchip"></i> NAVIGATION INERTIELLE (EKF)</h2>
+        <div class="data-grid">
+            <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz" class="tabular">0.00 / 0.00 / 0.00</span></div>
+            <div class="data-point"><span>Biais Accel.</span><span id="bias-acc-val" class="warning-text">0.000000</span></div>
+            <div class="data-point"><span>Confiance Kalman</span><span id="kalman-p-certainty">100.00 %</span></div>
+        </div>
+        
+    </section>
+</div>
+
+<div class="column">
+    <section class="panel">
+        <h2><i class="fas fa-camera-retro"></i> CAPTEURS ENVIRONNEMENTAUX</h2>
+        <div class="data-point"><span>Luminosité (Lux)</span><span id="env-lux" class="val-scientifique">--</span></div>
+        <div class="data-point"><span>Indice UV / IR</span><span id="ui-uv-index" class="val-scientifique">0.00</span></div>
+        <div class="data-point"><span>Pression Photonique</span><span id="ui-photon-p" class="val-scientifique">-- nPa</span></div>
+        <div class="data-point"><span>Niveau Sonore</span><span id="sound-level" class="val-scientifique">-- dB</span></div>
+        
+    </section>
     
-    <div id="reality-status" style="font-weight: bold; font-size: 0.6rem; color: var(--accent); margin-bottom: 8px; border: 1px solid #1a1a1a; padding: 4px; text-align: center;">
-        MODE : ANALYSE_SYSTÈME_ACTIVE
-    </div>
-
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px;">
-        <button id="gps-pause-toggle" style="background: #ffcc00; color: #000; font-weight: bold;">▶️ MARCHE GPS</button>
-        <select id="freq-select" aria-label="Fréquence GPS" style="background: #111; color: #fff; border: 1px solid var(--border);">
-            <option value="HIGH_FREQ">HAUTE_FRÉQ (10Hz)</option>
-            <option value="LOW_FREQ">BASSE_FRÉQ (1Hz)</option>
-        </select>
-        
-        <button id="emergency-stop" style="background: var(--critical); color: #fff;" onclick="stopSystem()">ARRÊT URGENCE</button>
-        <button id="toggle-theme-btn" onclick="toggleTheme()">JOUR / NUIT</button>
-        <button id="reset-dist-btn" onclick="resetDistance()">RESET DISTANCE</button>
-        <button id="reinit-vmax-btn" onclick="resetMaxSpeed()">RESET V-MAX</button>
-        <button id="log-export-btn" onclick="exportData()">EXPORT LOGS</button>
-        <button id="reset-all-btn" style="border: 1px solid var(--critical); color: var(--critical);" onclick="resetAll()">RÉINIT_TOTAL</button>
-    </div>
-
-    <div style="display: flex; flex-direction: column; gap: 8px;">
-        
-        <div class="control-group" style="border-top: 1px solid #1a1a1a; pt: 5px;">
-            <label class="label">Filtrage Kalman (Environnement)</label>
-            
-            <select id="environment-select" style="width: 100%; background: #000; color: var(--accent); border: 1px solid #333;">
-                <option value="NORMAL">Normal (Standard x1.0)</option>
-                <option value="FOREST">Forêt / Dense (x2.5)</option>
-                <option value="CONCRETE">Grotte / Tunnel (x7.0)</option>
-                <option value="METAL">Métal / Bâtiment (x5.0)</option>
-            </select>
-            <div class="data-point"><span>Facteur actuel</span><span id="env-factor" class="val-scientifique">Normal (x1.0)</span></div>
-        </div>
-
-        <div class="control-group" style="border-top: 1px solid #1a1a1a; pt: 5px;">
-            <label class="label">Gravité & Corps Céleste</label>
-            
-            <select id="celestial-body-select" style="width: 100%; background: #000; color: #fff;">
-                <option value="EARTH">TERRE (9.806 m/s²)</option>
-                <option value="MOON">LUNE (1.622 m/s²)</option>
-                <option value="MARS">MARS (3.711 m/s²)</option>
-                <option value="ROTATING">STATION SPATIALE (Centrifuge)</option>
-            </select>
-            <div class="data-point"><span>Gravité de Base</span><span id="gravity-base" class="val-scientifique">-.----- m/s²</span></div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div>
-                <label class="label">Masse (kg)</label>
-                <input type="number" id="in-mass" value="75.00" style="width: 100%; background: #111; color: var(--accent); border: 1px solid #333;">
-            </div>
-            <div>
-                <label class="label">Cx Aéro</label>
-                <input type="number" id="in-cx" value="0.45" step="0.01" style="width: 100%; background: #111; color: var(--accent); border: 1px solid #333;">
-            </div>
-        </div>
-
-        <div id="station-params" style="background: rgba(0,255,136,0.05); padding: 5px; border-radius: 2px;">
-            <div class="data-point"><span>Rayon (m)</span><input type="number" id="rotation-radius" value="100" style="width:60px;"></div>
-            <div class="data-point"><span>Vitesse Ang. (rad/s)</span><input type="number" id="angular-velocity" value="0.0" step="0.1" style="width:60px;"></div>
-        </div>
-
-        <button id="distance-ratio-toggle-btn" style="width: 100%; background: #111; font-size: 0.6rem;">Rapport Distance: SURFACE (1.000)</button>
-        <button id="nether-toggle-btn" style="width: 100%; background: #111; font-size: 0.6rem; border-color: #ff3300; color: #ff3300;">Mode Nether: DÉSACTIVÉ (1:1)</button>
-    </div>
+    <section class="panel" style="flex: 2;">
+        <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
+        <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto;"></div>
+    </section>
+    </div>      
+    
     </section>
     <h2><i class="fas fa-microchip"></i> Navigation Inertielle (EKF 21-États)</h2>
     <div class="data-grid">
@@ -267,59 +294,49 @@
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
                 <div class="data-point"><span>Horizon Dist. (km)</span><span id="horizon-distance-km">-.---</span> </div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
-    </section> 
-</div> 
+            <div class="column">
     
-    <section class="panel" style="flex: 1.5; display: flex; flex-direction: column; min-height: 300px;">
-        <h2><i class="fas fa-map-marked-alt"></i> CARTOGRAPHIE_GNSS_CORE</h2>
-        <div id="map-container" style="flex: 1; position: relative; border: 1px solid var(--border); background: #000;">
-            <div id="map" style="height: 100%;"></div>
-            
-            <div style="position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 5px;">
-                <button id="toggle-globe-btn" class="btn-hud">GLOBE_VIEW</button>
-                <button id="xray-button" class="btn-hud" style="color:#ff3300; border-color:#ff3300;">X-RAY_SCAN</button>
-            </div>
-        </div>
-    </section>
-
-    <section class="panel" style="border-left: 3px solid var(--accent);">
-        <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY_METRICS</h2>
-        <div class="data-point">
-            <span>Précision GPS (Acc)</span>
-            <span id="ui-gps-accuracy" class="val-scientifique">-- m</span>
-        </div>
-        <div class="data-point">
-            <span>Fréquence Vibrations</span>
-            <span id="ui-vrt" class="val-scientifique">-.-- Hz</span>
-        </div>
-        <div class="data-point">
-            <span>Promenade Micro.</span>
-            <span id="total-path-inf" class="val-scientifique">--</span>
-        </div>
-    </section>
-
     <section class="panel">
         <h2><i class="fas fa-wave-square"></i> SIGNAL_PROCESSING_UNIT</h2>
         
-        <div class="chart-container" style="margin-bottom: 10px;">
+        <div class="chart-container" style="margin-bottom: 8px;">
             <div class="label" style="font-size: 0.5rem; color: #666;">RAW_VIBRATION_DATA</div>
-            <canvas id="canvas-vibration" style="width: 100%; height: 80px; background: #000; border: 1px solid #111;"></canvas> 
+            <canvas id="canvas-vibration" style="width: 100%; height: 60px; background: #000; border: 1px solid #111;"></canvas> 
         </div>
 
-        
-
         <div class="chart-container">
-            <div class="label" style="font-size: 0.5rem; color: var(--accent);">CLEAN_FILTERED_SIGNAL</div>
-            <canvas id="canvas-clean" style="width: 100%; height: 80px; background: #000; border: 1px solid #111;"></canvas>
+            <div class="label" style="font-size: 0.5rem; color: var(--accent);">CLEAN_FILTERED_SIGNAL (EKF)</div>
+            <canvas id="canvas-clean" style="width: 100%; height: 60px; background: #000; border: 1px solid #111;"></canvas>
+            
             <div class="data-point" style="margin-top: 5px; border-top: 1px solid #1a1a1a;">
-                <span>SNR Global (Signal/Bruit)</span>
+                <span>SNR Global (Rapport S/B)</span>
                 <span id="snr-ratio" class="val-scientifique">-- dB</span>
             </div>
         </div>
-
         
     </section>
-</div>
+
+    <section class="panel">
+        <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY_METRICS</h2>
+        <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy" class="val-scientifique">-- m</span></div>
+        <div class="data-point"><span>Fréquence Vibrations</span><span id="ui-vrt" class="val-scientifique">0.00 Hz</span></div>
+        <div class="data-point"><span>Force G Résultante</span><span id="g-force-resultant" class="val-scientifique">-.--- G</span></div>
+    </section>
+
+    <section class="panel" aria-labelledby="weather-heading">
+        <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> MÉTÉO & BIO-SVT</h2>
+        <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">ACTIF</span></div>
+        <div class="data-point"><span>Pression Atmo.</span><span id="ui-pressure">--- hPa</span></div>
+        <div class="data-point"><span>Température Locale</span><span id="ui-temp">--.- °C</span></div>
+        <div class="data-point"><span>Humidité Air</span><span id="ui-humidity">-- %</span></div>
+        
+    </section>
+
+    <section class="panel" style="flex: 1.2;">
+        <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
+        <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto; flex: 1;"></div>
+    </section>
+    </div>
             <h3>Météo/Bio/SVT</h3>
             <section class="panel" aria-labelledby="weather-heading">
                 <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
