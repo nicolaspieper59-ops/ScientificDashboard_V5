@@ -228,10 +228,9 @@
             <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz" class="tabular">0.00 / 0.00 / 0.00</span></div>
             <div class="data-point"><span>Biais Accel.</span><span id="bias-acc-val" class="warning-text">0.000000</span></div>
             <div class="data-point"><span>Confiance Kalman</span><span id="kalman-p-certainty">100.00 %</span></div>
-        </div>
-        
-    </section>
 </div>
+    </section>
+</div> 
 
 <div class="column">
     <section class="panel">
@@ -256,8 +255,9 @@
         <div class="data-point"><span>Biais Accéléromètre</span><span id="bias-acc-val" class="warning-text">-.------</span></div>
         <div class="data-point"><span>Dérive Gyroscope</span><span id="bias-gyro-val" class="warning-text">-.------</span></div>
         <div class="data-point"><span>Confiance Matrice P</span><span id="kalman-p-certainty">---.-- %</span></div>
-    </div>
-</section>       
+</div>
+    </section>
+</div>       
             <section class="panel" aria-labelledby="env-sensors-heading">
                 <h2 id="env-sensors-heading"><i class="fas fa-camera-retro"></i> Capteurs Environnementaux </h2>
                 <div class="data-point"><span>Luminosité (Lux/Poche)</span><span id="env-lux">--</span></div>
@@ -271,12 +271,14 @@
         </section>
 
         <section class="panel">
-            <h2><i class="fas fa-tachometer-alt"></i> Vitesse & Physique</h2>
-            <div class="data-point" style="background: rgba(0, 255, 255, 0.1); border-left: 3px solid #00ffff; padding: 5px;">
-                <span style="color: #00ffff; font-weight: bold;">🚀 V-COSMIQUE</span>
-                <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 5px #00ffff; font-weight: bold;">-- km/h</span>
-                </div>         
-                <h3>Physique & Relativité</h3>
+        <h2><i class="fas fa-tachometer-alt"></i> VITESSE & MÉCANIQUE</h2>
+        
+        <div class="data-point" style="background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.2); padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+            <span style="color: #00ffff; font-weight: bold; font-size: 0.6rem;"><i class="fas fa-rocket"></i> V-COSMIQUE</span>
+            <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 8px #00ffff; font-weight: bold; font-size: 0.8rem;">-- km/h</span>
+        </div>
+
+        <div style="font-size: 0.55rem; color: #555; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px;">Physique & Relativité</div>         
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">-.-- m/s</span></div>
                 <div class="data-point"><span>Vitesse Brute (m/s)</span><span id="speed-raw-ms">-.-- m/s</span></div> 
@@ -308,10 +310,12 @@
                 <div class="data-point"><span>Dérive Totale (RR+RG)</span><span id="ui-lorentz">-.---------- ns/s</span></div>   
                 <div class="data-point"><span>Altitude (Ref. Géoïde)</span><input id="in-alt" type="text" value="0" style="width: 50px; background: none; border: 1px solid var(--border); color: var(--accent); text-align: right;"> 
                 <div class="data-point"><span>Dérive Gravitationnelle</span><span id="ui-grav-dilation">-.---------- ns/s</span></div>
-                </section>
+                </div>
+    </section>
 
-                <section class="panel">
+    <section class="panel">
                 <h2><i class="fas fa-ruler-combined"></i> Distance & Parcours</h2>
+                <div class="data-point" style="background: rgba(0,255,136,0.05); padding: 5px; border-radius: 2px;">
                 <div class="data-point"><span>Distance Totale 3D</span> <span id="total-distance-3d-1">-.---- km</span></div>
                 <div class="data-point"><span>Distance Absolue en nm</span> <span id="distance-3d-precise-ukf">-.--------m</span></div>
                 <div class="data-point"><span>Rapport de Distance (Alt/Nether)</span><span id="distance-ratio">-.---</span></div>
@@ -323,62 +327,70 @@
                 <div class="data-point"><span>Distance (sem-lumière)</span><span id="distance-light-week">-.--e+-- sem</span></div>
                 <div class="data-point"><span>Distance (mois-lumière)</span><span id="distance-light-month">-.--e+-- mois</span></div>
                 <div class="data-point"><span>Distance (al-lumière)</span><span id="distance-light-year">-.--e+-- année</span></div>
+                <div style="margin: 8px 0; border-left: 2px solid #333; padding-left: 8px;">    
                 <div class="data-point"><span>Distance UA</span><span id="ui-sun-dist">-.---------- UA</span></div>    
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
+                <div class="data-point" style="border-top: 1px solid #1a1a1a; padding-top: 5px;">    
                 <div class="data-point"><span>Horizon Dist. (km)</span><span id="horizon-distance-km">-.---</span> </div>
-                <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility">--</span></div>
-            <div class="column">
-    
+                <div class="data-point">
+            <span>Visibilité Cible</span>
+            <span id="horizon-target-visibility" class="val-scientifique">-- %</span>
+        </div>
+    </section> </div> <div class="column">
     <section class="panel">
         <h2><i class="fas fa-wave-square"></i> SIGNAL_PROCESSING_UNIT</h2>
         
-        <div class="chart-container" style="margin-bottom: 8px;">
-            <div class="label" style="font-size: 0.5rem; color: #666;">RAW_VIBRATION_DATA</div>
-            <canvas id="canvas-vibration" style="width: 100%; height: 60px; background: #000; border: 1px solid #111;"></canvas> 
+        <div class="chart-container" style="height: 80px; background: rgba(0,0,0,0.4); margin-bottom: 10px; border: 1px solid #1a1a1a; position: relative;">
+            <canvas id="ui-signal-wave" style="width: 100%; height: 100%;"></canvas>
+            <div style="position: absolute; top: 2px; right: 5px; font-size: 0.5rem; color: var(--accent);">FFT_ACTIVE</div>
         </div>
 
-        <div class="chart-container">
-            <div class="label" style="font-size: 0.5rem; color: var(--accent);">CLEAN_FILTERED_SIGNAL (EKF)</div>
-            <canvas id="canvas-clean" style="width: 100%; height: 60px; background: #000; border: 1px solid #111;"></canvas>
-            
-            <div class="data-point" style="margin-top: 5px; border-top: 1px solid #1a1a1a;">
-                <span>SNR Global (Rapport S/B)</span>
-                <span id="snr-ratio" class="val-scientifique">-- dB</span>
-            </div>
+        <div class="data-point">
+            <span>SNR Global (Rapport S/B)</span>
+            <span id="ui-snr-db" class="val-scientifique" style="color: var(--accent);">-- dB</span>
+        </div>
+        
+        <div class="data-point">
+            <span>Fréquence d'Échantillonnage</span>
+            <span id="ui-sampling-rate" class="val-scientifique">-- Hz</span>
         </div>
         
     </section>
 
-    <section class="panel">
+<section class="panel">
         <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY_METRICS</h2>
         <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy" class="val-scientifique">-- m</span></div>
         <div class="data-point"><span>Fréquence Vibrations</span><span id="ui-vrt" class="val-scientifique">0.00 Hz</span></div>
-        <div class="data-point"><span>Force G Résultante</span><span id="g-force-resultant" class="val-scientifique">-.--- G</span></div>
+        <div class="data-point"><span>Force G Résultante</span><span id="g-force-resultant" class="val-scientifique">1.000 G</span></div>
     </section>
 
     <section class="panel" aria-labelledby="weather-heading">
         <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> MÉTÉO & BIO-SVT</h2>
-        <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">ACTIF</span></div>
-        <div class="data-point"><span>Pression Atmo.</span><span id="ui-pressure">--- hPa</span></div>
-        <div class="data-point"><span>Température Locale</span><span id="ui-temp">--.- °C</span></div>
-        <div class="data-point"><span>Humidité Air</span><span id="ui-humidity">-- %</span></div>
-        
+        <div class="data-point"><span>Statut Météo</span><span id="statut-meteo" style="color:var(--accent)">ACTIF</span></div>
+        <div class="data-point"><span>Pression Atmo.</span><span id="ui-pressure" class="val-scientifique">--- hPa</span></div>
+        <div class="data-point"><span>Température Locale</span><span id="ui-temp" class="val-scientifique">--.- °C</span></div>
+        <div class="data-point"><span>Humidité Air</span><span id="ui-humidity" class="val-scientifique">-- %</span></div>
+        <div class="data-point"><span>Densité de l'air</span><span id="air-density" class="val-scientifique">-.--- kg/m³</span></div>
     </section>
 
-    <section class="panel" style="flex: 1.2;">
+    <section class="panel" style="flex: 1.2; display: flex; flex-direction: column;">
         <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
-        <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto; flex: 1;"></div>
+        <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto; flex: 1; font-family: 'JetBrains Mono'; color: #888;">
+            <div>[SYSTEM] Initialisation de la Colonne 3 terminée...</div>
+        </div>
     </section>
-    </div>
-            <h3>Météo/Bio/SVT</h3>
-            <section class="panel" aria-labelledby="weather-heading">
-                <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> Météo & BioSVT</h2>
+
+</div>
+
+                <section class="panel" aria-labelledby="weather-heading">
+                <h2 id="weather-heading"><i class="fas fa-microscope"></i> MÉTMÉTRIE & BIO-LOGIC</h2>
                 <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">INACTIF</span></div>
                 <div class="data-point"><span>Température Air</span><span id="air-temp-c">--</span></div>
                 <div class="data-point"><span>Pression Atmosphérique</span><span id="pressure-hpa">--</span></div>
                 <div class="data-point"><span>Humidité Relative</span><span id="humidity-perc">--</span></div>
                 <div class="data-point"><span>Densité de l'air</span><span id="air-density">-.--- kg/m³</span></div>
                 <div class="data-point"><span>Point de Rosée</span><span id="dew-point">--</span></div>
+                <hr style="border:0; border-top:1px solid var(--border); margin: 5px 0;">    
                 <div class="data-point"><span>Gradient Thermique</span><span id="temp-gradient">-.-°C/km</span></div>
                 <div class="data-point"><span>Source Pression</span><span id="pressure-filter-status">Initialisation...</span></div>
                 <div class="data-point"><span>Humidité Absolue </span><span id="abs-humidity">--</span></div>
@@ -519,11 +531,7 @@
             <div class="data-point"><span>ΔT (Relativiste)</span><span id="ast-deltat">--.- ns</span></div>
         </section>
 
-        <section class="panel" style="flex: 1.5;">
-            <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
-            <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto; flex: 1;"></div>
-        </section>
-    </div>
+        
                 <section class="panel">
                 <h2><i class="fas fa-ukf"></i>Positionnement EKF</h3>
                 <div class="data-point"><span>Latitude (UKF)</span><span id="lat-ukf">--.-----</span></div> 
@@ -549,7 +557,13 @@
     </div>
 
     <div class="astro-visual-container" style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-        <div style="position: relative; width: 100px; height: 100px; background: #000; border-radius: 50%; border: 1px solid #1a1a1a; box-shadow: inset 0 0 10px rgba(0,255,136,0.1);">
+        <div style="position: relative; width: 100px; height: 100px; background: #000; border-radius: 50%; border: 1px solid #1a1a1a; bo<section class="panel" style="flex: 1.5;">
+        <h2><i class="fas fa-terminal"></i> MISSION_TERMINAL</h2>
+        <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto; flex: 1; color: #aaa;">
+            <div>[OK] Moteur V17 prêt.</div>
+        </div>
+    </section>
+</div>      
             <canvas id="mc-clock-canvas" width="100" height="100" style="display: block;"></canvas>
             <div id="zenith-indicator" style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 0.4rem; color: #444;">ZÉNITH</div>
         </div>
