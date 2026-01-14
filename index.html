@@ -9,118 +9,61 @@
     <link rel="stylesheet" href="leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-<style>
-    :root {
-    --bg: #030303; 
-    --card: rgba(10, 10, 12, 0.9); 
-    --border: #1a1a1f;
-    --text: #e0e0e0; 
-    --accent: #00ff88; 
-    --critical: #ff3300;
-    --panel-gap: 8px;
-}
 
-body, html {
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    height: 100vh;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    overflow: hidden; /* Désactive le scroll global */
-}
-
-/* HEADER FIXE */
-#master-hud-fixed {
-    height: 50px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--card);
-}
-
-/* GRILLE PRINCIPALE DYNAMIQUE */
-main.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 3 colonnes égales */
-    gap: var(--panel-gap);
-    padding: var(--panel-gap);
-    height: calc(100vh - 60px); /* Hauteur totale moins le header */
-    box-sizing: border-box;
-}
-
-/* COLONNE FLEXIBLE */
-.column {
-    display: flex;
-    flex-direction: column;
-    gap: var(--panel-gap);
-    height: 100%;
-    overflow: hidden;
-}
-
-/* PANNEAUX AUTO-AJUSTABLES */
-.panel {
-    background: var(--card);
-    border: 1px solid var(--border);
-    padding: 10px;
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    flex: 1; /* Chaque panneau prend une part égale de la hauteur */
-    min-height: 0; /* Important pour permettre le rétrécissement */
-}
-
-.panel h2 {
-    margin: 0 0 8px 0;
-    font-size: 0.7rem;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 1px solid #1a1a1a;
-    padding-bottom: 4px;
-}
 
 /* AJUSTEMENT DES COMPOSANTS INTERNES */
-.data-point {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.65rem; /* Police plus petite pour tout faire tenir */
-    margin: 2px 0;
-    line-height: 1.2;
-}
-
-canvas {
-    width: 100% !important;
-    height: auto !important;
-    flex-grow: 1; /* Les graphiques mangent l'espace restant */
-    max-height: 120px;
-}
-
-/* CAS PARTICULIER : LA CARTE */
-#map-container {
-    flex: 2; /* Donne plus d'importance à la carte (2 parts de hauteur) */
-    min-height: 150px;
-}
-
-/* JOURNAL D'ANOMALIES */
-#anomaly-log {
-    flex: 1;
-    font-size: 0.6rem;
-    background: rgba(0,0,0,0.5);
-    overflow-y: auto; /* Autorise le scroll uniquement dans les logs */
-}
-
-/* RESPONSIVE : PASSAGE EN 1 COLONNE SI ÉCRAN TROP PETIT (Mobile) */
-@media (max-width: 900px) {
-    main.dashboard-grid {
-        grid-template-columns: 1fr;
-        overflow-y: auto; /* Scroll réactivé sur mobile uniquement */
+<style>
+    :root {
+        --bg: #020202;
+        --card: rgba(15, 15, 20, 0.98);
+        --border: #222;
+        --text: #e0e0e0;
+        --accent: #00ff88; 
+        --critical: #ff3300;
     }
-    body { overflow: auto; }
-        }
+
+    * { box-sizing: border-box; } /* Crucial pour éviter le débordement */
+
+    body, html {
+        margin: 0; padding: 0;
+        width: 100vw; height: 100vh;
+        background: var(--bg); color: var(--text);
+        font-family: 'JetBrains Mono', monospace;
+        overflow: hidden; /* Désactive le scroll global */
+    }
+
+    header {
+        height: 50px; display: flex; justify-content: space-between; 
+        align-items: center; padding: 0 15px; border-bottom: 1px solid var(--accent);
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr); /* 3 colonnes égales */
+        gap: 10px; padding: 10px;
+        height: calc(100vh - 50px);
+    }
+
+    .column { display: flex; flex-direction: column; gap: 10px; height: 100%; min-width: 0; }
+
+    .panel {
+        background: var(--card); border: 1px solid var(--border);
+        padding: 10px; border-radius: 4px;
+        display: flex; flex-direction: column;
+        flex: 1; min-height: 0; /* Permet aux panneaux de s'ajuster sans pousser */
+    }
+
+    .panel h2 {
+        margin: 0 0 8px 0; font-size: 0.7rem; color: var(--accent);
+        text-transform: uppercase; border-bottom: 1px solid #333;
+    }
+
+    .data-point {
+        display: flex; justify-content: space-between;
+        font-size: 0.65rem; margin: 2px 0;
+    }
+
+    #anomaly-log { flex: 1; overflow-y: auto; font-size: 0.6rem; color: #888; }
 </style>
 </head>
     
@@ -145,16 +88,21 @@ canvas {
         </div>
     </header>
 
-    <main class="dashboard-grid">
-        <div class="column">
-            <section class="panel">
-                <h2><i class="fas fa-map-marked-alt"></i> CARTOGRAPHIE_GNSS_CORE</h2>
-                <div id="map-container" style="height: 250px; position: relative; background: #000;">
-                    <div id="map" style="height: 100%;"></div>
-                    <div style="position: absolute; top: 10px; left: 10px; z-index: 1000; display: flex; gap: 5px;">
-                        <button id="toggle-globe-btn" class="btn-hud">GLOBE</button>
-                        <button id="xray-button" class="btn-hud">X-RAY</button>
-                    </div>
+<div class="column">
+    <section class="panel" style="flex: 2;">
+        <h2><i class="fas fa-map"></i> CARTOGRAPHIE_GNSS</h2>
+        <div id="map" style="flex: 1; background: #000;"></div>
+        <div class="data-point"><span>Lat/Lon</span><span id="ui-lat">--</span> / <span id="ui-lon">--</span></div>
+    </section>
+
+    <section class="panel">
+        <h2><i class="fas fa-broadcast-tower"></i> ÉCHOLOCALISATION</h2>
+        <div class="data-point"><span>Echo-Delay</span><span id="ui-echo-dist">-- ms</span></div>
+        <div class="data-point" style="color:var(--accent)">
+            <span>V-Doppler Sonar</span><span id="ui-v-sonar">-.--- m/s</span>
+        </div>
+    </section>
+</div>
 
         <section class="panel">
             <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
@@ -594,7 +542,22 @@ canvas {
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
                 <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span></div>
                 <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">-.---°</span></div>    
-            </section>
+        </section>
+    
+    <div class="column">
+    <section class="panel">
+        <h2><i class="fas fa-wave-square"></i> SPECTROMÉTRIE</h2>
+        <div class="data-point"><span>Flux Infrarouge</span><span id="ui-ir-flux">-- mW/m²</span></div>
+        <div class="data-point"><span>Indice UV</span><span id="ui-uv-index">0.0</span></div>
+        <div class="data-point"><span>Pression Photon</span><span id="ui-photon-p">-- nPa</span></div>
+    </section>
+
+    <section class="panel" style="flex: 2;">
+        <h2><i class="fas fa-terminal"></i> MISSION_LOG</h2>
+        <div id="anomaly-log"></div>
+        <button onclick="exportData()" style="margin-top:5px; font-size:0.6rem;">EXPORT_METRICS</button>
+    </section>
+    </div>
     
          <section class="panel" style="margin-top: auto;">
             <h2><i class="fas fa-terminal"></i> JOURNAL_ANOMALIES</h2>
