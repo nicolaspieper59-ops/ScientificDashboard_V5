@@ -11,66 +11,107 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
 
-/* AJUSTEMENT DES COMPOSANTS INTERNES */
 <style>
     :root {
         --bg: #020202;
-        --card: rgba(15, 15, 20, 0.98);
-        --border: #222;
-        --text: #e0e0e0;
-        --accent: #00ff88; 
+        --card: rgba(15, 15, 20, 0.95);
+        --border: #1a1a1f;
+        --accent: #00ff88;
         --critical: #ff3300;
+        --text: #e0e0e0;
+        --header-h: 60px; /* Hauteur fixe du header */
     }
 
-    * { box-sizing: border-box; outline: none; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body, html {
-        margin: 0; padding: 0;
         width: 100vw; height: 100vh;
-        background: var(--bg); color: var(--text);
+        background: var(--bg);
+        color: var(--text);
         font-family: 'JetBrains Mono', monospace;
-        overflow: hidden; /* Désactivation totale du scroll */
+        overflow: hidden; /* VERROUILLAGE DU SCROLL GLOBAL */
     }
 
-    header {
-        height: 50px; display: flex; justify-content: space-between; 
-        align-items: center; padding: 0 15px; border-bottom: 1px solid var(--accent);
-    }
-
+    /* GRILLE PRINCIPALE : 3 COLONNES STRICTES */
     .dashboard-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px; padding: 8px;
-        height: calc(100vh - 50px);
+        grid-template-columns: 1.1fr 1fr 1fr; /* Colonne 1 légèrement plus large pour la carte */
+        gap: 8px;
+        padding: 8px;
+        height: calc(100vh - var(--header-h));
+        width: 100%;
     }
 
-    .column { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; }
+    /* COLONNE : CONTENEUR VERTICAL */
+    .column {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 100%;
+        min-width: 0; /* Empêche l'éclatement de la grille par le contenu */
+    }
 
+    /* PANNEAU SCIENTIFIQUE */
     .panel {
-        background: var(--card); border: 1px solid var(--border);
-        padding: 10px; border-radius: 4px;
-        display: flex; flex-direction: column;
-        flex: 1; min-height: 0; /* Important pour le redimensionnement */
+        background: var(--card);
+        border: 1px solid var(--border);
+        padding: 10px;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        flex: 1; /* Par défaut, ils se partagent l'espace équitablement */
+        min-height: 0; /* Important pour le scroll interne */
+        position: relative;
     }
 
-    .panel h2 {
-        margin: 0 0 8px 0; font-size: 0.7rem; color: var(--accent);
-        text-transform: uppercase; border-bottom: 1px solid #333;
+    /* AJUSTEMENT SPÉCIFIQUE DE LA HAUTEUR */
+    .panel[style*="flex: 2"] { flex: 2; }
+    .panel[style*="flex: 1.5"] { flex: 1.5; }
+
+    /* TITRES */
+    h2 {
+        font-size: 0.7rem;
+        color: var(--accent);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #1a1a1f;
+        padding-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
+    /* DONNÉES MÉTRIQUES */
     .data-point {
-        display: flex; justify-content: space-between;
-        font-size: 0.65rem; margin: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.65rem;
+        margin-bottom: 4px;
+        line-height: 1.2;
     }
 
-    .val { color: #fff; font-weight: bold; }
-    #anomaly-log { flex: 1; overflow-y: auto; font-size: 0.6rem; color: #888; }
+    .val-scientifique {
+        color: #fff;
+        font-weight: bold;
+    }
+
+    /* LOGS (SEUL ÉLÉMENT AUTORISÉ À SCROLLER) */
+    #anomaly-log {
+        flex: 1;
+        overflow-y: auto;
+        font-size: 0.6rem;
+        padding-right: 5px;
+    }
+
+    /* SCROLLBAR STYLE (CYBERPUNK) */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--accent); }
 </style>
 </head>
-    
+<body>    
 <body class="dark-mode">
     <div id="poi-alert" style="display:none; position: fixed; top: 60px; right: 20px; background: var(--critical); color: #fff; padding: 10px; z-index: 9999;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>
-
+<header>
     <header id="master-hud-fixed" style="height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border);">
         <div class="header-item">
             <div class="label" style="font-size: 0.6rem; color: #888;">VITESSE_RÉELLE</div>
@@ -94,7 +135,6 @@
             </div>
         </div>
     </header>
-
     <main class="dashboard-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; height: calc(100vh - 60px); overflow: hidden;">
         
         <div class="column" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
