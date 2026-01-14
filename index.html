@@ -545,8 +545,11 @@
                 <div class="data-point"><span>Coord. Y (Tang.)</span><span id="coord-y" class="val-scientifique">--</span></div>
                 <div class="data-point"><span>Coord. Z (Polaire)</span><span id="coord-z" class="val-scientifique">--</span></div>
                 <div class="data-point" style="border-top: 1px solid #222; margin-top: 5px; padding-top: 5px;">
-        <span>Distance 3D Cumulée</span><span id="dist-3d" class="val-scientifique" style="color:var(--accent)">0.000 m</span>
+        <span>Distance 3D Cumulée</span>
+        <span id="dist-3d" class="val-scientifique" style="color:var(--accent)">0.000 m</span>
     </div>
+</section>
+
 <section class="panel" style="background: rgba(0,255,136,0.02);">
     <h2><i class="fas fa-microchip"></i> REAL-TIME ORBITAL RENDERER</h2>
     
@@ -556,21 +559,15 @@
                style="width:70px; background:#000; border:1px solid var(--accent); color:var(--accent); text-align:right; font-family: 'JetBrains Mono'; font-weight: bold; border-radius: 2px;">
     </div>
 
-    <div class="astro-visual-container" style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-        <div style="position: relative; width: 100px; height: 100px; background: #000; border-radius: 50%; border: 1px solid #1a1a1a; bo<section class="panel" style="flex: 1.5;">
-        <h2><i class="fas fa-terminal"></i> MISSION_TERMINAL</h2>
-        <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto; flex: 1; color: #aaa;">
-            <div>[OK] Moteur V17 prêt.</div>
-        </div>
-    </section>
-</div>      
+    <div class="astro-visual-container" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px;">
+        <div style="position: relative; width: 100px; height: 100px; background: #000; border-radius: 50%; border: 1px solid #1a1a1a; box-shadow: inset 0 0 15px rgba(0,255,136,0.1);">
             <canvas id="mc-clock-canvas" width="100" height="100" style="display: block;"></canvas>
-            <div id="zenith-indicator" style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 0.4rem; color: #444;">ZÉNITH</div>
+            <div id="zenith-indicator" style="position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 0.4rem; color: var(--accent); opacity: 0.6;">ZÉNITH</div>
         </div>
         
         <div class="data-point" style="width: 100%; border-top: 1px solid #111; padding-top: 4px;">
             <span>Phase_Céleste</span>
-            <span id="ui-celestial-phase" style="color: #fff; font-size: 0.6rem;">SYNCHRONISATION...</span>
+            <span id="ui-celestial-phase" style="color: #fff; font-size: 0.6rem; font-weight: bold;">SYNCHRONISATION...</span>
         </div>
     </div>
 </section>
@@ -601,8 +598,7 @@
                 <div class="data-point"><span>Lever/Coucher Lune</span><span id="moon-times">--</span></div>
                 <div class="data-point"><span>Distance Lune</span> <span id="moon-distance">--</span></div>
                 <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status" style="color: var(--accent);">NULL_DETECTION</span></div>
-                <div class="data-point"><span>Anomalie Nodale Lune</span><span id="ui-moon-node">-.---°</span></div>    
-        <div class="column">
+                <div class="column">
             
             <section class="panel">
                 <h2><i class="fas fa-wave-square"></i> SPECTROMÉTRIE FLUX</h2>
@@ -610,7 +606,7 @@
                 <div class="data-point"><span>Indice UV</span><span id="ui-uv-index" class="val-scientifique">0.0</span></div>
                 <div class="data-point"><span>Pression Photon</span><span id="ui-photon-p" class="val-scientifique">-- nPa</span></div>
                 
-                <div class="data-point" style="border-top:1px solid #1a1a1a; padding-top:4px;">
+                <div class="data-point" style="border-top:1px solid #1a1a1a; padding-top:4px; margin-top:4px;">
                     <span>Anomalie Nodale Lune</span><span id="ui-moon-node" class="val-scientifique">-.---°</span>
                 </div>
             </section>
@@ -618,21 +614,22 @@
             <section class="panel" style="flex: 2; display: flex; flex-direction: column;">
                 <h2><i class="fas fa-terminal"></i> JOURNAL_MISSION_V17</h2>
                 
-                <div id="anomaly-log" style="flex: 1; background: rgba(0,0,0,0.9); border: 1px solid #1a1a1a; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 8px; overflow-y: auto; color: #00ff88; margin-bottom: 8px;">
+                <div id="anomaly-log" style="flex: 1; background: rgba(0,0,0,0.95); border: 1px solid #1a1a1a; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 8px; overflow-y: auto; color: var(--accent); margin-bottom: 8px;">
                     <div style="color:#666;">[SYSTEM] Standby - Waiting for Core...</div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                    <button onclick="exportData()" style="font-size: 0.6rem; background: #111; color: #eee; border: 1px solid #333; padding: 5px; cursor: pointer;">EXPORT_METRICS</button>
-                    <button id="clear-log-btn" onclick="document.getElementById('anomaly-log').innerHTML=''" style="font-size: 0.6rem; background: #111; color: #eee; border: 1px solid #333; padding: 5px; cursor: pointer;">CLEAR_LOGS</button>
+                    <button onclick="exportData()" class="btn-secondary" style="font-size: 0.6rem; background: #111; color: #eee; border: 1px solid #333; padding: 5px; cursor: pointer;">EXPORT_METRICS</button>
+                    <button id="clear-log-btn" onclick="document.getElementById('anomaly-log').innerHTML=''" class="btn-secondary" style="font-size: 0.6rem; background: #111; color: #eee; border: 1px solid #333; padding: 5px; cursor: pointer;">CLEAR_LOGS</button>
                 </div>
 
-                <button id="main-init-btn" onclick="startAdventure()" style="width: 100%; background: var(--accent); color: #000; border: none; font-weight: bold; padding: 12px; margin-top: 10px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; border-radius: 4px; transition: 0.2s;">
+                <button id="main-init-btn" onclick="startAdventure()" style="width: 100%; background: var(--accent); color: #000; border: none; font-weight: bold; padding: 12px; margin-top: 10px; cursor: pointer; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; border-radius: 4px; box-shadow: 0 0 15px rgba(0,255,136,0.3);">
                     Initialiser_Moteur_V17_PRO
                 </button>
             </section> 
+        </div> </main>
 
-        </div> </main> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
