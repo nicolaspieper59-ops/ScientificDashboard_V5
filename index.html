@@ -106,6 +106,24 @@
     /* SCROLLBAR STYLE (CYBERPUNK) */
     ::-webkit-scrollbar { width: 3px; }
     ::-webkit-scrollbar-thumb { background: var(--accent); }
+    /* SOLUTION DÉFINITIVE FOND BLANC */
+html {
+    background-color: #020202; /* La même couleur que votre var(--bg) */
+    height: 100%;
+    overflow: hidden; /* Verrouille le scroll au niveau racine */
+}
+
+body {
+    background-color: #020202;
+    min-height: 100vh;
+    margin: 0;
+    overflow: hidden; /* Double sécurité pour le Zéro Scroll */
+    }
+    * {
+    box-sizing: border-box;
+    margin: 0;   /* Supprime toutes les marges par défaut */
+    padding: 0;
+    }
 </style>
 </head>
 <body class="dark-mode">
@@ -152,10 +170,7 @@
                 </div>
             </section>
         </div>
-
-        <div class="column"></div>
-
-    </main>
+        
         <section class="panel">
             <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
