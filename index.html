@@ -13,13 +13,13 @@
 
 <style>
     :root {
-        --bg: #020202;
-        --card: rgba(15, 15, 20, 0.98);
-        --border: #1a1a1f;
+        --bg: #010101;
+        --card: rgba(10, 10, 12, 0.98);
+        --border: #1a1a20;
         --accent: #00ff88;
         --critical: #ff3300;
         --text: #e0e0e0;
-        --header-h: 50px;
+        --panel-gap: 8px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,94 +27,108 @@
     body {
         background: var(--bg);
         color: var(--text);
-        font-family: 'Segoe UI', 'Roboto', monospace;
-        overflow-x: hidden; /* Empêche le scroll horizontal parasite */
+        font-family: 'JetBrains Mono', 'Segoe UI', monospace;
+        height: 100vh;
+        overflow: hidden; /* Empêche le scroll global, les colonnes gèrent leur scroll */
+        display: flex;
+        flex-direction: column;
     }
 
-    /* --- STRUCTURE PRINCIPALE 5 COLONNES --- */
+    /* --- HEADER --- */
+    header {
+        height: 50px;
+        background: #000;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 15px;
+        font-size: 0.7rem;
+    }
+
+    /* --- LAYOUT PRINCIPAL --- */
     main {
+        flex: 1;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Auto-ajustement intelligent */
-        gap: 10px;
-        padding: 10px;
-        height: calc(100vh - 150px); /* Ajuste selon la taille du header/footer */
+        grid-template-columns: 1fr 350px; /* Carte à gauche, Sidebar data à droite */
+        overflow: hidden;
     }
 
+    #map {
+        width: 100%;
+        height: 100%;
+        background: #050505;
+    }
+
+    .sidebar {
+        background: #050505;
+        border-left: 1px solid var(--border);
+        overflow-y: auto;
+        padding: var(--panel-gap);
+        display: flex;
+        flex-direction: column;
+        gap: var(--panel-gap);
+    }
+
+    /* --- FOOTER MULTI-COLONNES (8 PANELS) --- */
+    footer {
+        height: 180px; /* Augmenté pour la lisibilité */
+        background: #000;
+        border-top: 2px solid var(--accent);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); /* 2 lignes de 4 sur desktop */
+        grid-template-rows: repeat(2, 1fr);
+        gap: 5px;
+        padding: 5px;
+    }
+
+    /* --- STYLISATION DES PANELS --- */
     .panel {
         background: var(--card);
         border: 1px solid var(--border);
-        border-top: 3px solid var(--accent);
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-        border-radius: 4px;
+        padding: 8px;
+        border-radius: 2px;
+        position: relative;
     }
 
     .panel h2 {
-        font-size: 0.75rem;
+        font-size: 0.6rem;
         color: var(--accent);
-        letter-spacing: 2px;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #333;
-        padding-bottom: 5px;
         text-transform: uppercase;
+        margin-bottom: 6px;
+        letter-spacing: 1px;
+        border-bottom: 1px solid #222;
+        padding-bottom: 3px;
     }
 
-    /* --- ALIGNEMENT DES DONNÉES SCIENTIFIQUES --- */
     .data-point {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 8px;
-        font-family: 'Courier New', monospace;
-        font-size: 0.9rem;
+        font-size: 0.75rem;
+        margin-bottom: 3px;
+        border-bottom: 1px solid rgba(255,255,255,0.02);
     }
 
-    .data-point span:first-child {
-        color: #888;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-    }
+    .data-point span:first-child { color: #777; font-size: 0.65rem; }
+    .data-point span:last-child { color: #fff; font-weight: bold; }
 
-    .data-point span:last-child {
-        color: #fff;
-        font-weight: bold;
-        text-shadow: 0 0 5px rgba(0,255,136,0.2);
-    }
-
-    /* --- CORRECTION DU FOOTER (LES 5 COLONNES DU BAS) --- */
-    footer {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 5px;
-        border-top: 1px solid var(--border);
-        background: #050505;
-        padding: 10px;
-        position: fixed;
-        bottom: 0;
-        width: 100%;
+    /* LOGS */
+    #anomaly-log {
         height: 120px;
-    }
-
-    /* Adaptation Mobile */
-    @media (max-width: 1000px) {
-        footer {
-            grid-template-columns: repeat(2, 1fr);
-            height: auto;
-            position: relative;
-        }
-        main {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* Animation du Signal SNR */
-    #ui-signal-wave {
-        width: 100%;
-        height: 40px;
         background: #000;
-        border: 1px solid #222;
-        margin-top: 10px;
+        font-size: 0.65rem;
+        padding: 5px;
+        overflow-y: auto;
+        color: #00ff88;
+        border: 1px solid #111;
+        margin-top: 5px;
+    }
+
+    /* --- RESPONSIVITÉ --- */
+    @media (max-width: 1100px) {
+        main { grid-template-columns: 1fr; }
+        .sidebar { display: none; } /* Cache la sidebar sur petit écran */
+        footer { grid-template-columns: repeat(2, 1fr); overflow-y: auto; height: 300px; }
     }
 </style>
 </head>
