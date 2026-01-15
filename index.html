@@ -40,17 +40,17 @@
         transition: all 0.3s ease;
     }
 
-    @media (max-width: 1024px) {
-        .dashboard-grid {
-            display: flex;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
-        }
-        .column {
-            min-width: 85vw;
-            scroll-snap-align: center;
-        }
+    @media (max-width: 768px) {
+    .dashboard-grid {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+    }
+    .column {
+        min-width: 88vw;
+        scroll-snap-align: center;
+        flex-shrink: 0;
+    }
     }
 
     .column {
@@ -108,7 +108,7 @@
         <div id="ukf-viz" style="height: 60px; background: #000; border: 1px solid #222; margin-bottom: 8px;">
             <canvas id="ukf-canvas" style="width: 100%; height: 100%;"></canvas>
         </div>
-        <div class="data-point"><span>Confiance Matrice P</span><span id="kalman-p" style="color:var(--accent); font-weight:bold;">99.8%</span></div>
+        <div class="data-point"><span>Confiance Matrice P</span><span id="kalman-p" style="color:var(--accent); font-weight:bold;">--.--%</span></div>
         <div class="data-point"><span>Bruit Process (Q)</span><span id="ukf-q-noise">0.00014</span></div>
     </section>
 
@@ -120,11 +120,11 @@
         <div class="data-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
             <div class="data-point" style="flex-direction: column; align-items: flex-start;">
                 <span style="color: #888; font-size: 0.55rem;">Dérive Horloge</span>
-                <span id="ui-clock-drift" style="color: #fff;">0.0002 ns</span>
+                <span id="ui-clock-drift" style="color: #fff;">-.----- ns</span>
             </div>
             <div class="data-point" style="flex-direction: column; align-items: flex-start;">
                 <span style="color: #888; font-size: 0.55rem;">Ratio C (Rel.)</span>
-                <span id="ui-c-ratio" style="color: #fff;">0.999...</span>
+                <span id="ui-c-ratio" style="color: #fff;">-.---...</span>
             </div>
         </div>
     </section>
@@ -137,18 +137,19 @@
         <div class="data-point"><span>CPU</span><span id="ui-cpu-load">--%</span></div>
         <div class="data-point"><span>RAM</span><span id="ui-ram-usage">-- MB</span></div>
         <button id="main-init-btn" onclick="startAdventure()" style="margin-top:auto; background:var(--accent); border:none; padding:10px; font-weight:bold; cursor:pointer; border-radius:4px;">
-            INITIALISER_V17
+                INITIALISER_V17
         </button>
     </section>
-    </div>
-                <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
-                <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
+                <section class="panel" style="flex: 1.5; border-top: 1px solid var(--border);">
+                <h2><i class="fas fa-cog"></i> SYSTÈME & CONTRÔLES</h2>        
+                <div class="data-point" style="background: rgba(0, 255, 136, 0.05); padding: 5px; border-radius: 2px;"><span>DATE_HEURE (UTC/GMT)</span><span id="utc-datetime" style="color: var(--accent); font-weight: bold;">--:--:--</span></div>
+                <div class="data-point"><span>Statut Éphémérides</span><span id="ephem-status" style="color: var(--accent);">SYNC_OK</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
                 <div class="data-point"><span>Heure UTC Sync</span><span id="gmt-time-display-1">--:--:--.---</span></div>
                 <div class="data-point"><span>Précision</span><span id="clock-accuracy">± --ms</span></div>
                 <div class="data-point"><span>Temps Julien (JD)</span><span id="ast-jd">-.----------</span></div>
                 <div class="data-point"><span>Heure NTP:</span> <span id="ntp-status-val">Sync...</span></div>
-                <div class="data-point"><span>Batterie Appareil:</span> <span id="batt-level">-- %</span></div>
+                <div class="data-point"><span>Batterie Appareil:</span> <span id="battlevel">-- %</span></div>
                 <div class="data-point"><span>Statut CPU:</span> <span id="status-thermal-main">OPTIMAL</span></div>
                 <div class="data-point"><span>Vibration (Jerk):</span> <span id="jerk-vector">-.- m/s³</span></div>
                 <div class="data-point"><span>Latence (Est.):</span> <span id="wifi-latency">-- ms</span></div>  
