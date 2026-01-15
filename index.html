@@ -109,7 +109,7 @@
             <canvas id="ukf-canvas" style="width: 100%; height: 100%;"></canvas>
         </div>
         <div class="data-point"><span>Confiance Matrice P</span><span id="kalman-p" style="color:var(--accent); font-weight:bold;">--.--%</span></div>
-        <div class="data-point"><span>Bruit Process (Q)</span><span id="ukf-q-noise">0.00014</span></div>
+        <div class="data-point"><span>Bruit Process (Q)</span><span id="ukf-q-noise">-.-----</span></div>
     </section>
 
     <section class="panel" style="flex: 1;">
@@ -136,10 +136,14 @@
         </div>
         <div class="data-point"><span>CPU</span><span id="ui-cpu-load">--%</span></div>
         <div class="data-point"><span>RAM</span><span id="ui-ram-usage">-- MB</span></div>
-        <button id="main-init-btn" onclick="startAdventure()" style="margin-top:auto; background:var(--accent); border:none; padding:10px; font-weight:bold; cursor:pointer; border-radius:4px;">
-                INITIALISER_V17
-        </button>
+        <div style="margin-top: auto; display: grid; grid-template-columns: 1fr; gap: 8px;">
+            <button id="main-init-btn" onclick="startAdventure()" 
+                    style="background: var(--accent); color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; text-transform: uppercase; border-radius: 4px; box-shadow: 0 0 15px rgba(0,255,136,0.2);">
+                INITIALISER_MOTEUR_V17
+            </button>
+        </div>
     </section>
+</div>
                 <section class="panel" style="flex: 1.5; border-top: 1px solid var(--border);">
                 <h2><i class="fas fa-cog"></i> SYSTÈME & CONTRÔLES</h2>        
                 <div class="data-point" style="background: rgba(0, 255, 136, 0.05); padding: 5px; border-radius: 2px;"><span>DATE_HEURE (UTC/GMT)</span><span id="utc-datetime" style="color: var(--accent); font-weight: bold;">--:--:--</span></div>
@@ -158,62 +162,55 @@
                 <div class="data-point"><span>Heure Minecraft</span><span id="time-minecraft">--:--</span></div>
                 <div class="data-point"><span>Temps Terrestre (TT)</span><span id="ast-tt">--:--:--</span></div>
                 <div class="data-point"><span>ΔT (Rotation)</span><span id="ast-deltat">--.-s</span></div>
-          <div class="column">
+           <div class="column">
     <section class="panel" id="head-controls-panel">
         <h2><i class="fas fa-terminal"></i> CENTRE_DE_COMMANDE_V17</h2>
         
-        <div id="reality-status" style="font-weight: bold; font-size: 0.6rem; color: var(--accent); margin-bottom: 8px; border: 1px solid #1a1a1a; padding: 4px; text-align: center;">
+        <div id="reality-status" style="font-weight: bold; font-size: 0.6rem; color: var(--accent); margin-bottom: 8px; border: 1px solid #1a1a1a; padding: 4px; text-align: center; background: rgba(0,255,136,0.02);">
             MODE : ANALYSE_SYSTÈME_ACTIVE
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px;">
-            <button id="gps-pause-toggle" style="background: #ffcc00; color: #000; font-weight: bold; font-size: 0.6rem;">▶️ MARCHE GPS</button>
-            <select id="freq-select" style="background: #111; color: #fff; border: 1px solid var(--border); font-size: 0.6rem;">
+            <button id="gps-pause-toggle" class="btn-v17" style="background: #ffcc00; color: #000;">▶️ MARCHE GPS</button>
+            <select id="freq-select" class="btn-v17">
                 <option value="HIGH_FREQ">HAUTE_FRÉQ (10Hz)</option>
                 <option value="LOW_FREQ">BASSE_FRÉQ (1Hz)</option>
             </select>
-            <button id="emergency-stop" style="background: var(--critical); color: #fff; font-size: 0.6rem;" onclick="stopSystem()">ARRÊT URGENCE</button>
-            <button id="reset-all-btn" style="border: 1px solid var(--critical); color: var(--critical); font-size: 0.6rem;" onclick="resetAll()">RÉINIT_TOTAL</button>
+            <button id="emergency-stop" class="btn-v17" style="background: var(--critical); color: #fff;" onclick="stopSystem()">ARRÊT URGENCE</button>
+            <button id="reset-all-btn" class="btn-v17" style="border: 1px solid var(--critical); color: var(--critical);" onclick="resetAll()">RÉINIT_TOTAL</button>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 6px;">
-            <div class="control-group" style="border-top: 1px solid #1a1a1a; padding-top: 5px;">
+            <div class="control-group">
                 <label class="label">Filtrage Kalman (Milieu)</label>
                 <select id="environment-select" style="width: 100%; background: #000; color: var(--accent); border: 1px solid #333;">
                     <option value="NORMAL">Normal (x1.0)</option>
-                    <option value="FOREST">Dense / Forêt (x2.5)</option>
+                    <option value="FOREST">Barque / Houle (x2.5)</option>
                     <option value="CONCRETE">Tunnel / Grotte (x7.0)</option>
                 </select>
             </div>
 
-            <div class="control-group" style="border-top: 1px solid #1a1a1a; padding-top: 5px;">
+            <div class="control-group">
                 <label class="label">Référentiel Gravitationnel</label>
                 <select id="celestial-body-select" style="width: 100%; background: #000; color: #fff;">
                     <option value="EARTH">TERRE (9.81 m/s²)</option>
                     <option value="MOON">LUNE (1.62 m/s²)</option>
                     <option value="ROTATING">STATION (Centrifuge)</option>
                 </select>
-                <div id="station-params" style="background: rgba(0,255,136,0.05); padding: 5px; border-radius: 2px; margin-top: 5px; display: none;">
-                    <div class="data-point"><span>Rayon (m)</span><input type="number" id="rotation-radius" value="100" style="width:50px;"></div>
-                    <div class="data-point"><span>ω (rad/s)</span><input type="number" id="angular-velocity" value="0.0" step="0.1" style="width:50px;"></div>
-                </div>
-                
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <div><label class="label">Masse (kg)</label><input type="number" id="in-mass" value="75.0" style="width:100%;"></div>
-                <div><label class="label">Cx Aéro</label><input type="number" id="in-cx" value="0.45" step="0.01" style="width:100%;"></div>
+                <div><label class="label">Masse (kg)</label><input type="number" id="in-mass" value="75.0" class="input-v17"></div>
+                <div><label class="label">Cx Aéro</label><input type="number" id="in-cx" value="0.45" step="0.01" class="input-v17"></div>
             </div>
         </div>
     </section>
 
     <section class="panel">
         <h2><i class="fas fa-microchip"></i> NAVIGATION INERTIELLE (EKF)</h2>
-        <div class="data-grid">
-            <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz" class="tabular">0.00 / 0.00 / 0.00</span></div>
-            <div class="data-point"><span>Biais Accel.</span><span id="bias-acc-val" class="warning-text">0.000000</span></div>
-            <div class="data-point"><span>Confiance Kalman</span><span id="kalman-p-certainty">100.00 %</span></div>
-</div>
+        <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz">0.00 / 0.00 / 0.00</span></div>
+        <div class="data-point"><span>Biais Estimé</span><span id="bias-acc-val" style="color:var(--critical);">0.000000</span></div>
+        <div class="data-point"><span>Confiance Kalman</span><span id="kalman-p-certainty">100.00 %</span></div>
     </section>
 </div> 
 
@@ -224,16 +221,15 @@
         <div class="data-point"><span>Indice UV / IR</span><span id="ui-uv-index" class="val-scientifique">0.00</span></div>
         <div class="data-point"><span>Pression Photonique</span><span id="ui-photon-p" class="val-scientifique">-- nPa</span></div>
         <div class="data-point"><span>Niveau Sonore</span><span id="sound-level" class="val-scientifique">-- dB</span></div>
-        
     </section>
     
     <section class="panel" style="flex: 2;">
-        <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
-        <div id="anomaly-log" style="font-size: 0.6rem; overflow-y: auto;"></div>
+        <h2><i class="fas fa-terminal"></i> MISSION_LOGS_PRO</h2>
+        <div id="anomaly-log">
+            <div>[V17] Attente initialisation...</div>
+        </div>
     </section>
-    </div>      
-    
-    </section>
+</div>
     <h2><i class="fas fa-microchip"></i> Navigation Inertielle (EKF 21-États)</h2>
     <div class="data-grid">
         <div class="data-point"><span>Accélération Filtrée</span><span id="f-acc-xyz" class="tabular">-.-- / -.-- / -.--</span></div>
@@ -256,13 +252,16 @@
         </section>
 
         <section class="panel">
-        <h2><i class="fas fa-tachometer-alt"></i> VITESSE & MÉCANIQUE</h2>
-        
-        <div class="data-point" style="background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.2); padding: 8px; border-radius: 4px; margin-bottom: 10px;">
-            <span style="color: #00ffff; font-weight: bold; font-size: 0.6rem;"><i class="fas fa-rocket"></i> V-COSMIQUE</span>
-            <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 8px #00ffff; font-weight: bold; font-size: 0.8rem;">-- km/h</span>
-        </div>
+    <h2><i class="fas fa-tachometer-alt"></i> VITESSE & MÉCANIQUE</h2>
+    
+    <div class="data-point" style="background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.2); padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+        <span style="color: #00ffff; font-weight: bold; font-size: 0.6rem;"><i class="fas fa-rocket"></i> V-COSMIQUE</span>
+        <span id="v-cosmic" style="color: #00ffff; text-shadow: 0 0 8px #00ffff; font-weight: bold; font-size: 0.8rem;">-- km/h</span>
+    </div>
 
+    <div style="font-size: 0.55rem; color: #555; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px;">Physique & Relativité</div>         
+    
+    <div class="data-point">
         <div style="font-size: 0.55rem; color: #555; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px;">Physique & Relativité</div>         
                 <div class="data-point"><span>Vitesse Stable (km/h)</span><span id="speed-stable-kmh">-.- km/h</span></div>
                 <div class="data-point"><span>Vitesse Stable (m/s)</span><span id="speed-stable-ms">-.-- m/s</span></div>
@@ -317,10 +316,7 @@
                 <div class="data-point"><span>Distance Maximale Visible</span><span id="distance-horizon">--</span></div>
                 <div class="data-point" style="border-top: 1px solid #1a1a1a; padding-top: 5px;">    
                 <div class="data-point"><span>Horizon Dist. (km)</span><span id="horizon-distance-km">-.---</span> </div>
-                <div class="data-point">
-            <span>Visibilité Cible</span>
-            <span id="horizon-target-visibility" class="val-scientifique">-- %</span>
-        </div>
+                <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility" class="val-scientifique">-- %</span></div>
     </section> </div> <div class="column">
     <section class="panel">
         <h2><i class="fas fa-wave-square"></i> SIGNAL_PROCESSING_UNIT</h2>
