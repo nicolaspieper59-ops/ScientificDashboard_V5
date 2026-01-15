@@ -2,242 +2,179 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIENCE V17 GOLD • FULL SPECTRUM METROLOGY</title>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
+    <title>OMNISCIENCE V21 - MASTER HUD</title>
     <style>
         :root {
-            --bg: #010101;
-            --card: rgba(10, 10, 12, 0.98);
-            --border: #1a1a20;
-            --accent: #00ff88;
+            --bg: #020202;
+            --card: rgba(15, 15, 20, 0.98);
+            --border: #1a1a1f;
+            --accent: #00ff88; /* Cyan-Vert Scientifique */
             --critical: #ff3300;
             --text: #e0e0e0;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body {
             background: var(--bg);
             color: var(--text);
-            font-family: 'JetBrains Mono', 'Segoe UI', monospace;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            margin: 0; overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column;
         }
 
-        header {
-            height: 40px;
-            background: #000;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 15px;
-            font-size: 0.7rem;
-            color: var(--accent);
+        /* HEADER FIXE */
+        header#master-hud-fixed {
+            height: 60px; border-bottom: 2px solid var(--accent);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; background: #000;
         }
 
-        /* --- LAYOUT --- */
+        /* GRID 4 COLONNES */
         main {
             flex: 1;
             display: grid;
-            grid-template-columns: 320px 1fr 320px; /* Fusion des sidebars gauche/droite */
-            overflow: hidden;
-        }
-
-        #map { width: 100%; height: 100%; background: #050505; }
-
-        .sidebar {
-            background: #050505;
-            border-right: 1px solid var(--border);
-            border-left: 1px solid var(--border);
-            overflow-y: auto;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
+            grid-template-columns: repeat(4, 1fr); /* FORÇAGE 4 COLONNES */
             gap: 10px;
+            padding: 10px;
+            overflow-y: auto;
         }
 
-        /* --- PANELS & DATA --- */
         .panel {
             background: var(--card);
             border: 1px solid var(--border);
             padding: 10px;
-            border-radius: 2px;
             border-top: 2px solid var(--accent);
         }
 
         .panel h2 {
-            font-size: 0.65rem;
-            color: var(--accent);
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-            background: rgba(0,255,136,0.05);
-            padding: 2px 5px;
+            font-size: 0.7rem; color: var(--accent);
+            text-transform: uppercase; margin-bottom: 10px;
+            border-bottom: 1px solid #333;
         }
 
         .data-point {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            margin-bottom: 4px;
+            display: flex; justify-content: space-between;
+            font-size: 0.7rem; margin-bottom: 4px; line-height: 1.2;
         }
 
-        .data-point span:first-child { color: #666; font-size: 0.6rem; }
+        .data-point span:first-child { color: #888; }
         .data-point span:last-child { color: #fff; font-weight: bold; }
 
-        /* --- FOOTER GRID (8 BLOCS) --- */
-        footer {
-            height: 200px;
-            background: #000;
-            border-top: 1px solid var(--accent);
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 4px;
-            padding: 4px;
-        }
-
+        /* LOGS & CANVAS */
         #anomaly-log {
-            font-size: 0.6rem;
-            color: var(--accent);
-            overflow-y: auto;
-            height: 60px;
-            background: #000;
-            padding: 5px;
-            border: 1px solid #111;
+            height: 100px; background: #000; font-size: 0.6rem;
+            color: var(--accent); overflow-y: scroll; padding: 5px;
         }
-
-        .btn-init {
-            width: 100%;
-            background: var(--accent);
-            color: #000;
-            border: none;
-            padding: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.7rem;
-            margin-top: 5px;
-        }
-
-        @media (max-width: 1200px) {
-            main { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
-            footer { grid-template-columns: repeat(2, 1fr); height: auto; overflow-y: auto;}
-        }
+        
+        canvas { width: 100%; height: 60px; background: #050505; margin: 5px 0; }
+        
+        .alert { color: var(--critical) !important; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-<header>
-    <div>STATUS: <span id="reality-status">NOMINAL</span></div>
-    <div>NTP_OFFSET: <span id="ntp-offset">--</span>ms</div>
-    <div id="digital-clock">00:00:00</div>
+<header id="master-hud-fixed">
+    <div id="poi-alert" class="alert">SYSTEM_READY</div>
+    <div id="head-controls-panel">
+        STATUS: <span id="reality-status">NOMINAL</span> | 
+        NTP: <span id="ntp-offset">--</span>ms
+    </div>
+    <div id="utc-datetime">00:00:00</div>
 </header>
 
 <main>
-    <aside class="sidebar">
+    <section class="sidebar">
         <div class="panel">
-            <h2>NAVIGATION_INERTIE</h2>
-            <div class="data-point"><span>Confiance Matrice P</span><span id="matrix-p-conf">--%</span></div>
-            <div class="data-point"><span>Filtre Status</span><span id="kalman-status">READY</span></div>
-            <div class="data-point"><span>UKF Reactivity</span><span id="ukf-reactivity">AUTO</span></div>
-            <div class="data-point"><span>Pitch / Roll</span><span><span id="pitch">0</span>°/<span id="roll">0</span>°</span></div>
+            <h2>NAVIGATION INERTIELLE (UKF/EKF)</h2>
+            <canvas id="ukf-canvas"></canvas>
+            <div class="data-point"><span>Confiance (P)</span><span id="kalman-p-certainty">--</span></div>
+            <div class="data-point"><span>UKF Status</span><span id="ukf-status-display">READY</span></div>
+            <div class="data-point"><span>Filtre Sec.</span><span id="filter-status">OFF</span></div>
+            <div class="data-point"><span>Incertitude V.</span><span id="ukf-velocity-uncertainty">--</span></div>
             <div class="data-point"><span>Acc. Filtrée</span><span id="f-acc-xyz">0|0|0</span></div>
+            <div class="data-point"><span>Biais Acc/Gyro</span><span id="acc-bias">--</span></div>
         </div>
-
         <div class="panel">
-            <h2>SYSTÈME_CRITIQUE</h2>
-            <div class="data-point"><span>CPU Temp</span><span id="cpu-temp">--</span></div>
-            <div class="data-point"><span>Batterie</span><span id="battery-level">--%</span></div>
-            <div class="data-point"><span>WiFi Latency</span><span id="wifi-latency">--ms</span></div>
-            <div class="data-point"><span>Planck C.</span><span>6.626e-34</span></div>
-            <button class="btn-init" id="main-init-btn" onclick="startAdventure()">INITIALISER_V17_GOLD</button>
+            <h2>DIAGNOSTIC MATÉRIEL</h2>
+            <div class="data-point"><span>CPU Temp</span><span id="status-thermal-main">--</span></div>
+            <div class="data-point"><span>Batterie</span><span id="batt-level">--%</span></div>
+            <div class="data-point"><span>Latence WiFi</span><span id="wifi-latency">--ms</span></div>
+            <div class="data-point"><span>Signal SNR</span><span id="ui-snr-db">-- dB</span></div>
+            <button id="main-init-btn" style="width:100%; cursor:pointer;">START V17</button>
         </div>
-    </aside>
+    </section>
 
-    <div id="map"></div>
-
-    <aside class="sidebar">
+    <section class="sidebar">
         <div class="panel">
-            <h2>CINÉMATIQUE_PRO</h2>
-            <div class="data-point"><span>V-COSMIQUE</span><span id="v-cosmic">-- km/h</span></div>
-            <div class="data-point"><span>Stable (m/s)</span><span id="speed-stable-ms">0.000</span></div>
-            <div class="data-point"><span>V-Son Corr.</span><span id="vitesse-son-cor">--</span></div>
-            <div class="data-point"><span>Mach Number</span><span id="mach-number">--</span></div>
+            <h2>PHYSIQUE & RELATIVITÉ</h2>
+            <div class="data-point"><span>V-COSMIQUE</span><span id="v-cosmic">--</span></div>
+            <div class="data-point"><span>Lorentz (γ)</span><span id="ui-gamma">1.000...</span></div>
+            <div class="data-point"><span>Dilat. Temps</span><span id="time-dilation">-- ns/s</span></div>
+            <div class="data-point"><span>E-Relativiste</span><span id="relativistic-energy">-- J</span></div>
+            <div class="data-point"><span>Schwarzschild</span><span id="schwarzschild-radius">-- m</span></div>
+            <div class="data-point"><span>C-Ratio</span><span id="ui-c-ratio">--%</span></div>
         </div>
-
         <div class="panel">
-            <h2>RELATIVITÉ_GÉNÉRALE</h2>
-            <div class="data-point"><span>Lorentz (γ)</span><span id="ui-gamma">1.0000000000</span></div>
-            <div class="data-point"><span>Dilat. Temps</span><span id="time-dilation">0.0 ns/s</span></div>
-            <div class="data-point"><span>Schwarzschild</span><span id="schwarzschild">-- m</span></div>
-            <div class="data-point"><span>E Relativiste</span><span id="relativistic-energy">-- J</span></div>
+            <h2>FLUIDES & FORCES</h2>
+            <div class="data-point"><span>Reynolds (Re)</span><span id="reynolds-number">--</span></div>
+            <div class="data-point"><span>Pression Dyn.</span><span id="dynamic-pressure">-- Pa</span></div>
+            <div class="data-point"><span>Coriolis</span><span id="coriolis-force">-- N</span></div>
+            <div class="data-point"><span>Traînée (Drag)</span><span id="ui-f-drag">--</span></div>
+            <div class="data-point"><span>G-Force Vert.</span><span id="force-g-vert">--</span></div>
+            <div class="data-point"><span>Gravité Loc.</span><span id="local-gravity">--</span></div>
         </div>
-    </aside>
+    </section>
+
+    <section class="sidebar">
+        <div class="panel">
+            <h2>GÉODÉSIE 3D</h2>
+            <div class="data-point"><span>LAT_UKF</span><span id="lat-ukf">--</span></div>
+            <div class="data-point"><span>LON_UKF</span><span id="lon-ukf">--</span></div>
+            <div class="data-point"><span>ALT_DISPLAY</span><span id="alt-display">--</span></div>
+            <div class="data-point"><span>Dist. Cumulée</span><span id="dist-3d">-- m</span></div>
+            <div class="data-point"><span>Rayon Terre</span><span id="earth-radius-local">-- km</span></div>
+            <div class="data-point"><span>Horizon Dist.</span><span id="horizon-distance-km">-- km</span></div>
+        </div>
+        <div class="panel">
+            <h2>TEMPS LUMIÈRE</h2>
+            <div class="data-point"><span>Secondes-L</span><span id="distance-light-s">--</span></div>
+            <div class="data-point"><span>Jours-L</span><span id="day">--</span></div>
+            <div class="data-point"><span>Années-L</span><span id="year">--</span></div>
+        </div>
+    </section>
+
+    <section class="sidebar">
+        <div class="panel">
+            <h2>ASTRO & CÉLESTE</h2>
+            <canvas id="mc-clock-canvas"></canvas>
+            <div class="data-point"><span>Jour Julien</span><span id="ast-jd">--</span></div>
+            <div class="data-point"><span>Phase Lunaire</span><span id="moon-phase-name">--</span></div>
+            <div class="data-point"><span>Azimuth Soleil</span><span id="sun-azimuth">--</span></div>
+            <div class="data-point"><span>Delta T (ΔT)</span><span id="ast-deltat">--</span></div>
+        </div>
+        <div class="panel">
+            <h2>BIO & ENVIRONNEMENT</h2>
+            <div class="data-point"><span>UV Index</span><span id="ui-uv-index">--</span></div>
+            <div class="data-point"><span>Densité Air</span><span id="ui-rho-dynamic">--</span></div>
+            <div class="data-point"><span>Smoothness</span><span id="smoothness-score">--</span></div>
+            <div class="data-point"><span>Adrénaline</span><span id="adrenaline-idx">--</span></div>
+            <div class="data-point"><span>Bruit Amb.</span><span id="env-noise">-- dB</span></div>
+        </div>
+        <div class="panel">
+            <h2>LOGS DE MISSION</h2>
+            <div id="anomaly-log">[SYS] INITIALIZING...</div>
+            <button id="clear-log-btn" style="font-size:0.5rem">CLEAR</button>
+        </div>
+    </section>
 </main>
 
-<footer>
-    <div class="panel">
-        <h2>POSITIONNEMENT_3D</h2>
-        <div class="data-point"><span>LAT_UKF</span><span id="lat-ukf">--</span></div>
-        <div class="data-point"><span>LON_UKF</span><span id="lon-ukf">--</span></div>
-        <div class="data-point"><span>Alt Corrigée</span><span id="alt-display">--</span></div>
-        <div class="data-point"><span>Dist. Cumulée</span><span id="dist-3d">--</span></div>
-    </div>
-
-    <div class="panel">
-        <h2>MÉCANIQUE_FORCES</h2>
-        <div class="data-point"><span>Pression Dyn.</span><span id="dynamic-pressure">-- Pa</span></div>
-        <div class="data-point"><span>Reynolds (Re)</span><span id="reynolds-number">--</span></div>
-        <div class="data-point"><span>Coriolis</span><span id="coriolis">-- N</span></div>
-    </div>
-
-    <div class="panel">
-        <h2>BIO_&_SVT</h2>
-        <div class="data-point"><span>Smoothness</span><span id="bio-smoothness">--</span></div>
-        <div class="data-point"><span>Cal/Kcal</span><span id="calories">--</span></div>
-        <div class="data-point"><span>SNR Global</span><span id="ui-snr-db">--</span></div>
-    </div>
-
-    <div class="panel">
-        <h2>ASTRO_WATCH</h2>
-        <div class="data-point"><span>Jour Julien</span><span id="ast-jd">--</span></div>
-        <div class="data-point"><span>Sidéral (TSLV)</span><span id="tslv">--</span></div>
-        <div class="data-point"><span>Phase Lunaire</span><span id="moon-phase">--</span></div>
-    </div>
-
-    <div class="panel">
-        <h2>POLLUANTS_ATM</h2>
-        <div class="data-point"><span>PM2.5 / PM10</span><span id="pm25-val">--</span></div>
-        <div class="data-point"><span>Index UV</span><span id="ui-uv-index">--</span></div>
-        <div class="data-point"><span>Temp Rosée</span><span id="dew-point">--</span></div>
-    </div>
-
-    <div class="panel">
-        <h2>ESPACE_TEMPS_C</h2>
-        <div class="data-point"><span>Dist. Lum (s)</span><span id="distance-light-s">--</span></div>
-        <div class="data-point"><span>Delta T (ΔT)</span><span id="ast-deltat">--</span></div>
-        <div class="data-point"><span>Azimuth Solaire</span><span id="sun-azimuth">--</span></div>
-    </div>
-
-    <div class="panel" style="grid-column: span 2;">
-        <h2>MISSION_LOGS</h2>
-        <div id="anomaly-log">ENGINE_READY... SYSTEM_WAITING_INIT</div>
-    </div>
-</footer>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="gnss-dashboard-full.js"></script>
+<div style="display:none;">
+    <span id="speed-max-session"></span><span id="speed-avg-total"></span>
+    <span id="gps-pause-toggle"></span><span id="emergency-stop"></span>
+    <span id="planck-const"></span><span id="ui-moon-node"></span>
+    <span id="mc-clock-canvas"></span><span id="celestial-body-select"></span>
+    <span id="ukf-velocity-uncertainty"></span><span id="relativistic-energy"></span>
+</div>
 
 </body>
     </html>
