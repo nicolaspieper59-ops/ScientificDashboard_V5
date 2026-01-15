@@ -11,57 +11,112 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-    <style>
-        :root {
-            --bg: #020202;
-            --card: rgba(15, 15, 20, 0.98);
-            --border: #1a1a1f;
-            --accent: #00ff88;
-            --critical: #ff3300;
-            --text: #e0e0e0;
-            --header-h: 50px;
-            --footer-h: 180px;
+<style>
+    :root {
+        --bg: #020202;
+        --card: rgba(15, 15, 20, 0.98);
+        --border: #1a1a1f;
+        --accent: #00ff88;
+        --critical: #ff3300;
+        --text: #e0e0e0;
+        --header-h: 50px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Segoe UI', 'Roboto', monospace;
+        overflow-x: hidden; /* Empêche le scroll horizontal parasite */
+    }
+
+    /* --- STRUCTURE PRINCIPALE 5 COLONNES --- */
+    main {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Auto-ajustement intelligent */
+        gap: 10px;
+        padding: 10px;
+        height: calc(100vh - 150px); /* Ajuste selon la taille du header/footer */
+    }
+
+    .panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-top: 3px solid var(--accent);
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        border-radius: 4px;
+    }
+
+    .panel h2 {
+        font-size: 0.75rem;
+        color: var(--accent);
+        letter-spacing: 2px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 5px;
+        text-transform: uppercase;
+    }
+
+    /* --- ALIGNEMENT DES DONNÉES SCIENTIFIQUES --- */
+    .data-point {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+
+    .data-point span:first-child {
+        color: #888;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+    }
+
+    .data-point span:last-child {
+        color: #fff;
+        font-weight: bold;
+        text-shadow: 0 0 5px rgba(0,255,136,0.2);
+    }
+
+    /* --- CORRECTION DU FOOTER (LES 5 COLONNES DU BAS) --- */
+    footer {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+        border-top: 1px solid var(--border);
+        background: #050505;
+        padding: 10px;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        height: 120px;
+    }
+
+    /* Adaptation Mobile */
+    @media (max-width: 1000px) {
+        footer {
+            grid-template-columns: repeat(2, 1fr);
+            height: auto;
+            position: relative;
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; overflow: hidden; width: 100vw; height: 100vh; }
-        
-        header#master-hud-fixed { height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--border); background: #000; }
-        
-        /* GRILLE PRINCIPALE (4 COLONNES) */
-        .dashboard-grid { 
-            display: grid; 
-            grid-template-columns: repeat(4, 1fr); 
-            gap: 8px; 
-            padding: 8px; 
-            height: calc(100vh - var(--header-h) - var(--footer-h)); 
+        main {
+            grid-template-columns: 1fr;
         }
+    }
 
-        /* 5EME SECTION HORIZONTALE (BAS) */
-        .sub-dashboard-row {
-            height: var(--footer-h);
-            display: grid;
-            grid-template-columns: 1fr 2.5fr 1fr; /* Critique Gauche | Milieu | Critique Droite */
-            gap: 8px;
-            padding: 0 8px 8px 8px;
-            border-top: 1px solid var(--border);
-        }
-
-        .column { display: flex; flex-direction: column; gap: 6px; height: 100%; overflow-y: auto; }
-        .panel { background: var(--card); border: 1px solid var(--border); padding: 8px; border-radius: 4px; }
-
-        h2 { font-size: 0.6rem; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; border-bottom: 1px solid #111; padding-bottom: 3px; }
-        .data-point { display: flex; justify-content: space-between; font-size: 0.58rem; margin-bottom: 2px; }
-        .val-scientifique { font-weight: bold; color: #fff; }
-        .btn-v17 { background: #111; color: var(--accent); border: 1px solid #333; padding: 4px; cursor: pointer; font-size: 0.55rem; font-weight: bold; }
-        
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 2px; height: 2px; }
-        ::-webkit-scrollbar-thumb { background: var(--accent); }
-
-        .poi-active { animation: blink 1s infinite; color: var(--critical); }
-        @keyframes blink { 50% { opacity: 0; } }
-    </style>
+    /* Animation du Signal SNR */
+    #ui-signal-wave {
+        width: 100%;
+        height: 40px;
+        background: #000;
+        border: 1px solid #222;
+        margin-top: 10px;
+    }
+</style>
 </head>
 <body>
 
