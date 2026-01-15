@@ -25,17 +25,16 @@
             height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* HEADER FIXE */
         header#master-hud-fixed {
             height: 50px; background: #000; border-bottom: 2px solid var(--accent);
             display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center; padding: 0 15px;
+            z-index: 100;
         }
 
-        /* GRID 4 COLONNES */
         main {
             flex: 1;
             display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 4 COLONNES HORIZONTALES */
+            grid-template-columns: repeat(4, 1fr);
             gap: 5px; padding: 5px; overflow-y: auto;
         }
 
@@ -59,10 +58,17 @@
         .data-point span:last-child { color: #fff; font-weight: bold; }
 
         canvas { width: 100%; height: 40px; background: #000; border: 1px solid #222; }
-        #anomaly-log { height: 80px; font-size: 0.55rem; color: var(--accent); overflow-y: auto; background: #000; }
+        #anomaly-log { height: 80px; font-size: 0.55rem; color: var(--accent); overflow-y: auto; background: #000; border: 1px solid #222; padding: 2px; }
         
-        button { cursor: pointer; background: #111; color: var(--accent); border: 1px solid var(--accent); font-size: 0.6rem; padding: 4px; }
+        button { cursor: pointer; background: #111; color: var(--accent); border: 1px solid var(--accent); font-size: 0.6rem; padding: 4px; margin-top: 5px; }
         button:hover { background: var(--accent); color: #000; }
+        
+        footer#footer-status-bar {
+            height: 25px; background: #000; border-top: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 10px; font-size: 0.6rem; color: #555;
+        }
+
         .alert { color: var(--critical); animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.1; } }
     </style>
@@ -83,27 +89,23 @@
     <div class="panel">
         <h2>FILTRE UKF / EKF</h2>
         <div id="ukf-viz"><canvas id="ukf-canvas"></canvas></div>
-        <div class="data-point"><span>Certainté Kalman (P)</span><span id="kalman-p">--</span></div>
+        <div class="data-point"><span>Certitude P</span><span id="kalman-p">--</span></div>
         <div class="data-point"><span>Confiance Spatiale</span><span id="uk-certainty">--</span></div>
         <div class="data-point"><span>Status Filtre</span><span id="filter-status">READY</span></div>
-        <div class="data-point"><span>Incertitude Alt.</span><span id="ukf-alt-uncertainty">--</span></div>
         <div class="data-point"><span>Acc. Filtrée</span><span id="f-acc-xyz">--</span></div>
         <div class="data-point"><span>Biais Estimé</span><span id="acc-bias">--</span></div>
         <div class="data-point"><span>Jerk (Vibration)</span><span id="jerk-vector">--</span></div>
         <button id="main-init-btn">INITIALISER_V17_PRO</button>
-        <div class="data-point"><span>Minecraft Time</span><span id="time-minecraft">--</span></div>
     </div>
 
     <div class="panel">
         <h2>PHYSIQUE_RELATIVISTE</h2>
         <div class="data-point"><span>V-COSMIQUE</span><span id="v-cosmic">--</span></div>
-        <div class="data-point"><span>Mach Number</span><span id="mach-number">--</span></div>
-        <div class="data-point"><span>Lorentz (γ)</span><span id="ui-gamma">1.000...</span></div>
+        <div class="data-point"><span>Lorentz (γ)</span><span id="ui-gamma">1.000</span></div>
         <div class="data-point"><span>Dilat. Temps (v)</span><span id="time-dilation">--</span></div>
         <div class="data-point"><span>Dilat. Temps (g)</span><span id="ui-grav-dilation">--</span></div>
-        <div class="data-point"><span>Rayon Schwarzschild</span><span id="schwarzschild-radius">--</span></div>
+        <div class="data-point"><span>Schwarzschild</span><span id="schwarzschild-radius">--</span></div>
         <div class="data-point"><span>Énergie Relativiste</span><span id="relativistic-energy">--</span></div>
-        <div class="data-point"><span>Vitesse Lumière %</span><span id="pct-speed-of-light">--</span></div>
         <div class="data-point"><span>Planck Static</span><span id="planck-static-const">--</span></div>
     </div>
 
@@ -115,24 +117,27 @@
         <div class="data-point"><span>Force Coriolis</span><span id="coriolis-force">--</span></div>
         <div class="data-point"><span>G-Force Vert.</span><span id="force-g-vert">--</span></div>
         <div class="data-point"><span>Gravité Locale</span><span id="local-gravity">--</span></div>
-        <div class="data-point"><span>Puissance Méca</span><span id="mechanical-power">--</span></div>
         <div class="data-point"><span>Quantum Drag</span><span id="quantum-drag">--</span></div>
     </div>
 
     <div class="panel">
-        <h2>ASTRO & ENVIRONNEMENT</h2>
+        <h2>ASTRO & ENV</h2>
         <canvas id="mc-clock-canvas"></canvas>
         <div class="data-point"><span>Jour Julien</span><span id="ast-jd">--</span></div>
-        <div class="data-point"><span>Temps Sidéral</span><span id="tslv">--</span></div>
         <div class="data-point"><span>Phase Lunaire</span><span id="moon-phase-name">--</span></div>
         <div class="data-point"><span>Azimuth Solaire</span><span id="sun-azimuth">--</span></div>
         <div class="data-point"><span>Densité Air (ρ)</span><span id="ui-rho-dynamic">--</span></div>
-        <div class="data-point"><span>Indice UV</span><span id="ui-uv-index">--</span></div>
         <div class="data-point"><span>Adrénaline Idx</span><span id="adrenaline-idx">--</span></div>
         <div id="anomaly-log">LOG_READY...</div>
         <button id="clear-log-btn">CLEAR_LOGS</button>
     </div>
 </main>
+
+<footer id="footer-status-bar">
+    <div>LATENCY_OS: <span id="ui-clock-drift">0.000</span>ms</div>
+    <div>ENGINE: OMNISCIENCE_V21_PRO_MAX</div>
+    <div>SIGNAL: <span id="ui-sampling-rate">0</span>Hz</div>
+</footer>
 
 <div id="scientific-hidden-buffer" style="display:none;">
     <span id="gps-pause-toggle"></span><span id="freq-select"></span><span id="emergency-stop"></span><span id="reset-all-btn"></span>
@@ -179,36 +184,27 @@
     <span id="sunset-times"></span><span id="moon-illuminated"></span><span id="moon-alt"></span>
     <span id="moon-azimuth"></span><span id="moon-times"></span><span id="moon-distance"></span>
     <span id="ui-eclipse-status"></span><span id="ui-moon-node"></span>
-    <span id="ui-signal-wave"></span><span id="ui-sampling-rate"></span><span id="ui-gps-accuracy"></span>
-    <span id="ui-vrt"></span><span id="ui-clock-drift"></span><span id="vibration-jitter"></span><span id="ephem-status"></span></div>
+    <span id="ui-signal-wave"></span><span id="ui-gps-accuracy"></span>
+    <span id="ui-vrt"></span><span id="vibration-jitter"></span><span id="ephem-status"></span>
+    <span id="ukf-alt-uncertainty"></span><span id="time-minecraft"></span><span id="mach-number"></span>
+    <span id="pct-speed-of-light"></span><span id="tslv"></span><span id="ui-uv-index"></span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+<script src="ephem.js"></script>
+<script src="weather.js"></script>
+<script src="gnss-dashboard-full.js"></script>
+
+<script>
+    window.addEventListener('load', () => {
+        console.log("OMNISCIENCE V21: Système initialisé.");
+        const log = document.getElementById('anomaly-log');
+        if(log) log.innerHTML = "<div>[SYSTEM] MOTEUR V21 PRÊT.</div>";
+    });
+</script>
 
 </body>
-            <footer id="footer-status-bar" style="height: 25px; background: #000; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; font-size: 0.6rem; color: #555;">
-        <div>LATENCY_OS: <span id="ui-clock-drift">0.000</span>ms</div>
-        <div>ENGINE: OMNISCIENCE_V21_PRO_MAX</div>
-        <div>SIGNAL: <span id="ui-sampling-rate">0</span>Hz</div>
-    </footer>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-    <script src="ephem.js"></script>
-    
-    <script src="weather.js"></script>
-    
-    <script src="gnss-dashboard-full.js"></script>
-
-    <script>
-        // Script d'auto-vérification au chargement
-        window.addEventListener('load', () => {
-            console.log("OMNISCIENCE V21: Système prêt.");
-            const log = document.getElementById('anomaly-log');
-            if(log) log.innerHTML = "<div>[SYSTEM] TOUS LES MODULES CHARGÉS. EN ATTENTE D'INITIALISATION...</div>";
-        });
-    </script>
-
-</body>
-</html>
+                                    </html>
