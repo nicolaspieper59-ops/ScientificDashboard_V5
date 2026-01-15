@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GNSS SpaceTime Dashboard • UKF 21 États Fusion Professionnel</title>
-    
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-
-
+    <title>GNSS SpaceTime Dashboard • V17 PRO</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 <style>
     :root {
         --bg: #020202;
@@ -19,39 +16,50 @@
         --accent: #00ff88;
         --critical: #ff3300;
         --text: #e0e0e0;
-        --header-h: 60px; /* Hauteur fixe du header */
+        --header-h: 60px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body, html {
+    html, body {
         width: 100vw; height: 100vh;
         background: var(--bg);
         color: var(--text);
         font-family: 'JetBrains Mono', monospace;
-        overflow: hidden; /* VERROUILLAGE DU SCROLL GLOBAL */
+        overflow: hidden; /* Empêche le scroll vertical total */
     }
 
-    /* GRILLE PRINCIPALE : 3 COLONNES STRICTES */
+    /* GRILLE 4 COLONNES (PC) / FLEX SCROLL (MOBILE) */
     .dashboard-grid {
         display: grid;
-        grid-template-columns: 1.1fr 1fr 1fr; /* Colonne 1 légèrement plus large pour la carte */
+        grid-template-columns: repeat(4, 1fr); 
         gap: 8px;
         padding: 8px;
         height: calc(100vh - var(--header-h));
         width: 100%;
+        transition: all 0.3s ease;
     }
 
-    /* COLONNE : CONTENEUR VERTICAL */
+    @media (max-width: 1024px) {
+        .dashboard-grid {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+        .column {
+            min-width: 85vw;
+            scroll-snap-align: center;
+        }
+    }
+
     .column {
         display: flex;
         flex-direction: column;
         gap: 8px;
         height: 100%;
-        min-width: 0; /* Empêche l'éclatement de la grille par le contenu */
     }
 
-    /* PANNEAU SCIENTIFIQUE */
     .panel {
         background: var(--card);
         border: 1px solid var(--border);
@@ -59,131 +67,124 @@
         border-radius: 4px;
         display: flex;
         flex-direction: column;
-        flex: 1; /* Par défaut, ils se partagent l'espace équitablement */
-        min-height: 0; /* Important pour le scroll interne */
-        position: relative;
+        flex: 1;
+        min-height: 0;
     }
 
-    /* AJUSTEMENT SPÉCIFIQUE DE LA HAUTEUR */
-    .panel[style*="flex: 2"] { flex: 2; }
-    .panel[style*="flex: 1.5"] { flex: 1.5; }
-
-    /* TITRES */
     h2 {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         color: var(--accent);
         text-transform: uppercase;
         margin-bottom: 8px;
-        border-bottom: 1px solid #1a1a1f;
-        padding-bottom: 4px;
         display: flex;
         align-items: center;
         gap: 6px;
     }
 
-    /* DONNÉES MÉTRIQUES */
     .data-point {
         display: flex;
         justify-content: space-between;
-        font-size: 0.65rem;
+        font-size: 0.62rem;
         margin-bottom: 4px;
-        line-height: 1.2;
     }
 
-    .val-scientifique {
-        color: #fff;
-        font-weight: bold;
-    }
-
-    /* LOGS (SEUL ÉLÉMENT AUTORISÉ À SCROLLER) */
     #anomaly-log {
         flex: 1;
         overflow-y: auto;
-        font-size: 0.6rem;
-        padding-right: 5px;
+        font-size: 0.58rem;
+        color: #888;
     }
 
-    /* SCROLLBAR STYLE (CYBERPUNK) */
-    ::-webkit-scrollbar { width: 3px; }
+    /* SCROLLBAR CYBERPUNK */
+    ::-webkit-scrollbar { width: 2px; height: 2px; }
     ::-webkit-scrollbar-thumb { background: var(--accent); }
-    /* SOLUTION DÉFINITIVE FOND BLANC */
-html {
-    background-color: #020202; /* La même couleur que votre var(--bg) */
-    height: 100%;
-    overflow: hidden; /* Verrouille le scroll au niveau racine */
-}
-
-body {
-    background-color: #020202;
-    min-height: 100vh;
-    margin: 0;
-    overflow: hidden; /* Double sécurité pour le Zéro Scroll */
-    }
-    * {
-    box-sizing: border-box;
-    margin: 0;   /* Supprime toutes les marges par défaut */
-    padding: 0;
-    }
 </style>
 </head>
-<body class="dark-mode">
-    <div id="poi-alert" style="display:none; position: fixed; top: 60px; right: 20px; background: var(--critical); color: #fff; padding: 10px; z-index: 9999;">⚠️ POINT D'INTÉRÊT ENREGISTRÉ</div>
+<body>
 
-    <header id="master-hud-fixed" style="height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border);">
-        </header>
+    <header style="height: var(--header-h); display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid var(--border);">
+        <h1 style="font-size: 0.8rem; color: var(--accent);"><i class="fas fa-satellite-dish"></i> OMNISCIENCE_V17_PRO</h1>
+    </header>
 
-    <main class="dashboard-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; height: calc(100vh - 60px); overflow: hidden;">
+    <main class="dashboard-grid">
+        <div class="column">
+             <section class="panel"><h2><i class="fas fa-map"></i> NAV_UNIT</h2><div id="map" style="height:100%;"></div></section>
+        </div>
         
-        <div class="column" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
-            </div>
+        <div class="column">
+             <section class="panel"><h2><i class="fas fa-bolt"></i> DYNAMIQUE</h2><div class="data-point"><span>Vitesse</span><span id="ui-speed-ms">--</span></div></section>
+        </div>
 
-        <div class="column" style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
-            
-            <section class="panel" style="flex: 1.5; background: var(--card); border: 1px solid var(--border); padding: 15px;">
-                <h2 style="font-size: 0.8rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase;"><i class="fas fa-cog"></i> CONTRÔLES & SYNCHRO</h2>
-                
-                <div class="control-group" style="margin-bottom: 15px;">
-                    <div class="label" style="font-size: 0.6rem; color: #888; margin-bottom: 5px;">SYNCHRONISATION_ÉPHÉMÉRIDES</div>
-                    <div id="ephem-status" style="font-size: 0.7rem; color: var(--accent); border: 1px solid #1a1a1f; padding: 5px; background: #000;">
-                        <i class="fas fa-satellite"></i> GPS_ALMANAC: SYNC_OK
-                    </div>
-                </div>
+        <div class="column">
+             <section class="panel"><h2><i class="fas fa-eye"></i> SPECTRE</h2><div class="data-point"><span>Flux IR</span><span id="ui-ir-flux">--</span></div></section>
+        </div>
 
-                <div class="data-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                    <div class="data-point" style="background: rgba(255,255,255,0.02); padding: 5px;">
-                        <span style="font-size: 0.6rem;">Dérive Temps</span>
-                        <span id="ui-clock-drift" style="display:block; color: #fff;">0.0002 ns</span>
-                    </div>
-                    <div class="data-point" style="background: rgba(255,255,255,0.02); padding: 5px;">
-                        <span style="font-size: 0.6rem;">V-Light (Rel.)</span>
-                        <span id="ui-c-ratio" style="display:block; color: #fff;">0.999...</span>
-                    </div>
+        <div class="column">
+            <section class="panel" style="flex: 0.8; border-left: 2px solid var(--accent);">
+                <h2><i class="fas fa-microchip"></i> FILTRE_UKF_21_ÉTATS</h2>
+                <div id="ukf-viz" style="height: 50px; background: #000; border: 1px solid #222; margin-bottom: 8px; position: relative;">
+                    <canvas id="ukf-canvas" style="width: 100%; height: 100%;"></canvas>
                 </div>
+                <div class="data-point"><span>Confiance Matrice P</span><span id="kalman-p" style="color:var(--accent);">99.8%</span></div>
+                <div class="data-point"><span>Bruit Process (Q)</span><span id="ukf-q-noise">0.00014</span></div>
             </section>
-<div class="column">
-    <section class="panel" style="flex: none; border-left: 2px solid var(--accent);">
-        <h2><i class="fas fa-microchip"></i> FILTRE_UKF_21_ÉTATS</h2>
-        
-        <div id="ukf-viz" style="height: 60px; background: #000; border: 1px solid #222; margin-bottom: 8px; position: relative; overflow: hidden;">
+
+            <section class="panel" style="flex: 1.2;">
+                <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
+                <div id="anomaly-log">
+                    <div>[V17] Système prêt...</div>
+                </div>
+                <button id="main-init-btn" onclick="startAdventure()" style="margin-top:10px; background:var(--accent); border:none; padding:8px; font-weight:bold; cursor:pointer;">INITIALISER</button>
+            </section>
+        </div>
+    </main>
+
+</body>
+</html>
+    <section class="panel" style="border-left: 2px solid var(--accent); padding: 12px; background: var(--card);">
+        <h2 style="font-size: 0.75rem; color: var(--accent); margin-bottom: 8px;">
+            <i class="fas fa-microchip"></i> FILTRE_UKF_21_ÉTATS
+        </h2>
+        <div id="ukf-viz" style="height: 50px; background: #000; border: 1px solid #222; margin-bottom: 8px; position: relative;">
             <canvas id="ukf-canvas" style="width: 100%; height: 100%;"></canvas>
         </div>
-
         <div class="data-point">
             <span>Confiance Matrice P</span>
-            <span id="kalman-p" style="color: var(--accent); font-family: 'JetBrains Mono';">--%</span>
+            <span id="kalman-p" style="color: var(--accent); font-weight: bold;">--%</span>
         </div>
         <div class="data-point">
-            <span>Bruit de Process (Q)</span>
-            <span id="ukf-q-noise" style="font-size: 0.6rem;">0.00014</span>
+            <span>Bruit Process (Q)</span>
+            <span id="ukf-q-noise" style="font-size: 0.6rem; color: #888;">0.00014</span>
         </div>
     </section>
 
-    <section class="panel" style="flex: 1;">
-        <h2><i class="fas fa-database"></i> MÉTRIQUES_SYSTÈME</h2>
+    <section class="panel" style="padding: 12px; background: var(--card);">
+        <h2 style="font-size: 0.75rem; color: var(--accent); margin-bottom: 8px;">
+            <i class="fas fa-satellite"></i> SYNCHRO_ÉPHÉMÉRIDES
+        </h2>
+        <div id="ephem-status" style="font-size: 0.65rem; color: var(--accent); border: 1px solid #1a1a1f; padding: 6px; background: #000; margin-bottom: 10px;">
+            <i class="fas fa-check-circle"></i> ALMANAC_GPS: SYNC_OK
+        </div>
+        <div class="data-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+            <div class="data-point" style="background: rgba(255,255,255,0.03); padding: 5px; flex-direction: column; align-items: flex-start;">
+                <span style="font-size: 0.55rem; color: #888;">Dérive Horloge</span>
+                <span id="ui-clock-drift" style="color: #fff; font-size: 0.75rem;">0.0002 ns</span>
+            </div>
+            <div class="data-point" style="background: rgba(255,255,255,0.03); padding: 5px; flex-direction: column; align-items: flex-start;">
+                <span style="font-size: 0.55rem; color: #888;">Ratio C (Rel.)</span>
+                <span id="ui-c-ratio" style="color: #fff; font-size: 0.75rem;">0.999...</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel" style="flex: 1; padding: 12px; background: var(--card);">
+        <h2 style="font-size: 0.75rem; color: var(--accent); margin-bottom: 8px;">
+            <i class="fas fa-database"></i> MÉTRIQUES_SYSTÈME
+        </h2>
         <div class="data-point"><span>Charge CPU</span><span id="ui-cpu-load">--%</span></div>
+        <div class="data-point"><span>RAM Moteur</span><span id="ui-ram-usage">-- MB</span></div>
     </section>
 </div>
-            <h2><i class="fas fa-cog"></i> Système & Contrôles, Synchronisation Éphémérides</h2>
                 <div class="data-point"><span>Date & Heure (UTC/GMT)</span><span id="utc-datetime">--</span></div>
                 <div class="data-point"><span>Décalage Heure NTP</span><span id="ntp-offset">--</span></div>
                 <div class="data-point"><span>Heure UTC Sync</span><span id="gmt-time-display-1">--:--:--.---</span></div>
