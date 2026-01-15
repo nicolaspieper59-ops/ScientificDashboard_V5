@@ -117,4 +117,4 @@ function metrologyLoop() {
     updateUI('ast-jd', JD.toFixed(6));
     
     if(METROLOGY.active) requestAnimationFrame(metrologyLoop);
-    }
+            }
