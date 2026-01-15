@@ -317,32 +317,52 @@
                 <div class="data-point" style="border-top: 1px solid #1a1a1a; padding-top: 5px;">    
                 <div class="data-point"><span>Horizon Dist. (km)</span><span id="horizon-distance-km">-.---</span> </div>
                 <div class="data-point"><span>Visibilité Cible</span><span id="horizon-target-visibility" class="val-scientifique">-- %</span></div>
-    </section> </div> <div class="column">
+<div class="column">
+    
     <section class="panel">
         <h2><i class="fas fa-wave-square"></i> SIGNAL_PROCESSING_UNIT</h2>
         
-        <div class="chart-container" style="height: 80px; background: rgba(0,0,0,0.4); margin-bottom: 10px; border: 1px solid #1a1a1a; position: relative;">
+        <div class="chart-container" style="height: 60px; background: rgba(0,0,0,0.4); margin-bottom: 8px; border: 1px solid #1a1a1a; position: relative;">
             <canvas id="ui-signal-wave" style="width: 100%; height: 100%;"></canvas>
-            <div style="position: absolute; top: 2px; right: 5px; font-size: 0.5rem; color: var(--accent);">FFT_ACTIVE</div>
+            <div style="position: absolute; top: 2px; right: 5px; font-size: 0.4rem; color: var(--accent); letter-spacing: 1px;">FFT_ANALYSIS</div>
         </div>
 
         <div class="data-point">
-            <span>SNR Global (Rapport S/B)</span>
+            <span>SNR Global (S/B)</span>
             <span id="ui-snr-db" class="val-scientifique" style="color: var(--accent);">-- dB</span>
         </div>
-        
         <div class="data-point">
-            <span>Fréquence d'Échantillonnage</span>
-            <span id="ui-sampling-rate" class="val-scientifique">-- Hz</span>
+            <span>Fréq. Vibrations</span>
+            <span id="ui-vrt" style="color: var(--critical);">0.00 Hz</span>
         </div>
-        
+        <div class="data-point">
+            <span>Échantillonnage</span>
+            <span id="ui-sampling-rate">-- Hz</span>
+        </div>
     </section>
 
-<section class="panel">
-        <h2><i class="fas fa-satellite-dish"></i> GLOBEX-RAY_METRICS</h2>
-        <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy" class="val-scientifique">-- m</span></div>
-        <div class="data-point"><span>Fréquence Vibrations</span><span id="ui-vrt" class="val-scientifique">0.00 Hz</span></div>
+    <section class="panel">
+        <h2><i class="fas fa-eye"></i> GÉOMÉTRIE_D_HORIZON</h2>
+        <div class="data-point">
+            <span>Horizon Dist.</span>
+            <span id="horizon-distance-km" class="val-scientifique">-.--- km</span>
+        </div>
+        <div class="data-point">
+            <span>Visibilité Cible</span>
+            <span id="horizon-target-visibility">-- %</span>
+        </div>
+        <div class="data-point">
+            <span>Réfraction Atmo.</span>
+            <span id="ui-refraction-index">1.0003</span>
+        </div>
     </section>
+
+    <section class="panel">
+        <h2><i class="fas fa-satellite-dish"></i> SAT_PRECISION</h2>
+        <div class="data-point"><span>Précision GPS (Acc)</span><span id="ui-gps-accuracy">-- m</span></div>
+        <div class="data-point"><span>DOP (Dilution of Precision)</span><span id="ui-gps-dop">-.--</span></div>
+    </section>
+</div>
 
     <section class="panel" aria-labelledby="weather-heading">
         <h2 id="weather-heading"><i class="fas fa-cloud-sun"></i> MÉTÉO & BIO-SVT</h2>
