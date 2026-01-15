@@ -325,4 +325,3 @@ function startAdventure() {
         }, 100);
     }).catch(e => console.log("Micro disabled"));
                 }
-Me mettre à jour le script sans rien oublié et  ometre de absolument tout les fonctionnalités présente 
