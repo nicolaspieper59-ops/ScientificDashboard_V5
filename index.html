@@ -3,140 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIENCE V21 • MASTER HUD</title>
+    <title>OMNISCIENCE V21 • PRO MAX HUD</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 
     <style>
         :root {
-            --bg: #010101;
-            --card: rgba(10, 10, 12, 0.98);
-            --border: #1a1a20;
-            --accent: #00ff88;
-            --critical: #ff3300;
-            --text: #e0e0e0;
+            --bg: #010101; --card: rgba(10, 10, 12, 0.98); --border: #1a1a20;
+            --accent: #00ff88; --critical: #ff3300; --text: #e0e0e0;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background: var(--bg); color: var(--text);
-            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace;
             height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
-
-        header#master-hud-fixed {
+        header {
             height: 50px; background: #000; border-bottom: 2px solid var(--accent);
             display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center; padding: 0 15px;
-            z-index: 100;
         }
-
         main {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            flex: 1; display: grid; grid-template-columns: repeat(4, 1fr);
             gap: 5px; padding: 5px; overflow-y: auto;
         }
-
         .panel {
-            background: var(--card); border: 1px solid var(--border);
-            padding: 8px; border-top: 2px solid var(--accent);
-            display: flex; flex-direction: column; gap: 4px;
+            background: var(--card); border: 1px solid var(--border); padding: 8px;
+            border-top: 2px solid var(--accent); display: flex; flex-direction: column; gap: 4px;
         }
-
-        .panel h2 {
-            font-size: 0.6rem; color: var(--accent); text-transform: uppercase;
-            border-bottom: 1px solid #333; margin-bottom: 5px;
+        .panel h2 { font-size: 0.6rem; color: var(--accent); border-bottom: 1px solid #333; margin-bottom: 4px; }
+        .data-point { display: flex; justify-content: space-between; font-size: 0.65rem; }
+        .data-point span:first-child { color: #777; }
+        .unit { color: var(--accent); font-size: 0.55rem; }
+        #anomaly-log { height: 60px; font-size: 0.55rem; color: var(--accent); overflow-y: auto; background: #000; border: 1px solid #222; margin-top: 5px; }
+        button#main-init-btn {
+            background: var(--accent); color: #000; border: none; font-weight: bold;
+            padding: 8px; cursor: pointer; text-transform: uppercase; font-size: 0.65rem;
         }
-
-        .data-point {
-            display: flex; justify-content: space-between;
-            font-size: 0.65rem; line-height: 1.1;
-        }
-
-        .data-point span:first-child { color: #777; font-size: 0.55rem; }
-        .data-point span:last-child { color: #fff; font-weight: bold; }
-
-        #anomaly-log { height: 70px; font-size: 0.55rem; color: var(--accent); overflow-y: auto; background: #000; border: 1px solid #222; }
-        
-        button { cursor: pointer; background: #111; color: var(--accent); border: 1px solid var(--accent); font-size: 0.6rem; padding: 8px; margin-top: 5px; font-weight: bold; }
-        button:hover { background: var(--accent); color: #000; }
-
-        footer#footer-status-bar {
+        footer {
             height: 25px; background: #000; border-top: 1px solid #333;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 10px; font-size: 0.6rem; color: #555;
+            display: flex; justify-content: space-between; align-items: center; padding: 0 10px; font-size: 0.6rem;
         }
     </style>
 </head>
 <body>
 
-<header id="master-hud-fixed">
-    <div id="statut-meteo">SCANNING...</div>
-    <div style="text-align: center; font-size: 0.7rem;">OMNISCIENCE V21 • <span id="reality-status">NOMINAL</span></div>
-    <div style="text-align: right; font-size: 0.6rem;">SNR: <span id="ui-snr-db">--</span> dB</div>
+<header>
+    <div id="statut-meteo">WEATHER: SCAN...</div>
+    <div style="text-align: center;">OMNISCIENCE V21 • <span id="reality-status">NOMINAL</span></div>
+    <div style="text-align: right;">SNR: <span id="ui-snr-db">--</span> dB</div>
 </header>
 
 <main>
     <div class="panel">
-        <h2>GÉODÉSIE_WGS84</h2>
-        <div class="data-point"><span>Latitude</span><span id="lat-ukf">--</span></div>
-        <div class="data-point"><span>Longitude</span><span id="lon-ukf">--</span></div>
-        <div class="data-point"><span>Altitude</span><span id="alt-display">--</span></div>
-        <div class="data-point"><span>Gravité Locale</span><span id="local-gravity">--</span></div>
-        <div class="data-point"><span>Heading</span><span id="heading-display">--</span></div>
-        <div class="data-point"><span>Précision GPS</span><span id="ui-gps-accuracy">--</span></div>
+        <h2>GÉODÉSIE (WGS84)</h2>
+        <div class="data-point"><span>Lat</span><span id="lat-ukf">--</span></div>
+        <div class="data-point"><span>Lon</span><span id="lon-ukf">--</span></div>
+        <div class="data-point"><span>Alt</span><span id="alt-display">--</span></div>
+        <div class="data-point"><span>G-Local</span><span id="local-gravity">--</span></div>
+        <div class="data-point"><span>GPS-Acc</span><span id="ui-gps-accuracy">--</span></div>
     </div>
 
     <div class="panel">
-        <h2>MOUVEMENT_HFR</h2>
-        <div class="data-point"><span>Vitesse (m/s)</span><span id="speed-stable-ms">--</span></div>
-        <div class="data-point"><span>Vitesse (km/h)</span><span id="speed-stable-kmh">--</span></div>
-        <div class="data-point"><span>Mach Number</span><span id="mach-number">--</span></div>
-        <div class="data-point"><span>Accel (X|Y|Z)</span><span id="f-acc-xyz">--</span></div>
-        <div class="data-point"><span>Distance (BigN)</span><span id="dist-3d">--</span></div>
-        <div class="data-point"><span>Pitch / Roll</span><span><span id="pitch">--</span>/<span id="roll">--</span></span></div>
+        <h2>CINÉMATIQUE_PRO</h2>
+        <div class="data-point"><span>Vitesse</span><span id="speed-stable-ms">--</span></div>
+        <div class="data-point"><span>V-KMH</span><span id="speed-stable-kmh">--</span></div>
+        <div class="data-point"><span>Distance</span><span id="dist-3d">--</span></div>
+        <div class="data-point"><span>Acc-XYZ</span><span id="f-acc-xyz">--</span></div>
+        <div class="data-point"><span>P/R</span><span><span id="pitch">--</span>/<span id="roll">--</span></span></div>
     </div>
 
     <div class="panel">
         <h2>AÉRODYNAMIQUE</h2>
-        <div class="data-point"><span>Temp. Air</span><span id="ui-temp">--</span></div>
-        <div class="data-point"><span>Densité (ρ)</span><span id="air-density">--</span></div>
-        <div class="data-point"><span>Pression Dyn</span><span id="dynamic-pressure">--</span></div>
-        <div class="data-point"><span>Reynolds (Re)</span><span id="reynolds-number">--</span></div>
-        <div class="data-point"><span>Vitesse Son</span><span id="vitesse-son-cor">--</span></div>
-        <button id="main-init-btn" onclick="startAdventure()">INITIALISER_MOTEUR_V21</button>
+        <div class="data-point"><span>Temp</span><span id="ui-temp">--</span></div>
+        <div class="data-point"><span>Rho (ρ)</span><span id="air-density">--</span></div>
+        <div class="data-point"><span>P-Dyn</span><span id="dynamic-pressure">--</span></div>
+        <div class="data-point"><span>Mach</span><span id="mach-number">--</span></div>
+        <div class="data-point"><span>V-Son</span><span id="vitesse-son-cor">--</span></div>
+        <button id="main-init-btn" onclick="startAdventure()">INIT_V21</button>
     </div>
 
     <div class="panel">
-        <h2>ESPACE_TEMPS_C</h2>
-        <div class="data-point"><span>Facteur γ</span><span id="ui-gamma">--</span></div>
-        <div class="data-point"><span>Dilatation T</span><span id="time-dilation">--</span></div>
-        <div class="data-point"><span>Jour Julien</span><span id="ast-jd">--</span></div>
-        <div class="data-point"><span>Delta T (ΔT)</span><span id="ast-deltat">--</span></div>
-        <div id="anomaly-log">SYSTEM_READY...</div>
+        <h2>RELATIVITÉ & ASTRO</h2>
+        <div class="data-point"><span>Lorentz γ</span><span id="ui-gamma">--</span></div>
+        <div class="data-point"><span>Dila-T (V)</span><span id="time-dilation">--</span></div>
+        <div class="data-point"><span>Dila-T (G)</span><span id="ui-grav-dilation">--</span></div>
+        <div class="data-point"><span>JD (Astro)</span><span id="ast-jd">--</span></div>
+        <div class="data-point"><span>Delta T</span><span id="ast-deltat">--</span></div>
+        <div id="anomaly-log">V21_CORE_READY...</div>
     </div>
 </main>
 
-<footer id="footer-status-bar">
-    <div>LATENCY: <span id="ui-clock-drift">0.000</span>ms</div>
-    <div>ENGINE: OMNISCIENCE_PHYSICS_V21</div>
+<footer>
+    <div>DRIFT: <span id="ui-clock-drift">0.000</span>ms</div>
+    <div>ENGINE: V200_ULTIMATE</div>
     <div id="utc-datetime">--:--:--</div>
 </footer>
 
-<div id="scientific-hidden-buffer" style="display:none;">
+<div style="display:none;">
     <span id="ui-vrt"></span><span id="ui-sampling-rate"></span>
     <span id="ephem-status"></span><span id="moon-phase-name"></span>
-    <span id="sun-azimuth"></span><span id="moon-alt"></span>
+    <span id="reynolds-number"></span><span id="heading-display"></span>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-<script src="ephem.js"></script>
-<script src="weather.js"></script>
 <script src="gnss-dashboard-full.js"></script>
-
 </body>
-    </html>
+                                                        </html>
