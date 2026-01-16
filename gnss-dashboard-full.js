@@ -1,213 +1,150 @@
 /**
- * OMNISCIENCE V17 PRO MAX - MASTER ENGINE
- * High-Frequency Relativistic & Inertial Navigation System
+ * OMNISCIENCE V23 EXTRÊME - AEROSPACE & VOLTIGE ENGINE
+ * Spécial : Manèges, Saltos, Métro (Hautes Contraintes)
  */
 
-// 1. INITIALISATION MATHÉMATIQUE HAUTE PRÉCISION
 math.config({ number: 'BigNumber', precision: 64 });
 const _BN = (n) => math.bignumber(n);
-
-// CONSTANTES UNIVERSELLES (WGS84 & PHYSIQUE)
-const PHY = {
-    c: _BN(299792458),
-    G: _BN(6.67430e-11),
-    M_earth: _BN(5.972e24),
-    R_earth: _BN(6371000),
-    planck: _BN(6.62607015e-34),
-    rho_std: 1.225,
-    mu_air: 1.81e-5
-};
 
 const STATE = {
     active: false,
     startTime: Date.now(),
     lastT: performance.now(),
-    // Vecteurs
-    pos: { lat: 0, lon: 0, alt: 0 },
-    vel: { mag: _BN(0), raw: 0, z_ekf: 0 },
-    accel: { x: 0, y: 0, z: 0, filtered: "0.00|0.00|0.00" },
-    orientation: { pitch: 0, roll: 0, heading: 0 },
-    // Navigation
-    dist_total: _BN(0),
-    p_certainty: 98.4,
-    // Environnement
-    snr: 0,
-    atm: { temp: 288.15, press: 101325 }
+    // Vecteurs 3D
+    v_inertial: _BN(0),
+    dist_cumul: _BN(0),
+    orientation: { pitch: 0, roll: 0, yaw: 0 },
+    accel_pure: { x: 0, y: 0, z: 0 }, // Sans gravité
+    g_force: 1.0,
+    // Paramètres Astro
+    jd: 0,
+    deltat: 69.18
 };
 
 // =============================================================
-// 2. MOTEUR DE NAVIGATION INERTIELLE (V-COSMIQUE)
+// 1. MOTEUR DE PHYSIQUE VECTORIELLE (GESTION DES G & SALTOS)
 // =============================================================
-function computeInertialDynamics(dt, acc) {
-    if (dt <= 0) return;
+function computeExtremePhysics(dt, motion) {
+    if (dt <= 0 || dt > 0.2) return;
 
-    // Calcul de l'accélération résultante (norme)
-    const ax = _BN(acc.x);
-    const ay = _BN(acc.y);
-    const az = _BN(acc.z);
-    const a_mag = math.sqrt(math.add(math.square(ax), math.add(math.square(ay), math.square(az))));
+    // A. RÉCUPÉRATION DE L'ACCÉLÉRATION LINÉAIRE (SANS GRAVITÉ)
+    // On utilise accelerationIncludingGravity - Gravity pour isoler le mouvement réel
+    const rawX = motion.acceleration.x || 0;
+    const rawY = motion.acceleration.y || 0;
+    const rawZ = motion.acceleration.z || 0;
 
-    // Filtre de bruit (Deadzone) pour éviter la dérive à l'arrêt
-    const threshold = _BN(0.15);
-    if (math.larger(a_mag, threshold)) {
-        const dv = math.multiply(a_mag, _BN(dt));
-        STATE.vel.mag = math.add(STATE.vel.mag, dv);
+    // B. CALCUL DE LA G-FORCE (RÉSULTANTE)
+    const gx = motion.accelerationIncludingGravity.x || 0;
+    const gy = motion.accelerationIncludingGravity.y || 0;
+    const gz = motion.accelerationIncludingGravity.z || 0;
+    STATE.g_force = Math.sqrt(gx*gx + gy*gy + gz*gz) / 9.80665;
+
+    // C. FILTRE ANTI-VIBRATION "MÉTRO" (Seuil haut pour environnement bruité)
+    // Dans le métro, les vibrations rails/caisse créent du bruit blanc à 2Hz-5Hz
+    const noise_floor = STATE.g_force > 1.5 ? 0.25 : 0.12; 
+    let ax = Math.abs(rawX) < noise_floor ? 0 : rawX;
+    let ay = Math.abs(rawY) < noise_floor ? 0 : rawY;
+    let az = Math.abs(rawZ) < noise_floor ? 0 : rawZ;
+
+    const a_mag = Math.sqrt(ax*ax + ay*ay + az*az);
+
+    // D. INTÉGRATION RÉACTIVE AVEC COMPENSATION DE FREINAGE
+    // Si la G-force est élevée (virage manège), on limite l'intégration de vitesse linéaire
+    // pour éviter que le "poids" ne soit pris pour de la "vitesse"
+    const centrifugal_correction = Math.max(0.5, 2.0 - STATE.g_force); 
+
+    if (a_mag > 0.1) {
+        const dv = _BN(a_mag * dt * centrifugal_correction);
+        STATE.v_inertial = math.add(STATE.v_inertial, dv);
     } else {
-        // Friction automatique (Simule l'arrêt)
-        STATE.vel.mag = math.multiply(STATE.vel.mag, _BN(0.96));
+        // Friction active pour stabiliser l'arrêt
+        STATE.v_inertial = math.multiply(STATE.v_inertial, _BN(0.92));
     }
 
-    // Cumul de la distance
-    STATE.dist_total = math.add(STATE.dist_total, math.multiply(STATE.vel.mag, _BN(dt)));
+    if (math.smaller(STATE.v_inertial, 0.01)) STATE.v_inertial = _BN(0);
+
+    // E. CUMUL DISTANCE
+    STATE.dist_cumul = math.add(STATE.dist_cumul, math.multiply(STATE.v_inertial, _BN(dt)));
 }
 
 // =============================================================
-// 3. BOUCLE DE CALCUL SCIENTIFIQUE (60 FPS)
+// 2. MODULE ASTRONOMIQUE & RELATIVISTE
 // =============================================================
-function engineLoop() {
-    if (!STATE.active) return;
-
-    const now = performance.now();
-    const dt = (now - STATE.lastT) / 1000;
-    STATE.lastT = now;
-
-    // A. RELATIVITÉ (LORENTZ & SCHWARZSCHILD)
-    const v = STATE.vel.mag;
-    const beta2 = math.divide(math.square(v), math.square(PHY.c));
-    const gamma = math.divide(1, math.sqrt(math.subtract(1, beta2)));
-    const t_dilation = math.multiply(math.subtract(gamma, 1), 1e9); // ns/s
-    
-    // Énergie Relativiste (E = γmc²) pour m=80kg
-    const e_rel = math.multiply(gamma, math.multiply(_BN(80), math.square(PHY.c)));
-    
-    // Rayon de Schwarzschild (2GM/c²)
-    const rs = math.divide(math.multiply(2, math.multiply(PHY.G, PHY.M_earth)), math.square(PHY.c));
-
-    // B. MÉCANIQUE DES FLUIDES
+function updateAstroAndRelativity() {
+    const v = STATE.v_inertial;
     const v_ms = Number(v);
-    const mach = v_ms / 340.29;
-    const reynolds = (PHY.rho_std * v_ms * 1.7) / PHY.mu_air;
-    const q_press = 0.5 * PHY.rho_std * (v_ms ** 2);
+    
+    // Lorentz & Énergie
+    const beta2 = math.divide(math.square(v), math.square(_BN(299792458)));
+    const gamma = math.divide(1, math.sqrt(math.subtract(1, beta2)));
+    const e_rel = math.multiply(gamma, math.multiply(_BN(80), math.square(_BN(299792458))));
 
-    // C. ASTRONOMIE (Via ephem.js logic)
-    const jd = (Date.now() / 86400000) + 2440587.5;
-    const light_sec = math.multiply(v, _BN((Date.now() - STATE.startTime)/1000));
+    // Jour Julien & TSLV
+    STATE.jd = (Date.now() / 86400000) + 2440587.5;
 
-    // D. MISE À JOUR HUD (TOUS LES IDS)
-    updateHUD({
-        gamma, t_dilation, e_rel, rs, mach, reynolds, q_press, jd, light_sec
-    });
-
-    requestAnimationFrame(engineLoop);
-}
-
-// =============================================================
-// 4. MAPPING TOTAL DES IDS HTML
-// =============================================================
-function updateHUD(data) {
-    // Colonne : CINÉMATIQUE_PRO
-    UI('speed-stable-ms', STATE.vel.mag.toFixed(6));
-    UI('speed-stable-kmh', math.multiply(STATE.vel.mag, 3.6).toFixed(4));
-    UI('v-cosmic', math.multiply(STATE.vel.mag, 3.6).toFixed(2));
-    UI('mach-number', data.mach.toFixed(5));
-    UI('vitesse-son-cor', "340.29 m/s");
-
-    // Colonne : RELATIVITÉ_GÉNÉRALE
-    UI('ui-gamma', data.gamma.toFixed(15));
-    UI('time-dilation', data.t_dilation.toFixed(9));
-    UI('relativistic-energy', data.e_rel.toExponential(4));
-    UI('schwarzschild-radius', data.rs.toFixed(8));
-
-    // Colonne : POSITIONNEMENT_3D
-    UI('lat-ukf', STATE.pos.lat.toFixed(7));
-    UI('lon-ukf', STATE.pos.lon.toFixed(7));
-    UI('alt-display', STATE.pos.alt.toFixed(2));
-    UI('dist-3d', data.light_sec.toFixed(4) + " m");
-
-    // Colonne : ASTRO_WATCH
-    UI('ast-jd', data.jd.toFixed(6));
+    // AFFICHAGE HUD
+    UI('speed-stable-ms', v.toFixed(6));
+    UI('speed-stable-kmh', math.multiply(v, 3.6).toFixed(4));
+    UI('v-cosmic', math.multiply(v, 3.6).toFixed(2));
+    UI('g-resultant', STATE.g_force.toFixed(3)); // Nouveau ID nécessaire ou réutilisation
+    UI('ui-gamma', gamma.toFixed(15));
+    UI('relativistic-energy', e_rel.toExponential(4));
+    UI('ast-jd', STATE.jd.toFixed(6));
     UI('ast-deltat', "69.18 s");
-    UI('distance-light-s', data.light_sec.toFixed(2));
-
-    // Colonne : SIGNAL & SYSTÈME
-    UI('ui-snr-db', STATE.snr.toFixed(1));
-    UI('kalman-p-certainty', STATE.p_certainty.toFixed(1));
-    UI('ntp-offset', (Math.random() * 0.5).toFixed(3));
-    UI('utc-datetime', new Date().toLocaleTimeString());
-
-    // Colonne : MÉCANIQUE & BIO
-    UI('dynamic-pressure', data.q_press.toFixed(2));
-    UI('reynolds-number', data.reynolds.toExponential(2));
-    UI('adrenaline-idx', (Number(STATE.vel.mag) > 2 ? 0.65 : 0.10).toFixed(2));
-    UI('f-acc-xyz', STATE.accel.filtered);
+    UI('dist-3d', STATE.dist_cumul.toFixed(4));
+    
+    // Reynolds & Mach
+    UI('mach-number', (v_ms / 340.29).toFixed(5));
+    UI('reynolds-number', ((1.225 * v_ms * 1.7) / 1.81e-5).toExponential(2));
+    
+    // Distance Lumière
+    const light_dist = math.multiply(v, _BN((Date.now() - STATE.startTime)/1000));
+    UI('distance-light-s', light_dist.toFixed(4));
 }
 
 // =============================================================
-// 5. GESTION DES CAPTEURS
+// 3. GESTION DES CAPTEURS HAUTE FRÉQUENCE
 // =============================================================
 function initSensors() {
-    // 1. MOUVEMENT (IMU)
     window.addEventListener('devicemotion', (e) => {
         if (!STATE.active) return;
-        const acc = {
-            x: e.acceleration.x || 0,
-            y: e.acceleration.y || 0,
-            z: e.acceleration.z || 0
-        };
-        STATE.accel.filtered = `${acc.x.toFixed(2)}|${acc.y.toFixed(2)}|${acc.z.toFixed(2)}`;
-        
         const dt = (performance.now() - STATE.lastT) / 1000;
-        computeInertialDynamics(dt, acc);
+        STATE.lastT = performance.now();
+        
+        computeExtremePhysics(dt, e);
+        
+        UI('f-acc-xyz', `${e.acceleration.x?.toFixed(2)}|${e.acceleration.y?.toFixed(2)}|${e.acceleration.z?.toFixed(2)}`);
     });
 
-    // 2. ORIENTATION
     window.addEventListener('deviceorientation', (e) => {
-        UI('pitch', (e.beta || 0).toFixed(0));
-        UI('roll', (e.gamma || 0).toFixed(0));
-        UI('heading-display', (e.alpha || 0).toFixed(0));
+        UI('pitch', Math.round(e.beta || 0));
+        UI('roll', Math.round(e.gamma || 0));
+        UI('heading-display', Math.round(e.alpha || 0));
     });
 
-    // 3. GEOLOCALISATION
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(p => {
-            STATE.pos.lat = p.coords.latitude;
-            STATE.pos.lon = p.coords.longitude;
-            STATE.pos.alt = p.coords.altitude || 0;
-            UI('ui-gps-accuracy', p.coords.accuracy.toFixed(1));
-        }, null, { enableHighAccuracy: true });
-    }
-}
-
-// =============================================================
-// 6. UTILS & START
-// =============================================================
-function UI(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.innerText = val;
+    navigator.geolocation.watchPosition((p) => {
+        // Correction GPS douce
+        const v_gps = _BN(p.coords.speed || 0);
+        const err = math.subtract(v_gps, STATE.v_inertial);
+        STATE.v_inertial = math.add(STATE.v_inertial, math.multiply(err, _BN(0.05)));
+        
+        UI('lat-ukf', p.coords.latitude.toFixed(7));
+        UI('lon-ukf', p.coords.longitude.toFixed(7));
+    }, null, { enableHighAccuracy: true });
 }
 
 function startAdventure() {
-    if (STATE.active) return;
     STATE.active = true;
-    STATE.lastT = performance.now();
-    
-    document.getElementById('main-init-btn').style.background = "var(--critical)";
+    STATE.startTime = Date.now();
     document.getElementById('main-init-btn').innerText = "SYSTEM_RUNNING";
-    
     initSensors();
-    engineLoop();
     
-    // Simulation SNR via Micro
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-        const ctx = new AudioContext();
-        const ana = ctx.createAnalyser();
-        ctx.createMediaStreamSource(s).connect(ana);
-        const d = new Uint8Array(ana.frequencyBinCount);
-        setInterval(() => {
-            ana.getByteFrequencyData(d);
-            STATE.snr = d.reduce((a, b) => a + b) / d.length;
-        }, 200);
-    }).catch(() => UI('anomaly-log', "MIC_DISABLED"));
+    setInterval(updateAstroAndRelativity, 100); // 10Hz UI
+}
+
+function UI(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = val;
 }
 
 window.startAdventure = startAdventure;
