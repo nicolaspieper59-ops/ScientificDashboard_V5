@@ -9,119 +9,129 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 
     <style>
-        :root {
-            --bg: #010101;
-            --card: rgba(10, 10, 12, 0.98);
-            --border: #1a1a20;
-            --accent: #00ff88;
-            --critical: #ff3300;
-            --text: #e0e0e0;
-            --panel-h: calc((100vh - 50px - 180px) / 2.2);
+:root {
+    --bg: #010101;
+    --card: rgba(10, 10, 12, 0.98);
+    --border: #1a1a20;
+    --accent: #00ff88;
+    --critical: #ff3300;
+    --text: #e0e0e0;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    /* Correction majeure : Dynamic Viewport Height */
+    height: 100dvh; 
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* HEADER : Hauteur fixe garantie */
+header#master-hud-fixed {
+    height: 50px;
+    min-height: 50px;
+    background: #000;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+}
+
+/* MAIN : Grille adaptative avec défilement interne */
+main#master-hud-grid {
+    flex: 1;
+    display: grid;
+    /* Passage en 2 colonnes sur mobile pour éviter l'écrasement horizontal */
+    grid-template-columns: repeat(auto-fit, minmax(24%, 1fr));
+    gap: 4px;
+    padding: 4px;
+    overflow-y: auto; /* Autorise le scroll si les données "éclatent" */
+    scrollbar-width: none; /* Cache la scrollbar sur Firefox */
+}
+main::-webkit-scrollbar { display: none; } /* Cache la scrollbar sur Chrome/Safari */
+
+/* FOOTER : La zone Espace-Temps et Mission Logs */
+footer#sub-dashboard-row {
+    height: 190px;
+    min-height: 190px;
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    background: #000;
+    border-top: 1px solid #333;
+}
+
+.panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.panel h2 {
+    font-size: 0.6rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+    border-bottom: 1px solid #222;
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+}
+
+/* DATA POINTS : Alignement parfait des valeurs */
+.data-point {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.65rem; /* Légèrement agrandi pour le réalisme */
+    margin-bottom: 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+
+.data-point span:first-child { 
+    color: #999; 
+    font-size: 0.55rem;
+    text-transform: uppercase;
+}
+
+.val-scientifique { 
+    color: #fff; 
+    font-weight: bold; 
+    text-shadow: 0 0 3px rgba(0,255,136,0.3);
+}
+
+.unit { color: var(--accent); font-size: 0.5rem; opacity: 0.8; }
+
+/* Correction des boutons pour éviter le débordement */
+.control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+}
+
+#anomaly-log {
+    flex: 1;
+    font-size: 0.5rem;
+    color: #00ccff; /* Couleur "Data Stream" */
+    background: rgba(0,0,0,0.3);
+    overflow-y: auto;
+    font-family: monospace;
+}
+
+/* RESPONSIVE : Si l'écran est trop petit, on réduit le footer */
+@media (max-height: 600px) {
+    footer#sub-dashboard-row { height: 140px; min-height: 140px; }
+    .panel h2 { font-size: 0.5rem; }
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-        
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* HEADER FIXE */
-        header#master-hud-fixed {
-            height: 50px;
-            background: #000;
-            border-bottom: 2px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-            z-index: 100;
-        }
-
-        /* GRILLE PRINCIPALE 4 COLONNES */
-        main#master-hud-grid {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            padding: 6px;
-        }
-
-        /* FOOTER 5EME SECTION */
-        footer#sub-dashboard-row {
-            height: 180px;
-            display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
-            gap: 6px;
-            padding: 0 6px 6px 6px;
-            background: #000;
-        }
-
-        .panel {
-            background: var(--card);
-            border: 1px solid var(--border);
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .panel h2 {
-            font-size: 0.65rem;
-            color: var(--accent);
-            text-transform: uppercase;
-            border-bottom: 1px solid #222;
-            margin-bottom: 5px;
-            padding-bottom: 2px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .data-point {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.6rem;
-            margin-bottom: 3px;
-            line-height: 1.2;
-        }
-
-        .data-point span:first-child { color: #888; }
-        .val-scientifique { color: #fff; font-weight: bold; }
-        .unit { color: var(--accent); font-size: 0.5rem; margin-left: 2px; }
-
-        canvas { width: 100%; background: #000; border: 1px solid #111; }
-        
-        button {
-            background: #111;
-            color: var(--accent);
-            border: 1px solid #333;
-            font-family: inherit;
-            font-size: 0.6rem;
-            padding: 4px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        button:active { background: var(--accent); color: #000; }
-        
-        #anomaly-log {
-            flex: 1;
-            font-size: 0.55rem;
-            color: #ffaa00;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            padding: 2px;
-        }
-
-        .poi-active { animation: blink 1s infinite; color: var(--critical); font-weight: bold; }
-        @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
