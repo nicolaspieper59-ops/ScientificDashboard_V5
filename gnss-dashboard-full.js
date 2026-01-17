@@ -23,26 +23,68 @@ const OMNI = {
     M_EARTH: 5.972e24,
     R_EARTH: 6371000,
 
-    async start() {
-        this.log("INITIALISATION DES PROTOCOLES...");
-        
-        // DÉVERROUILLAGE CRITIQUE DES CAPTEURS (iOS/Android)
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            try {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission !== 'granted') {
-                    this.log("ERREUR: ACCÈS CAPTEUR REFUSÉ");
-                    return;
-                }
-            } catch (e) { this.log("ERREUR PERMISSION: " + e); return; }
+/**
+ * OMNISCIENCE V25.9 - DEVICE MOTION HANDLER
+ */
+
+OMNI.start = async function() {
+    this.log("INTERROGATION DES CAPTEURS...");
+
+    // 1. GESTION DES PERMISSIONS (iOS 13+ et certains Android récents)
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+            const permission = await DeviceMotionEvent.requestPermission();
+            this.log("PERMISSION : " + permission);
+            if (permission === 'granted') {
+                this.bindSensors();
+            } else {
+                this.log("ERREUR : ACCÈS MOUVEMENT REFUSÉ");
+                return;
+            }
+        } catch (e) {
+            this.log("ERREUR CRITIQUE : " + e.message);
+            return;
         }
+    } else {
+        // 2. ANDROID / CHROME (Accès direct souvent autorisé, mais HTTPS requis)
+        this.log("ACCÈS DIRECT (NON-IOS)...");
+        this.bindSensors();
+    }
+};
 
-        this.activateSystem();
-    },
+OMNI.bindSensors = function() {
+    this.active = true;
+    this.log("FLUX DE DONNÉES ACTIVÉ ✅");
 
-    activateSystem() {
-        this.active = true;
-        this.log("MOTEUR RK4 & QUANTUM-FIELD: ONLINE");
+    // L'écouteur d'événement principal
+    window.addEventListener('devicemotion', (event) => {
+        // Calcul de la fréquence d'échantillonnage pour le footer
+        if (!this.lastSample) this.lastSample = performance.now();
+        const now = performance.now();
+        const rate = 1000 / (now - this.lastSample);
+        this.lastSample = now;
+        this.setUI('ui-sampling-rate', Math.round(rate)); // Met à jour le footer SIGNAL
+
+        // Envoi vers le moteur RK4
+        this.coreLoop(event);
+    }, true);
+
+    // Écouteur d'orientation (Boussole / Inclinaison)
+    window.addEventListener('deviceorientation', (event) => {
+        this.orientation = {
+            a: event.alpha || 0,
+            b: event.beta || 0,
+            g: event.gamma || 0
+        };
+        this.updateIMU();
+    }, true);
+
+    // Modification visuelle du bouton
+    const btn = document.getElementById('main-init-btn');
+    btn.style.borderColor = "#00ff88";
+    btn.style.color = "#00ff88";
+    btn.innerText = "V25_CONNECTED";
+};
         
         // Listeners Haute Fréquence
         window.addEventListener('devicemotion', (e) => this.coreLoop(e));
