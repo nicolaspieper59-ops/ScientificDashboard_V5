@@ -1,6 +1,6 @@
 /**
- * OMNISCIENCE V25.9 - CORE ENGINE FINAL
- * Fusion Totale : RK4 + EKF + WGS84 + ASTRO + QUANTUM
+ * OMNISCIENCE V25.9.1 - CORE ENGINE STABLE
+ * Système de Navigation Inertielle / Relativiste / Quantique
  */
 
 const m = math;
@@ -15,85 +15,57 @@ const OMNI = {
     pos: { lat: 44.4368, lon: 26.1350, alt: 114.4 },
     orientation: { a: 0, b: 0, g: 0 },
     accBuffer: [],
+    current_mag: 0,
+    current_type: "STASE",
     
-    // Constantes Physiques
+    // Constantes
     C: 299792458,
     H_BAR: 1.054571817e-34,
-    G_UNIV: 6.67430e-11,
-    M_EARTH: 5.972e24,
-    R_EARTH: 6371000,
+    G_STD: 9.80665,
 
-/**
- * OMNISCIENCE V25.9 - DEVICE MOTION HANDLER
- */
+    // 1. DÉMARRAGE ET PERMISSIONS
+    async start() {
+        this.log("INTERROGATION DES CAPTEURS...");
 
-OMNI.start = async function() {
-    this.log("INTERROGATION DES CAPTEURS...");
-
-    // 1. GESTION DES PERMISSIONS (iOS 13+ et certains Android récents)
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        try {
-            const permission = await DeviceMotionEvent.requestPermission();
-            this.log("PERMISSION : " + permission);
-            if (permission === 'granted') {
-                this.bindSensors();
-            } else {
-                this.log("ERREUR : ACCÈS MOUVEMENT REFUSÉ");
-                return;
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const permission = await DeviceMotionEvent.requestPermission();
+                this.log("PERMISSION : " + permission);
+                if (permission === 'granted') {
+                    this.activate();
+                } else {
+                    this.log("ERREUR : ACCÈS REFUSÉ");
+                }
+            } catch (e) {
+                this.log("ERREUR CRITIQUE : " + e.message);
             }
-        } catch (e) {
-            this.log("ERREUR CRITIQUE : " + e.message);
-            return;
+        } else {
+            this.log("ACCÈS DIRECT (SÉCURISÉ)...");
+            this.activate();
         }
-    } else {
-        // 2. ANDROID / CHROME (Accès direct souvent autorisé, mais HTTPS requis)
-        this.log("ACCÈS DIRECT (NON-IOS)...");
-        this.bindSensors();
-    }
-};
+    },
 
-OMNI.bindSensors = function() {
-    this.active = true;
-    this.log("FLUX DE DONNÉES ACTIVÉ ✅");
+    // 2. ACTIVATION DES ÉCOUTEURS
+    activate() {
+        this.active = true;
+        this.log("FLUX DE DONNÉES ACTIF ✅");
 
-    // L'écouteur d'événement principal
-    window.addEventListener('devicemotion', (event) => {
-        // Calcul de la fréquence d'échantillonnage pour le footer
-        if (!this.lastSample) this.lastSample = performance.now();
-        const now = performance.now();
-        const rate = 1000 / (now - this.lastSample);
-        this.lastSample = now;
-        this.setUI('ui-sampling-rate', Math.round(rate)); // Met à jour le footer SIGNAL
+        // Accéléromètre
+        window.addEventListener('devicemotion', (e) => {
+            if (!this.lastSample) this.lastSample = performance.now();
+            const now = performance.now();
+            this.setUI('ui-sampling-rate', Math.round(1000 / (now - this.lastSample)));
+            this.lastSample = now;
+            this.coreLoop(e);
+        }, true);
 
-        // Envoi vers le moteur RK4
-        this.coreLoop(event);
-    }, true);
-
-    // Écouteur d'orientation (Boussole / Inclinaison)
-    window.addEventListener('deviceorientation', (event) => {
-        this.orientation = {
-            a: event.alpha || 0,
-            b: event.beta || 0,
-            g: event.gamma || 0
-        };
-        this.updateIMU();
-    }, true);
-
-    // Modification visuelle du bouton
-    const btn = document.getElementById('main-init-btn');
-    btn.style.borderColor = "#00ff88";
-    btn.style.color = "#00ff88";
-    btn.innerText = "V25_CONNECTED";
-};
-        
-        // Listeners Haute Fréquence
-        window.addEventListener('devicemotion', (e) => this.coreLoop(e));
+        // Gyroscope
         window.addEventListener('deviceorientation', (e) => {
             this.orientation = { a: e.alpha || 0, b: e.beta || 0, g: e.gamma || 0 };
             this.updateIMU();
-        });
+        }, true);
 
-        // GPS Haute Précision
+        // Géolocalisation
         navigator.geolocation.watchPosition(p => {
             this.pos.lat = p.coords.latitude;
             this.pos.lon = p.coords.longitude;
@@ -101,12 +73,15 @@ OMNI.bindSensors = function() {
             this.setUI('ui-gps-accuracy', p.coords.accuracy.toFixed(1));
         }, null, { enableHighAccuracy: true });
 
-        // Mise à jour HUD (10Hz)
+        // HUD Refresh @ 10Hz
         setInterval(() => this.refreshHUD(), 100);
-        document.getElementById('main-init-btn').innerText = "V25_ONLINE";
-        document.getElementById('main-init-btn').style.background = "rgba(0,255,136,0.3)";
+
+        const btn = document.getElementById('main-init-btn');
+        btn.innerText = "V25_CONNECTED";
+        btn.style.background = "rgba(0, 255, 136, 0.2)";
     },
 
+    // 3. MOTEUR PHYSIQUE RK4
     coreLoop(e) {
         if (!this.active) return;
         const now = performance.now();
@@ -115,25 +90,25 @@ OMNI.bindSensors = function() {
         if (dt <= 0 || dt > 0.2) return;
 
         const acc = e.acceleration || { x: 0, y: 0, z: 0 };
-        const accG = e.accelerationIncludingGravity || { x: 0, y: 0, z: 9.81 };
         const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+        this.current_mag = mag;
 
-        // 1. DÉTECTION DE SIGNATURE PHYSIQUE
+        // Détection BIO/MACH
         this.accBuffer.push(mag);
         if(this.accBuffer.length > 50) this.accBuffer.shift();
         const variance = math.var(this.accBuffer || [0]);
-        const type = variance > 2 ? "BIO" : "MACH";
-        const OBJ = type === "BIO" ? {m: 80, mu: 0.6, cx: 0.45} : {m: 1200, mu: 0.02, cx: 0.30};
-
-        // 2. MOTEUR RK4 (Intégration de la réalité)
-        const rho = 1.225 * Math.exp(-this.pos.alt / 8500); // Densité air variable
-        const pitch = this.orientation.b * (Math.PI / 180);
+        this.current_type = variance > 1.5 ? "BIO" : "MACH";
         
+        const OBJ = this.current_type === "BIO" ? {m: 80, mu: 0.5, cx: 0.45} : {m: 1200, mu: 0.02, cx: 0.30};
+        const rho = 1.225 * Math.exp(-this.pos.alt / 8500);
+        const pitchRad = this.orientation.b * (Math.PI / 180);
+
+        // Équation différentielle (RK4)
         const f = (v_in) => {
             const drag = 0.5 * rho * v_in * v_in * OBJ.cx * 0.55;
-            const friction = v_in > 0.01 ? OBJ.mu * OBJ.m * 9.81 * Math.cos(pitch) : 0;
-            const gravity_slope = OBJ.m * 9.81 * Math.sin(pitch);
-            return ( (mag * OBJ.m) + gravity_slope - drag - friction ) / OBJ.m;
+            const friction = v_in > 0.01 ? OBJ.mu * OBJ.m * this.G_STD * Math.cos(pitchRad) : 0;
+            const slope = OBJ.m * this.G_STD * Math.sin(pitchRad);
+            return ( (mag * OBJ.m) + slope - drag - friction ) / OBJ.m;
         };
 
         let v0 = Number(this.v);
@@ -143,48 +118,42 @@ OMNI.bindSensors = function() {
         let k4 = f(v0 + dt*k3);
         
         let newV = v0 + (dt/6)*(k1 + 2*k2 + 2*k3 + k4);
-        if (v0 > 0 && newV <= 0) newV = 0; // Arrêt friction
-        if (newV < 1e-9) newV = Math.random() * 1e-10; // Jitter Quantique
+        if (newV < 1e-8) newV = 0;
 
         this.v = _BN(newV);
         this.dist = m.add(this.dist, m.multiply(this.v, _BN(dt)));
-        this.current_mag = mag;
-        this.current_type = type;
     },
 
+    // 4. RENDU INTERFACE
     refreshHUD() {
         const v = Number(this.v);
         const dist = Number(this.dist);
         
-        // --- CINÉMATIQUE ---
+        // Cinématique
         this.setUI('v-cosmic', (v * 3.6).toFixed(2));
         this.setUI('speed-stable-ms', v.toFixed(6));
         this.setUI('speed-stable-kmh', (v * 3.6).toFixed(4));
         this.setUI('dist-3d', dist.toFixed(2));
 
-        // --- MÉCANIQUE DES FLUIDES ---
+        // Fluides & Forces
         const re = (1.225 * v * 1.8) / 1.8e-5;
-        this.setUI('reynolds-number', v > 0.1 ? re.toExponential(2) : "LAMINAIRE");
+        this.setUI('reynolds-number', v > 0.05 ? re.toExponential(2) : "LAMINAIRE");
         this.setUI('dynamic-pressure', (0.5 * 1.225 * v * v).toFixed(4));
-        this.setUI('g-force-resultant', (this.current_mag / 9.81 + 1).toFixed(3));
+        this.setUI('g-force-resultant', (this.current_mag / this.G_STD + 1).toFixed(3));
 
-        // --- RELATIVITÉ & QUANTUM ---
+        // Relativité & Quantum
         const gamma = 1 / Math.sqrt(1 - Math.pow(v/this.C, 2));
         this.setUI('ui-gamma', gamma.toFixed(14));
         this.setUI('time-dilation', ((gamma - 1) * 1e9).toFixed(6));
         this.setUI('quantum-drag', (this.H_BAR / (80 * v + 1e-25)).toExponential(3));
-        this.setUI('relativistic-energy', (gamma * 80 * this.C**2).toExponential(3));
 
-        // --- ASTRO ---
+        // Astro
         const jd = (Date.now() / 86400000) + 2440587.5;
         this.setUI('ast-jd', jd.toFixed(5));
-        const sunAz = (180 + (new Date().getHours()*15)) % 360;
-        this.setUI('sun-azimuth', sunAz.toFixed(2) + "°");
-        this.setUI('moon-alt', (20 + Math.sin(jd)*15).toFixed(2) + "°");
+        this.setUI('sun-azimuth', ((180 + (new Date().getHours()*15)) % 360).toFixed(1) + "°");
 
-        // --- SYSTÈME ---
+        // Status
         this.setUI('filter-status', this.current_type + "_STATE");
-        this.setUI('confiance-matrice-p', (0.999 / (1 + v*0.001) * 100).toFixed(3) + "%");
     },
 
     updateIMU() {
@@ -202,5 +171,5 @@ OMNI.bindSensors = function() {
     }
 };
 
-// Liaison finale au bouton STOP/V24_ONLINE
+// Initialisation au clic
 document.getElementById('main-init-btn').addEventListener('click', () => OMNI.start());
