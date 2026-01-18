@@ -128,10 +128,16 @@ footer#sub-dashboard-row {
 }
 
 /* RESPONSIVE : Si l'écran est trop petit, on réduit le footer */
-@media (max-height: 600px) {
-    footer#sub-dashboard-row { height: 140px; min-height: 140px; }
-    .panel h2 { font-size: 0.5rem; }
-        }
+@media (max-width: 800px) {
+    main#master-hud-grid {
+        grid-template-columns: 1fr 1fr; /* 2 colonnes maximum sur mobile */
+    }
+    footer#sub-dashboard-row {
+        grid-template-columns: 1fr; /* Colonnes empilées dans le footer */
+        height: auto; /* Laisse le footer grandir si besoin */
+        overflow-y: scroll;
+    }
+}
         /* Style du terminal de données cachées */
 #scientific-hidden-buffer {
     display: none; /* Caché par défaut */
@@ -166,10 +172,30 @@ footer#sub-dashboard-row {
     text-transform: uppercase;
 }
 
-/* État actif */
 #scientific-hidden-buffer.active {
     display: grid !important;
-        }
+    position: fixed;
+    top: 50px; /* Commence après le header */
+    bottom: 190px; /* S'arrête avant le footer */
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+    background: rgba(0, 10, 0, 0.95);
+    border-bottom: 2px solid orange;
+    }
+    /* Amélioration de la lisibilité du mode Lab */
+#scientific-hidden-buffer span {
+    padding: 4px;
+    background: rgba(255, 165, 0, 0.05);
+    border: 1px solid rgba(255, 165, 0, 0.1);
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+
+#scientific-hidden-buffer span:hover {
+    background: rgba(255, 165, 0, 0.2);
+    color: #fff;
+}    
     </style>
 </head>
 <body>
@@ -296,7 +322,7 @@ footer#sub-dashboard-row {
                 <div id="anomaly-log"></div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:5px;">
                     <button id="clear-log-btn">CLEAR</button>
-                    <button id="main-init-btn" onclick="startAdventure()" style="background:var(--accent); color:#000">START_V17</button>
+                    <button id="main-init-btn" onclick="OMNI.start()" style="background:var(--accent); color:#000">START_V17</button>
                 </div>
             </section>
         </div>
