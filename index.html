@@ -183,7 +183,7 @@ footer#sub-dashboard-row {
         <div style="display:flex; gap:20px; font-size:0.65rem;">
             <div>STATUS: <span id="reality-status" style="color:var(--accent)">NOMINAL</span></div>
             <div>OFFSET: <span id="ntp-offset">--</span>ms</div>
-            <div id="utc-datetime" class="val-scientifique">00:00:00</div>
+            <div id="utc-datetime" class="val-scientifique">--:--:--</div>
         </div>
     </header>
 
@@ -217,8 +217,8 @@ footer#sub-dashboard-row {
 
             <section class="panel">
                 <h2><i class="fas fa-gyroscope"></i> IMU_STABILISATION</h2>
-                <div class="data-point"><span>Pitch / Roll</span><span><span id="pitch">0</span> / <span id="roll">0</span></span></div>
-                <div class="data-point"><span>Acc. Filtrée</span><span id="f-acc-xyz" class="val-scientifique">0.00|0.00</span></div>
+                <div class="data-point"><span>Pitch / Roll</span><span><span id="pitch">--</span> / <span id="roll">-</span></span></div>
+                <div class="data-point"><span>Acc. Filtrée</span><span id="f-acc-xyz" class="val-scientifique">-.--|-.--</span></div>
                 <div class="data-point"><span>Biais Estimé</span><span id="bias-acc-val">--</span></div>
                 <div class="data-point"><span>Gyro Bias</span><span id="bias-gyro-val">--</span></div>
             </div>
@@ -262,7 +262,7 @@ footer#sub-dashboard-row {
                 <div class="data-point"><span>LON_UKF</span><span id="lon-ukf" class="val-scientifique">--</span></div>
                 <div class="data-point"><span>Alt Corrigée</span><span id="alt-display" class="val-scientifique">--</span></div>
                 <div class="data-point"><span>Alt Baro</span><span id="alt-corrected-baro">--</span> m</div>
-                <div class="data-point"><span>Dist. Cumulée</span><span id="dist-3d" style="color:var(--accent)">0 m</span></div>
+                <div class="data-point"><span>Dist. Cumulée</span><span id="dist-3d" style="color:var(--accent)">-- m</span></div>
             </section>
 
             <section class="panel">
