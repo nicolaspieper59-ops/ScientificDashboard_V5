@@ -132,6 +132,44 @@ footer#sub-dashboard-row {
     footer#sub-dashboard-row { height: 140px; min-height: 140px; }
     .panel h2 { font-size: 0.5rem; }
         }
+        /* Style du terminal de données cachées */
+#scientific-hidden-buffer {
+    display: none; /* Caché par défaut */
+    position: fixed;
+    bottom: 25px; /* Juste au-dessus du footer */
+    left: 0;
+    width: 100%;
+    height: 40vh; /* Prend 40% de l'écran */
+    background: rgba(0, 5, 0, 0.95);
+    border-top: 2px solid orange;
+    z-index: 10000;
+    overflow-y: auto;
+    padding: 15px;
+    font-size: 0.65rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+    backdrop-filter: blur(10px);
+}
+
+/* Affichage du nom de la variable devant chaque donnée */
+#scientific-hidden-buffer span {
+    display: block;
+    color: #00ff88;
+    border-bottom: 1px solid #222;
+    padding-bottom: 2px;
+}
+
+#scientific-hidden-buffer span::before {
+    content: attr(id) ": ";
+    color: orange;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* État actif */
+#scientific-hidden-buffer.active {
+    display: grid !important;
+        }
     </style>
 </head>
 <body>
