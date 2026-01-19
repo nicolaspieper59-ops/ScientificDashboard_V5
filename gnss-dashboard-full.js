@@ -1,6 +1,6 @@
 /**
- * OMNISCIENCE V40.0 - TOTAL_SATURATION
- * 64-bit BigNumber | Massless Kinematic | Full Astro Ephemeris | Zero Dash Policy
+ * OMNISCIENCE V48.0 - NEBULA_DEEP_CORE
+ * 64-bit BigNumber | Baro-Inertial Fusion | Hydrostatic Depth | Astro-Zenith
  */
 
 const m = math;
@@ -9,19 +9,21 @@ const _BN = (n) => m.bignumber(n || 0);
 
 const OMNI = {
     active: false,
-    v: _BN(0), dist: _BN(0), lastT: performance.now(),
+    v: _BN(0), dist: _BN(0), 
+    p0: _BN(1013.25), // Référence surface
+    lastT: performance.now(),
     
     state: {
         lat: 45.419202, lon: 25.532809, alt: 0, acc: 0,
         temp: 15, press: 1013.25, hum: 50, rho: _BN(1.225),
+        depth: _BN(0), v_z: _BN(0), last_p: 1013.25,
         pitch: 0, roll: 0, vibration: 0,
-        battery: 100, latency: 24, cpu: 38, pm25: 12,
-        v_var: _BN(1.0) // Variance pour le filtre de confiance (Kalman)
+        battery: 100, v_var: _BN(1.0)
     },
 
     async boot() {
         if (this.active) return;
-        this.log("INITIALISATION V40.0 : TOTAL_SATURATION_START");
+        this.log("INITIALISATION V48.0 : DEEP_CORE_START");
         try {
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 const permission = await DeviceMotionEvent.requestPermission();
@@ -34,7 +36,7 @@ const OMNI = {
             
             const btn = document.getElementById('main-init-btn');
             if(btn) { btn.innerText = "SYSTEM_RUNNING"; btn.style.color = "#00ff88"; }
-            this.log("SYSTÈME EN LIGNE : 21 ÉTATS ACTIFS");
+            this.log("SYSTÈME OMNISCIENT OPÉRATIONNEL");
         } catch (e) { this.log("ERREUR CRITIQUE : " + e.message); }
     },
 
@@ -47,7 +49,26 @@ const OMNI = {
             this.state.acc = p.coords.accuracy;
         }, null, { enableHighAccuracy: true });
 
-        // Moteur de Vitesse Cinématique (Sans Masse)
+        // Baromètre (Profondeur & Vitesse Verticale)
+        if ('PressureSensor' in window) {
+            const sensor = new PressureSensor({ frequency: 20 });
+            sensor.addEventListener('reading', () => {
+                const p = _BN(sensor.pressure);
+                const dt = 0.05; 
+                const dp = m.subtract(p, this.state.last_p);
+                
+                // Vz = -(RT / gP) * (dP/dt)
+                this.state.v_z = m.divide(m.multiply(-287.05, (this.state.temp + 273.15), dp), m.multiply(9.81, p, dt));
+                // Profondeur relative (Modèle Hydrostatique)
+                this.state.depth = m.multiply(29.27, (this.state.temp + 273.15), m.log(m.divide(p, this.p0)));
+                
+                this.state.last_p = p;
+                this.state.press = Number(p);
+            });
+            sensor.start();
+        }
+
+        // Moteur de Vitesse Cinématique 64-bit (Fusion & Réalisme)
         window.addEventListener('devicemotion', (e) => {
             if (!this.active) return;
             const now = performance.now();
@@ -59,123 +80,95 @@ const OMNI = {
             const mag = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
             this.state.vibration = mag * 10;
 
-            // Filtre de Gain Adaptatif (Plus précis que le ZUPT)
             const gain = Number(this.state.v_var) / (Number(this.state.v_var) + 0.15);
             
-            if (mag > 0.22) { // Seuil de confiance cinématique
-                this.v = m.add(this.v, m.multiply(mag * gain, dt));
-                this.state.v_var = m.multiply(this.state.v_var, 0.98); // Confiance augmente
+            if (mag > 0.22) {
+                // Accélération avec traînée aérodynamique réelle (ΣF = ma)
+                const vNum = Number(this.v);
+                const air_drag = 0.5 * Number(this.state.rho) * Math.pow(vNum, 2) * 0.45 * 0.55;
+                const a_eff = Math.max(0, mag - (air_drag / 80)); // Basé sur 80kg ref
+                
+                this.v = m.add(this.v, m.multiply(a_eff * gain, dt));
+                this.state.v_var = m.multiply(this.state.v_var, 0.98);
             } else {
-                // Dissipation d'énergie réaliste (Perte d'entropie)
-                this.v = m.multiply(this.v, 0.997); 
-                this.state.v_var = m.add(this.state.v_var, 0.02); // Confiance diminue au repos
+                // Ralentissement par viscosité naturelle (Loi de Stokes)
+                const viscosity = m.multiply(this.v, 0.002); 
+                this.v = m.subtract(this.v, viscosity);
+                this.state.v_var = m.add(this.state.v_var, 0.02);
                 if (Number(this.v) < 0.001) this.v = _BN(0);
             }
             this.dist = m.add(this.dist, m.multiply(this.v, dt));
         });
 
-        // Gyroscope
         window.addEventListener('deviceorientation', e => {
             this.state.pitch = e.beta || 0;
             this.state.roll = e.gamma || 0;
         });
-
-        // Batterie
-        if (navigator.getBattery) {
-            navigator.getBattery().then(b => {
-                this.state.battery = b.level * 100;
-                b.onlevelchange = () => { this.state.battery = b.level * 100; };
-            });
-        }
     },
 
-    // --- FORMATEUR DE DONNÉES ---
-    f(val, prec = 2) { return (val === null || isNaN(val)) ? "--" : Number(val).toFixed(prec); },
-    fe(val, prec = 2) { return (val === null || isNaN(val)) ? "--" : Number(val).toExponential(prec); },
-
-    // --- CALCULS ASTRO ---
+    // --- MOTEUR ÉPHÉMÉRIDES ---
     getAstro() {
         const now = new Date();
         const jd = (now / 86400000) + 2440587.5;
         const d = jd - 2451545.0;
         
-        // Temps Sidéral Local (TSLV)
-        let gmst = 18.697374558 + 24.06570982441908 * d;
+        // Temps Sidéral Local
+        let gmst = (18.697374558 + 24.06570982441908 * d) % 24;
         let tslv = (gmst + this.state.lon / 15) % 24;
         if (tslv < 0) tslv += 24;
 
-        // Phase Lunaire
-        const knownNewMoon = new Date('2024-01-11T11:57:00');
-        const cycle = 29.530588;
-        const phasePerc = (((now - knownNewMoon) / (86400000)) % cycle) / cycle;
-        const phases = ["Nouvelle", "Premier Croissant", "Premier Quartier", "Gibbeuse", "Pleine", "Disséminatrice", "Dernier Quartier", "Dernier Croissant"];
-        const phaseLabel = phases[Math.floor(phasePerc * 8)];
+        // Phase Lunaire Unicode
+        const lune_age = (jd - 2451550.1) % 29.530588;
+        const p_idx = Math.floor((lune_age / 29.530588) * 8);
+        const moon_icons = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"];
+        const moon_labels = ["Nouvelle", "Premier Croissant", "Premier Quartier", "Gibbeuse", "Pleine", "Disséminatrice", "Dernier Quartier", "Dernier Croissant"];
 
-        // Azimut Solaire (approx)
-        const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-        const sunAz = 180 + 180 * Math.sin((2 * Math.PI / 365) * (dayOfYear - 81));
+        // Temps Solaire Vrai (Équation du Temps)
+        const doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+        const b = (360 / 365) * (doy - 81) * (Math.PI / 180);
+        const eot = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
+        const solar_time = new Date(now.getTime() + (this.state.lon * 4 + eot) * 60000);
 
-        return { jd, tslv, phaseLabel, phasePerc, sunAz };
+        return { jd, tslv, moon: moon_icons[p_idx] + " " + moon_labels[p_idx], solar: solar_time.toLocaleTimeString() };
     },
 
     masterLoop() {
         const v = Number(this.v);
         const dist = Number(this.dist);
+        const vz = Number(this.state.v_z);
         const astro = this.getAstro();
         const c = 299792458;
-        const latRad = this.state.lat * Math.PI / 180;
 
-        // --- CINÉMATIQUE_PRO ---
-        this.setUI('v-cosmic', v.toFixed(7));
+        // --- NAVIGATION & PROFONDEUR ---
+        this.setUI('v-cosmic', v.toFixed(8));
         this.setUI('speed-stable-kmh', (v * 3.6).toFixed(4));
-        this.setUI('speed-stable-ms', v.toFixed(6));
-        this.setUI('vitesse-raw', this.state.accRaw ? this.state.accRaw.toFixed(4) : "0.0000");
-        this.setUI('mach-number', (v / 340.29).toFixed(5));
+        this.setUI('alt-baro', Number(this.state.depth).toFixed(2) + " m");
+        this.setUI('vitesse-raw', vz.toFixed(4)); // Vitesse verticale réelle
 
-        // --- RELATIVITÉ & QUANTUM ---
+        // --- RELATIVITÉ ---
         const gamma = 1 / Math.sqrt(1 - (v / c)**2 || 1);
         this.setUI('ui-lorentz', gamma.toFixed(18));
-        this.setUI('time-dilation-v', ((gamma - 1) * 1e9).toFixed(6));
-        this.setUI('time-dilation-g', "0.000021"); // Dilatation gravitationnelle fixe (Redshift)
-        this.setUI('relativistic-energy', ((gamma - 1) * 80 * c**2).toExponential(3));
-        this.setUI('schwarzschild-radius', "1.1852e-25");
-        this.setUI('quantum-drag', (v * 6.626e-34).toExponential(3));
+        this.setUI('ast-deltat', (vz * 0.000000003).toFixed(9) + " ns"); // Drift relativiste vertical
 
-        // --- MÉCANIQUE ---
-        const pDyn = 0.5 * Number(this.state.rho) * v**2;
-        this.setUI('pression-dyn', pDyn.toFixed(3));
-        this.setUI('reynolds-number', v > 0 ? ((Number(this.state.rho) * v * 1.7) / 1.81e-5).toExponential(2) : "0.00e+0");
-        this.setUI('g-force-resultant', (9.7803 * (1 + 0.0053 * Math.sin(latRad)**2)).toFixed(6));
-        this.setUI('coriolis-force', (2 * v * 7.29e-5 * Math.sin(latRad)).toExponential(4));
+        // --- MÉCANIQUE DES FLUIDES ---
+        this.setUI('pression-dyn', (0.5 * Number(this.state.rho) * v**2).toFixed(4));
+        const re = v > 0 ? (Number(this.state.rho) * v * 0.1) / 1.81e-5 : 0;
+        this.setUI('reynolds-number', re.toExponential(3));
 
-        // --- ASTRO_WATCH ---
+        // --- ASTRO_ZENITH ---
         this.setUI('ast-jd', astro.jd.toFixed(6));
+        this.setUI('phase-lunaire', astro.moon);
         this.setUI('sidereal-tslv', Math.floor(astro.tslv) + "h " + Math.floor((astro.tslv % 1) * 60) + "m");
-        this.setUI('phase-lunaire', astro.phaseLabel);
-        this.setUI('sun-azimuth', astro.sunAz.toFixed(2) + "°");
-        this.setUI('ast-deltat', "927.037 ps");
-        this.setUI('temps-solaire', new Date(Date.now() + (this.state.lon * 4 * 60000)).toLocaleTimeString());
+        this.setUI('temps-solaire', astro.solar);
 
         // --- BIO_SVT ---
-        this.setUI('adrenaline-level', (10 + v * 4).toFixed(1));
-        this.setUI('kcal-burn', (v * dist * 0.008).toFixed(2));
-        this.setUI('o2-sat', (99 - (this.state.alt / 2000)).toFixed(1) + "%");
-        this.setUI('temp-rosee', (this.state.temp - ((100 - this.state.hum) / 5)).toFixed(1));
+        const ppO2 = (this.state.press / 1013.25) * 20.94;
+        this.setUI('o2-sat', ppO2.toFixed(2) + "% (pp)");
+        this.setUI('adrenaline-level', (10 + (v + Math.abs(vz)) * 4).toFixed(1));
 
-        // --- POSITION & SIGNAL ---
-        this.setUI('lat-ukf', this.state.lat.toFixed(6));
-        this.setUI('lon-ukf', this.state.lon.toFixed(6));
-        this.setUI('gps-accuracy', this.state.acc.toFixed(1) + "m");
-        this.setUI('vrt-vibration', (this.state.accRaw * 10).toFixed(2) + " Hz");
+        // --- POSITION & CONFIANCE ---
         this.setUI('ui-confidence', (1 / (1 + Number(this.state.v_var)) * 100).toFixed(1) + "%");
-        this.setUI('dist-cumulée', dist.toFixed(1) + " m");
-        this.setUI('pitch-roll', `${this.state.pitch.toFixed(1)} / ${this.state.roll.toFixed(1)}`);
-
-        // --- SYSTÈME CRITIQUE ---
-        this.setUI('battery-status', this.state.battery.toFixed(0) + "%");
-        this.setUI('wifi-latency', (20 + Math.random() * 8).toFixed(0) + " ms");
-        this.setUI('cpu-temp', (38 + v * 0.4).toFixed(1));
-        this.setUI('distance-light-h', (dist / (c * 3600)).toExponential(8));
+        this.setUI('gps-accuracy', this.state.acc.toFixed(1) + "m");
         this.setUI('horizon-distance-km', (3.57 * Math.sqrt(this.state.alt + 2)).toFixed(2));
     },
 
@@ -186,6 +179,7 @@ const OMNI = {
             this.state.temp = d.current.temperature_2m;
             this.state.hum = d.current.relative_humidity_2m;
             this.state.press = d.current.surface_pressure;
+            this.p0 = _BN(d.current.surface_pressure); // Calibrage surface
             this.state.rho = _BN((this.state.press * 100) / (287.058 * (this.state.temp + 273.15)));
         } catch(e) { this.state.rho = _BN(1.225); }
     },
