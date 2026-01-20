@@ -137,6 +137,27 @@ const OMNI_CORE = {
         this.setUI('reynolds-number', re.toFixed(0));
         this.setUI('pos-z', this.state.pos.z.toFixed(4));
         this.setUI('ui-f-roll', m.divide(v_ms, this.state.radius).toFixed(2) + " rad/s");
+        // SYNC DU BUFFER SCIENTIFIQUE
+updateScientificBuffer(v_ms, ec_total, re, gamma) {
+    // Astro
+    this.setUI('ast-jd', this.state.jd.toFixed(8));
+    this.setUI('last-sync-gmt', this.astro.gmt ? this.astro.gmt.toISOString() : "WAITING...");
+    
+    // Quaternions (Sphère Ariamétrique)
+    this.setUI('ukf-q-w', this.state.q.w.toFixed(6));
+    this.setUI('ukf-q-x', this.state.q.x.toFixed(6));
+    this.setUI('ukf-q-y', this.state.q.y.toFixed(6));
+    this.setUI('ukf-q-z', this.state.q.z.toFixed(6));
+
+    // Relativité (Lorentz & Dilation)
+    this.setUI('ui-lorentz-2', gamma.toFixed(15));
+    const dilation = m.subtract(gamma, 1);
+    this.setUI('time-dilation-vitesse', dilation.toFixed(18) + " s/s");
+
+    // Aérodynamique
+    this.setUI('reynolds-number', re.toFixed(0));
+    this.setUI('mach-number', m.divide(v_ms, 340.29).toFixed(5));
+    
     },
 
     // --- UTILITAIRES SINS ---
