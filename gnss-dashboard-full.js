@@ -1,7 +1,6 @@
 /**
- * OMNISCIENCE V17 PRO MAX - ULTRA-CORE FINAL SYNTHESIS
- * Zéro Simulation • Zéro Simplification • 100% Physique Réelle
- * Précision : 64-bit BigNumber (math.js) • Sync Atomique GMT
+ * OMNISCIENCE V17 PRO MAX - TOTAL_RECALL_CORE
+ * Script de Contrôle Métrologique Universel
  */
 
 const m = math;
@@ -14,194 +13,182 @@ const OMNI = {
     posXYZ: { x: _BN(0), y: _BN(0), z: _BN(0) },
     distTotale: _BN(0),
     lastT: performance.now(),
-    audioCtx: null,
-    analyser: null,
     
-    // 1. SYSTÈME DE TEMPS ATOMIQUE ET JITTER
-    atomic: {
-        offset: _BN(0),
-        jitter: _BN(0),
-        latencyHistory: [],
-        async sync() {
-            const t0 = performance.now();
-            try {
-                const r = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
-                const d = await r.json();
-                const t1 = performance.now();
-                const latency = (t1 - t0) / 2;
-                
-                this.latencyHistory.push(latency);
-                if(this.latencyHistory.length > 5) this.latencyHistory.shift();
-                
-                // Calcul du Jitter (Stabilité réseau)
-                const avg = this.latencyHistory.reduce((a,b) => a+b) / this.latencyHistory.length;
-                this.jitter = _BN(Math.sqrt(this.latencyHistory.map(x => Math.pow(x - avg, 2)).reduce((a,b) => a+b) / this.latencyHistory.length));
-                
-                this.offset = _BN(new Date(d.datetime).getTime()).plus(latency).minus(Date.now());
-                OMNI.setUI('ui-atomic-offset', this.offset.toFixed(3) + "ms");
-                OMNI.setUI('ui-atomic-jitter', "±" + this.jitter.toFixed(4) + "ms");
-            } catch(e) { console.warn("Atomic Sync Temp-Fail"); }
-        },
-        getNow() { return _BN(Date.now()).plus(this.offset); }
-    },
-
-    // 2. PROFILS DE MISSION UNIVERSELS (Multi-Vessel)
-    profiles: {
-        "VOITURE":  { mass: 1500,   cx: 0.3,   area: 2.2,  mode: 'terrestrial' },
-        "FUSÉE":    { mass: 500000, cx: 0.15,  area: 15,   mode: 'space', relativity: true },
-        "WINGSUIT": { mass: 90,     cx: 1.1,   area: 1.4,  mode: 'aero' },
-        "INSECTE":  { mass: 0.0001, cx: 0.8,   area: 0.001, mode: 'micro-viscous' },
-        "BATEAU":   { mass: 2500,   cx: 0.05,  area: 8,    mode: 'liquid' },
-        "WAGONNET": { mass: 600,    cx: 0.5,   area: 2.1,  mode: 'abyssal-slam' }
-    },
-    activeProfile: "VOITURE",
-
+    // 1. ÉTAT DU SYSTÈME (PRÉCISION 64-BIT)
     state: {
-        lat: 48.8566, lon: 2.3522, alt: 0,
+        lat: _BN(48.8566), lon: _BN(2.3522), alt: _BN(0),
         pitch: 0, roll: 0, heading: 0,
         accel: { x: 0, y: 0, z: 0 },
         press: 1013.25, temp: 15, hum: 45, lux: 0,
-        rho: 1.225, gamma: _BN(1),
-        sun: { alt: 0, az: 0 },
-        isSextantLocked: false
+        rho: _BN(1.225), gamma: _BN(1),
+        sun: { alt: 0, az: 0 }, moon: { alt: 0, az: 0 },
+        isSextantLocked: false,
+        jitter: _BN(0), offset: _BN(0)
     },
 
+    // 2. CONFIGURATION DES MISSIONS
+    profiles: {
+        "VOITURE":  { mass: 1500,   cx: 0.3,   area: 2.2 },
+        "FUSÉE":    { mass: 500000, cx: 0.15,  area: 15 },
+        "INSECTE":  { mass: 0.0001, cx: 0.8,   area: 0.001 },
+        "WAGONNET": { mass: 600,    cx: 0.5,   area: 2.1 }
+    },
+    activeProfile: "VOITURE",
+
+    // 3. BOOT & SYNC ATOMIQUE
     async boot() {
-        if (this.active) return;
-        this.log("INITIALISATION UNITÉ UNIVERSELLE 64-BIT...");
+        this.log("INITIALISATION SYSTÈME ATOMIQUE...");
         try {
-            await this.requestPermissions();
-            await this.initSensors();
-            await this.initAudio();
-            await this.atomic.sync();
-            
+            await this.syncAtomic();
+            await this.initHardware();
             this.active = true;
-            setInterval(() => this.atomic.sync(), 30000); // Resync atomique
-            
-            const engineLoop = () => { if(this.active) { this.masterLoop(); requestAnimationFrame(engineLoop); } };
-            engineLoop();
-            
-            this.log("MISSION_ACTIVE : RÉALISME MAXIMAL COUPLÉ");
-        } catch (e) { this.log("ERREUR_CRITIQUE: " + e.message); }
+            this.engine();
+            setInterval(() => this.syncAtomic(), 30000); 
+            this.log("COEUR OPÉRATIONNEL - MODE 64-BIT");
+        } catch (e) { this.log("FAILURE: " + e.message); }
     },
 
-    // --- CŒUR DE CALCULS PHYSIQUES ---
-    masterLoop() {
+    async syncAtomic() {
+        const t0 = performance.now();
+        const r = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+        const d = await r.json();
+        const t1 = performance.now();
+        const latence = (t1 - t0) / 2;
+        this.state.offset = _BN(new Date(d.datetime).getTime()).plus(latence).minus(Date.now());
+        this.state.jitter = _BN(Math.abs(latence - 15)); // 15ms base ref
+        this.setUI('tslv', this.state.jitter.toFixed(2) + "ms");
+    },
+
+    // 4. BOUCLE MAÎTRESSE (MOTEUR PHYSIQUE)
+    engine() {
+        if(!this.active) return;
         const now = performance.now();
         const dt = _BN((now - this.lastT) / 1000);
         this.lastT = now;
 
         this.processNavigation(dt);
-        this.processAtmosphere();
-        this.processAstroSextant();
-        this.updateUI();
+        this.processAero();
+        this.processAstro();
+        this.updateAllHTML();
+
+        requestAnimationFrame(() => this.engine());
     },
 
     processNavigation(dt) {
-        const prof = this.profiles[this.activeProfile];
-        const gMag = Math.sqrt(this.state.accel.x**2 + this.state.accel.y**2 + this.state.accel.z**2);
-        const gNet = _BN(Math.abs(gMag - 9.80665));
+        // Intégration Inertielle 64-bit
+        const a = this.state.accel;
+        const gMag = m.sqrt(m.add(m.pow(_BN(a.x),2), m.pow(_BN(a.y),2), m.pow(_BN(a.z),2)));
+        const gNet = m.abs(m.subtract(gMag, _BN(9.80665)));
 
-        // Intégration SLAM 64-bit
-        if (gNet.gt(0.08)) {
+        // Vitesse et Distance (ZUPT inclus)
+        if (gNet.gt(0.1)) {
             this.v = m.add(this.v, m.multiply(gNet, dt));
         } else {
-            // ZUPT (Zero Velocity Update) : Correction automatique à l'arrêt
-            this.v = m.multiply(this.v, 0.97); 
+            this.v = m.multiply(this.v, _BN(0.95)); // Friction
         }
 
-        const dist = m.multiply(this.v, dt);
-        this.distTotale = m.add(this.distTotale, dist);
+        const d = m.multiply(this.v, dt);
+        this.distTotale = m.add(this.distTotale, d);
 
-        // Navigation Géodésique (Réalisme en grotte/wagonnet)
-        const R_earth = _BN(6371000);
-        const dLat = m.divide(dist, R_earth);
-        this.state.lat += m.number(m.multiply(dLat, m.divide(180, Math.PI)));
-
-        // Relativité Restreinte (Si profil Fusée ou haute vitesse)
-        const v_tot = m.add(this.v, 29784.8); // Vitesse + Orbite terrestre
-        const c_light = _BN(299792458);
-        const beta = m.divide(v_tot, c_light);
+        // Déplacement Géodésique (Lat/Lon BN)
+        const R = _BN(6371000);
+        this.state.lat = m.add(this.state.lat, m.multiply(m.divide(d, R), m.divide(180, m.pi)));
+        
+        // Lorentz (Relativité)
+        const v_c = m.add(this.v, 29784); // + Orbite Terre
+        const beta = m.divide(v_c, 299792458);
         this.state.gamma = m.divide(1, m.sqrt(m.subtract(1, m.pow(beta, 2))));
     },
 
-    processAtmosphere() {
+    processAero() {
+        // Densité de l'air ρ = P / (R*T)
         const T_k = this.state.temp + 273.15;
-        // Équation de Laplace / Weather.js
-        this.state.rho = (this.state.press * 100) / (287.058 * T_k);
+        this.state.rho = m.divide(m.multiply(this.state.press, 100), m.multiply(287.058, T_k));
         
-        // Calcul du Stress de Structure (Drag Force)
-        const prof = this.profiles[this.activeProfile];
-        const drag = m.multiply(0.5, this.state.rho, m.pow(this.v, 2), prof.cx, prof.area);
-        const stress = m.divide(drag, prof.mass);
-        this.setUI('structural-stress', m.number(stress).toFixed(3) + " N/kg");
+        // Stress structurel
+        const p = this.profiles[this.activeProfile];
+        const drag = m.multiply(0.5, this.state.rho, m.pow(this.v, 2), p.cx, p.area);
+        this.setUI('structural-stress', m.divide(drag, p.mass).toFixed(4) + " N/kg");
+        this.setUI('dynamic-pressure', drag.toFixed(2) + " Pa");
     },
 
-    processAstroSextant() {
-        const t_atom = this.atomic.getNow();
-        const jd = t_atom.divide(86400000).plus(2440587.5);
+    processAstro() {
+        const jd = _BN(Date.now()).plus(this.state.offset).divide(86400000).plus(2440587.5);
+        this.state.jd = jd;
         
-        // SEXTANT AUTOMATIQUE : Algorithme de Meeus (Position théorique)
-        const n = m.subtract(jd, 2451545.0);
-        const L = (280.46 + 0.9856474 * n) % 360;
-        const g = m.multiply((357.528 + 0.9856003 * n), (Math.PI / 180));
-        const lambda = m.multiply((L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)), (Math.PI/180));
-        const epsilon = m.multiply((23.439 - 0.0000004 * n), (Math.PI/180));
-        const dec = Math.asin(Math.sin(epsilon) * Math.sin(lambda));
-
-        // Recalage automatique : Si l'angle du capteur dévie du calcul atomique
-        const theoretical_alt = Math.asin(Math.sin(this.state.lat * Math.PI/180) * Math.sin(dec));
-        const sensor_alt = this.state.pitch * (Math.PI/180);
-        
-        const drift = Math.abs(theoretical_alt - sensor_alt);
-        this.state.isSextantLocked = drift < 0.001;
-        this.setUI('ui-sextant-status', this.state.isSextantLocked ? "LOCKED (ATOMIC)" : "RECALIBRATING...");
+        // Calcul simplifié de l'altitude solaire pour le Sextant
+        const sunAlt = Math.sin((jd % 1) * Math.PI * 2); 
+        this.state.isSextantLocked = Math.abs(sunAlt - Math.sin(this.state.pitch * Math.PI/180)) < 0.05;
     },
 
-    updateUI() {
+    // 5. MISE À JOUR DE TOUS LES IDS DU HTML
+    updateAllHTML() {
+        // Bloc Navigation
         this.setUI('lat-ekf', this.state.lat.toFixed(8));
-        this.setUI('speed-stable-kmh', m.multiply(this.v, 3.6).toFixed(4));
-        this.setUI('ui-lorentz', this.state.gamma.toString().substring(0, 20));
-        this.setUI('air-density', this.state.rho.toFixed(5));
-        this.setUI('ambient-light', this.state.lux.toFixed(1) + " Lux");
-        this.setUI('pressure-hpa', this.state.press.toFixed(2));
+        this.setUI('lon-ekf', this.state.lon.toFixed(8));
+        this.setUI('speed-stable-kmh', m.multiply(this.v, 3.6).toFixed(2));
+        this.setUI('ui-lorentz', this.state.gamma.toString().substring(0, 15));
+        this.setUI('force-g-inst', m.divide(m.sqrt(m.add(m.pow(_BN(this.state.accel.x),2), m.pow(_BN(this.state.accel.y),2))), 9.8).toFixed(3));
         
-        // Sphère Armillaire (Visualisation simplifiée)
-        const gCanv = document.getElementById('gforce-canvas');
-        if(gCanv) this.drawArmillary(gCanv);
+        // Bloc Visual SLAM
+        this.setUI('pos-x', this.posXYZ.x.toFixed(2));
+        this.setUI('pos-y', this.state.alt.toFixed(2));
+        this.setUI('distance-totale', this.distTotale.toFixed(2) + " m");
+        this.setUI('v-cosmic', m.add(this.v, 29784).toFixed(0) + " m/s");
+        
+        // Bloc Environnement
+        this.setUI('air-temp-c', this.state.temp + "°C");
+        this.setUI('pressure-hpa', this.state.press.toFixed(1));
+        this.setUI('air-density', this.state.rho.toFixed(4));
+        this.setUI('ambient-light', this.state.lux + " lx");
+        
+        // Bloc Temps & Astro
+        this.setUI('ast-jd', this.state.jd.toFixed(6));
+        this.setUI('ui-clock', new Date().toLocaleTimeString());
+        this.setUI('ui-sextant-status', this.state.isSextantLocked ? "LOCKED" : "SEARCHING");
+        
+        this.drawArmillary();
     },
 
-    drawArmillary(c) {
+    drawArmillary() {
+        const c = document.getElementById('gforce-canvas');
+        if(!c) return;
         const ctx = c.getContext('2d');
         ctx.clearRect(0,0,c.width,c.height);
         ctx.strokeStyle = this.state.isSextantLocked ? "#00ff88" : "#ff3300";
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(c.width/2, c.height/2, 40, 0, Math.PI*2);
-        ctx.moveTo(c.width/2 - 50, c.height/2 + this.state.pitch);
-        ctx.lineTo(c.width/2 + 50, c.height/2 - this.state.pitch);
+        ctx.stroke();
+        // Ligne d'horizon mobile
+        ctx.moveTo(20, c.height/2 + this.state.pitch);
+        ctx.lineTo(c.width - 20, c.height/2 - this.state.pitch);
         ctx.stroke();
     },
 
-    // --- HARDWARE ---
-    async initSensors() {
-        if ('PressureSensor' in window) {
-            const ps = new PressureSensor({frequency: 10});
-            ps.onreading = () => this.state.press = ps.pressure;
-            ps.start();
-        }
+    // 6. HARDWARE & PERMISSIONS
+    async initHardware() {
         window.ondevicemotion = (e) => {
-            const a = e.accelerationIncludingGravity;
-            this.state.accel = { x: a.x, y: a.y, z: a.z };
+            this.state.accel = e.accelerationIncludingGravity || {x:0, y:0, z:0};
         };
         window.ondeviceorientation = (e) => {
-            this.state.pitch = e.beta; this.state.roll = e.gamma;
+            this.state.pitch = e.beta; this.state.heading = e.alpha;
         };
+        if ('PressureSensor' in window) {
+            const s = new PressureSensor({frequency: 10});
+            s.onreading = () => this.state.press = s.pressure;
+            s.start();
+        }
     },
 
-    setUI(id, val) { const el = document.getElementById(id); if (el) el.innerText = val; },
-    log(msg) { 
-        const t = document.getElementById('anomaly-log');
-        if (t) t.innerHTML = `<div>> [${new Date().toLocaleTimeString()}] ${msg}</div>` + t.innerHTML;
+    setUI(id, val) { 
+        const el = document.getElementById(id); 
+        if(el) el.innerText = val; 
+    },
+    
+    log(msg) {
+        const l = document.getElementById('anomaly-log');
+        if(l) l.innerHTML = `<div>> ${msg}</div>` + l.innerHTML;
     }
 };
 
