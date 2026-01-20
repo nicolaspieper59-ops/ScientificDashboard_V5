@@ -45,8 +45,8 @@
 <body>
 
 <header>
-    <div style="color: var(--accent); letter-spacing: 1px;">OMNISCIENCE_V17_PRO_MAX // <span id="ui-sampling-rate">0Hz</span></div>
-    <div style="font-family: 'Orbitron'; font-size: 0.8rem; color: var(--blue);"><span id="ui-clock">00:00:00</span></div>
+    <div style="color: var(--accent); letter-spacing: 1px;">OMNISCIENCE_V17_PRO_MAX // <span id="ui-sampling-rate">--Hz</span></div>
+    <div style="font-family: 'Orbitron'; font-size: 0.8rem; color: var(--blue);"><span id="ui-clock">--:--:--</span></div>
     <div style="font-size: 0.6rem; color: #444;">LATENCY: <span id="tslv">0ms</span></div>
 </header>
 
@@ -59,9 +59,12 @@
         <div class="data-point"><span>Précision H/V</span><span><span id="acc-gps">--</span> / <span id="alt-acc-gps">--</span></span></div>
         <div class="data-point"><span>Vitesse Stable</span><span id="speed-stable-kmh">--</span></div>
         <div class="data-point"><span>Cap (Heading)</span><span id="heading-display">--</span></div>
+        <div class="data-point"><span>Mode Mission</span><span id="mission-status">STANDBY</span></div>
+        <div class="data-point"><span>Vecteur État</span><span id="ui-sextant-status">SEARCH_SYNC</span></div>
+        <div class="data-point"><span>Mach Number</span><span id="mach-val">-.--</span></div>
         
         <h3>Physique de Mission</h3>
-        <div class="data-point"><span>Lorentz Factor (γ)</span><span id="ui-lorentz">1.000000</span></div>
+        <div class="data-point"><span>Lorentz Factor (γ)</span><span id="ui-lorentz">1.----------</span></div>
         <div class="data-point"><span>Force G Inst.</span><span id="force-g-inst">--</span></div>
         <div class="data-point"><span>Pression Dyn (q)</span><span id="dynamic-pressure">--</span></div>
         <div class="data-point"><span>Stress Struct.</span><span id="structural-stress">--</span></div>
@@ -74,15 +77,18 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
             <div>
                 <h3>Position SLAM (m)</h3>
-                <div class="data-point"><span>X-Rel</span><span id="pos-x">0.00</span></div>
-                <div class="data-point"><span>Y-Alt</span><span id="pos-y">0.00</span></div>
-                <div class="data-point"><span>Z-Rel</span><span id="pos-z">0.00</span></div>
+                <div class="data-point"><span>X-Rel</span><span id="pos-x">-.--</span></div>
+                <div class="data-point"><span>Y-Alt</span><span id="pos-y">-.--</span></div>
+                <div class="data-point"><span>Z-Rel</span><span id="pos-z">-.--</span></div>
             </div>
             <div>
                 <h3>Odométrie</h3>
                 <div class="data-point"><span>Distance 3D</span><span id="distance-totale">--</span></div>
                 <div class="data-point"><span>V-Cosmic</span><span id="v-cosmic">--</span></div>
                 <div class="data-point"><span>Horizon</span><span id="distance-horizon">--</span></div>
+                <div class="data-point"><span>Vitesse Minecraft</span><span id="ui-mc-speed">0.00 b/s</span></div>
+                <div class="data-point"><span>Précision SLAM</span><span id="ui-slam-precision">--</span></div>
+                <div class="data-point"><span>Jitter Atomique</span><span id="ui-atomic-jitter">0ms</span></div>
             </div>
         </div>
         <div id="anomaly-log">> SYSTEM_READY_V17_PRO_MAX...</div>
@@ -96,6 +102,9 @@
         <div class="data-point"><span>Densité Air (ρ)</span><span id="air-density">--</span></div>
         <div class="data-point"><span>Humidité (%)</span><span id="humidity-pct">--</span></div>
         <div class="data-point"><span>Lumière (Lux)</span><span id="ambient-light">--</span></div>
+        <div class="data-point"><span>Nombre de Reynolds</span><span id="reynolds-number">--</span></div>
+        <div class="data-point"><span>Portance (Lift)</span><span id="dynamic-lift">--</span></div>
+        <div class="data-point"><span>Énergie Cinétique</span><span id="kinetic-energy">--</span></div>
         
         <h3>Atmosphère & Bio</h3>
         <div class="data-point"><span>PM2.5 / PM10</span><span><span id="pm25-val">--</span> / <span id="pm10-val">--</span></span></div>
@@ -143,13 +152,16 @@
 
 <div id="scientific-hidden-buffer" style="display:none;">
     <span id="ui-f-arch"></span><span id="ui-f-roll"></span></div>
-    <span id="in-mass">80</span><span id="in-cx">0.4</span></div>
+    <span id="in-mass"></span><span id="in-cx"></span></div>
     <span id="distance-light-s"></span><span id="distance-light-h"></span></div>
     <span id="time-dilation-vitesse"></span><span id="time-dilation-gravite"></span></div>
     <span id="vitesse-raw"></span><span id="speed-stable-ms"></span></div>
     <span id="mach-number"></span><span id="vertical-speed"></span></div>
     <span id="force-g-vert"></span><span id="moon-distance"></span></div>
     <span id="dew-point"></span><span id="ui-lorentz-2"></span></div>
+    <span id="ukf-q-w"></span><span id="ukf-q-x"></span><span id="ukf-q-y"></span><span id="ukf-q-z"></span></div>
+    <span id="bias-acc-z"></span><span id="bias-gyro-z"></span></div>
+    <span id="last-sync-gmt"></span></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 
