@@ -144,21 +144,37 @@ const OMNI_CORE = {
     async calibrate(ms) {
         let acc_samples = {x:[], y:[], z:[]};
         const f = (e) => {
-            acc_samples.x.push(e.accelerationIncludingGravity.x);
-            acc_samples.y.push(e.accelerationIncludingGravity.y);
-            acc_samples.z.push(e.accelerationIncludingGravity.z);
+            if(e.accelerationIncludingGravity) {
+                acc_samples.x.push(e.accelerationIncludingGravity.x);
+                acc_samples.y.push(e.accelerationIncludingGravity.y);
+                acc_samples.z.push(e.accelerationIncludingGravity.z);
+            }
         };
         window.addEventListener('devicemotion', f);
         await new Promise(r => setTimeout(r, ms));
         window.removeEventListener('devicemotion', f);
+
+        if (acc_samples.z.length === 0) throw new Error("Capteurs non détectés");
+
+        // --- CALCUL HAUTE PRÉCISION DE G_THEO ---
+        const latRad = m.multiply(this.state.lat || _BN("48.8566"), m.divide(m.pi, 180));
         
-        // On capture la gravité + le biais au repos
-        const latRad = 48.85 * Math.PI / 180;
-        const g_theo = 9.780327 * (1 + 0.0053024 * Math.sin(latRad)**2);
-        
-        this.state.bias.a.z = m.subtract(_BN(acc_samples.z.reduce((a,b)=>a+b,0)/acc_samples.z.length), g_theo);
-        this.state.bias.a.x = _BN(acc_samples.x.reduce((a,b)=>a+b,0)/acc_samples.x.length);
-        this.state.bias.a.y = _BN(acc_samples.y.reduce((a,b)=>a+b,0)/acc_samples.y.length);
+        // Formule de Somigliana (WGS84) en BigNumber pur
+        // g = 9.780327 * (1 + 0.0053024 * sin²(lat))
+        const sinLat = m.sin(latRad);
+        const g_theo = m.multiply(
+            _BN("9.780327"), 
+            m.add(1, m.multiply(_BN("0.0053024"), m.pow(sinLat, 2)))
+        );
+
+        // Moyennage et calcul des biais
+        const avg = (arr) => m.divide(_BN(arr.reduce((a,b)=>a+b,0)), _BN(arr.length));
+        this.state.bias.a.x = avg(acc_samples.x);
+        this.state.bias.a.y = avg(acc_samples.y);
+        // Le biais Z est la différence entre la mesure et la gravité théorique
+        this.state.bias.a.z = m.subtract(avg(acc_samples.z), g_theo);
+
+        this.log(`G_LOCAL_LOCK: ${g_theo.toFixed(6)} m/s²`);
     },
 
     updateUIMap(hz) {
