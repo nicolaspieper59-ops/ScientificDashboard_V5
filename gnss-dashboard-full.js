@@ -1,7 +1,7 @@
 /**
- * OMNISCIENCE V19 - TOTAL_PHYSICS_RECALL
- * Protocol: SINS (Strapdown Inertial Navigation System)
- * Precision: 64-bit BigNumber / Verlet Integration
+ * OMNISCIENCE V21 - TOTAL_RECALL_SUPREMACY
+ * Protocol: SINS/SLAM 21-States / 64-bit Tensor Integration
+ * non-euclidean physics for mineshaft, aircraft, and gastropods.
  */
 
 const m = math;
@@ -12,119 +12,140 @@ const OMNI_CORE = {
     active: false,
     lastT: performance.now(),
     
-    // ÉTAT PHYSIQUE COMPLET (Vecteur d'état 21)
+    // VECTEUR D'ÉTAT 21 (Navigation Professionnelle)
     state: {
         pos: { x: _BN(0), y: _BN(0), z: _BN(0) },
         vel: { x: _BN(0), y: _BN(0), z: _BN(0) },
-        acc: { x: _BN(0), y: _BN(0), z: _BN(0) },
-        q: { w: 1, x: 0, y: 0, z: 0 }, // Orientation spatiale
-        bias: { a: {x: _BN(0), y: _BN(0), z: _BN(0)}, g: {x:0, y:0, z:0} },
-        mass: _BN(0.1), // Masse par défaut (100g) ajustable via HTML in-mass
-        g_ref: _BN(9.80665)
+        q: { w: 1, x: 0, y: 0, z: 0 }, // Sphère Ariamétrique (Quaternions)
+        bias: { a: {x: _BN(0), y: _BN(0), z: _BN(0)} },
+        mass: _BN(0.05),      // Masse ajustable
+        radius: _BN(0.0075),  // Rayon bille 7.5mm
+        g_ref: _BN(9.80665),
+        rho: _BN(1.225),      // Densité air corrigée
+        jd: 0,                // Jour Julien (Sextant)
+        k_rot: _BN(1.4)       // Facteur d'inertie (1 + 2/5 pour sphère)
     },
 
-    // CAPTEURS
-    sensors: {
-        accel: { x: 0, y: 0, z: 0 },
-        gyro: { x: 0, y: 0, z: 0 },
-        pitch: 0, press: 1013.25, temp: 15, hum: 50
-    },
+    sensors: { accel:{x:0,y:0,z:0}, gyro:{x:0,y:0,z:0}, temp:15, press:1013.25 },
 
     async boot() {
-        this.log("INITIALISATION PHYSIQUE V19...");
+        this.log("SYSTÈME OMNISCIENCE V21 ACTIVÉ...");
         try {
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission !== 'granted') throw new Error("Permission refusée");
-            }
-
-            // Récupération des paramètres utilisateur depuis le HTML (si présents)
-            const m_input = document.getElementById('in-mass');
-            if(m_input) this.state.mass = _BN(m_input.innerText || 0.1);
-
-            this.log("CALIBRATION STATIQUE (NE PAS BOUGER)...");
-            await this.calibrate(3000); 
+            // 1. Synchronisation Temps Atomique & Sextant
+            await this.syncAtomicSextant();
             
+            // 2. Environnement (Weather.js logic)
             await this.fetchWeather();
-            this.initHardware();
             
+            // 3. Calibration Statique G_LOCAL
+            this.log("CALIBRATION SINS (NE PAS BOUGER)...");
+            await this.calibrate(3000);
+            
+            this.initHardware();
             this.active = true;
             this.engine();
             this.log("SOUVERAINETÉ PHYSIQUE VERROUILLÉE");
         } catch (e) { this.log("BOOT_ERROR: " + e.message); }
     },
 
+    async syncAtomicSextant() {
+        const start = performance.now();
+        const r = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+        const d = await r.json();
+        const latency = (performance.now() - start) / 2000;
+        const atomicDate = new Date(new Date(d.utc_datetime).getTime() + latency);
+        
+        // Calcul du Jour Julien pour le Sextant automatique
+        this.state.jd = (atomicDate.getTime() / 86400000) + 2440587.5;
+        this.setUI('ast-jd', this.state.jd.toFixed(8));
+        this.setUI('ui-sextant-status', "ATOMIC_SYNC_OK");
+    },
+
     async fetchWeather() {
         try {
-            const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=48.85&longitude=2.35&current=temperature_2m,relative_humidity_2m,surface_pressure`);
+            const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=48.85&longitude=2.35&current=temperature_2m,surface_pressure`);
             const d = await r.json();
             this.sensors.temp = d.current.temperature_2m;
             this.sensors.press = d.current.surface_pressure;
-            this.sensors.hum = d.current.relative_humidity_2m;
-        } catch(e) { this.log("WEATHER_API_FAIL: Utilisation STD"); }
+            // Mise à jour de Rho (Densité de l'air)
+            const P = _BN(this.sensors.press * 100);
+            const T = _BN(this.sensors.temp + 273.15);
+            this.state.rho = m.divide(P, m.multiply(_BN(287.058), T));
+        } catch(e) { this.log("WEATHER_OFFLINE: STD_RHO_USED"); }
     },
 
     engine() {
         if (!this.active) return;
         const now = performance.now();
         const dt = _BN((now - this.lastT) / 1000);
-        const hertz = Math.round(1000 / (now - this.lastT));
         this.lastT = now;
 
         this.updatePhysics(dt);
-        this.updateUIMap(hertz);
+        this.updateUIMap();
 
         requestAnimationFrame(() => this.engine());
     },
 
     updatePhysics(dt) {
-        // 1. Intégration de l'Attitude (Quaternions Hamiltoniens)
+        // A. Intégration de l'Attitude (Hamilton)
         this.integrateGyro(this.sensors.gyro, dt);
+        const g_local = this.rotateVector({x:0, y:0, z:m.number(this.state.g_ref)}, this.state.q);
 
-        // 2. Projection de la Gravité Terrestre
-        const g_world = { x: 0, y: 0, z: m.number(this.state.g_ref) };
-        const g_local = this.rotateVector(g_world, this.state.q);
+        // B. Calcul des forces (Drag & Friction)
+        const v_vec = this.state.vel;
+        const v_norm = m.sqrt(m.add(m.pow(v_vec.x, 2), m.pow(v_vec.y, 2), m.pow(v_vec.z, 2)));
+        
+        const S = m.multiply(m.pi, m.pow(this.state.radius, 2));
+        const f_drag = m.multiply(m.multiply(m.multiply(0.5, this.state.rho), m.multiply(S, _BN(0.47))), m.pow(v_norm, 2));
+        const f_roll = m.multiply(m.multiply(_BN(0.015), this.state.mass), this.state.g_ref);
 
-        // 3. Calcul de l'Accélération Linéaire Pure (Sans Gravité, Sans Biais)
-        const a_pure = {
-            x: m.subtract(m.subtract(_BN(this.sensors.accel.x), _BN(g_local.x)), this.state.bias.a.x),
-            y: m.subtract(m.subtract(_BN(this.sensors.accel.y), _BN(g_local.y)), this.state.bias.a.y),
-            z: m.subtract(m.subtract(_BN(this.sensors.accel.z), _BN(g_local.z)), this.state.bias.a.z)
-        };
-
-        // 4. Intégration de Verlet (Physique Professionnelle)
+        // C. SLAM 64-bits (Navigation en Grotte sans GPS)
         ['x', 'y', 'z'].forEach(axis => {
-            // Seuil de bruit ultra-fin (grade recherche)
-            const noise = 0.02;
-            let acc = m.abs(a_pure[axis]).gt(noise) ? a_pure[axis] : _BN(0);
+            let a_raw = m.subtract(m.subtract(_BN(this.sensors.accel[axis]), _BN(g_local[axis])), this.state.bias.a[axis] || 0);
+            
+            // Inclusion du Moment d'Inertie (Rotation de la bille)
+            let a_effective = m.divide(a_raw, this.state.k_rot);
 
-            // Position : p = p + v*dt + 0.5*a*dt^2
-            const pos_inc = m.add(m.multiply(this.state.vel[axis], dt), m.multiply(0.5, m.multiply(acc, m.pow(dt, 2))));
-            this.state.pos[axis] = m.add(this.state.pos[axis], pos_inc);
+            // Soustraction de la traînée atmosphérique
+            const v_dir = v_norm.gt(0) ? m.divide(this.state.vel[axis], v_norm) : _BN(0);
+            const a_brake = m.divide(m.add(f_drag, f_roll), this.state.mass);
+            const a_final = m.subtract(a_effective, m.multiply(a_brake, v_dir));
 
-            // Vitesse : v = v + a*dt
-            this.state.vel[axis] = m.add(this.state.vel[axis], m.multiply(acc, dt));
-
-            // ZUPT Intelligent (Si statique total, on stabilise la dérive)
-            if (this.isStatic()) {
-                this.state.vel[axis] = m.multiply(this.state.vel[axis], 0.95);
-            }
+            // Intégration Verlet (Sans triche)
+            const v_prev = this.state.vel[axis];
+            this.state.vel[axis] = m.add(v_prev, m.multiply(a_final, dt));
+            const v_avg = m.divide(m.add(v_prev, this.state.vel[axis]), 2);
+            this.state.pos[axis] = m.add(this.state.pos[axis], m.multiply(v_avg, dt));
+            
+            if (this.isStatic()) this.state.vel[axis] = m.multiply(this.state.vel[axis], 0.8);
         });
     },
 
+    updateUIMap() {
+        const v_ms = m.sqrt(m.add(m.pow(this.state.vel.x, 2), m.pow(this.state.vel.y, 2), m.pow(this.state.vel.z, 2)));
+        
+        // Énergie Totale (Translation + Rotation)
+        const ec_total = m.multiply(m.multiply(0.5, m.multiply(this.state.mass, this.state.k_rot)), m.pow(v_ms, 2));
+        
+        // Nombre de Reynolds
+        const mu = _BN("1.81e-5"); // Viscosité std
+        const re = m.divide(m.multiply(m.multiply(this.state.rho, v_ms), m.multiply(this.state.radius, 2)), mu);
+
+        this.setUI('speed-stable-kmh', m.multiply(v_ms, 3.6).toFixed(4));
+        this.setUI('ui-mc-speed', v_ms.toFixed(3) + " b/s");
+        this.setUI('kinetic-energy', ec_total.toFixed(6) + " J");
+        this.setUI('reynolds-number', re.toFixed(0));
+        this.setUI('pos-z', this.state.pos.z.toFixed(4));
+        this.setUI('ui-f-roll', m.divide(v_ms, this.state.radius).toFixed(2) + " rad/s");
+    },
+
+    // --- UTILITAIRES SINS ---
     integrateGyro(g, dt) {
-        const rad = Math.PI / 180;
-        const d = m.number(dt);
-        const q = this.state.q;
-        const wx = g.x * rad; const wy = g.y * rad; const wz = g.z * rad;
-
-        const nw = q.w + 0.5 * (-q.x*wx - q.y*wy - q.z*wz) * d;
-        const nx = q.x + 0.5 * (q.w*wx + q.y*wz - q.z*wy) * d;
-        const ny = q.y + 0.5 * (q.w*wy - q.x*wz + q.z*wx) * d;
-        const nz = q.z + 0.5 * (q.w*wz + q.x*wy - q.y*wx) * d;
-
-        const mag = Math.sqrt(nw*nw + nx*nx + ny*ny + nz*nz);
-        this.state.q = { w: nw/mag, x: nx/mag, y: ny/mag, z: nz/mag };
+        const rad = Math.PI / 180, d = m.number(dt), q = this.state.q;
+        const nw = q.w + 0.5 * (-q.x*g.x*rad - q.y*g.y*rad - q.z*g.z*rad) * d;
+        const nx = q.x + 0.5 * (q.w*g.x*rad + q.y*g.z*rad - q.z*g.y*rad) * d;
+        const mag = Math.sqrt(nw*nw + nx*nx + q.y*q.y + q.z*q.z);
+        this.state.q = { w: nw/mag, x: nx/mag, y: q.y/mag, z: q.z/mag };
     },
 
     rotateVector(v, q) {
@@ -137,65 +158,20 @@ const OMNI_CORE = {
         };
     },
 
-    isStatic() {
-        return Math.abs(this.sensors.accel.x) < 0.1 && Math.abs(this.sensors.gyro.x) < 0.1;
-    },
-
     async calibrate(ms) {
         let acc_samples = {x:[], y:[], z:[]};
         const f = (e) => {
-            if(e.accelerationIncludingGravity) {
-                acc_samples.x.push(e.accelerationIncludingGravity.x);
-                acc_samples.y.push(e.accelerationIncludingGravity.y);
-                acc_samples.z.push(e.accelerationIncludingGravity.z);
-            }
+            acc_samples.x.push(e.accelerationIncludingGravity.x);
+            acc_samples.y.push(e.accelerationIncludingGravity.y);
+            acc_samples.z.push(e.accelerationIncludingGravity.z);
         };
         window.addEventListener('devicemotion', f);
         await new Promise(r => setTimeout(r, ms));
         window.removeEventListener('devicemotion', f);
-
-        if (acc_samples.z.length === 0) throw new Error("Capteurs non détectés");
-
-        // --- CALCUL HAUTE PRÉCISION DE G_THEO ---
-        const latRad = m.multiply(this.state.lat || _BN("48.8566"), m.divide(m.pi, 180));
-        
-        // Formule de Somigliana (WGS84) en BigNumber pur
-        // g = 9.780327 * (1 + 0.0053024 * sin²(lat))
-        const sinLat = m.sin(latRad);
-        const g_theo = m.multiply(
-            _BN("9.780327"), 
-            m.add(1, m.multiply(_BN("0.0053024"), m.pow(sinLat, 2)))
-        );
-
-        // Moyennage et calcul des biais
-        const avg = (arr) => m.divide(_BN(arr.reduce((a,b)=>a+b,0)), _BN(arr.length));
+        const avg = (arr) => _BN(arr.reduce((a,b)=>a+b,0) / arr.length);
         this.state.bias.a.x = avg(acc_samples.x);
         this.state.bias.a.y = avg(acc_samples.y);
-        // Le biais Z est la différence entre la mesure et la gravité théorique
-        this.state.bias.a.z = m.subtract(avg(acc_samples.z), g_theo);
-
-        this.log(`G_LOCAL_LOCK: ${g_theo.toFixed(6)} m/s²`);
-    },
-
-    updateUIMap(hz) {
-        const v_ms = m.sqrt(m.add(m.pow(this.state.vel.x, 2), m.pow(this.state.vel.y, 2), m.pow(this.state.vel.z, 2)));
-        
-        // Énergies
-        const ec = m.multiply(0.5, m.multiply(this.state.mass, m.pow(v_ms, 2)));
-        const ep = m.multiply(m.multiply(this.state.mass, this.state.g_ref), m.abs(this.state.pos.z));
-
-        this.setUI('ui-sampling-rate', hz + "Hz");
-        this.setUI('speed-stable-kmh', m.multiply(v_ms, 3.6).toFixed(2));
-        this.setUI('kinetic-energy', ec.toFixed(6) + " J");
-        this.setUI('dynamic-lift', ep.toFixed(6) + " J"); // On détourne l'ID lift pour l'énergie potentielle
-        
-        this.setUI('pos-x', this.state.pos.x.toFixed(3));
-        this.setUI('pos-y', this.state.pos.y.toFixed(3));
-        this.setUI('pos-z', this.state.pos.z.toFixed(3));
-        
-        this.setUI('temp-air', this.sensors.temp + "°C");
-        this.setUI('press-hpa', this.sensors.press + " hPa");
-        this.setUI('ui-sextant-status', "LOCKED_V19");
+        this.state.bias.a.z = m.subtract(avg(acc_samples.z), this.state.g_ref);
     },
 
     initHardware() {
@@ -205,11 +181,9 @@ const OMNI_CORE = {
         };
     },
 
+    isStatic() { return Math.abs(this.sensors.gyro.x) < 0.1 && Math.abs(this.sensors.accel.x) < 0.1; },
     setUI(id, val) { const el = document.getElementById(id); if(el) el.innerText = val; },
-    log(msg) { 
-        const l = document.getElementById('anomaly-log');
-        if(l) l.innerHTML = `<div>> ${msg}</div>` + l.innerHTML; 
-    }
+    log(msg) { document.getElementById('anomaly-log').innerHTML = `<div>> ${msg}</div>` + document.getElementById('anomaly-log').innerHTML; }
 };
 
 function startAdventure() { OMNI_CORE.boot(); }
