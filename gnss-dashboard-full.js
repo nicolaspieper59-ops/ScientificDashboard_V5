@@ -229,7 +229,7 @@ const OMNI_CORE = {
 const q = this.state.q;
 const pitch = Math.asin(2.0 * (q.w * q.y - q.z * q.x)) * (180 / Math.PI);
 const roll = Math.atan2(2.0 * (q.w * q.x + q.y * q.z), 1.0 - 2.0 * (q.x * q.x + q.y * q.y)) * (180 / Math.PI);
-
+    },
 this.setUI('ui-pitch-roll', `P: ${pitch.toFixed(1)}° | R: ${roll.toFixed(1)}°`);
 
 
