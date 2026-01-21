@@ -1,7 +1,7 @@
 /**
- * OMNISCIENCE V24.4 - THE OMNI-ENGINE (FINAL TITAN CORE)
+ * OMNISCIENCE V24.5 - THE OMNI-ENGINE (STABILIZED TILT)
  * Logic: SLAM/SINS/EKF 64-bit Strict
- * Safety: G-Shock Proof, Marine-Damped, Black-Box Synced
+ * Safety: G-Shock Proof, Marine-Damped, Tilt-Visualizer
  */
 
 const m = math;
@@ -36,26 +36,22 @@ const OMNI_CORE = {
         press: _BN(101325),
         viscosity: _BN("1.81e-5"),
         jd: _BN(0),
-        lat: _BN(48.85),
         profile: "SCANNING",
-        status: "INITIALIZING",
-        safetyLock: false
+        status: "INITIALIZING"
     },
 
     sensors: { accel:{x:0,y:0,z:0}, gyro:{x:0,y:0,z:0} },
 
     async boot() {
-        this.log("V24.4: DÉMARRAGE DU MOTEUR UNIVERSEL...");
+        this.log("V24.5: INITIALISATION DU RÉFÉRENTIEL...");
         try {
             await this.syncAtomicSextant();
             this.initHardware();
             
-            // 1. Détection automatique du milieu (5s)
             const env = await this.autoDetectEnvironment();
             this.state.profile = env.name;
             this.setUI('ui-sextant-status', env.icon + " " + env.name);
 
-            // 2. Calibration Scientifique (jusqu'à 45s selon milieu)
             await this.calibrate(env.calibTime);
             
             this.active = true;
@@ -66,7 +62,7 @@ const OMNI_CORE = {
 
     async autoDetectEnvironment() {
         let vibrations = [];
-        const listener = (e) => vibrations.push(Math.abs(e.accelerationIncludingGravity.z));
+        const listener = (e) => vibrations.push(Math.abs(e.accelerationIncludingGravity.z || 9.8));
         window.addEventListener('devicemotion', listener);
         await new Promise(r => setTimeout(r, 5000));
         window.removeEventListener('devicemotion', listener);
@@ -81,75 +77,54 @@ const OMNI_CORE = {
     },
 
     async calibrate(ms) {
-        this.log(`CALIBRATION SINS (${ms/1000}s)... REPOS REQUIS`);
+        this.log(`CALIBRATION SINS (${ms/1000}s)...`);
         let samples = { ax:[], ay:[], az:[], gx:[], gy:[], gz:[] };
-        let moved = false;
-
         const collect = (e) => {
-            if(Math.abs(e.rotationRate.alpha) > 3) moved = true;
-            samples.ax.push(e.accelerationIncludingGravity.x);
-            samples.ay.push(e.accelerationIncludingGravity.y);
-            samples.az.push(e.accelerationIncludingGravity.z);
-            samples.gx.push(e.rotationRate.alpha);
-            samples.gy.push(e.rotationRate.beta);
-            samples.gz.push(e.rotationRate.gamma);
+            samples.ax.push(e.accelerationIncludingGravity.x || 0);
+            samples.ay.push(e.accelerationIncludingGravity.y || 0);
+            samples.az.push(e.accelerationIncludingGravity.z || 0);
+            samples.gx.push(e.rotationRate.alpha || 0);
+            samples.gy.push(e.rotationRate.beta || 0);
+            samples.gz.push(e.rotationRate.gamma || 0);
         };
-
         window.addEventListener('devicemotion', collect);
         await new Promise(r => setTimeout(r, ms));
         window.removeEventListener('devicemotion', collect);
 
-        if(moved && this.state.profile === "GASTROPODE") {
-            this.log("MOUVEMENT DÉTECTÉ : RE-CALIBRATION...");
-            return this.calibrate(ms);
-        }
-
         const median = (arr) => {
             const s = [...arr].sort((a,b)=>a-b);
-            return _BN(s[Math.floor(s.length/2)]);
+            return _BN(s[Math.floor(s.length/2)] || 0);
         };
 
         const mAX = median(samples.ax), mAY = median(samples.ay), mAZ = median(samples.az);
         this.state.g_local = m.sqrt(m.add(m.pow(mAX,2), m.add(m.pow(mAY,2), m.pow(mAZ,2))));
         this.state.bias_a = { x:mAX, y:mAY, z:m.subtract(mAZ, this.state.g_local) };
         this.state.bias_g = { x:median(samples.gx), y:median(samples.gy), z:median(samples.gz) };
-        
         this.state.vel = {x:_BN(0), y:_BN(0), z:_BN(0)};
-        this.log("SINS ALIGNÉ. VITESSE ZÉRO.");
     },
 
     solveExactPhysics(dt) {
-        const mass = _BN(document.getElementById('in-mass').innerText || 0.05);
-        const Cx = _BN(document.getElementById('in-cx').innerText || 0.47);
+        const mass = _BN(document.getElementById('in-mass')?.innerText || 0.05);
+        const Cx = _BN(document.getElementById('in-cx')?.innerText || 0.47);
         const area = m.multiply(this.PHYS.PI, m.pow(_BN(0.0075), 2));
 
-        // 1. Orientation Quaternions
         this.integrateOrientation(dt);
-
-        // 2. Newton par axe
         const g_proj = this.rotateVector({x:_BN(0), y:_BN(0), z:this.state.g_local}, this.state.q);
-        const v_mag = m.sqrt(m.add(m.pow(this.state.vel.x, 2), m.add(m.pow(this.state.vel.y, 2), m.pow(this.state.vel.z, 2))));
+        const v_mag = this.getVelocityMagnitude();
 
         ['x', 'y', 'z'].forEach(axis => {
             let a_net = m.subtract(m.subtract(_BN(this.sensors.accel[axis]), this.state.bias_a[axis]), g_proj[axis]);
+            
+            // G-Shock Limit
+            if (m.abs(a_net).gt(50)) a_net = m.multiply(m.sign(a_net), 50);
 
-            // G-Shock Protection (Limitée à 5G)
-            if (m.abs(a_net).gt(50)) {
-                this.logEvent("G-SHOCK", `Axe ${axis} sature`);
-                a_net = m.multiply(m.sign(a_net), 50);
-            }
-
-            // Traînée Sutherland
+            // Drag Sutherland
             if (v_mag.gt(0.01)) {
                 const f_drag = m.multiply(_BN(0.5), m.multiply(this.state.rho, m.multiply(m.pow(v_mag, 2), m.multiply(Cx, area))));
-                const a_drag = m.divide(f_drag, mass);
-                a_net = m.subtract(a_net, m.multiply(a_drag, m.divide(this.state.vel[axis], v_mag)));
+                a_net = m.subtract(a_net, m.multiply(m.divide(f_drag, mass), m.divide(this.state.vel[axis], v_mag)));
             }
 
-            // Intégration Newton
             let v_new = m.add(this.state.vel[axis], m.multiply(a_net, dt));
-            
-            // Lock de sécurité pour vitesse fantôme
             if (this.state.profile === "GASTROPODE" && m.abs(a_net).lt(0.05) && v_mag.lt(0.1)) v_new = _BN(0);
 
             this.state.vel[axis] = v_new;
@@ -172,6 +147,30 @@ const OMNI_CORE = {
         this.state.q = { w: m.divide(nw, mag), x: m.divide(nx, mag), y: m.divide(ny, mag), z: m.divide(nz, mag) };
     },
 
+    updateUI() {
+        const v = this.getVelocityMagnitude();
+        const mass = _BN(document.getElementById('in-mass')?.innerText || 0.05);
+        const ek = m.multiply(_BN(0.5), m.multiply(mass, m.pow(v, 2)));
+
+        this.setUI('speed-stable-kmh', m.multiply(v, 3.6).toFixed(4));
+        this.setUI('ui-mc-speed', v.toFixed(3) + " m/s");
+        this.setUI('energy-cinetic', ek.toFixed(6) + " J");
+        this.setUI('altitude-ekf', this.state.pos.z.toFixed(2));
+        this.setUI('ast-jd', this.state.jd.toFixed(9));
+        
+        // --- Calcul de l'inclinaison (Pitch/Roll) ---
+        const q = this.state.q;
+        // Conversion BigNumber vers Float pour les fonctions Math standard
+        const qw = Number(q.w), qx = Number(q.x), qy = Number(q.y), qz = Number(q.z);
+        const pitch = Math.asin(Math.max(-1, Math.min(1, 2.0 * (qw * qy - qz * qx)))) * (180 / Math.PI);
+        const roll = Math.atan2(2.0 * (qw * qx + qy * qz), 1.0 - 2.0 * (qx * qx + qy * qy)) * (180 / Math.PI);
+        
+        this.setUI('ui-pitch-roll', `P: ${pitch.toFixed(1)}° | R: ${roll.toFixed(1)}°`);
+        
+        const gamma = m.divide(_BN(1), m.sqrt(m.subtract(_BN(1), m.pow(m.divide(v, this.PHYS.C), 2))));
+        this.setUI('ui-lorentz-2', gamma.toFixed(16));
+    },
+
     async syncAtomicSextant() {
         try {
             const r = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
@@ -181,22 +180,10 @@ const OMNI_CORE = {
     },
 
     initHardware() {
-        if ('PressureSensor' in window) {
-            const baro = new PressureSensor({ frequency: 10 });
-            baro.onreading = () => this.updateAtmo(baro.pressure * 100);
-            baro.start();
-        }
         window.ondevicemotion = (e) => {
-            this.sensors.accel = { x:e.accelerationIncludingGravity.x||0, y:e.accelerationIncludingGravity.y||0, z:e.accelerationIncludingGravity.z||0 };
-            this.sensors.gyro = { x:e.rotationRate.alpha||0, y:e.rotationRate.beta||0, z:e.rotationRate.gamma||0 };
+            this.sensors.accel = { x:e.accelerationIncludingGravity?.x||0, y:e.accelerationIncludingGravity?.y||0, z:e.accelerationIncludingGravity?.z||0 };
+            this.sensors.gyro = { x:e.rotationRate?.alpha||0, y:e.rotationRate?.beta||0, z:e.rotationRate?.gamma||0 };
         };
-    },
-
-    updateAtmo(p) {
-        this.state.press = _BN(p);
-        const ratio_T = m.divide(this.state.temp, this.PHYS.T0);
-        this.state.viscosity = m.multiply(this.PHYS.MU0, m.multiply(m.pow(ratio_T, 1.5), m.divide(m.add(this.PHYS.T0, this.PHYS.S_CONST), m.add(this.state.temp, this.PHYS.S_CONST))));
-        this.state.rho = m.divide(this.state.press, m.multiply(this.PHYS.R_GAS, this.state.temp));
     },
 
     engine() {
@@ -205,41 +192,13 @@ const OMNI_CORE = {
         const dt = m.divide(_BN(now - this.lastT), _BN(1000));
         this.lastT = now;
         this.state.jd = m.add(this.state.jd, m.divide(dt, _BN(86400)));
-        
         this.solveExactPhysics(dt);
         this.updateUI();
         requestAnimationFrame(() => this.engine());
     },
 
-    updateUI() {
-        const v = this.getVelocityMagnitude();
-        const mass = _BN(document.getElementById('in-mass').innerText || 0.05);
-        const ek = m.multiply(_BN(0.5), m.multiply(mass, m.pow(v, 2)));
-
-        this.setUI('speed-stable-kmh', m.multiply(v, 3.6).toFixed(4));
-        this.setUI('ui-mc-speed', v.toFixed(3) + " m/s");
-        this.setUI('energy-cinetic', ek.toFixed(6) + " J");
-        this.setUI('altitude-ekf', this.state.pos.z.toFixed(2));
-        this.setUI('ast-jd', this.state.jd.toFixed(9));
-        this.setUI('air-density', this.state.rho.toFixed(5));
-        
-        const gamma = m.divide(_BN(1), m.sqrt(m.subtract(_BN(1), m.pow(m.divide(v, this.PHYS.C), 2))));
-        this.setUI('ui-lorentz-2', gamma.toFixed(16));
-        // À ajouter dans updateUI() pour voir l'inclinaison en degrés
-const q = this.state.q;
-const pitch = Math.asin(2.0 * (q.w * q.y - q.z * q.x)) * (180 / Math.PI);
-const roll = Math.atan2(2.0 * (q.w * q.x + q.y * q.z), 1.0 - 2.0 * (q.x * q.x + q.y * q.y)) * (180 / Math.PI);
-    },
-this.setUI('ui-pitch-roll', `P: ${pitch.toFixed(1)}° | R: ${roll.toFixed(1)}°`);
-
-
     getVelocityMagnitude() {
         return m.sqrt(m.add(m.pow(this.state.vel.x, 2), m.add(m.pow(this.state.vel.y, 2), m.pow(this.state.vel.z, 2))));
-    },
-
-    logEvent(type, data) {
-        this.blackBox.unshift({ t: new Date().toISOString(), type, data, v: this.getVelocityMagnitude().toFixed(2) });
-        if(this.blackBox.length > 50) this.blackBox.pop();
     },
 
     rotateVector(v, q) {
@@ -251,6 +210,7 @@ this.setUI('ui-pitch-roll', `P: ${pitch.toFixed(1)}° | R: ${roll.toFixed(1)}°`
         };
     },
 
+    logEvent(type, data) { this.blackBox.unshift({ t: new Date().toISOString(), type, data }); if(this.blackBox.length > 50) this.blackBox.pop(); },
     setUI(id, val) { const el = document.getElementById(id); if(el) el.innerText = val; },
     log(msg) { const l = document.getElementById('anomaly-log'); if(l) l.innerHTML = `<div>> ${msg}</div>` + l.innerHTML; }
 };
