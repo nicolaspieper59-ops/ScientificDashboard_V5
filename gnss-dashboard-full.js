@@ -225,7 +225,13 @@ const OMNI_CORE = {
         
         const gamma = m.divide(_BN(1), m.sqrt(m.subtract(_BN(1), m.pow(m.divide(v, this.PHYS.C), 2))));
         this.setUI('ui-lorentz-2', gamma.toFixed(16));
-    },
+        // À ajouter dans updateUI() pour voir l'inclinaison en degrés
+const q = this.state.q;
+const pitch = Math.asin(2.0 * (q.w * q.y - q.z * q.x)) * (180 / Math.PI);
+const roll = Math.atan2(2.0 * (q.w * q.x + q.y * q.z), 1.0 - 2.0 * (q.x * q.x + q.y * q.y)) * (180 / Math.PI);
+
+this.setUI('ui-pitch-roll', `P: ${pitch.toFixed(1)}° | R: ${roll.toFixed(1)}°`);
+
 
     getVelocityMagnitude() {
         return m.sqrt(m.add(m.pow(this.state.vel.x, 2), m.add(m.pow(this.state.vel.y, 2), m.pow(this.state.vel.z, 2))));
