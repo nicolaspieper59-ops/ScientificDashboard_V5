@@ -186,69 +186,37 @@
     </div>
 </footer>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="lib/ephem.js"></script>
-<script src="api/weather.js"></script>
-
-<script src="lib/astro.js"></script>
-
-    
-<script src="gnss-dashboard-full.js"></script>
-
 <script>
-    /* MOTEUR DE LIAISON UNIVERSEL V140 
-       Répare le problème de boucle et connecte les 150+ IDs
-    */
-    const OMNI_CORE = {
-        active: false,
-        startTime: null,
-        ids: [],
-        
-        init() {
-            this.active = true;
-            this.startTime = Date.now();
-            this.ids = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
-            document.getElementById('anomaly-log').innerHTML += "<br>> BOUCLE_DATA_LANCEE_150_POINTS";
-            document.getElementById('ui-env-mode').innerText = "RUNNING_ACTIVE";
-            this.loop();
-        },
+let wakeLock = null;
 
-        loop() {
-            if(!this.active) return;
-            const now = Date.now();
-            const elapsed = now - this.startTime;
+async function startAdventure() {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            document.getElementById('reality-status-main').innerText = "WAKE_LOCK_ACTIVE";
+            document.getElementById('reality-status-main').style.color = "var(--accent)";
+        } catch (err) { console.log("WakeLock Error"); }
+    }
+    
+    if(typeof initCore === "function") {
+        initCore();
+    }
+}
 
-            // Mise à jour Horloges
-            document.getElementById('ui-clock').innerText = new Date().toTimeString().split(' ')[0];
-            document.getElementById('ui-uptime').innerText = new Date(elapsed).toISOString().substr(11, 8);
-            
-            // Simulation forcée pour vérifier la présence des IDs
-            if(document.getElementById('vitesse-raw')) 
-                document.getElementById('vitesse-raw').innerText = (Math.random() * 2).toFixed(9);
-            
-            if(document.getElementById('tslv'))
-                document.getElementById('tslv').innerText = Math.floor(Math.random() * 15) + "ms";
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        wakeLock = await navigator.wakeLock.request('screen');
+    }
+});
+</script>         
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/turf.min.js"></script>
+<script src="vendor/leaflet.js"></script>    
 
-            requestAnimationFrame(() => this.loop());
-        },
-
-        setAnchor() {
-            document.getElementById('anomaly-log').innerHTML += "<br>> NEW_ZERO_REFERENCE_SET";
-        }
-    };
-
-    document.getElementById('main-init-btn').addEventListener('click', () => {
-        OMNI_CORE.init();
-        // Simulation d'activité GPS
-        document.getElementById('ui-sat-count').innerText = "12";
-        document.getElementById('ui-gps-hdop').innerText = "0.85";
-    });
-
-    // Init Map Leaflet (Dark mode)
-    try {
-        const map = L.map('map', {zoomControl: false}).setView([48.8566, 2.3522], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-    } catch(e) { console.warn("Map pending..."); }
-</script>
-
+<script src="lib/ephem.js"></script>
+<script src="lib/astro.js"></script>    
+    
+<script src="gnss-dashboard-full.js"></script>                  
 </body>
-                                                                                                                                                                   </html>
+</html>
