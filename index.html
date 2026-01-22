@@ -60,8 +60,15 @@
         <div class="data-point"><span>Vitesse Stable</span><span id="speed-stable-kmh">--</span></div>
         <div class="data-point"><span>Cap (Heading)</span><span id="heading-display">--</span></div>
         <div class="data-point"><span>Mode Mission</span><span id="mission-status">STANDBY</span></div>
+        <div class="data-point"><span>Stabilité Schuler</span><span id="ui-schuler-status">STABLE (84.4m)</span></div>
+        <div class="data-point"><span>Verticale G-Inv</span><span id="ui-vertical-stab">VERROUILLÉE</span></div>
         <div class="data-point"><span>Vecteur État</span><span id="ui-sextant-status">SEARCH_SYNC</span></div>
         <div class="data-point"><span>Mach Number</span><span id="mach-val">-.--</span></div>
+        <div id="navigation-panel">
+    <div>NORD GÉO : <span id="ui-true-north">-.--°</span></div>
+    <div>FLÈCHE ANCRAGE : <span id="ui-home-bearing">-.--°</span></div>
+    <div>DISTANCE ENTRÉE : <span id="ui-home-dist">-.-- m</span></div>
+        </div>
         
         <h3>Physique de Mission</h3>
         <div class="data-point"><span>Lorentz Factor (γ)</span><span id="ui-lorentz">1.----------</span></div>
@@ -76,10 +83,103 @@
         <canvas id="gforce-canvas" height="140"></canvas>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
             <div>
+                <div class="data-point" style="border-top: 1px solid var(--border); margin-top:5px; padding-top:5px;">
+    <span>Cadence (Pas/min)</span><br>
+    <span id="ui-sport-cadence" style="color:var(--accent);">0 SPM</span>
+</div>
+<div class="data-point">
+    <span>Détente Verticale</span><br>
+    <span id="ui-jump-height">0.00 cm</span>
+</div>
+<div class="data-point">
+    <span>Force d'Impact Max</span><br>
+    <span id="ui-impact-g" style="color:var(--critical);">0.00 G</span>
+</div>
+                <div id="sport-auto-layer" style="border: 1px dashed var(--accent); padding: 10px; margin-top: 10px;">
+    <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
+        <span>DISCIPLINE DÉTECTÉE :</span>
+        <span id="ui-sport-type" style="color:var(--accent); font-weight:bold;">SCANNING...</span>
+    </div>
+    <div id="ui-sport-main-metric" style="font-size: 1.8rem; text-align: center; margin: 5px 0;">0.00</div>
+    <div style="display: flex; justify-content: space-around; font-size: 0.6rem; color: #888;">
+        <span id="ui-sport-sub1">CADENCE: 0</span>
+        <span id="ui-sport-sub2">IMPACT: 0G</span>
+    </div>
+                    <div class="data-point"><span>Activité EPS</span><span id="ui-sport-type" style="color:var(--accent);">DETECTING...</span></div>
+<div class="data-point"><span>Impact/Détente</span><span id="ui-jump-height">0.00 cm</span></div>
+
+<div class="data-point"><span>Univers Observable</span><span id="ui-observable-pct" style="color:var(--blue);">0.000... %</span></div>
+<div class="data-point"><span>Horizon Comobile</span><span id="ui-dist-comobile">0.00 m</span></div>
+                </div>
+                <div id="providence-final-ui" style="background:#000; color:#00ff88; font-family:'JetBrains Mono'; padding:15px; border:1px solid #222;">
+    <div style="text-align:center; border-bottom:1px solid #333; margin-bottom:10px;">
+        <small>PHYSIQUE LOCALE :</small><br>
+        <span id="ui-env-mode" style="font-weight:bold; letter-spacing:2px;">ANALYSE...</span>
+    </div>
+
+    <div style="display:flex; justify-content:space-between;">
+        <div>
+            <small>VITESSE</small><br>
+            <span id="vitesse-raw" style="font-size:1.2rem;">0.000000</span> <small>m/s</small>
+        </div>
+        <div style="text-align:right;">
+            <small>ÉCHELLE</small><br>
+            <span id="ui-scale-active">1:1</span>
+        </div>
+    </div>
+
+    <div style="margin-top:10px; font-size:0.7rem; color:#00c3ff;">
+        OBSERVABLE : <span id="ui-observable-pct">0.0000...</span> %
+    </div>
+
+    <div id="anomaly-log" style="height:50px; overflow:hidden; font-size:0.6rem; color:#555; margin-top:10px; border-top:1px solid #111;">
+        > SYSTÈME PRÊT. ATTENTE MOUVEMENT.
+    </div>
+                    <div id="arbitrator-ui" style="border: 1px solid var(--accent); padding: 8px; background: rgba(0,0,0,0.8);">
+    <div style="font-size: 0.6rem; margin-bottom: 5px;">ARBITRAGE DES SOURCES :</div>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div class="source-bar">IMU: <progress id="trust-imu" value="100" max="100"></progress></div>
+        <div class="source-bar">OPTIQUE: <progress id="trust-opt" value="0" max="100"></progress></div>
+        <div class="source-bar">ACOUSTIQUE: <progress id="trust-audio" value="0" max="100"></progress></div>
+    </div>
+    <div style="font-size: 0.7rem; color: #00ffff; margin-top: 5px;">SOURCE MAÎTRE : <span id="master-source">INERTIE</span></div>
+                    </div>
+                    <div id="coherence-monitor" style="margin-top:10px; border-top:1px dashed #444;">
+    <small>COHÉRENCE RÉALITÉ :</small>
+    <div id="ui-coherence-bar" style="width:100%; height:4px; background:linear-gradient(to right, #f00, #0f0);"></div>
+    <div style="display:flex; justify-content:space-between; font-size:0.5rem;">
+        <span id="ui-conf-imu">IMU: OK</span>
+        <span id="ui-conf-opt">OPT: OK</span>
+        <span id="ui-conf-snd">SND: OK</span>
+    </div>
+                        <div id="path-recorder-ui" style="border: 1px solid #bc13fe; padding: 5px; margin-top: 10px; background: rgba(188,19,254,0.05);">
+    <div style="font-size: 0.6rem; color: #bc13fe;">ENREGISTREUR DE TRAJECTOIRE (AR) :</div>
+    <canvas id="ar-canvas" style="width:100%; height:100px; background:#000; border-radius:4px;"></canvas>
+    <div style="display:flex; justify-content:space-between; font-size:0.55rem; margin-top:3px;">
+        <span>POINTS: <span id="ui-path-points">0</span></span>
+        <button onclick="OMNI_CORE.clearPath()" style="background:none; border:1px solid #bc13fe; color:#bc13fe; font-size:0.5rem; cursor:pointer;">EFFACER TRACE</button>
+    </div>
+                            <div id="advanced-physics-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; border-top:1px solid #444; padding-top:10px;">
+    <div class="sci-block">
+        <small style="color:#ffee00;">CHAMP ÉLECTRIQUE :</small><br>
+        <span id="ui-elec-flux">0.00</span> <small>µT</small><br>
+        <small>PUISSANCE EST. :</small> <span id="ui-elec-watt">0</span> <small>W</small>
+    </div>
+    <div class="sci-block">
+        <small style="color:#ff4400;">RADIA. IONISANTE :</small><br>
+        <span id="ui-rad-level">0.08</span> <small>µSv/h</small><br>
+        <small>DOSIMÉTRIE :</small> <span id="ui-rad-total">0.00</span> <small>mSv</small>
+    </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <h3>Position SLAM (m)</h3>
                 <div class="data-point"><span>X-Rel</span><span id="pos-x">-.--</span></div>
                 <div class="data-point"><span>Y-Alt</span><span id="pos-y">-.--</span></div>
                 <div class="data-point"><span>Z-Rel</span><span id="pos-z">-.--</span></div>
+                <div class="data-point"><span>Distance LY</span><span id="ui-dist-ly" style="color:var(--accent);">0.00000000000000 LY</span></div>
+                <div class="data-point"><span>Temps-Lumière</span><span id="distance-light-s">0.00 s-L</span></div>
             </div>
             <div>
                 <h3>Odométrie</h3>
@@ -89,6 +189,9 @@
                 <div class="data-point"><span>Vitesse Minecraft</span><span id="ui-mc-speed">0.00 b/s</span></div>
                 <div class="data-point"><span>Précision SLAM</span><span id="ui-slam-precision">--</span></div>
                 <div class="data-point"><span>Jitter Atomique</span><span id="ui-atomic-jitter">0ms</span></div>
+                <div class="data-point"><span>Vitesse Nautique</span><span id="ui-speed-knots">0.000 kts</span></div>
+                <div class="data-point"><span>Vitesse Absolue</span><span id="vitesse-raw" style="color:var(--critical);">0.000000000 mm/s</span></div>
+                <div class="data-point"><span>Mode Environnement</span><span id="ui-env-mode">AUTO-DETECT</span></div>
             </div>
         </div>
         <div id="anomaly-log">> SYSTEM_READY_V17_PRO_MAX...</div>
@@ -146,6 +249,7 @@
             <button id="export-metrics-btn" style="font-size:0.5rem;">CSV_OUT</button>
             <button id="emergency-stop-btn" style="font-size:0.5rem; color:var(--critical);">EMG_STOP</button>
             <button id="clear-log-btn" style="font-size:0.5rem;" onclick="document.getElementById('anomaly-log').innerHTML=''">CLEAR</button>
+            <button id="anchor-btn" class="omni-btn" style="background: var(--accent-blue);">MARQUER ENTRÉE (0,0,0)</button>
         </div>
     </div>
 </footer>
@@ -164,13 +268,70 @@
     <span id="time-dilation-gravite"></span>
     <span id="distance-light-s"></span>
     
-    <span id="in-mass">0.05</span> <span id="in-cx">0.47</span>   <span id="ui-f-roll"></span>
+    <span id="in-mass">-.--</span> <span id="in-cx">-.--</span>   <span id="ui-f-roll"></span>
     <span id="mach-number"></span>
     <span id="vitesse-raw"></span>
     <span id="force-g-vert"></span>
     <span id="dynamic-press"></span>
     <span id="reynolds-number"></span>
 </div>
+    <div id="cosmic-dashboard" style="background: rgba(0, 10, 20, 0.8); border: 1px solid #00d4ff; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace;">
+    <h3 style="color: #00d4ff; margin-top: 0;">PROVIDENCE : ÉCHELLE GALACTIQUE</h3>
+    
+    <div class="metrics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="border-right: 1px solid #333;">
+            <div style="color: #888; font-size: 0.8em;">OSCILLATION DE SCHULER</div>
+            <div id="ui-schuler-status" style="color: #00ff88;">COMPENSÉE (84.4 min)</div>
+            
+            <div style="color: #888; font-size: 0.8em; margin-top: 10px;">VERTICALE LOCALE (G-REF)</div>
+            <div id="ui-vertical-stab" style="color: #fff;">STABLE (IEKF-INV)</div>
+        </div>
+
+        <div>
+            <div style="color: #00d4ff; font-size: 0.8em;">DISTANCE EN ANNÉES-LUMIÈRE</div>
+            <div id="ui-dist-ly" style="font-size: 1.2em; color: #bc13fe; font-weight: bold;">0.000000000000000 LY</div>
+            
+            <div style="color: #00d4ff; font-size: 0.8em; margin-top: 10px;">TEMPS-LUMIÈRE (RETARD)</div>
+            <div id="ui-light-time" style="color: #fff;">0.00 sec-lumière</div>
+        </div>
+    </div>
+
+    <hr style="border: 0; border-top: 1px dashed #333; margin: 15px 0;">
+
+    <div style="text-align: center;">
+        <div style="color: #ff3300; font-size: 0.7em; letter-spacing: 2px;">HORIZON DES ÉVÉNEMENTS</div>
+        <div id="ui-causality-status" style="color: #00ff88; font-weight: bold;">FLUX TEMPOREL NORMAL</div>
+    </div>
+                </div>
+    <div id="providence-v71-ui" style="background: #050505; color: #00ff88; padding: 20px; border: 2px solid #333; font-family: monospace;">
+    <div style="display: flex; justify-content: space-between;">
+        <span>MODE: <b id="ui-env-mode">INITIALISATION...</b></span>
+        <span>STATUS: <b id="ui-sextant-status">LOCKED</b></span>
+    </div>
+    
+    <hr>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div>
+            <small>VITESSE NAUTIQUE</small><br>
+            <span id="ui-speed-knots" style="font-size: 1.5em; color: #00d4ff;">0.000 kts</span>
+        </div>
+        <div>
+            <small>VITESSE LINÉAIRE</small><br>
+            <span id="speed-kmh" style="font-size: 1.5em;">0.00 km/h</span>
+        </div>
+    </div>
+
+    <div style="margin-top: 15px; border-top: 1px solid #222; padding-top: 10px;">
+        <small>VITESSE ABSOLUE (mm/s)</small><br>
+        <span id="vitesse-raw" style="color: #ff3300;">0.000000000</span>
+    </div>
+
+    <div style="margin-top: 15px;">
+        <small>DISTANCE ANCRAGE (ENTRÉE/PORT)</small><br>
+        <span id="ui-home-dist">0.00 m</span> | <span id="ui-dist-ly" style="color: #bc13fe;">0.00 LY</span>
+    </div>
+    </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
 
 <script src="lib/ephem.js"></script>
