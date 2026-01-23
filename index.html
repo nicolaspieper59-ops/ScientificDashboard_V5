@@ -12,32 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500;800&display=swap" rel="stylesheet">
     
-    <style>
-        :root {
-            --bg: #020202; --panel-bg: rgba(10, 10, 12, 0.98); --border: #1a1a1f;
-            --accent: #00ff88; --blue: #00c3ff; --gold: #ffd700; --critical: #ff3300; --violet: #bc13fe;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body { background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; font-size: 8.5px; }
-        header { height: 40px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: #000; z-index: 100; }
-        main { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 6px; padding: 6px; overflow-y: auto; background: radial-gradient(circle at 50% 50%, #08080c 0%, #000 100%); }
-        .panel { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 2px; display: flex; flex-direction: column; border-top: 2px solid var(--border); margin-bottom: 4px; }
-        .panel-header { padding: 4px 10px; background: rgba(255, 255, 255, 0.02); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .panel-header h2 { font-family: 'Orbitron'; font-size: 0.6rem; letter-spacing: 1px; margin: 0; text-transform: uppercase; }
-        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 4px; }
-        .data-box { background: rgba(0,0,0,0.5); border: 1px solid #1a1a1a; padding: 4px 6px; display: flex; flex-direction: column; border-left: 2px solid #333; }
-        .label { font-size: 0.45rem; color: #555; text-transform: uppercase; margin-bottom: 1px; }
-        .value { font-size: 0.75rem; color: #fff; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .unit { font-size: 0.45rem; color: #444; margin-left: 2px; }
-        footer { background: #000; border-top: 1px solid #333; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 6px; padding: 6px; }
-        #map { height: 110px; width: 100%; border: 1px solid #222; margin-bottom: 4px; }
-        canvas { width: 100%; background: #000; }
-        button { background: #111; color: #888; border: 1px solid #333; padding: 5px; font-family: 'Orbitron'; font-size: 0.55rem; cursor: pointer; }
-        .btn-main { background: var(--accent); color: #000; border: none; font-weight: 800; width: 100%; height: 30px; }
-        #anomaly-log { font-size: 0.6rem; color: var(--accent); height: 70px; overflow-y: auto; background: #050505; padding: 4px; border: 1px solid #111; font-family: 'JetBrains Mono'; }
-        progress { width: 100%; height: 3px; appearance: none; border: none; background: #111; }
-        progress::-webkit-progress-value { background: var(--accent); }
-    </style>
+
 </head>
 <body>
 
