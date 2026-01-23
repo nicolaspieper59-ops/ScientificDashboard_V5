@@ -3,160 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V140 • OMNI-SOUVERAIN ULTRA-CORE</title>
+    <title>PROVIDENCE V140.1 • CORRECTED CORE</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500;800&display=swap" rel="stylesheet">
     
     <style>
         :root {
             --bg: #050505; --panel: #0f0f0f; --accent: #00ff88;
             --blue: #00d4ff; --gold: #ffcc00; --violet: #cc00ff;
-            --critical: #ff3333; --font-mono: 'JetBrains Mono', monospace;
+            --font-mono: 'JetBrains Mono', monospace;
         }
-        body {
-            background: var(--bg); color: #e0e0e0;
-            font-family: var(--font-mono); margin: 0; overflow-x: hidden; font-size: 11px;
-        }
-        header {
-            padding: 10px; background: #000; border-bottom: 1px solid #222;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .panel {
-            background: var(--panel); border: 1px solid #222; border-top: 3px solid var(--accent);
-            margin: 8px; padding: 10px; border-radius: 4px;
-        }
+        body { background: var(--bg); color: #e0e0e0; font-family: var(--font-mono); margin: 0; font-size: 11px; }
+        .panel { background: var(--panel); border: 1px solid #222; border-top: 3px solid var(--accent); margin: 8px; padding: 10px; border-radius: 4px; }
         .panel-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-family: 'Orbitron'; font-size: 0.75rem; }
-        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
         .data-box { background: #151515; padding: 6px; border-radius: 2px; border-left: 2px solid #333; }
         .label { font-size: 0.55rem; color: #888; display: block; text-transform: uppercase; }
         .value { font-size: 0.95rem; color: #fff; font-weight: bold; }
-        .unit { font-size: 0.6rem; color: #555; margin-left: 2px; }
-        #map { height: 160px; width: 100%; background: #000; margin-bottom: 10px; border-radius: 4px; }
-        #anomaly-log { height: 50px; overflow-y: auto; background: #000; color: var(--accent); font-size: 0.6rem; padding: 5px; border: 1px solid #222; margin-bottom: 5px; }
-        .btn-main {
-            width: 100%; padding: 12px; background: var(--accent);
-            border: none; color: #000; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; border-radius: 4px;
-        }
-        progress { width: 100%; height: 4px; appearance: none; border: none; }
-        progress::-webkit-progress-bar { background: #111; }
-        progress::-webkit-progress-value { background: var(--accent); }
-        input[type="number"] { background: #000; border: 1px solid #333; color: var(--accent); width: 60px; font-family: var(--font-mono); }
+        #map { height: 150px; width: 100%; background: #000; border-radius: 4px; }
+        #anomaly-log { height: 60px; overflow-y: auto; background: #000; color: var(--accent); font-size: 0.6rem; padding: 5px; border: 1px solid #222; margin: 10px 0; }
+        .btn-main { width: 100%; padding: 12px; background: var(--accent); border: none; color: #000; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<header>
-    <div style="font-family:'Orbitron'; color:var(--accent);">PROVIDENCE <span id="ui-version">V140.0-ULTRA</span></div>
-    <div style="font-family:'Orbitron'; font-size:1rem; color:var(--blue);" id="ui-clock">00:00:00</div>
-    <div style="font-size:0.55rem; color:#666;">
-        SMP: <span id="ui-sampling-rate">--</span>Hz | LAT: <span id="tslv">0ms</span> | UP: <span id="ui-uptime">00:00:00</span>
-    </div>
+<header style="padding:10px; border-bottom:1px solid #222; display:flex; justify-content:space-between;">
+    <div style="font-family:'Orbitron'; color:var(--accent);">PROVIDENCE V140.1</div>
+    <div id="ui-clock" style="color:var(--blue);">00:00:00</div>
 </header>
 
 <main>
     <section class="panel" style="border-top-color: var(--blue);">
-        <div class="panel-header"><h2 style="color:var(--blue);">NAV_CORE_EKF</h2><span id="ui-env-mode">INITIALIZING</span></div>
-        <div class="panel-content">
-            <div id="map"></div>
-            <div class="metrics-grid">
-                <div class="data-box" style="border-left-color:var(--blue);"><span class="label">Lat EKF</span><span class="value" id="lat-ekf">0.000000</span></div>
-                <div class="data-box" style="border-left-color:var(--blue);"><span class="label">Lon EKF</span><span class="value" id="lon-ekf">0.000000</span></div>
-                <div class="data-box"><span class="label">Altitude</span><span class="value"><span id="alt-ekf">0.00</span><span class="unit">m</span></span></div>
-                <div class="data-box"><span class="label">Heading</span><span class="value" id="heading-display">000.0°</span></div>
-                <div class="data-box"><span class="label">Sats Count</span><span class="value" id="ui-sat-count">0</span></div>
-                <div class="data-box"><span class="label">Prec GPS</span><span class="value">±<span id="acc-gps">0.0</span><span class="unit">m</span></span></div>
-            </div>
-            <div class="metrics-grid" style="grid-template-columns: 1fr 1fr 1fr;">
-                <div class="data-box"><span class="label">HDOP</span><span class="value" id="ui-gps-hdop">0.00</span></div>
-                <div class="data-box"><span class="label">VDOP</span><span class="value" id="ui-gps-vdop">0.00</span></div>
-                <div class="data-box"><span class="label">PDOP</span><span class="value" id="ui-gps-pdop">0.00</span></div>
-            </div>
-            <div class="metrics-grid">
-                <div class="data-box" style="border-left-color:var(--gold);"><span class="label">Dist. Home</span><span class="value" id="ui-home-dist">0.00 m</span></div>
-                <div class="data-box"><span class="label">Schuler Status</span><span class="value" id="ui-schuler-status">LOCKED</span></div>
-            </div>
+        <div class="panel-header"><h2>NAV_GEODETIC</h2><span id="ui-env-mode">OFFLINE</span></div>
+        <div id="map"></div>
+        <div class="metrics-grid" style="margin-top:8px;">
+            <div class="data-box"><span class="label">Latitude</span><span class="value" id="lat-ekf">0.000000</span></div>
+            <div class="data-box"><span class="label">Longitude</span><span class="value" id="lon-ekf">0.000000</span></div>
+            <div class="data-box"><span class="label">Altitude</span><span class="value" id="alt-ekf">0.00 m</span></div>
+            <div class="data-box"><span class="label">Précision</span><span class="value" id="acc-gps">±0m</span></div>
         </div>
     </section>
 
-    <section class="panel" style="border-top-color: var(--accent);">
-        <div class="panel-header"><h2 style="color:var(--accent);">KINETIC_DYNAMICS</h2><span id="ui-scale-active">NANO_RES</span></div>
-        <div class="panel-content">
-            <div class="data-box" style="margin: 4px 0; border: 1px solid var(--accent); text-align:center;">
-                <span class="label">Vitesse Corrigée Inclinaison (mm/s)</span>
-                <span class="value" id="vitesse-raw" style="font-size:1.4rem; color:var(--accent);">0.000000000</span>
-            </div>
-            <div class="metrics-grid">
-                <div class="data-box"><span class="label">KM/H</span><span class="value" id="speed-stable-kmh">0.00</span></div>
-                <div class="data-box"><span class="label">G-Force Inst</span><span class="value" id="force-g-inst">1.00 G</span></div>
-                <div class="data-box" style="border-left-color:var(--violet);"><span class="label">Lorentz γ</span><span class="value" id="ui-lorentz">1.000000</span></div>
-                <div class="data-box" style="border-left-color:var(--critical);"><span class="label">Inclinaison (Pitch)</span><span class="value" id="ui-tilt-pitch">0.00°</span></div>
-            </div>
-            <div class="metrics-grid">
-                <div class="data-box"><span class="label">Acc X Pure</span><span class="value" id="acc-x">0.00</span></div>
-                <div class="data-box"><span class="label">Acc Z Pure</span><span class="value" id="acc-z">0.00</span></div>
-                <div class="data-box"><span class="label">Mach Num</span><span class="value" id="mach-val">0.000</span></div>
-                <div class="data-box"><span class="label">Impact Max</span><span class="value" id="ui-impact-g">0.00 G</span></div>
-            </div>
-        </div>
-    </section>
-
-    <section class="panel" style="border-top-color: var(--violet);">
-        <div class="panel-header"><h2 style="color:var(--violet);">ASTRO_SEXTANT_FIX</h2><span>OFFLINE_MODE</span></div>
-        <div class="metrics-grid">
-            <div class="data-box" style="border: 1px dashed var(--violet);">
-                <span class="label">Visée Tilt (Ha)</span>
-                <span class="value" id="ast-tilt-val">0.00°</span>
-            </div>
-            <div class="data-box"><span class="label">Intercept (Δ)</span><span class="value" id="ast-intercept-nm">0.00 NM</span></div>
+    <section class="panel">
+        <div class="panel-header"><h2>KINETIC_CORRECTED</h2><span id="ui-status">READY</span></div>
+        <div class="data-box" style="margin-bottom:8px; border:1px solid var(--accent); text-align:center;">
+            <span class="label">Vitesse Horizontale Corrigée (m/s)</span>
+            <span class="value" id="vitesse-raw" style="font-size:1.5rem; color:var(--accent);">0.000000</span>
         </div>
         <div class="metrics-grid">
-            <div class="data-box"><span class="label">Julian Date</span><span class="value" id="ast-jd">--</span></div>
-            <div class="data-box"><span class="label">Sidereal (LST)</span><span class="value" id="ui-sidereal">--</span></div>
-        </div>
-        <button id="btn-fix-celestial" class="btn-main" style="background:var(--violet); color:white;">CAPTURE_CELESTIAL_VERITY</button>
-    </section>
-
-    <section class="panel" style="border-top-color: var(--gold);">
-        <div class="panel-header"><h2 style="color:var(--gold);">ENVIRONMENT_FLUIDS</h2><span id="ui-flow-regime">LAM</span></div>
-        <div class="metrics-grid">
-            <div class="data-box"><span class="label">Pression HPA</span><span class="value" id="pressure-hpa">1013</span></div>
-            <div class="data-box"><span class="label">Densité Air ρ</span><span class="value" id="air-density">1.225</span></div>
-            <div class="data-box"><span class="label">Reynolds (Re)</span><span class="value" id="reynolds-number">0</span></div>
-            <div class="data-box"><span class="label">Dynamic Pressure</span><span class="value" id="dynamic-pressure">0 Pa</span></div>
+            <div class="data-box"><span class="label">KM/H</span><span class="value" id="speed-stable-kmh">0.00</span></div>
+            <div class="data-box"><span class="label">Inclinaison (Pitch)</span><span class="value" id="ui-tilt-pitch">0.00°</span></div>
+            <div class="data-box"><span class="label">Acc Linéaire Pure</span><span class="value" id="acc-pure">0.00 m/s²</span></div>
+            <div class="data-box" style="border-left-color:var(--violet);"><span class="label">Sextant Intercept</span><span class="value" id="ast-intercept-nm">0.00 NM</span></div>
         </div>
     </section>
-</main>
-
-<footer>
-    <div class="panel" style="border-left: 3px solid #6600cc;">
-        <div class="label" style="display:flex; justify-content:space-between;">IA_TRUST_INDEX <span id="trust-imu-val">0%</span></div>
-        <progress id="trust-imu" value="100" max="100"></progress>
-        <div class="data-box" style="margin-top:4px;"><span class="label">Master Source</span><span class="value" id="master-source">IDLE</span></div>
-    </div>
 
     <div class="panel">
-        <div id="anomaly-log">> SYSTEM_STANDBY...</div>
-        <button id="main-init-btn" class="btn-main">INITIALISER_OMNI_V140</button>
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:2px; margin-top:4px;">
-            <button onclick="OMNI_CORE.setAnchor()">ZERO</button>
-            <button id="export-metrics-btn">CSV</button>
-            <button onclick="document.getElementById('anomaly-log').innerHTML=''">CLS</button>
-            <button id="emergency-stop-btn" style="color:var(--critical);">HALT</button>
+        <div id="anomaly-log">> INITIALISER POUR CALCULER...</div>
+        <button id="main-init-btn" class="btn-main">BOOT_OMNI_CORE</button>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px; margin-top:4px;">
+            <button onclick="OMNI_CORE.setAnchor()" style="padding:8px;">ZERO_RESET</button>
+            <button id="btn-fix-celestial" style="padding:8px; background:var(--violet); border:none; color:white;">SEXTANT_FIX</button>
         </div>
     </div>
-</footer>
+</main>
 
 <script>
-/**
- * PROVIDENCE ULTRA-CORE V140.0
- * Moteur de fusion sensorielle avec correction 6-DOF et Sextant
- */
-
 const m = math;
 m.config({ number: 'BigNumber', precision: 64 });
 const _BN = (n) => m.bignumber(String(n || 0));
@@ -164,7 +79,6 @@ const _BN = (n) => m.bignumber(String(n || 0));
 const OMNI_CORE = {
     active: false,
     lastT: performance.now(),
-    startT: Date.now(),
     
     state: {
         pos: { x: _BN(0), y: _BN(0), z: _BN(0) },
@@ -174,11 +88,10 @@ const OMNI_CORE = {
         dist: _BN(0)
     },
 
-    PHYS: { G: 9.80665, C: 299792458, R: 287.05 },
+    PHYS: { G: 9.80665, C: 299792458 },
 
     async boot() {
-        this.log("AMORÇAGE SYSTÈME V140...");
-        
+        this.log("V140.1 : AMORÇAGE DE LA BOUCLE...");
         if (typeof DeviceMotionEvent.requestPermission === 'function') {
             await DeviceMotionEvent.requestPermission();
         }
@@ -186,17 +99,17 @@ const OMNI_CORE = {
         window.ondevicemotion = (e) => {
             this.raw_acc = e.accelerationIncludingGravity || {x:0, y:0, z:0};
         };
-
         window.ondeviceorientation = (e) => {
             this.state.rot = { a: e.alpha, b: e.beta, g: e.gamma };
         };
 
         setTimeout(() => {
+            // Calibration du biais gravitaire réel de l'appareil
             this.state.bias.z = (this.raw_acc.z || 9.81) - this.PHYS.G;
             this.active = true;
-            this.log("CORE_ACTIVE : RÉALITÉ SYNCHRONISÉE");
             this.engine();
-        }, 1500);
+            this.log("BOUCLE SYNCHRONISÉE.");
+        }, 1000);
     },
 
     engine() {
@@ -205,65 +118,62 @@ const OMNI_CORE = {
         const dt = Math.min((now - this.lastT) / 1000, 0.1);
         this.lastT = now;
 
-        this.processPhysics6DOF(dt);
-        this.updateAstro();
+        this.updatePhysics(dt);
         this.updateUI();
         requestAnimationFrame(() => this.engine());
     },
 
-    // --- CŒUR DU CALCUL : CORRECTION D'INCLINAISON ---
-    processPhysics6DOF(dt) {
+    /**
+     * BOUCLE PHYSIQUE CORRIGÉE (TRANSFORMATION DE REPERE)
+     */
+    updatePhysics(dt) {
+        // 1. Angles en radians
         const pitch = (this.state.rot.b || 0) * (Math.PI / 180);
         const roll = (this.state.rot.g || 0) * (Math.PI / 180);
 
-        // 1. Extraction de la gravité selon l'inclinaison
-        const gravityX = -Math.sin(roll) * Math.cos(pitch) * this.PHYS.G;
-        const gravityY = Math.sin(pitch) * this.PHYS.G;
-        const gravityZ = Math.cos(pitch) * Math.cos(roll) * this.PHYS.G;
+        // 2. Projection de la gravité sur les axes locaux du téléphone
+        const gx = -Math.sin(roll) * Math.cos(pitch) * this.PHYS.G;
+        const gy = Math.sin(pitch) * this.PHYS.G;
+        const gz = Math.cos(pitch) * Math.cos(roll) * this.PHYS.G;
 
-        // 2. Accélération linéaire pure (Libérée du poids propre)
-        const ax_pure = (this.raw_acc.x || 0) - gravityX;
-        const az_pure = (this.raw_acc.z || 0) - gravityZ - this.state.bias.z;
+        // 3. Extraction de l'accélération linéaire "pure"
+        const ax_pure = (this.raw_acc.x || 0) - gx;
+        const ay_pure = (this.raw_acc.y || 0) - gy;
+        const az_pure = (this.raw_acc.z || 0) - gz - this.state.bias.z;
 
-        // 3. Projection Horizontale (Vitesse réelle au sol)
-        const acc_horiz = (ax_pure * Math.cos(pitch)) + (az_pure * Math.sin(pitch));
+        // 4. Calcul de l'accélération dans le plan de déplacement (Vraie Horizontale)
+        // On combine les axes pour que peu importe l'inclinaison, la poussée soit captée
+        const acc_lin = (ax_pure * Math.cos(pitch)) + (az_pure * Math.sin(pitch));
 
-        // 4. Filtre de stase (ZUPT)
-        if (Math.abs(acc_horiz) < 0.18) {
-            this.state.vel.x = m.multiply(this.state.vel.x, 0.92);
+        // 5. FILTRE DE STASE (Noise Floor)
+        // Si l'accélération est inférieure à 0.15 m/s², on considère l'arrêt pour stopper la dérive
+        const noise_floor = 0.15;
+        if (Math.abs(acc_lin) < noise_floor) {
+            // Amortissement de la vitesse (Friction numérique)
+            this.state.vel.x = m.multiply(this.state.vel.x, 0.9); 
         } else {
-            this.state.vel.x = m.add(this.state.vel.x, m.multiply(_BN(acc_horiz), _BN(dt)));
+            // Intégration Newtonienne
+            const dv = m.multiply(_BN(acc_lin), _BN(dt));
+            this.state.vel.x = m.add(this.state.vel.x, dv);
         }
 
+        this.current_acc_pure = acc_lin;
         this.state.dist = m.add(this.state.dist, m.multiply(m.abs(this.state.vel.x), _BN(dt)));
-        
-        // Stockage pour UI
-        this.current_ax = ax_pure;
-        this.current_az = az_pure;
-    },
-
-    updateAstro() {
-        const jd = (Date.now() / 86400000) + 2440587.5;
-        document.getElementById('ast-jd').innerText = jd.toFixed(5);
-        document.getElementById('ast-tilt-val').innerText = Math.abs(this.state.rot.b).toFixed(2) + "°";
     },
 
     updateUI() {
         const v = Number(this.state.vel.x);
-        document.getElementById('vitesse-raw').innerText = Math.abs(v * 1000).toFixed(6);
-        document.getElementById('speed-stable-kmh').innerText = Math.abs(v * 3.6).toFixed(2);
-        document.getElementById('ui-tilt-pitch').innerText = this.state.rot.b.toFixed(2) + "°";
-        document.getElementById('acc-x').innerText = this.current_ax.toFixed(2);
-        document.getElementById('acc-z').innerText = this.current_az.toFixed(2);
-        
-        const uptime = Math.floor((Date.now() - this.startT)/1000);
-        document.getElementById('ui-uptime').innerText = new Date(uptime * 1000).toISOString().substr(11, 8);
+        document.getElementById('vitesse-raw').innerText = Math.abs(v).toFixed(6);
+        document.getElementById('speed-stable-kmh').innerText = (Math.abs(v) * 3.6).toFixed(2);
+        document.getElementById('ui-tilt-pitch').innerText = (this.state.rot.b || 0).toFixed(2) + "°";
+        document.getElementById('acc-pure').innerText = this.current_acc_pure.toFixed(3);
+        document.getElementById('ui-clock').innerText = new Date().toLocaleTimeString();
     },
 
     setAnchor() {
-        this.state.pos = { x: _BN(0), y: _BN(0), z: _BN(0) };
+        this.state.vel.x = _BN(0);
         this.state.dist = _BN(0);
-        this.log("POINT ZÉRO DÉFINI.");
+        this.log("RESET_SPEED_AND_DIST");
     },
 
     log(msg) {
@@ -274,9 +184,8 @@ const OMNI_CORE = {
 
 document.getElementById('main-init-btn').onclick = () => OMNI_CORE.boot();
 document.getElementById('btn-fix-celestial').onclick = () => {
-    OMNI_CORE.log("FIX SEXTANT CAPTURÉ. RÉALIGNEMENT...");
+    OMNI_CORE.log("FIX_SEXTANT_CAPTURED_V140");
 };
 </script>
-
 </body>
-                                                                            </html>
+    </html>
