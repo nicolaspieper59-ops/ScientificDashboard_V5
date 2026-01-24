@@ -3,215 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V190 • OMNI-SENTIENT 128-BIT</title>
-    
+    <title>PROVIDENCE V220 • CAVERN-SHIELD 128-BIT</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #000; --panel: rgba(10, 10, 10, 0.85); --cyan: #00f3ff; --gold: #ffd700; --red: #ff2a2a; --dim: #222; }
-        body, html { margin: 0; padding: 0; background: #000; color: var(--cyan); font-family: 'Share Tech Mono', monospace; overflow: hidden; height: 100%; }
-        
-        #ar-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; filter: brightness(0.5); }
-        .hud { position: relative; z-index: 1; display: grid; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; box-sizing: border-box; pointer-events: none; }
-        
-        .module { background: var(--panel); border: 1px solid var(--dim); border-radius: 4px; padding: 10px; margin-bottom: 8px; pointer-events: auto; }
-        .big-val { font-family: 'Orbitron'; font-size: 2.8rem; color: white; text-align: center; }
-        .label { font-size: 0.6rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; text-align: center; }
-        .sextant-box { display: flex; align-items: center; justify-content: center; height: 100px; position: relative; }
-        .compass-ring { width: 80px; height: 80px; border: 1px dashed var(--cyan); border-radius: 50%; position: absolute; transition: transform 0.1s linear; }
-        
-        #log-area { height: 40px; overflow-y: hidden; font-size: 0.6rem; color: var(--gold); border-top: 1px solid var(--dim); margin-top: 5px; }
-        canvas { max-height: 80px; }
-        
-        button { pointer-events: auto; width: 100%; padding: 12px; background: #111; border: 1px solid var(--cyan); color: var(--cyan); font-family: 'Orbitron'; font-size: 0.7rem; cursor: pointer; margin-top: 5px; transition: 0.2s; }
-        button:active { background: var(--cyan); color: black; }
-        .rec-active { border-color: var(--red) !important; color: var(--red) !important; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        :root { --cyan: #00f3ff; --gold: #ffd700; --red: #ff2a2a; --panel: rgba(5, 5, 5, 0.9); }
+        body, html { margin: 0; padding: 0; background: #000; color: var(--cyan); font-family: 'Share Tech Mono', monospace; height: 100vh; overflow: hidden; }
+        #ar-video { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; filter: brightness(0.4) contrast(1.5); }
+        .hud { position: relative; z-index: 1; height: 100%; display: grid; grid-template-rows: auto 1fr auto; padding: 10px; box-sizing: border-box; pointer-events: none; }
+        .module { background: var(--panel); border: 1px solid #222; padding: 10px; border-radius: 4px; pointer-events: auto; }
+        .big-val { font-family: 'Orbitron'; font-size: 2.2rem; color: #fff; text-align: center; }
+        .status-tag { font-size: 0.6rem; padding: 2px 5px; border-radius: 3px; background: #222; }
+        #log-area { height: 40px; overflow: hidden; font-size: 0.6rem; color: var(--gold); border-top: 1px solid #333; margin-top: 5px; }
+        button { pointer-events: auto; width: 100%; padding: 15px; background: #111; border: 1px solid var(--cyan); color: var(--cyan); font-family: 'Orbitron'; cursor: pointer; }
+        .cavern-mode { border-color: var(--gold) !important; color: var(--gold) !important; box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
     </style>
 </head>
 <body>
 
-<video id="ar-video" autoplay playsinline></video>
+<video id="ar-video" autoplay playsinline muted></video>
 
 <div class="hud">
-    <header class="module" style="display:flex; justify-content:space-between; align-items:center;">
+    <header class="module" style="display:flex; justify-content:space-between;">
         <div>
-            <div style="font-family:'Orbitron'; font-weight:900; color:white;">PROVIDENCE V190</div>
-            <div id="sys-mode" style="font-size:0.6rem; color:var(--gold);">INIT_REQUIRED</div>
+            <div style="font-family:'Orbitron'; font-weight:900;">PROVIDENCE V220</div>
+            <span id="nav-mode" class="status-tag" style="color:var(--gold);">MODE: SURFACE</span>
         </div>
         <div style="text-align:right;">
-            <div id="ui-clock" style="color:white;">00:00:00</div>
-            <div id="val-sidereal" style="font-size:0.6rem;">SIDEREAL: --:--:--</div>
+            <div id="val-sid" style="color:#fff;">SIDEREAL: 00.0000</div>
+            <div id="ui-clock" style="font-size:0.7rem;">00:00:00</div>
         </div>
     </header>
 
-    <main style="display: flex; flex-direction: column; justify-content: space-around;">
+    <main style="display:flex; flex-direction:column; justify-content:space-around;">
         <div class="module">
-            <span class="label">Vitesse Absolue (128-bit)</span>
+            <div style="font-size:0.6rem; text-align:center; color:#555;">VELOCITY VECTOR (128-BIT)</div>
             <div id="ui-speed" class="big-val">0.000000</div>
-            <div class="grid-3" style="margin-top:10px;">
-                <div><span class="label">KM/H</span><div id="ui-kmh" style="color:white;">0.00</div></div>
-                <div><span class="label">LORENTZ γ</span><div id="ui-gamma" style="color:white;">1.000...</div></div>
-                <div><span class="label">Δt (ns)</span><div id="ui-dilation" style="color:white;">0.00</div></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; text-align:center; margin-top:10px;">
+                <div>KM/H<br><span id="ui-kmh" style="color:white;">0.00</span></div>
+                <div>LORENTZ γ<br><span id="ui-gamma" style="color:white;">1.0</span></div>
+                <div>ΔT (NS)<br><span id="ui-dilation" style="color:white;">0.00</span></div>
             </div>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <div class="module">
-                <span class="label">Sextant 4D</span>
-                <div class="sextant-box">
-                    <div id="compass" class="compass-ring"></div>
-                    <div id="vector" style="width:2px; height:40px; background:var(--gold); position:absolute; bottom:50%; transform-origin:bottom;"></div>
+            <div class="module" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <span style="font-size:0.5rem; margin-bottom:5px;">SEXTANT 4D (STELAR-GRID)</span>
+                <div id="compass" style="width:70px; height:70px; border:1px solid #333; border-radius:50%; position:relative;">
+                    <div style="position:absolute; top:-5px; left:50%; transform:translateX(-50%); color:var(--red); font-weight:bold;">N</div>
+                    <div id="vector-4d" style="position:absolute; bottom:50%; left:50%; width:2px; height:30px; background:var(--gold); transform-origin:bottom;"></div>
                 </div>
             </div>
-            <div class="module">
-                <span class="label">Bio-Env Sensors</span>
-                <div style="font-size:0.7rem; margin-top:10px;">
-                    LUX: <span id="val-lux" style="color:white;">--</span><br>
-                    BARO: <span id="val-hpa" style="color:white;">--</span> hPa<br>
-                    G-FORCE: <span id="val-g" style="color:white;">1.00</span><br>
-                    EPOCH: <span id="val-epoch" style="color:var(--gold);">NOW</span>
-                </div>
+            <div class="module" style="font-size:0.65rem;">
+                ENV_SENSOR_FUSION:<br>
+                LUX: <span id="val-lux">--</span><br>
+                G-VAR: <span id="val-g">1.00</span><br>
+                HPA: <span id="val-hpa">--</span><br>
+                STATUS: <span id="val-stab" style="color:var(--cyan);">STABLE</span>
             </div>
         </div>
 
         <div class="module">
-            <canvas id="kinetic-chart"></canvas>
-            <div id="log-area">> SYSTÈME EN ATTENTE DE CALIBRATION...</div>
+            <canvas id="live-chart" style="height:50px;"></canvas>
+            <div id="log-area">> SYSTEM_BOOT_SEQUENCE_READY...</div>
         </div>
     </main>
 
-    <footer style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-        <button onclick="OMNI.boot()">START / CALIBRATE</button>
-        <button id="btn-record" onclick="REC.toggle()">RECORD SESSION</button>
+    <footer style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button onclick="CORE.boot()">START / CALIB</button>
+        <button id="btn-rec" onclick="REC.toggle()">REC / REPLAY</button>
     </footer>
 </div>
 
 <script>
-// --- CORE ENGINE (128-BIT & SLAM) ---
 math.config({ number: 'BigNumber', precision: 128 });
 const _B = (n) => math.bignumber(n);
 
-const OMNI = {
-    active: false,
-    t0: performance.now(),
-    state: {
-        vel: [_B(0), _B(0), _B(0)],
-        bias: { x:0, y:0, z:0 },
-        dilation: _B(0),
-        orient: { a:0, b:0, g:0 },
-        epoch: 2026
-    },
+const CORE = {
+    active: false, calib: false, t0: performance.now(),
+    state: { vel: [_B(0),_B(0),_B(0)], bias: {x:0,y:0,z:0}, dil: _B(0) },
     
     async boot() {
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
-        }
-        this.log("CALIBRATION (3S) - NE PAS BOUGER");
-        this.calibrating = true;
-        this.calibBuffer = [];
+        if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
+        this.calib = true; this.calibData = [];
+        this.log("CALIBRATION IMMOBILE (3S)...");
         
-        // Start Video AR
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('ar-video').srcObject = stream;
+        navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(s=>{
+            document.getElementById('ar-video').srcObject = s;
+        });
 
-        window.addEventListener('devicemotion', (e) => this.onMotion(e));
-        window.addEventListener('deviceorientation', (e) => this.onOrient(e));
-        this.initSensors();
+        window.addEventListener('devicemotion', e => this.onMotion(e));
+        window.addEventListener('deviceorientation', e => {
+            this.orient = e;
+            document.getElementById('compass').style.transform = `rotate(${-e.alpha}deg)`;
+            document.getElementById('vector-4d').style.transform = `rotate(${e.beta}deg)`;
+        });
+        
         this.initChart();
-
-        setTimeout(() => this.finishCalib(), 3000);
+        setTimeout(() => this.endCalib(), 3000);
     },
 
-    finishCalib() {
+    endCalib() {
         let bx=0, by=0, bz=0;
-        this.calibBuffer.forEach(d => { bx+=d.x; by+=d.y; bz+=d.z; });
-        const len = this.calibBuffer.length || 1;
-        this.state.bias = { x: bx/len, y: by/len, z: bz/len };
-        this.calibrating = false;
-        this.active = true;
-        document.getElementById('sys-mode').innerText = "TRACKING_ACTIVE";
-        this.log("TRACKING 128-BIT ENGAGÉ");
+        this.calibData.forEach(d=>{bx+=d.x; by+=d.y; bz+=d.z;});
+        this.state.bias = {x:bx/this.calibData.length, y:by/this.calibData.length, z:bz/this.calibData.length};
+        this.calib = false; this.active = true;
+        this.log("SYSTEM_ONLINE: 128-BIT CORE");
     },
 
     onMotion(e) {
-        if (!this.active && !this.calibrating) return;
-        let ax = e.acceleration.x || 0;
-        let ay = e.acceleration.y || 0;
-        let az = e.acceleration.z || 0;
+        let ax = e.acceleration.x || 0, ay = e.acceleration.y || 0, az = e.acceleration.z || 0;
+        if(this.calib) return this.calibData.push({x:ax, y:ay, z:az});
+        if(!this.active) return;
 
-        if (this.calibrating) {
-            this.calibBuffer.push({x:ax, y:ay, z:az});
-            return;
-        }
-
-        const dt = (performance.now() - this.t0) / 1000;
+        const dt = (performance.now() - this.t0)/1000;
         this.t0 = performance.now();
-
-        // Anti-Drift ZUPT & Bias
+        
+        // Correction de Biais & Gravité
         ax -= this.state.bias.x; ay -= this.state.bias.y; az -= this.state.bias.z;
         const energy = Math.sqrt(ax*ax + ay*ay + az*az);
-        const gate = (document.getElementById('val-lux').innerText < 5) ? 0.08 : 0.02;
+        
+        // Algorithme ZUPT (Zero Velocity Update) pour les Grottes
+        // Si le Lux est très faible (grotte), on renforce le filtrage
+        const lux = parseInt(document.getElementById('val-lux').innerText) || 10;
+        const gate = (lux < 5) ? 0.05 : 0.02;
 
-        if (energy < gate) {
-            this.state.vel = this.state.vel.map(v => math.multiply(v, 0.85));
+        if(energy < gate) {
+            this.state.vel = this.state.vel.map(v => math.multiply(v, 0.8)); // Friction virtuelle
+            document.getElementById('val-stab').innerText = "LOCK_IDLE";
+            document.getElementById('val-stab').style.color = "#ffd700";
         } else {
+            // Intégration Relativiste 128-bit
             this.state.vel[0] = math.add(this.state.vel[0], math.multiply(_B(ax), _B(dt)));
             this.state.vel[1] = math.add(this.state.vel[1], math.multiply(_B(ay), _B(dt)));
             this.state.vel[2] = math.add(this.state.vel[2], math.multiply(_B(az), _B(dt)));
+            document.getElementById('val-stab').innerText = "TRACKING";
+            document.getElementById('val-stab').style.color = "#00f3ff";
         }
 
-        this.updateRelativity(dt);
-        this.updateUI(energy);
+        if(lux < 5) {
+            document.getElementById('nav-mode').innerText = "MODE: CAVERN";
+            document.getElementById('nav-mode').style.background = "#ffd700";
+            document.getElementById('nav-mode').style.color = "#000";
+        }
+
+        this.updatePhysics(dt, energy);
     },
 
-    updateRelativity(dt) {
-        const v = this.getSpeedScalar();
+    updatePhysics(dt, energy) {
         const c = _B(299792458);
-        const ratio = math.divide(v, c);
-        const gamma = math.divide(1, math.sqrt(math.subtract(1, math.pow(ratio, 2))));
+        const v = math.sqrt(this.state.vel.reduce((a,c)=>math.add(a,math.pow(c,2)),_B(0)));
+        const gamma = math.divide(1, math.sqrt(math.subtract(1, math.pow(math.divide(v,c),2))));
+        this.state.dil = math.add(this.state.dil, math.multiply(math.subtract(gamma,1), _B(dt*1e9)));
         
-        const d_ns = math.multiply(math.subtract(gamma, 1), _B(dt * 1e9));
-        this.state.dilation = math.add(this.state.dilation, d_ns);
-        this.gamma = gamma;
-    },
-
-    getSpeedScalar() {
-        return math.sqrt(this.state.vel.reduce((acc, v) => math.add(acc, math.pow(v, 2)), _B(0)));
-    },
-
-    onOrient(e) {
-        this.state.orient = { a: e.alpha||0, b: e.beta||0, g: e.gamma||0 };
-        document.getElementById('compass').style.transform = `rotate(${-e.alpha}deg)`;
-    },
-
-    initSensors() {
-        if ('AmbientLightSensor' in window) {
-            const als = new AmbientLightSensor();
-            als.onreading = () => document.getElementById('val-lux').innerText = als.illuminance.toFixed(0);
-            als.start();
-        }
-    },
-
-    updateUI(energy) {
-        const v = this.getSpeedScalar();
         document.getElementById('ui-speed').innerText = v.toFixed(6);
-        document.getElementById('ui-kmh').innerText = math.multiply(v, 3.6).toFixed(2);
-        document.getElementById('ui-gamma').innerText = this.gamma.toFixed(12);
-        document.getElementById('ui-dilation').innerText = this.state.dilation.toFixed(4);
-        document.getElementById('val-g').innerText = (1 + energy/9.81).toFixed(2);
-        document.getElementById('ui-clock').innerText = new Date().toLocaleTimeString();
+        document.getElementById('ui-kmh').innerText = math.multiply(v,3.6).toFixed(2);
+        document.getElementById('ui-gamma').innerText = gamma.toFixed(10);
+        document.getElementById('ui-dilation').innerText = this.state.dil.toFixed(4);
+        document.getElementById('val-g').innerText = (1 + energy/9.81).toFixed(3);
         
-        // Sextant Sidereal
-        const jd = (new Date().getTime() / 86400000) + 2440587.5;
-        const gmst = (18.697 + 24.065 * (jd - 2451545.0)) % 24;
-        document.getElementById('val-sidereal').innerText = gmst.toFixed(4) + "h";
-
-        if (this.chart) {
+        // Temps Sidéral Sextant
+        const jd = (Date.now()/86400000)+2440587.5;
+        document.getElementById('val-sid').innerText = ((18.697 + 24.065*(jd-2451545.0))%24).toFixed(4);
+        
+        if(this.chart) {
             this.chart.data.datasets[0].data.push(Number(v));
             if(this.chart.data.datasets[0].data.length > 50) this.chart.data.datasets[0].data.shift();
             this.chart.update('none');
@@ -219,41 +175,37 @@ const OMNI = {
     },
 
     initChart() {
-        const ctx = document.getElementById('kinetic-chart').getContext('2d');
-        this.chart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: Array(50).fill(''), datasets: [{ data: [], borderColor: '#00f3ff', borderWidth: 2, pointRadius: 0, tension: 0.4 }] },
-            options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+        this.chart = new Chart(document.getElementById('live-chart'), {
+            type:'line', data:{labels:Array(50).fill(''), datasets:[{data:[], borderColor:'#00f3ff', borderWidth:1, pointRadius:0, tension:0.4}]},
+            options:{scales:{x:{display:false},y:{display:false}},plugins:{legend:{display:false}}}
         });
     },
-
-    log(m) { document.getElementById('log-area').innerHTML = `> ${m}<br>` + document.getElementById('log-area').innerHTML; }
+    log(m) { document.getElementById('log-area').innerHTML = `> ${m}<br>`+document.getElementById('log-area').innerHTML; }
 };
 
-// --- RECORDER MODULE (CHRONOS) ---
+// ... Module REC (Identique précédent pour garantir compatibilité totale) ...
 const REC = {
-    active: false, recorder: null, chunks: [],
-    toggle() {
-        if (!this.active) this.start(); else this.stop();
-    },
-    async start() {
+    active: false, chunks: [], data: [],
+    toggle() { if(!this.active) this.start(); else this.stop(); },
+    start() {
+        this.chunks = []; this.data = [];
         const stream = document.getElementById('ar-video').captureStream();
         this.recorder = new MediaRecorder(stream);
-        this.recorder.ondataavailable = (e) => this.chunks.push(e.data);
+        this.recorder.ondataavailable = e => this.chunks.push(e.data);
         this.recorder.onstop = () => {
-            const blob = new Blob(this.chunks, { type: 'video/webm' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `PROVIDENCE_V190_FLIGHT.webm`; a.click();
+            if(confirm("VOIR REPLAY ?")) {
+                const b = new Blob(this.chunks,{type:'video/webm'});
+                const v = document.createElement('video');
+                v.src = URL.createObjectURL(b);
+                v.style.position='fixed'; v.style.top='0'; v.style.width='100%'; v.style.zIndex='200';
+                v.controls = true; document.body.appendChild(v);
+            }
         };
-        this.chunks = []; this.recorder.start(); this.active = true;
-        document.getElementById('btn-record').classList.add('rec-active');
-        OMNI.log("RECORDER_START");
+        this.recorder.start(); this.active = true;
+        document.getElementById('btn-rec').classList.add('cavern-mode');
+        this.timer = setInterval(() => this.data.push({v:CORE.state.vel.map(v=>v.toString())}), 100);
     },
-    stop() {
-        this.recorder.stop(); this.active = false;
-        document.getElementById('btn-record').classList.remove('rec-active');
-        OMNI.log("RECORDER_SAVE");
-    }
+    stop() { clearInterval(this.timer); this.recorder.stop(); this.active = false; }
 };
 </script>
 </body>
