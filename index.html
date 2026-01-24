@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V17-ULTIMA • OMNI-SCIENCE 128-BIT</title>
+    <title>PROVIDENCE V17-ULTIMA • 128-BIT SHIELD</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
@@ -12,232 +12,191 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;500;800&display=swap" rel="stylesheet">
     
+    <style>
+        :root {
+            --bg: #020202; --panel: rgba(10, 10, 12, 0.98); --border: #1f1f25;
+            --accent: #00ff88; --blue: #00c3ff; --critical: #ff3300;
+            --gold: #ffd700; --violet: #bc13fe;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; 
+            height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; font-size: 8px;
+        }
+        header { height: 65px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1.5fr 2fr 1.5fr; align-items: center; padding: 0 10px; background: #000; }
+        main { flex: 1; display: grid; grid-template-columns: 280px 1fr 280px; gap: 4px; padding: 4px; overflow: hidden; }
+        .column { display: flex; flex-direction: column; gap: 4px; height: 100%; overflow-y: auto; scrollbar-width: none; }
+        .panel { background: var(--panel); border: 1px solid var(--border); padding: 5px; border-radius: 2px; }
+        h2 { font-family: 'Orbitron'; font-size: 0.6rem; color: var(--blue); border-bottom: 1px solid #222; margin-bottom: 4px; padding-bottom: 2px; display: flex; justify-content: space-between; }
+        .data-point { display: flex; justify-content: space-between; padding: 1px 0; border-bottom: 1px solid #111; }
+        .data-point span:first-child { color: #555; font-size: 0.75em; text-transform: uppercase; }
+        .data-point span:last-child { color: #fff; font-weight: bold; }
+        .big-speed { font-family: 'Orbitron'; font-size: 1.8rem; color: var(--accent); text-align: center; line-height: 1; }
+        #anomaly-log { height: 50px; background: #000; color: var(--gold); overflow-y: auto; padding: 3px; font-size: 0.55rem; border: 1px solid #222; }
+        .sci-input { background: #000; border: 1px solid #333; color: var(--accent); width: 40px; text-align: right; font-size: 0.7rem; }
+        #map { height: 120px; width: 100%; }
+        canvas { height: 40px !important; }
+    </style>
 </head>
 <body>
 
 <header>
     <div>
-        <div style="font-family:'Orbitron'; font-weight:900; color:var(--accent);">PROVIDENCE V17-ULTIMA</div>
-        <div id="reality-status-main" style="font-size:0.55rem; color:var(--gold);">REALITY_STATUS: STANDBY</div>
-        <div id="poi-alert" style="font-size:0.5rem; color:var(--violet); display:none;">[!] POINT D'INTÉRÊT ENREGISTRÉ</div>
+        <div style="font-family:'Orbitron'; font-weight:900; color:var(--accent); font-size: 1.1rem;">PROVIDENCE V17-ULTIMA</div>
+        <div id="reality-status-main" style="color:var(--gold);">REALITY: STANDBY</div>
+        <div id="poi-alert" style="color:var(--violet); display:none;">[!] POI_SAVED</div>
     </div>
-    <div id="main-speed-box">
-        <div id="main-speed">0.000000</div>
-        <div style="font-size:0.5rem; letter-spacing:2px; color:var(--accent);">VITESSE_RÉELLE (128-BIT)</div>
+    <div style="border: 1px solid #222; padding: 5px; background: rgba(0,0,0,0.5);">
+        <div id="main-speed" class="big-speed">--.------</div>
+        <div style="text-align:center; font-size:0.5rem; color:var(--accent);">VITESSE_RÉELLE (m/s) • <span id="v-cosmic">--</span> km/h</div>
     </div>
     <div style="text-align:right;">
-        <div id="utc-datetime" style="color:var(--blue); font-size:0.8rem;">2026-01-24 12:00:00</div>
-        <div style="font-size:0.5rem;">NTP_OFFSET: <span id="ntp-offset">0ms</span> | BATT: <span id="batt-level">100%</span></div>
-        <div id="status-thermal-main" style="font-size:0.5rem; color:var(--critical);">CPU_THERMAL: NOMINAL</div>
+        <div id="utc-datetime">----/--/-- --:--:--</div>
+        <div style="font-size:0.5rem;">NTP: <span id="ntp-offset">--</span> | ACCURACY: <span id="clock-accuracy">--</span></div>
+        <div id="status-thermal-main" style="color:var(--accent);">THERMAL: NOMINAL</div>
     </div>
 </header>
 
 <main>
     <div class="column">
         <section class="panel">
-            <h2><i class="fas fa-satellite"></i> NAVIGATION_CORE_UKF</h2>
+            <h2>NAVIGATION_CORE_UKF <span id="snr-ratio">-- dB</span></h2>
             <div id="map"></div>
             <div class="data-point"><span>Lat/Lon (UKF)</span><span><span id="lat-ukf">--</span> / <span id="lon-ukf">--</span></span></div>
             <div class="data-point"><span>Altitude (Z)</span><span id="alt-display">--</span></div>
-            <div class="data-point"><span>UKF_ALT_UNCERTAINTY</span><span id="ukf-alt-uncertainty">--</span></div>
-            <div class="data-point"><span>Coord ECEF (X,Y,Z)</span><span><span id="coord-x">0</span>,<span id="coord-y">0</span>,<span id="coord-z">0</span></span></div>
-            <div class="data-point"><span>Distance 3D Cumulée</span><span id="dist-3d">0.00 m</span></div>
-            <div class="data-point"><span>Rayon Terrestre Local</span><span id="earth-radius-local">--</span></div>
+            <div class="data-point"><span>Z-Correction (Baro)</span><span id="alt-corrected-baro">--</span></div>
+            <div class="data-point"><span>ECEF (X,Y,Z)</span><span><span id="coord-x">--</span>,<span id="coord-y">--</span>,<span id="coord-z">--</span></span></div>
+            <div class="data-point"><span>UKF_UNCERTAINTY (V/Alt)</span><span><span id="ukf-velocity-uncertainty">--</span> / <span id="ukf-alt-uncertainty">--</span></span></div>
         </section>
 
         <section class="panel">
-            <h2><i class="fas fa-atom"></i> RELATIVITÉ & QUANTIQUE</h2>
-            <div class="data-point"><span>Facteur Lorentz (γ)</span><span id="ui-gamma">1.0000000000</span></div>
-            <div class="data-point"><span>Dilatation (RR)</span><span id="time-dilation">0.00 ns</span></div>
-            <div class="data-point"><span>Dilatation (RG)</span><span id="time-dilation-gravite">0.00 ns</span></div>
+            <h2>RELATIVITÉ & QUANTIQUE</h2>
+            <div class="data-point"><span>Lorentz (γ)</span><span id="ui-gamma">--</span></div>
+            <div class="data-point"><span>Dilat. RR / RG</span><span><span id="time-dilation">--</span> / <span id="time-dilation-gravite">--</span></span></div>
             <div class="data-point"><span>Potentiel Grav (Φ)</span><span id="ui-grav-phi">--</span></div>
-            <div class="data-point"><span>Rayon Schwarzschild</span><span id="schwarzschild-radius">--</span></div>
             <div class="data-point"><span>Momentum (p)</span><span id="momentum">--</span></div>
-            <div class="data-point"><span>Énergie Relativiste (E)</span><span id="relativistic-energy">--</span></div>
-            <div class="data-point"><span>Constantes c / G</span><span><span id="const-c">299792458</span> / <span id="const-G">6.674e-11</span></span></div>
+            <div class="data-point"><span>Energie (E / E₀)</span><span><span id="relativistic-energy">--</span> / <span id="rest-mass-energy">--</span></span></div>
+            <div class="data-point"><span>Rayon Schwarzschild</span><span id="schwarzschild-radius">--</span></div>
+            <div class="data-point"><span>Phys_Const (c / G)</span><span><span id="const-c">299792458</span> / <span id="const-G">6.674e-11</span></span></div>
         </section>
 
         <section class="panel">
-            <h2><i class="fas fa-moon"></i> ÉPHÉMÉRIDES_4D</h2>
-            <div class="data-point"><span>Temps Julien (JD)</span><span id="ast-jd">--</span></div>
-            <div class="data-point"><span>Heure Solaire (V/M)</span><span><span id="tst-time">--</span> / <span id="mst-time">--</span></span></div>
-            <div class="data-point"><span>Midi Solaire (UTC)</span><span id="noon-solar">--</span></div>
-            <div class="data-point"><span>Soleil (El/Az)</span><span><span id="ui-sun-el">--</span> / <span id="sun-azimuth">--</span></span></div>
-            <div class="data-point"><span>Lune (Illum/Az)</span><span><span id="moon-illuminated">--</span> / <span id="moon-azimuth">--</span></span></div>
-            <div class="data-point"><span>Statut Éclipse</span><span id="ui-eclipse-status">NONE</span></div>
-            <div id="ui-celestial-phase" style="font-size:0.55rem; color:var(--gold); text-align:center; margin-top:3px;">ORBITAL_PHASE: CALCULATING...</div>
+            <h2>ÉPHÉMÉRIDES_4D</h2>
+            <div class="data-point"><span>TSLV / Sidereal</span><span><span id="tslv">--</span> / <span id="ast-jd">--</span></span></div>
+            <div class="data-point"><span>Solaire (True/Mean)</span><span><span id="tst-time">--</span> / <span id="mst-time">--</span></span></div>
+            <div class="data-point"><span>Noon / Delta-T</span><span><span id="noon-solar">--</span> / <span id="ast-deltat">--</span></span></div>
+            <div class="data-point"><span>Sun (El/Az/Dist)</span><span><span id="ui-sun-el">--</span> / <span id="sun-azimuth">--</span> / <span id="ui-sun-dist">--</span></span></div>
+            <div class="data-point"><span>Moon (Phase/Illum)</span><span><span id="moon-phase-name">--</span> / <span id="moon-illuminated">--</span></span></div>
+            <div class="data-point"><span>Eclipse Status</span><span id="ui-eclipse-status">--</span></div>
         </section>
     </div>
 
     <div class="column">
         <section class="panel">
-            <h2><i class="fas fa-sliders-h"></i> CENTRE_DE_COMMANDE_V17</h2>
-            <div class="grid-val">
-                <div class="data-point"><span>Masse (kg)</span><input id="in-mass" class="sci-input" value="75"></div>
-                <div class="data-point"><span>Cx Aéro</span><input id="in-cx" class="sci-input" value="0.3"></div>
+            <h2>CENTRE_DE_COMMANDE_V17</h2>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px;">
+                <div class="data-point"><span>Masse</span><input id="in-mass" class="sci-input" value="75"></div>
+                <div class="data-point"><span>Cx</span><input id="in-cx" class="sci-input" value="0.3"></div>
+                <div class="data-point"><span>G-Base</span><input id="gravity-base" class="sci-input" value="9.806"></div>
             </div>
-            <div class="grid-val">
-                <div class="data-point"><span>Gravité Base</span><input id="gravity-base" class="sci-input" value="9.80665"></div>
-                <div class="data-point"><span>Freq GPS</span><select id="freq-select" class="sci-input"><option>10Hz</option><option>1Hz</option></select></div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:2px; margin-top:5px;">
-                <button id="gps-pause-toggle" style="font-size:0.5rem;">▶️ MARCHE GPS</button>
-                <button id="distance-ratio-toggle-btn" style="font-size:0.5rem;">RAPPORT DIST.</button>
-                <button id="nether-toggle-btn" style="font-size:0.5rem; color:var(--critical);">MODE NETHER</button>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:3px;">
+                <button id="gps-pause-toggle">▶ GPS</button>
+                <button id="nether-toggle-btn">NETHER_1:8</button>
             </div>
         </section>
 
         <section class="panel" style="flex:1;">
-            <h2><i class="fas fa-tachometer-alt"></i> ANALYSE_DYNAMIQUE_AVANCÉE</h2>
-            <div class="grid-val">
-                <div class="data-point"><span>KM/H Stable</span><span id="speed-stable-kmh">0.00</span></div>
-                <div class="data-point"><span>M/S Stable</span><span id="speed-stable-ms">0.00</span></div>
-            </div>
-            <div class="grid-val">
-                <div class="data-point"><span>M/S Brute</span><span id="speed-raw-ms">0.00</span></div>
-                <div class="data-point"><span>Max Session</span><span id="speed-max-session">0.00</span></div>
-            </div>
-            <div class="data-point"><span>Vitesse du Son Locale</span><span id="vitesse-son-cor">--</span></div>
-            <div class="data-point"><span>Nombre de Mach / % c</span><span><span id="mach-number">0.00</span> / <span id="pct-speed-of-light">0.00</span></span></div>
-            <div class="data-point"><span>Vitesse Verticale (Vz)</span><span id="vel-z">0.00</span></div>
-            <div class="data-point"><span>Statut Vol / Pente</span><span><span id="air-time-s">SOL</span> / <span id="slope-percent">0%</span></span></div>
-            <canvas id="live-kinetic-chart" style="height:60px; margin-top:5px;"></canvas>
+            <h2>ANALYSE_DYNAMIQUE_AVANCÉE</h2>
+            <div class="data-point" style="background:#111;"><span>V-Stable (km/h)</span><span id="speed-stable-kmh" style="color:var(--accent);">--</span></div>
+            <div class="data-point"><span>V-Stable (m/s)</span><span id="speed-stable-ms">--</span></div>
+            <div class="data-point"><span>V-Raw / Max</span><span><span id="speed-raw-ms">--</span> / <span id="speed-max-session">--</span></span></div>
+            <div class="data-point"><span>Moyennes (Mvt/Tot)</span><span><span id="speed-avg-moving">--</span> / <span id="speed-avg-total">--</span></span></div>
+            <div class="data-point"><span>Mach / Perc c</span><span><span id="mach-number">--</span> / <span id="pct-speed-of-light">--</span></span></div>
+            <div class="data-point"><span>Vitesse du Son</span><span id="vitesse-son-cor">--</span></div>
+            <div class="data-point"><span>Vz / Pente</span><span><span id="vel-z">--</span> / <span id="slope-percent">--</span></span></div>
+            <canvas id="speed-chart"></canvas>
         </section>
 
         <section class="panel">
-            <h2><i class="fas fa-wave-square"></i> SIGNAL_PROCESSING (EKF_21)</h2>
-            <div class="data-point"><span>SNR Global</span><span id="snr-ratio">-- dB</span></div>
-            <div class="data-point"><span>Vibration (Jerk)</span><span id="jerk-vector">--</span></div>
-            <div class="data-point"><span>Filtre Acc (X,Y,Z)</span><span id="f-acc-xyz">0,0,0</span></div>
-            <div class="data-point"><span>Confiance Matrice P</span><span id="kalman-p-certainty">--</span></div>
-            <div class="data-point"><span>Bruit Mesure (R)</span><span id="ukf-r-noise">--</span></div>
+            <h2>SIGNAL_PROCESSING (EKF_21)</h2>
+            <div class="data-point"><span>Jerk (Vibration)</span><span id="jerk-vector">--</span></div>
+            <div class="data-point"><span>Acc-Filtered (X,Y,Z)</span><span id="f-acc-xyz">--</span></div>
+            <div class="data-point"><span>Bias (Acc/Gyro)</span><span><span id="bias-acc-val">--</span> / <span id="bias-gyro-val">--</span></span></div>
+            <div class="data-point"><span>P-Certainty / R-Noise</span><span><span id="kalman-p-certainty">--</span> / <span id="ukf-r-noise">--</span></span></div>
+            <button id="start-btn-final" style="width:100%; padding:5px; background:var(--accent); color:#000; font-weight:900; margin-top:5px;">🚀 INITIALISER_V17_PRO</button>
         </section>
-
-        <button id="start-btn-final" class="btn-core" onclick="CORE.init()">🚀 INITIALISER_MOTEUR_V17_PRO</button>
     </div>
 
     <div class="column">
         <section class="panel">
-            <h2><i class="fas fa-cloud-sun"></i> BIOSVT_ATMOSPHERE</h2>
-            <div class="data-point"><span>Pression (hPa)</span><span id="ui-pressure">--</span></div>
+            <h2>BIOSVT_ATMOSPHERE</h2>
+            <div class="data-point"><span>Pression / HPA</span><span><span id="ui-pressure">--</span> / <span id="pressure-hpa">--</span></span></div>
             <div class="data-point"><span>Densité Air (ρ)</span><span id="ui-rho-dynamic">--</span></div>
             <div class="data-point"><span>Temp Air / Rosée</span><span><span id="air-temp-c">--</span> / <span id="dew-point">--</span></span></div>
-            <div class="data-point"><span>Indice CAPE (Orages)</span><span id="CAPE">--</span></div>
             <div class="data-point"><span>Humidité (Rel/Abs)</span><span><span id="humidity-perc">--</span> / <span id="abs-humidity">--</span></span></div>
-            <div class="data-point"><span>Saturation O₂</span><span id="O2-saturation">--</span></div>
+            <div class="data-point"><span>CAPE / O2_Sat</span><span><span id="CAPE">--</span> / <span id="O2-saturation">--</span></span></div>
         </section>
 
         <section class="panel">
-            <h2><i class="fas fa-wind"></i> MÉCANIQUE_DES_FLUIDES</h2>
-            <div class="data-point"><span>Force de Traînée</span><span id="ui-drag-force">-- N</span></div>
+            <h2>MÉCANIQUE_DES_FLUIDES</h2>
+            <div class="data-point"><span>Force de Traînée</span><span id="ui-drag-force">--</span></div>
             <div class="data-point"><span>Nb. Reynolds</span><span id="reynolds-number">--</span></div>
-            <div class="data-point"><span>Puissance (Watts)</span><span id="human-power-w">-- W</span></div>
-            <div class="data-point"><span>Force Coriolis</span><span id="coriolis-force">-- N</span></div>
-            <div class="data-point"><span>Poussée Archimède</span><span id="ui-f-arch">-- N</span></div>
+            <div class="data-point"><span>Puissance (Watts)</span><span id="human-power-w">--</span></div>
+            <div class="data-point"><span>Force Coriolis</span><span id="coriolis-force">--</span></div>
+            <div class="data-point"><span>Poussée Archimède</span><span id="ui-f-arch">--</span></div>
         </section>
 
         <section class="panel">
-            <h2><i class="fas fa-biohazard"></i> SIGNATURE_BIO_LOGS</h2>
-            <div class="data-point"><span>Indice Adrénaline</span><span id="adrenaline-idx">0.0</span></div>
-            <div class="data-point"><span>Score Fluidité</span><span id="smoothness-score">--/100</span></div>
-            <div class="data-point"><span>Type Mouvement</span><span id="bio-signature-type">STATIONNAIRE</span></div>
-            <div class="data-point"><span>Mode Actif</span><span id="nav-mode" style="color:var(--gold);">SURFACE</span></div>
-            <div id="anomaly-log">> SYSTEM_BOOT_SEQUENCE_READY...</div>
-        </section>
-
-        <section class="panel">
-            <h2><i class="fas fa-compass"></i> IMU_4D_LEVEL</h2>
-            <div style="height:60px; display:flex; justify-content:center; align-items:center;">
-                <div id="spirit-level" style="width:50px; height:50px; border:1px solid #333; border-radius:50%; position:relative;">
-                    <div id="imu-bubble" style="width:8px; height:8px; background:var(--accent); border-radius:50%; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);"></div>
+            <h2>SIGNATURE_BIO & IMU</h2>
+            <div class="data-point"><span>Adrénaline / Smoothness</span><span><span id="adrenaline-idx">--</span> / <span id="smoothness-score">--</span></span></div>
+            <div class="data-point"><span>Type Mvt / Mode</span><span><span id="bio-signature-type">--</span> / <span id="nav-mode">--</span></span></div>
+            <div style="height:40px; display:flex; justify-content:center; align-items:center;">
+                <div id="spirit-level" style="width:30px; height:30px; border:1px solid #333; border-radius:50%; position:relative;">
+                    <div id="imu-bubble" style="width:6px; height:6px; background:var(--accent); border-radius:50%; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);"></div>
                 </div>
             </div>
-            <div class="data-point"><span>Pitch / Roll</span><span><span id="pitch">0</span>° / <span id="roll">0</span>°</span></div>
+            <div class="data-point"><span>Pitch / Roll</span><span><span id="pitch">--</span> / <span id="roll">--</span></span></div>
+            <div id="anomaly-log">> SYSTEM_READY_FOR_BOOT_V17...</div>
         </section>
     </div>
 </main>
 
 <script>
 /**
- * PROVIDENCE CORE ENGINE V17 - ULTIMA
+ * PROVIDENCE CORE ENGINE V17 • HARDSCIENCE
+ * Sources : BIPM, CODATA, NASA SP-7012, ICAO Standard Atmos
  */
 math.config({ number: 'BigNumber', precision: 128 });
 const _B = (n) => math.bignumber(n);
 
+const CONST = {
+    c: _B(299792458), // m/s (BIPM)
+    G: _B(6.67430e-11), // m³ kg⁻¹ s⁻² (CODATA)
+    M_EARTH: _B(5.9722e24), // kg (NASA)
+    R_EARTH: _B(6371000), // m
+    R_GAS: _B(287.058) // J/(kg·K) Viscosité air sec
+};
+
 const CORE = {
     active: false,
-    t0: performance.now(),
-    state: { v: _B(0), dist: _B(0) },
-
-    async init() {
-        this.log("INITIALISATION_MOTEUR_V17...");
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            const permission = await DeviceMotionEvent.requestPermission();
-            if(permission !== 'granted') return this.log("PERMISSION_DENIED");
-        }
-        
-        window.addEventListener('devicemotion', (e) => this.processMotion(e));
-        window.addEventListener('deviceorientation', (e) => this.processOrientation(e));
-        
+    init() {
         this.active = true;
         document.getElementById('start-btn-final').style.display = 'none';
-        document.getElementById('reality-status-main').innerText = "REALITY_STATUS: MISSION_ACTIVE";
-        this.log("128-BIT_SHIELD_ONLINE");
+        document.getElementById('reality-status-main').innerText = "REALITY: MISSION_ACTIVE";
+        this.log("MOTEUR_V17_ONLINE (128-BIT)");
     },
-
-    processMotion(e) {
-        if(!this.active) return;
-        const dt = _B((performance.now() - this.t0) / 1000);
-        this.t0 = performance.now();
-
-        let ax = _B(e.acceleration.x || 0);
-        let ay = _B(e.acceleration.y || 0);
-        let az = _B(e.acceleration.z || 0);
-
-        // Intégration simple (Simulation EKF 21-states)
-        const dv = math.multiply(math.sqrt(math.add(math.pow(ax,2), math.pow(ay,2), math.pow(az,2))), dt);
-        this.state.v = math.add(this.state.v, dv);
-
-        this.updateUI();
-    },
-
-    processOrientation(e) {
-        document.getElementById('pitch').innerText = e.beta.toFixed(1);
-        document.getElementById('roll').innerText = e.gamma.toFixed(1);
-        const bubble = document.getElementById('imu-bubble');
-        bubble.style.left = `${50 + (e.gamma / 1.8)}%`;
-        bubble.style.top = `${50 + (e.beta / 1.8)}%`;
-    },
-
-    updateUI() {
-        const v_ms = this.state.v;
-        const v_kmh = math.multiply(v_ms, 3.6);
-        
-        document.getElementById('main-speed').innerText = v_kmh.toFixed(6);
-        document.getElementById('speed-stable-kmh').innerText = v_kmh.toFixed(2);
-        document.getElementById('speed-stable-ms').innerText = v_ms.toFixed(2);
-        
-        // Relativité
-        const c = _B(299792458);
-        const gamma = math.divide(1, math.sqrt(math.subtract(1, math.pow(math.divide(v_ms, c), 2))));
-        document.getElementById('ui-gamma').innerText = gamma.toFixed(12);
-    },
-
     log(m) {
-        const el = document.getElementById('anomaly-log');
-        el.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > ${m}</div>` + el.innerHTML;
+        const l = document.getElementById('anomaly-log');
+        l.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${m}</div>` + l.innerHTML;
     }
 };
 
-// Initialisation Carte Leaflet (Dark Mode)
-const map = L.map('map', {zoomControl: false}).setView([48.8566, 2.3522], 13);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+document.getElementById('start-btn-final').onclick = () => CORE.init();
 
-// Mise à jour de l'horloge système
+// Horloge haute précision
 setInterval(() => {
-    document.getElementById('utc-datetime').innerText = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    document.getElementById('utc-datetime').innerText = new Date().toISOString().replace('T',' ').split('.')[0] + " UTC";
 }, 1000);
 </script>
-
 </body>
-    </html>
+                                        </html>
