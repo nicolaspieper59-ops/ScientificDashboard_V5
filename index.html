@@ -2,109 +2,140 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | VISION ABSOLUE</title>
+    <title>PROVIDENCE V19-S | GEAR_SHIFT_INVARIANT</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        :root { --glow: #00ff88; --bg: #050705; --border: #004422; }
-        body { background: var(--bg); color: #e0ffe0; font-family: 'JetBrains Mono', monospace; margin: 0; overflow: hidden; }
-        .hud { display: grid; grid-template-columns: 300px 1fr 300px; height: 100vh; padding: 10px; gap: 10px; }
-        .panel { border: 1px solid var(--border); padding: 15px; background: rgba(5,10,5,0.9); }
-        .v-main { font-size: 3rem; color: var(--glow); text-align: center; font-family: 'Orbitron', sans-serif; }
-        #cam-layer { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.3; z-index: -1; }
-        #slam-canvas { width: 100%; height: 300px; border: 1px solid var(--border); margin-top: 10px; }
-        button { background: var(--glow); border: none; padding: 20px; width: 100%; font-weight: bold; cursor: pointer; }
+        :root { --glow: #00ff88; --bg: #050705; --warn: #ffcc00; }
+        body { background: var(--bg); color: #e0ffe0; font-family: 'JetBrains Mono', monospace; margin: 0; overflow: hidden; font-size: 11px; }
+        .hud { display: grid; grid-template-columns: 320px 1fr 320px; height: 100vh; padding: 15px; gap: 15px; }
+        .panel { border: 1px solid #004422; padding: 15px; background: rgba(5,10,5,0.95); display: flex; flex-direction: column; }
+        .v-main { font-size: 4.5rem; color: var(--glow); text-align: center; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 25px var(--glow); }
+        .gear-val { font-size: 2rem; color: var(--warn); font-family: 'Orbitron'; text-align: center; }
+        canvas { width: 100%; background: #000; border: 1px solid #111; height: 80px; }
+        .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #002211; padding: 4px 0; }
+        button { background: var(--glow); border: none; padding: 20px; font-weight: bold; cursor: pointer; font-family: 'Orbitron'; margin-top: auto; }
     </style>
 </head>
 <body>
 
-<video id="cam-layer" autoplay playsinline muted></video>
-
 <div class="hud">
     <aside class="panel">
-        <h3>[FLUX_OPTIQUE]</h3>
-        <div id="ui-mode">MODE: SEXTANT_STELLARUM</div>
-        <div id="ui-features">POINTS_SUIVIS: 0</div>
-        <hr border-color="#004422">
-        <div id="log" style="font-size: 0.7rem; color: #ffcc00;">> ATTENTE_SIGNAL_OPTIQUE</div>
+        <h3 style="color:var(--glow)">[ANALYSE_HARMONIQUE]</h3>
+        <canvas id="audio-visualizer"></canvas>
+        <div class="data-row">Fréquence (f): <span id="ui-freq" style="color:var(--glow)">0 Hz</span></div>
+        <div class="data-row">Rapport (R): <span id="ui-ratio" style="color:var(--warn)">0.000</span></div>
+        <hr style="border:0.5px solid #004422; margin: 15px 0;">
+        <h3 style="color:var(--glow)">[ÉTAT_MÉCANIQUE]</h3>
+        <div class="gear-val" id="ui-gear">N</div>
+        <div style="text-align:center; font-size:0.6rem;">RAPPORT_DÉTECTÉ</div>
     </aside>
 
     <main class="panel">
-        <div class="v-main" id="ui-speed">0.000000</div>
-        <div style="text-align:center; font-size:0.7rem;">VITESSE_RÉELLE (M/S)</div>
-        <canvas id="slam-canvas"></canvas>
-        <div id="ui-coord" style="font-size:0.8rem; margin-top:10px; word-break:break-all;">X: 0.000000000000000000000000</div>
+        <video id="webcam" style="display:none;" autoplay playsinline></video>
+        <div style="margin-top: 30px;">
+            <div class="v-main" id="ui-speed">0.00</div>
+            <div style="text-align:center; letter-spacing: 8px; font-size:0.8rem;">KILOMÈTRES / HEURE</div>
+        </div>
+        <div style="margin-top:auto; padding: 15px; border: 1px solid #004422;">
+            <div style="font-size:0.6rem; color:var(--warn)">POSITION_PLANCK_X (128-BIT)</div>
+            <div id="ui-coord" style="font-size: 0.9rem; color: var(--glow); word-break: break-all;">X: 0.000000000000000000000000</div>
+        </div>
     </main>
 
     <aside class="panel">
-        <button id="start-btn" onclick="KERNEL.init()">ACTIVER_NAVIGATION_VISUELLE</button>
-        <div style="margin-top:20px;">
-            <h4>[ÉTAT_MILIEU]</h4>
-            <div>DENSITÉ: 1.225 kg/m³</div>
-            <div>COHÉRENCE: <span style="color:var(--glow)">VÉRIFIÉE</span></div>
+        <div style="font-size: 0.7rem; border: 1px solid var(--glow); padding: 5px; text-align: center;">PASSERELLE_VIRTUELLE_ACTIVE</div>
+        <h3 style="color:var(--glow); margin-top:20px;">[VÉTO_OPTIQUE]</h3>
+        <div id="ui-motion" class="data-row">Flux Optique: <span class="val">0.00</span></div>
+        <div class="data-row">Cohérence: <span id="ui-coh" style="color:var(--glow)">100%</span></div>
+        <button id="start-btn" onclick="KERNEL.init()">INITIALISER_LE_NOYAU</button>
+        <div style="font-size: 0.5rem; color: #444; margin-top: 10px;">
+            STANDARDS: NASA-STD-5001 / EBENISTERIE_D_ART<br>
+            SIGNATURE: V19-S_OMNIPOTENCE
         </div>
     </aside>
 </div>
 
 <script>
 const KERNEL = {
-    state: { active: false, lastPixels: null, v: 0, pos: math.bignumber(0) },
+    state: { 
+        active: false, speed: 0, pos: math.bignumber(0), 
+        gearRatio: 0.2, gear: 1, lastFreq: 0, lastPixels: null 
+    },
     
     async init() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('cam-layer').srcObject = stream;
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+        document.getElementById('webcam').srcObject = stream;
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = this.audioCtx.createMediaStreamSource(stream);
+        this.analyser = this.audioCtx.createAnalyser();
+        this.analyser.fftSize = 2048;
+        source.connect(this.analyser);
+        this.audioData = new Uint8Array(this.analyser.frequencyBinCount);
+
         document.getElementById('start-btn').style.display = 'none';
         this.state.active = true;
-        this.setupCanvas();
+        this.ctxAudio = document.getElementById('audio-visualizer').getContext('2d');
         this.process();
-    },
-
-    setupCanvas() {
-        this.canvas = document.getElementById('slam-canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.video = document.getElementById('cam-layer');
     },
 
     process() {
         if(!this.state.active) return;
-        
-        // 1. Capture du décor / astres
-        this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-        const frame = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        
-        if (this.state.lastPixels) {
-            // 2. Calcul du différentiel (Optical Flow simplifié)
-            // On compare la luminosité moyenne des zones pour détecter le mouvement
-            let motion = this.calculateMotion(this.state.lastPixels, frame.data);
-            
-            // 3. Conversion Pixel -> Réalité (Sextant)
-            // On applique un facteur de correction selon le milieu (Grotte vs Espace)
-            this.state.v = motion * 0.05; // Calibration arbitraire (m/s)
-            this.state.pos = math.add(this.state.pos, math.multiply(this.state.v, 0.016));
+
+        // 1. ANALYSE FRÉQUENCE (FFT)
+        this.analyser.getByteFrequencyData(this.audioData);
+        let maxVal = 0, maxIndex = 0;
+        for(let i=0; i<this.audioData.length; i++) {
+            if(this.audioData[i] > maxVal) { maxVal = this.audioData[i]; maxIndex = i; }
+        }
+        const freq = maxIndex * this.audioCtx.sampleRate / this.analyser.fftSize;
+
+        // 2. DÉTECTION DU CHANGEMENT DE RAPPORT (Inertie de Phase)
+        // Si la fréquence chute de plus de 25% alors que la vitesse était haute
+        if (this.state.lastFreq > 200 && freq < this.state.lastFreq * 0.75) {
+            this.state.gear++;
+            // On recalibre le ratio pour maintenir la vitesse constante malgré la chute de fréquence
+            this.state.gearRatio = this.state.speed / (freq || 1);
+            KERNEL.log(`PASSAGE_RAPPORT: ${this.state.gear}`);
+        } else if (freq > this.state.lastFreq * 1.5 && this.state.gear > 1) {
+            this.state.gear--;
+            this.state.gearRatio = this.state.speed / (freq || 1);
+        }
+        this.state.lastFreq = freq;
+
+        // 3. CALCUL VITESSE FINALE
+        if (freq > 40) {
+            // V = f * R (Vitesse = Fréquence x Ratio de boîte)
+            const targetSpeed = freq * this.state.gearRatio;
+            // Amortissement type "Horlogerie" pour éviter les sauts numériques
+            this.state.speed += (targetSpeed - this.state.speed) * 0.1;
         }
 
-        this.state.lastPixels = frame.data;
-        this.updateUI();
+        this.updateUI(freq);
+        this.drawAudio();
         requestAnimationFrame(() => this.process());
     },
 
-    calculateMotion(prev, curr) {
-        let diff = 0;
-        let points = 0;
-        // On scanne un point sur 100 pour la performance (Rigueur NASA)
-        for (let i = 0; i < curr.length; i += 400) {
-            diff += Math.abs(curr[i] - prev[i]);
-            if(curr[i] > 200) points++; // Détection de "points d'intérêt" (astres/néons)
-        }
-        document.getElementById('ui-features').innerText = "POINTS_SUIVIS: " + points;
-        return diff / 100000;
+    updateUI(f) {
+        document.getElementById('ui-speed').innerText = this.state.speed.toFixed(2);
+        document.getElementById('ui-freq').innerText = Math.round(f) + " Hz";
+        document.getElementById('ui-ratio').innerText = this.state.gearRatio.toFixed(3);
+        document.getElementById('ui-gear').innerText = this.state.gear;
+        this.state.pos = math.add(this.state.pos, math.multiply(this.state.speed / 3.6, 0.016));
+        document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
     },
 
-    updateUI() {
-        document.getElementById('ui-speed').innerText = this.state.v.toFixed(6);
-        document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
+    log(m) { console.log(`[PROVIDENCE] ${m}`); },
+
+    drawAudio() {
+        const ctx = this.ctxAudio, w = 320, h = 80;
+        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = '#00ff88';
+        for(let i=0; i<this.audioData.length; i+=10) {
+            const barH = (this.audioData[i]/255)*h;
+            ctx.fillRect(i, h-barH, 2, barH);
+        }
     }
 };
 </script>
 </body>
-                                                                                  </html>
+</html>
