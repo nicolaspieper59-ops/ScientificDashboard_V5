@@ -3,42 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROVIDENCE V17-ULTIMA | TIME_DILATION_CORE</title>
+    <title>PROVIDENCE V17-ULTIMA | SOUVERAINETÉ_TOTALE</title>
     <style>
         :root {
-            --bg: #000; --accent: #00ff88; --blue: #00c3ff; --warp: #7700ff; --gold: #ffd700;
+            --bg: #000; --accent: #00ff88; --blue: #00c3ff; --warp: #7700ff; --gold: #ffd700; --panel: rgba(10,10,15,0.98);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace;
             height: 100vh; overflow: hidden; display: flex; flex-direction: column;
-            font-size: clamp(10px, 1.2vw, 14px);
+            font-size: clamp(10px, 1vw, 13px);
         }
         header {
-            padding: 15px 20px; border-bottom: 2px solid var(--accent);
+            padding: 10px 20px; border-bottom: 2px solid var(--accent);
             display: flex; justify-content: space-between; align-items: center;
             background: linear-gradient(180deg, #0a0a0a, #000);
         }
         .main-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 10px; padding: 15px; flex: 1; overflow-y: auto;
+            gap: 10px; padding: 10px; flex: 1; overflow-y: auto;
         }
         .panel {
-            background: rgba(10,10,15,0.98); border: 1px solid #222;
-            padding: 15px; border-radius: 4px; display: flex; flex-direction: column;
+            background: var(--panel); border: 1px solid #222; padding: 12px;
+            border-radius: 4px; display: flex; flex-direction: column;
         }
-        #v-main { font-size: 3rem; color: var(--accent); font-family: 'Orbitron'; }
-        .time-block { text-align: right; }
-        .chrono-propre { color: var(--warp); font-size: 1.2rem; font-weight: bold; }
-        .chrono-utc { color: #666; font-size: 0.7rem; }
-        .val { color: var(--accent); font-weight: bold; float: right; }
-        h2 { font-size: 0.75rem; color: var(--blue); border-bottom: 1px solid #333; margin-bottom: 10px; }
-        .data-point { margin-bottom: 8px; border-bottom: 1px solid #111; }
-        #log { font-size: 0.6rem; color: var(--gold); height: 100px; overflow-y: auto; }
-        button {
-            background: var(--accent); border: none; padding: 15px; 
-            font-weight: bold; cursor: pointer; text-transform: uppercase;
-        }
+        h2 { font-size: 0.7rem; color: var(--blue); border-bottom: 1px solid #333; margin-bottom: 8px; text-transform: uppercase; }
+        .val { color: var(--accent); font-weight: bold; float: right; font-variant-numeric: tabular-nums; }
+        #v-main { font-size: clamp(1.5rem, 4vw, 2.5rem); color: var(--accent); font-family: 'Orbitron'; }
+        canvas { width: 100%; background: #050508; border-radius: 2px; margin-top: 5px; }
+        .data-point { margin-bottom: 5px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+        #log-book { font-size: 0.55rem; color: #888; overflow-y: auto; height: 100px; border-left: 1px solid var(--warp); padding-left: 5px; }
+        button { background: var(--accent); border: none; padding: 12px; font-weight: bold; cursor: pointer; margin-top: auto; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -46,49 +41,49 @@
 <header>
     <div>
         <div style="font-weight:900; letter-spacing:2px;">PROVIDENCE V17-ULTIMA</div>
-        <div style="font-size:0.6rem; color:var(--gold);">SOUVERAINETÉ_TEMPORELLE_ABS_V17</div>
+        <div style="font-size:0.5rem; color:var(--gold);">SOUVERAINETÉ_PHYSIQUE_FONDAMENTALE</div>
     </div>
     <div id="v-main">--.------</div>
-    <div class="time-block">
-        <div class="chrono-propre" id="ui-tau">--:--:--.---</div>
-        <div class="chrono-utc" id="ui-utc">UTC: --:--:--</div>
+    <div style="text-align: right;">
+        <div id="ui-tau" style="color:var(--warp); font-size:1.1rem; font-weight:bold;">--:--:--.---</div>
+        <div id="ui-hsv" style="color:var(--gold); font-size:0.7rem;">SOLAIRE: --:--:--</div>
     </div>
 </header>
 
 <main class="main-grid">
     <section class="panel">
-        <h2><i class="fas fa-history"></i> RELATIVITÉ_DU_TEMPS</h2>
-        <div class="data-point">Facteur Gamma ($\gamma$) <span class="val" id="ui-gamma">--</span></div>
-        <div class="data-point">Dilatation (Gravité) <span class="val" id="ui-dg">--</span></div>
+        <h2><i class="fas fa-infinity"></i> ANALEMME_ET_SOLEIL</h2>
+        <canvas id="analemma-cvs" height="100"></canvas>
+        <div class="data-point" style="margin-top:8px;">Equation du Temps <span class="val" id="ui-eot">-- min</span></div>
+        <div class="data-point">Midi Solaire <span class="val" id="ui-noon">--:--:--</span></div>
+        <div id="terminator-status" style="text-align:center; font-size:0.6rem; margin-top:5px; font-weight:bold;">--</div>
+    </section>
+
+    <section class="panel">
+        <h2><i class="fas fa-atom"></i> RELATIVITY_KERN</h2>
+        <div class="data-point">Gamma ($\gamma$) <span class="val" id="ui-gamma">--</span></div>
         <div class="data-point">Décalage Cumulé <span class="val" id="ui-shift" style="color:var(--warp);">0.000 ns</span></div>
-        <div class="data-point">Temps de Vie Gagné <span class="val" id="ui-life" style="color:var(--accent);">--</span></div>
-    </section>
-
-    <section class="panel">
-        <h2><i class="fas fa-globe"></i> ECEF_WGS84_PRO</h2>
-        <div class="data-point">X_COORD <span class="val" id="ui-x">--</span></div>
-        <div class="data-point">Y_COORD <span class="val" id="ui-y">--</span></div>
-        <div class="data-point">Z_COORD <span class="val" id="ui-z">--</span></div>
         <div class="data-point">Gravité Réelle ($g$) <span class="val" id="ui-g">--</span></div>
+        <div class="data-point">Mach Number <span class="val" id="ui-mach">--</span></div>
     </section>
 
     <section class="panel">
-        <h2><i class="fas fa-terminal"></i> KERNEL_LOG</h2>
-        <div id="log"></div>
-        <button onclick="KERNEL.init()">INITIALISER_MISSION</button>
+        <h2><i class="fas fa-book"></i> MISSION_JOURNAL</h2>
+        <div id="log-book"></div>
+        <button onclick="KERNEL.init()">INITIALISER_MISSION_V17</button>
     </section>
 </main>
 
 <script>
 const KERNEL = {
-    state: { active: false, v: 0, h: 0, tau: 0, shift: 0, lastUpdate: performance.now() },
-    const: { c: 299792458, G: 6.67430e-11, M: 5.9722e24, R: 6378137 },
+    state: { active: false, v: 0, h: 0, tau: 0, shift: 0, lat: 0, lon: 0, lastUpdate: performance.now(), lastMach: 0 },
+    const: { c: 299792458, G: 6.6743e-11, M: 5.9722e24, R: 6378137 },
 
     init() {
         this.state.active = true;
         this.state.startTime = Date.now();
-        this.log("SYSTÈME_RELATIVISTE_ACTIF");
         this.setupSensors();
+        this.addLog("MISSION_START", "COCKPIT_READY", "");
         this.loop();
     },
 
@@ -96,59 +91,88 @@ const KERNEL = {
         navigator.geolocation.watchPosition(p => {
             this.state.v = p.coords.speed || 0;
             this.state.h = p.coords.altitude || 0;
-            this.state.lat = p.coords.latitude;
-            this.state.lon = p.coords.longitude;
+            this.state.lat = p.coords.latitude || 0;
+            this.state.lon = p.coords.longitude || 0;
         }, null, { enableHighAccuracy: true });
     },
 
+    addLog(type, val, unit) {
+        const lb = document.getElementById('log-book');
+        const time = new Date().toLocaleTimeString();
+        lb.innerHTML = `<div style="margin-bottom:4px; border-bottom:1px solid #111;">
+            <span style="color:var(--warp)">[${time}]</span> <span style="color:var(--gold)">${type}</span>: ${val}${unit}
+        </div>` + lb.innerHTML;
+    },
+
+    getJulianDate(date) { return (date.getTime() / 86400000) + 2440587.5; },
+
     loop() {
         if (!this.state.active) return;
-        
         const now = performance.now();
-        const dt = (now - this.state.lastUpdate) / 1000; // dt terrestre en secondes
+        const dt = (now - this.state.lastUpdate) / 1000;
         this.state.lastUpdate = now;
 
-        // --- CALCULS SANS TRICHE (PHYSIQUE FONDAMENTALE) ---
         const r = this.const.R + this.state.h;
         const v = this.state.v;
         const c = this.const.c;
 
-        // Dilatation combinée (Spéciale + Générale)
-        // d_tau = dt * sqrt(1 - 2GM/rc^2 - v^2/c^2)
+        // 1. Dilatation Temps (Spéciale + Générale)
         const gravitationalTerm = (2 * this.const.G * this.const.M) / (r * c**2);
         const velocityTerm = (v**2) / (c**2);
         const timeFactor = Math.sqrt(1 - gravitationalTerm - velocityTerm);
-        
-        // Accumulation du temps propre (celui du cockpit)
         this.state.tau += dt * timeFactor;
-        const delta = (dt - (dt * timeFactor)) * 1e9; // nanosecondes de décalage par frame
-        this.state.shift += delta;
+        const currentShift = (dt - (dt * timeFactor)) * 1e9;
+        this.state.shift += currentShift;
 
-        // Mise à jour interface 60Hz
-        this.draw(timeFactor);
+        // 2. Astronomie & Soleil
+        const jd = this.getJulianDate(new Date());
+        const d = jd - 2451545.0;
+        const g = (357.529 + 0.98560028 * d) * Math.PI / 180;
+        const q = (280.459 + 0.98564736 * d) * Math.PI / 180;
+        const L = q + (1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+        const e = (23.439 - 0.00000036 * d) * Math.PI / 180;
+        const RA = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)) * 180 / Math.PI;
+        const eot = (q * 180 / Math.PI - RA) * 4; // Minutes
         
+        const utc = new Date();
+        const solarMin = (utc.getUTCHours()*60 + utc.getUTCMinutes() + utc.getUTCSeconds()/60) + eot + (this.state.lon * 4);
+
+        // 3. Événements Log
+        const mach = v / Math.sqrt(1.4 * 287 * 288.15);
+        if(mach >= 1 && this.state.lastMach < 1) this.addLog("SUPERSO", mach.toFixed(2), "M");
+        this.state.lastMach = mach;
+
+        this.draw(timeFactor, eot, solarMin, mach, r);
         requestAnimationFrame(() => this.loop());
     },
 
-    draw(gamma_inv) {
+    draw(timeFactor, eot, solarMin, mach, r) {
         document.getElementById('v-main').innerText = this.state.v.toFixed(6);
-        document.getElementById('ui-gamma').innerText = (1/gamma_inv).toFixed(15);
+        document.getElementById('ui-gamma').innerText = (1/timeFactor).toFixed(14);
         document.getElementById('ui-shift').innerText = this.state.shift.toFixed(3) + " ns";
+        document.getElementById('ui-g').innerText = ((this.const.G * this.const.M) / (r * r)).toFixed(6);
+        document.getElementById('ui-mach').innerText = mach.toFixed(3);
         
-        // Horloge Cockpit (Temps Propre)
-        const d = new Date(this.state.startTime + this.state.tau * 1000);
-        document.getElementById('ui-tau').innerText = d.toLocaleTimeString() + "." + d.getMilliseconds().toString().padStart(3, '0');
-        document.getElementById('ui-utc').innerText = "UTC: " + new Date().toLocaleTimeString();
+        const d_tau = new Date(this.state.startTime + this.state.tau * 1000);
+        document.getElementById('ui-tau').innerText = d_tau.toLocaleTimeString() + "." + d_tau.getMilliseconds().toString().padStart(3,'0');
+        
+        const h = Math.floor(solarMin/60)%24, m = Math.floor(solarMin%60), s = Math.floor((solarMin*60)%60);
+        document.getElementById('ui-hsv').innerText = `SOLAIRE: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        document.getElementById('ui-eot').innerText = eot.toFixed(2) + " min";
+        
+        const isDay = (solarMin > 360 && solarMin < 1080);
+        const ts = document.getElementById('terminator-status');
+        ts.innerText = isDay ? "MODE: JOUR_SOLAIRE" : "MODE: NUIT_ÉTOILÉE";
+        ts.style.color = isDay ? "var(--gold)" : "var(--blue)";
 
-        // Gravité réelle
-        const r = this.const.R + this.state.h;
-        const g = (this.const.G * this.const.M) / (r * r);
-        document.getElementById('ui-g').innerText = g.toFixed(6) + " m/s²";
-    },
-
-    log(m) {
-        const l = document.getElementById('log');
-        l.innerHTML = `<div>> ${m}</div>` + l.innerHTML;
+        // Analemme Simple
+        const cvs = document.getElementById('analemma-cvs'), ctx = cvs.getContext('2d');
+        ctx.clearRect(0,0,cvs.width,cvs.height); ctx.strokeStyle="#222"; ctx.beginPath();
+        for(let i=0; i<360; i+=10){
+            ctx.lineTo(cvs.width/2 + Math.sin(i*Math.PI/180)*15, cvs.height/2 + Math.cos(i*Math.PI/180)*30);
+        } ctx.stroke();
+        ctx.fillStyle="var(--gold)"; ctx.beginPath();
+        ctx.arc(cvs.width/2 + (eot * 2), cvs.height/2, 3, 0, 7); ctx.fill();
     }
 };
 </script>
