@@ -3,78 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROVIDENCE V17-ULTIMA | SOUVERAIN</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <title>PROVIDENCE V17-ULTIMA | TIME_DILATION_CORE</title>
     <style>
         :root {
-            --bg: #000; --accent: #00ff88; --blue: #00c3ff; --gold: #ffd700;
-            --panel: rgba(12, 12, 15, 0.98); --border: #222;
+            --bg: #000; --accent: #00ff88; --blue: #00c3ff; --warp: #7700ff; --gold: #ffd700;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        /* CSS ADAPTATIF AUTOMATIQUE */
         body {
-            background: var(--bg); color: #e0e0e0;
-            font-family: 'JetBrains Mono', monospace;
-            height: 100vh; width: 100vw;
-            display: flex; flex-direction: column;
-            font-size: clamp(10px, 1.5vw, 14px); /* Adaptation fluide de la police */
+            background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace;
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+            font-size: clamp(10px, 1.2vw, 14px);
         }
-
         header {
-            height: auto; min-height: 60px;
-            border-bottom: 2px solid var(--accent);
-            display: flex; flex-wrap: wrap; justify-content: space-between;
-            align-items: center; padding: 10px 20px;
-            background: linear-gradient(180deg, #050505 0%, #000 100%);
+            padding: 15px 20px; border-bottom: 2px solid var(--accent);
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(180deg, #0a0a0a, #000);
         }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 10px; padding: 10px;
-            flex: 1; overflow-y: auto;
+        .main-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 10px; padding: 15px; flex: 1; overflow-y: auto;
         }
-
         .panel {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            padding: 15px; border-radius: 2px;
-            display: flex; flex-direction: column;
-            transition: all 0.3s ease;
+            background: rgba(10,10,15,0.98); border: 1px solid #222;
+            padding: 15px; border-radius: 4px; display: flex; flex-direction: column;
         }
-
-        /* Ergonomie visuelle des données */
-        h2 { 
-            font-size: 0.75rem; color: var(--blue); 
-            margin-bottom: 12px; border-bottom: 1px solid #333;
-            text-transform: uppercase; letter-spacing: 1px;
-        }
-
-        .data-point {
-            display: flex; justify-content: space-between;
-            margin-bottom: 8px; border-bottom: 1px solid #111;
-        }
-
-        .val { color: var(--accent); font-weight: bold; font-variant-numeric: tabular-nums; }
-        .null-state { color: #444; font-style: italic; }
-
-        #v-main {
-            font-size: clamp(1.5rem, 5vw, 3rem);
-            color: var(--accent); font-family: 'Orbitron', sans-serif;
-        }
-
-        canvas { width: 100%; height: 80px; background: #050505; border: 1px solid #111; }
-        
+        #v-main { font-size: 3rem; color: var(--accent); font-family: 'Orbitron'; }
+        .time-block { text-align: right; }
+        .chrono-propre { color: var(--warp); font-size: 1.2rem; font-weight: bold; }
+        .chrono-utc { color: #666; font-size: 0.7rem; }
+        .val { color: var(--accent); font-weight: bold; float: right; }
+        h2 { font-size: 0.75rem; color: var(--blue); border-bottom: 1px solid #333; margin-bottom: 10px; }
+        .data-point { margin-bottom: 8px; border-bottom: 1px solid #111; }
+        #log { font-size: 0.6rem; color: var(--gold); height: 100px; overflow-y: auto; }
         button {
-            background: var(--accent); color: #000; border: none;
-            padding: 12px; font-weight: bold; cursor: pointer;
-            text-transform: uppercase; width: 100%; border-radius: 4px;
-        }
-
-        @media (max-width: 600px) {
-            header { flex-direction: column; text-align: center; gap: 10px; }
-            .dashboard-grid { grid-template-columns: 1fr; }
+            background: var(--accent); border: none; padding: 15px; 
+            font-weight: bold; cursor: pointer; text-transform: uppercase;
         }
     </style>
 </head>
@@ -83,116 +46,111 @@
 <header>
     <div>
         <div style="font-weight:900; letter-spacing:2px;">PROVIDENCE V17-ULTIMA</div>
-        <div style="font-size:0.6rem; color:var(--gold);">REAL_PHYSICS_SOVEREIGN_CORE</div>
+        <div style="font-size:0.6rem; color:var(--gold);">SOUVERAINETÉ_TEMPORELLE_ABS_V17</div>
     </div>
     <div id="v-main">--.------</div>
-    <div style="text-align: right;">
-        <div id="utc-clock" style="color:var(--blue);">--:--:--</div>
-        <div style="font-size:0.6rem;">DOPPLER_Z: <span id="ui-z" class="val">--</span></div>
+    <div class="time-block">
+        <div class="chrono-propre" id="ui-tau">--:--:--.---</div>
+        <div class="chrono-utc" id="ui-utc">UTC: --:--:--</div>
     </div>
 </header>
 
-<main class="dashboard-grid">
+<main class="main-grid">
     <section class="panel">
-        <h2><i class="fas fa-globe"></i> ECEF_WGS84_ABSOLU</h2>
-        <div class="data-point">COORD_X <span class="val" id="coord-x">--</span></div>
-        <div class="data-point">COORD_Y <span class="val" id="coord-y">--</span></div>
-        <div class="data-point">COORD_Z <span class="val" id="coord-z">--</span></div>
-        <div class="data-point">Gravité ($g$) <span class="val" id="ui-g">--</span></div>
+        <h2><i class="fas fa-history"></i> RELATIVITÉ_DU_TEMPS</h2>
+        <div class="data-point">Facteur Gamma ($\gamma$) <span class="val" id="ui-gamma">--</span></div>
+        <div class="data-point">Dilatation (Gravité) <span class="val" id="ui-dg">--</span></div>
+        <div class="data-point">Décalage Cumulé <span class="val" id="ui-shift" style="color:var(--warp);">0.000 ns</span></div>
+        <div class="data-point">Temps de Vie Gagné <span class="val" id="ui-life" style="color:var(--accent);">--</span></div>
     </section>
 
     <section class="panel">
-        <h2><i class="fas fa-camera"></i> VISION_SLAM_NIGHT</h2>
-        <video id="video-feed" style="width:100%; height:100px; background:#000; object-fit:cover;"></video>
-        <div class="data-point" style="margin-top:10px;">ID_VERROU <span class="val" id="ui-lock">AUCUN</span></div>
-        <div class="data-point">Réfraction <span class="val" id="ui-refrac">--</span></div>
+        <h2><i class="fas fa-globe"></i> ECEF_WGS84_PRO</h2>
+        <div class="data-point">X_COORD <span class="val" id="ui-x">--</span></div>
+        <div class="data-point">Y_COORD <span class="val" id="ui-y">--</span></div>
+        <div class="data-point">Z_COORD <span class="val" id="ui-z">--</span></div>
+        <div class="data-point">Gravité Réelle ($g$) <span class="val" id="ui-g">--</span></div>
     </section>
 
     <section class="panel">
-        <h2><i class="fas fa-atom"></i> RELATIVITY_KERN</h2>
-        <div class="data-point">Gamma ($\gamma$) <span class="val" id="ui-gamma">--</span></div>
-        <div class="data-point">Dilation Temps <span class="val" id="ui-dilation">--</span></div>
-        <div class="data-point">Mach Number <span class="val" id="ui-mach">--</span></div>
-    </section>
-
-    <section class="panel">
-        <h2><i class="fas fa-terminal"></i> MISSION_LOGS</h2>
-        <div id="log" style="font-size:0.6rem; color:var(--gold); flex:1; overflow-y:auto; min-height:80px;"></div>
-        <button onclick="CORE.start()">Initialiser_Moteur_V17</button>
+        <h2><i class="fas fa-terminal"></i> KERNEL_LOG</h2>
+        <div id="log"></div>
+        <button onclick="KERNEL.init()">INITIALISER_MISSION</button>
     </section>
 </main>
 
 <script>
-const CORE = {
-    state: { active: false, x:0, y:0, z:0, v:0, lat:null, lon:null, h:0 },
-    const: { c: 299792458, G: 6.67430e-11, M: 5.972e24, R_EARTH: 6378137 },
+const KERNEL = {
+    state: { active: false, v: 0, h: 0, tau: 0, shift: 0, lastUpdate: performance.now() },
+    const: { c: 299792458, G: 6.67430e-11, M: 5.9722e24, R: 6378137 },
 
-    start() {
+    init() {
         this.state.active = true;
-        this.log("SOUVERAIN_SYSTEM_BOOT_SUCCESS");
-        this.initHardware();
+        this.state.startTime = Date.now();
+        this.log("SYSTÈME_RELATIVISTE_ACTIF");
+        this.setupSensors();
         this.loop();
     },
 
-    log(m) {
-        const l = document.getElementById('log');
-        l.innerHTML = `<div>> ${m}</div>` + l.innerHTML;
-    },
-
-    initHardware() {
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(s => document.getElementById('video-feed').srcObject = s);
-
+    setupSensors() {
         navigator.geolocation.watchPosition(p => {
+            this.state.v = p.coords.speed || 0;
+            this.state.h = p.coords.altitude || 0;
             this.state.lat = p.coords.latitude;
             this.state.lon = p.coords.longitude;
-            this.state.h = p.coords.altitude || 0;
-            this.state.v = p.coords.speed || 0;
         }, null, { enableHighAccuracy: true });
     },
 
     loop() {
         if (!this.state.active) return;
+        
+        const now = performance.now();
+        const dt = (now - this.state.lastUpdate) / 1000; // dt terrestre en secondes
+        this.state.lastUpdate = now;
 
-        const { v, h, lat, lon } = this.state;
+        // --- CALCULS SANS TRICHE (PHYSIQUE FONDAMENTALE) ---
+        const r = this.const.R + this.state.h;
+        const v = this.state.v;
+        const c = this.const.c;
 
-        // 1. Calcul Gravité Proportionnel (Newton Pur)
-        // g = G * M / r^2
-        const r = this.const.R_EARTH + h;
-        const g_local = (this.const.G * this.const.M) / (r * r);
-        document.getElementById('ui-g').innerText = g_local.toFixed(5) + " m/s²";
+        // Dilatation combinée (Spéciale + Générale)
+        // d_tau = dt * sqrt(1 - 2GM/rc^2 - v^2/c^2)
+        const gravitationalTerm = (2 * this.const.G * this.const.M) / (r * c**2);
+        const velocityTerm = (v**2) / (c**2);
+        const timeFactor = Math.sqrt(1 - gravitationalTerm - velocityTerm);
+        
+        // Accumulation du temps propre (celui du cockpit)
+        this.state.tau += dt * timeFactor;
+        const delta = (dt - (dt * timeFactor)) * 1e9; // nanosecondes de décalage par frame
+        this.state.shift += delta;
 
-        // 2. Géodésie ECEF (Seulement si position connue)
-        if (lat !== null) {
-            const phi = lat * Math.PI / 180;
-            const lam = lon * Math.PI / 180;
-            const a = this.const.R_EARTH;
-            const f = 1/298.257223563;
-            const e2 = 2*f - f*f;
-            const N = a / Math.sqrt(1 - e2 * Math.sin(phi)**2);
-            
-            document.getElementById('coord-x').innerText = Math.round((N + h) * Math.cos(phi) * Math.cos(lam));
-            document.getElementById('coord-y').innerText = Math.round((N + h) * Math.cos(phi) * Math.sin(lam));
-            document.getElementById('coord-z').innerText = Math.round((N * (1 - e2) + h) * Math.sin(phi));
-        }
-
-        // 3. Relativité (Zéro Triche)
-        const beta = v / this.const.c;
-        const gamma = 1 / Math.sqrt(1 - beta**2);
-        document.getElementById('v-main').innerText = v.toFixed(6);
-        document.getElementById('ui-gamma').innerText = gamma.toFixed(15);
-        document.getElementById('ui-dilation').innerText = ((gamma - 1) * 1e9).toFixed(4) + " ns/s";
-        document.getElementById('ui-z').innerText = (Math.sqrt((1+beta)/(1-beta)) - 1).toFixed(8);
-
-        // 4. Environnement
-        const sound_v = Math.sqrt(1.4 * 287 * 288.15); // Vitesse son ISA
-        document.getElementById('ui-mach').innerText = (v / sound_v).toFixed(3);
-        document.getElementById('ui-refrac').innerText = (1.000293 * (Math.exp(-h / 8500))).toFixed(6);
-
-        document.getElementById('utc-clock').innerText = new Date().toLocaleTimeString();
+        // Mise à jour interface 60Hz
+        this.draw(timeFactor);
+        
         requestAnimationFrame(() => this.loop());
+    },
+
+    draw(gamma_inv) {
+        document.getElementById('v-main').innerText = this.state.v.toFixed(6);
+        document.getElementById('ui-gamma').innerText = (1/gamma_inv).toFixed(15);
+        document.getElementById('ui-shift').innerText = this.state.shift.toFixed(3) + " ns";
+        
+        // Horloge Cockpit (Temps Propre)
+        const d = new Date(this.state.startTime + this.state.tau * 1000);
+        document.getElementById('ui-tau').innerText = d.toLocaleTimeString() + "." + d.getMilliseconds().toString().padStart(3, '0');
+        document.getElementById('ui-utc').innerText = "UTC: " + new Date().toLocaleTimeString();
+
+        // Gravité réelle
+        const r = this.const.R + this.state.h;
+        const g = (this.const.G * this.const.M) / (r * r);
+        document.getElementById('ui-g').innerText = g.toFixed(6) + " m/s²";
+    },
+
+    log(m) {
+        const l = document.getElementById('log');
+        l.innerHTML = `<div>> ${m}</div>` + l.innerHTML;
     }
 };
 </script>
 </body>
-                                                                       </html>
+</html>
