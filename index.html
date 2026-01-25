@@ -1,152 +1,54 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | OMNIPOTENCE FINAL</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
-    <style>
-        :root { --glow: #00ff88; --bg: #050705; --warn: #ffcc00; --crit: #ff0044; --panel: rgba(10, 15, 10, 0.98); --border: #004422; --text: #e0ffe0; }
-        * { box-sizing: border-box; -webkit-user-select: none; touch-action: none; }
-        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; margin: 0; height: 100vh; overflow: hidden; font-size: 11px; border: 2px solid var(--border); }
-        .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; }
-        .header { grid-column: 1 / 4; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-        .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 10; }
-        .v-main { font-size: 5rem; color: var(--glow); text-align: center; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 25px var(--glow); line-height: 1; margin: 10px 0; }
-        .gear-display { font-size: 3.5rem; color: var(--warn); font-family: 'Orbitron'; text-align: center; border: 1px solid #332200; background: #110d00; margin: 5px 0; }
-        canvas { width: 100%; background: #000; border: 1px solid #111; }
-        .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #002211; padding: 4px 0; }
-        .val { color: var(--glow); font-weight: bold; }
-        #cam-preview { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.2; z-index: 1; transform: scale(1.1); filter: grayscale(1) contrast(1.5); }
-        button { background: var(--glow); border: none; padding: 25px; font-weight: 900; cursor: pointer; font-family: 'Orbitron'; letter-spacing: 3px; color: #000; transition: 0.3s; }
-        button:hover { background: #fff; box-shadow: 0 0 30px var(--glow); }
-        .log-box { font-size: 0.65rem; color: var(--warn); height: 70px; overflow: hidden; border-top: 1px solid var(--border); padding-top: 5px; line-height: 1.2; }
-    </style>
-</head>
-<body>
-
-<video id="cam-preview" autoplay playsinline muted></video>
-
-<div class="hud-grid">
-    <header class="header">
-        <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.4rem; letter-spacing: 2px;">PROVIDENCE // V19-S</div>
-        <div id="ui-status" style="font-size: 0.7rem; border: 1px solid var(--glow); padding: 4px 15px; background: rgba(0,255,136,0.1);">KERNEL_STANDBY</div>
-        <div id="ui-time" style="color:var(--warn); font-weight: bold;">[OMNIPOTENCE_ACTIVE]</div>
-    </header>
-
-    <aside class="panel">
-        <h3 style="color:var(--glow); margin:0; font-size: 0.8rem;">[ANALYSE_HARMONIQUE]</h3>
-        <canvas id="audio-viz" style="height:100px;"></canvas>
-        <div class="data-row">Fréquence (f): <span id="ui-freq" class="val">0 Hz</span></div>
-        <div class="data-row">Ratio Transmission: <span id="ui-ratio" class="val">0.200</span></div>
-        
-        <h3 style="color:var(--glow); margin-top:15px; font-size: 0.8rem;">[ÉTAT_MÉCANIQUE]</h3>
-        <div class="gear-display" id="ui-gear">N</div>
-        <div class="data-row">Entropie (ΔS): <span id="ui-entropy" class="val">0.000000</span></div>
-        <div class="data-row">Vecteur G: <span id="ui-g" class="val">1.000 G</span></div>
-        
-        <div id="log-console" class="log-box">> SYSTÈME_SCELLÉ_PRÊT</div>
-    </aside>
-
-    <main class="panel" style="justify-content: center; background: none; border: none;">
-        <div style="background: rgba(0,0,0,0.6); padding: 20px; border: 1px solid var(--border); backdrop-filter: blur(5px);">
-            <div id="ui-speed" class="v-main">0.00</div>
-            <div style="text-align:center; letter-spacing: 12px; font-size: 0.9rem; color: var(--glow); font-weight: bold;">KM / HEURE</div>
-        </div>
-        
-        <div style="border: 1px solid var(--border); position: relative; height: 250px; background: #000; margin: 15px 0;">
-            <canvas id="slam-canvas" style="height: 100%; image-rendering: pixelated;"></canvas>
-            <div style="position:absolute; bottom:5px; right:10px; font-size:0.6rem; color:var(--glow); font-weight: bold;">LIDAR_OPTICAL_FEED</div>
-        </div>
-
-        <div style="padding:15px; background: rgba(0,0,0,0.9); border: 1px solid var(--border); box-shadow: 0 0 20px rgba(0,0,0,1);">
-            <div style="font-size:0.6rem; color:var(--warn); margin-bottom: 5px;">POSITION_PLANCK_128BIT (SOUVERAINETÉ_CAUSALE)</div>
-            <div id="ui-coord" style="font-size:0.85rem; color:var(--glow); word-break:break-all; font-family: 'JetBrains Mono';">X: +0.000000000000000000000000</div>
-        </div>
-    </main>
-
-    <aside class="panel">
-        <h3 style="color:var(--glow); margin:0; font-size: 0.8rem;">[SEXTANT_STELLARUM]</h3>
-        <div class="data-row">Points d'Intérêt: <span id="ui-pts" class="val">0</span></div>
-        <div class="data-row">Flux Optique: <span id="ui-flux" class="val">0.00</span></div>
-        <div class="data-row">Cohérence: <span id="ui-coh" class="val">100%</span></div>
-        
-        <h3 style="color:var(--glow); margin-top:15px; font-size: 0.8rem;">[SÉCURITÉ_CAUSALE]</h3>
-        <div class="data-row">Veto Causal: <span id="ui-veto" class="val" style="color:var(--warn)">OPTIMAL</span></div>
-        <div class="data-row">Marge Planck: <span class="val">10⁻³⁵</span></div>
-        
-        <div style="margin: 15px 0; padding:10px; border:1px solid var(--border); background: #000;">
-            <div style="font-size: 0.55rem; color: var(--warn); margin-bottom: 5px;">TEMPS_DE_PLANCK_ACCUMULÉ ($t_P$)</div>
-            <div id="ui-planck" style="color:var(--glow); font-size:0.8rem; word-break: break-all;">0</div>
-        </div>
-
-        <button id="boot-btn" onclick="KERNEL.boot()">INITIALISER_NOYAU_V19</button>
-        
-        <div style="margin-top:auto; font-size:0.6rem; color:#4a6b4a; line-height:1.5; border-top: 1px solid #111; padding-top: 10px;">
-            STDs: NASA-STD-5001 / EBÉNISTERIE_D_ART<br>
-            SIG: V19-S_OMNIPOTENCE_QUANTIQUE<br>
-            MODE: PASSERELLE_MATHÉMATIQUE_ACTIVE
-        </div>
-    </aside>
-</div>
-
 <script>
-// CONFIGURATION MATHÉMATIQUE 64-BIT
 math.config({ number: 'BigNumber', precision: 64 });
 
 const KERNEL = {
     state: { 
         active: false, speed: 0, pos: math.bignumber(0), planck: math.bignumber(0),
         gear: 1, ratio: 0.200, lastFreq: 0, lastPixels: null, lastFrame: performance.now(),
-        gVector: 1.000
+        gVector: 1.000, coherenceScore: 100
     },
-    const: { tp: math.bignumber('5.391247e-44'), g: 9.80665 },
+    const: { 
+        tp: math.bignumber('5.391247e-44'), 
+        invTp: math.divide(math.bignumber(1), math.bignumber('5.391247e-44')), // Pré-calcul crucial
+        g: 9.80665 
+    },
 
     async boot() {
         try {
-            this.log("DÉMARRAGE_SÉQUENCE_HANDSHAKE...");
+            this.log("INIT_SÉQUENCE_ALPHA...");
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment", width: 640 }, 
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
+                video: { facingMode: "environment", width: 640, frameRate: { ideal: 30 } }, 
+                audio: { echoCancellation: false, noiseSuppression: false } 
             });
             
             document.getElementById('cam-preview').srcObject = stream;
 
-            // INITIALISATION AUDIO (FFT)
+            // AUDIO ENGINE
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
-            
             const source = this.audioCtx.createMediaStreamSource(stream);
             this.analyser = this.audioCtx.createAnalyser();
-            this.analyser.fftSize = 2048;
+            this.analyser.fftSize = 1024; // Optimisé pour mobile
             source.connect(this.analyser);
             this.audioData = new Uint8Array(this.analyser.frequencyBinCount);
 
-            // INITIALISATION CAPTEURS (G-FORCE)
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            // G-SENSOR HANDSHAKE
+            if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
                 const permission = await DeviceMotionEvent.requestPermission();
                 if (permission === 'granted') this.enableGListener();
-            } else {
-                this.enableGListener();
-            }
+            } else { this.enableGListener(); }
 
-            // RENDU UI
             this.canvasSlam = document.getElementById('slam-canvas');
             this.ctxSlam = this.canvasSlam.getContext('2d', {alpha: false});
             this.canvasAudio = document.getElementById('audio-viz');
             this.ctxAudio = this.canvasAudio.getContext('2d');
             
             document.getElementById('boot-btn').style.display = 'none';
-            document.getElementById('ui-status').innerText = "SOUVERAINETÉ_ÉTABLIE";
-            document.getElementById('ui-status').style.background = "rgba(0,255,136,0.3)";
-            
+            document.getElementById('ui-status').innerText = "SOUVERAINETÉ_TOTALE";
             this.state.active = true;
-            this.log("NOYAU_V19_S_OMNIPOTENCE_EN_LIGNE");
             this.loop();
         } catch (e) {
-            this.log("ERREUR_CRITIQUE_SÉCURITÉ_MATÉRIEL", true);
-            console.error(e);
+            this.log("CRITICAL_HARDWARE_FAILURE", true);
         }
     },
 
@@ -159,19 +61,13 @@ const KERNEL = {
         });
     },
 
-    log(m, crit=false) {
-        const c = document.getElementById('log-console');
-        const color = crit ? 'var(--crit)' : 'var(--glow)';
-        c.innerHTML = `<span style="color:${color}">[${new Date().toLocaleTimeString()}] > ${m}</span><br>` + c.innerHTML;
-    },
-
     loop() {
         if(!this.state.active) return;
         const now = performance.now();
         const dt = (now - this.state.lastFrame) / 1000;
         this.state.lastFrame = now;
 
-        // PHASE 1: FRÉQUENCE MOTEUR
+        // 1. ANALYSE HARMONIQUE
         this.analyser.getByteFrequencyData(this.audioData);
         let maxVal = 0, maxIdx = 0;
         for(let i=0; i<this.audioData.length; i++) {
@@ -179,91 +75,68 @@ const KERNEL = {
         }
         const freq = maxIdx * this.audioCtx.sampleRate / this.analyser.fftSize;
 
-        // PHASE 2: CALCUL DES RAPPORTS (BOITE)
-        if (this.state.lastFreq > 280 && freq < this.state.lastFreq * 0.72) {
-            this.state.gear++;
-            this.state.ratio = this.state.speed / (freq || 1);
-            this.log(`SHIFT_UP_DETÉCTÉ: GEAR_${this.state.gear}`);
-        } else if (freq > this.state.lastFreq * 1.5 && this.state.gear > 1) {
-            this.state.gear--;
-            this.state.ratio = this.state.speed / (freq || 1);
-            this.log(`SHIFT_DOWN_DETÉCTÉ: GEAR_${this.state.gear}`);
-        }
-        this.state.lastFreq = freq;
-
-        // PHASE 3: SEXTANT STELLARUM (FLUX OPTIQUE)
+        // 2. SEXTANT STELLARUM (SLAM)
         this.ctxSlam.drawImage(document.getElementById('cam-preview'), 0, 0, this.canvasSlam.width, this.canvasSlam.height);
         const frame = this.ctxSlam.getImageData(0,0,this.canvasSlam.width, this.canvasSlam.height);
         let flux = 0, pts = 0;
+        
         if(this.state.lastPixels) {
-            for(let i=0; i<frame.data.length; i+=1200) {
-                // Flux de pixels
+            for(let i=0; i<frame.data.length; i+=800) { // Précision accrue
                 const diff = Math.abs(frame.data[i] - this.state.lastPixels[i]);
                 flux += diff;
-                // Détection de points d'intérêt (Astres)
-                if(frame.data[i] > 200) {
+                if(frame.data[i] > 220) { // Détection d'Astres
                     pts++;
-                    // Traceur visuel sur le SLAM
-                    if (pts < 50) { 
-                        this.ctxSlam.fillStyle = "var(--glow)";
-                        this.ctxSlam.fillRect((i/4)%this.canvasSlam.width, (i/4)/this.canvasSlam.width, 2, 2);
+                    if(pts < 30) { // Rendu LIDAR
+                        this.ctxSlam.fillStyle = "cyan";
+                        this.ctxSlam.fillRect((i/4)%this.canvasSlam.width, (i/4)/this.canvasSlam.width, 3, 3);
                     }
                 }
             }
         }
         this.state.lastPixels = frame.data;
 
-        // PHASE 4: VETO ET CAUSALITÉ
+        // 3. FUSION CAUSALE
         const targetSpeed = freq * this.state.ratio;
-        const coherence = (flux < 5 && freq > 150) ? 15 : 100;
-        this.state.speed += (targetSpeed - this.state.speed) * 0.12;
+        this.state.speed += (targetSpeed - this.state.speed) * 0.15;
+        this.state.coherenceScore = (flux < 10 && freq > 100) ? 20 : 100;
 
-        // PHASE 5: INTÉGRATION DE PLANCK
-        const planckDelta = math.divide(math.bignumber(dt), this.const.tp);
-        this.state.planck = math.add(this.state.planck, planckDelta);
+        // 4. INTÉGRATION TEMPORELLE (PLANCK-LEVEL)
+        const planckStep = math.multiply(math.bignumber(dt), this.const.invTp);
+        this.state.planck = math.add(this.state.planck, planckStep);
         this.state.pos = math.add(this.state.pos, math.multiply(this.state.speed / 3.6, dt));
 
-        this.updateHUD(freq, flux, pts, coherence);
+        this.updateHUD(freq, flux, pts);
         this.drawAudioViz();
         requestAnimationFrame(() => this.loop());
     },
 
-    updateHUD(f, fl, pt, c) {
+    updateHUD(f, fl, pt) {
         document.getElementById('ui-speed').innerText = this.state.speed.toFixed(2);
         document.getElementById('ui-freq').innerText = Math.round(f) + " Hz";
-        document.getElementById('ui-gear').innerText = (this.state.speed < 1 && f < 100) ? "N" : this.state.gear;
-        document.getElementById('ui-ratio').innerText = this.state.ratio.toFixed(4);
-        document.getElementById('ui-flux').innerText = (fl/150).toFixed(2);
         document.getElementById('ui-pts').innerText = pt;
-        document.getElementById('ui-coh').innerText = c + "%";
+        document.getElementById('ui-coh').innerText = this.state.coherenceScore + "%";
         document.getElementById('ui-g').innerText = this.state.gVector.toFixed(3) + " G";
-        document.getElementById('ui-entropy').innerText = (0.9999 + (Math.random()*0.0001)).toFixed(6);
         document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
         document.getElementById('ui-planck').innerText = math.format(this.state.planck, {notation: 'fixed', precision: 0});
         
         const veto = document.getElementById('ui-veto');
-        if(c < 50) {
-            veto.innerText = "SIM_DETECTED";
-            veto.style.color = "var(--crit)";
-        } else {
-            veto.innerText = "OPTIMAL";
-            veto.style.color = "var(--glow)";
-        }
+        veto.innerText = this.state.coherenceScore < 50 ? "SIM_DETECTED" : "OPTIMAL";
+        veto.style.color = this.state.coherenceScore < 50 ? "var(--crit)" : "var(--glow)";
+    },
+
+    log(m, crit=false) {
+        const c = document.getElementById('log-console');
+        c.innerHTML = `<span style="color:${crit?'var(--crit)':'var(--glow)'}">> ${m}</span><br>` + c.innerHTML;
     },
 
     drawAudioViz() {
         const ctx = this.ctxAudio, w = this.canvasAudio.width, h = this.canvasAudio.height;
         ctx.clearRect(0,0,w,h);
-        ctx.fillStyle = 'rgba(0, 255, 136, 0.2)';
-        ctx.fillRect(0,0,w,h);
         ctx.fillStyle = '#00ff88';
-        const barWidth = w / (this.audioData.length / 8);
-        for(let i=0; i<this.audioData.length/4; i++) {
-            const barH = (this.audioData[i]/255)*h;
-            ctx.fillRect(i * barWidth, h - barH, barWidth - 1, barH);
+        for(let i=0; i<this.audioData.length; i+=10) {
+            const hBar = (this.audioData[i]/255)*h;
+            ctx.fillRect(i, h-hBar, 4, hBar);
         }
     }
 };
-</script>
-</body>
-</html>
+                        </script>
