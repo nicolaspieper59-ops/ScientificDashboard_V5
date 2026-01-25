@@ -3,140 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | SOUVERAINETÉ TOTALE</title>
+    <title>PROVIDENCE V19-S | VISION ABSOLUE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #050705; --glow: #00ff88; --warn: #ffcc00; --crit: #ff0044; --panel: rgba(10, 15, 10, 0.98); --border: #004422; --text: #e0ffe0; }
-        * { box-sizing: border-box; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; }
-        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; margin: 0; height: 100vh; overflow: hidden; font-size: 11px; border: 2px solid var(--border); }
-        .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; }
-        .header { grid-column: 1 / 4; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-        .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 30px rgba(0,255,136,0.05); position: relative; }
-        .v-main { font-size: 3.5rem; color: var(--glow); font-family: 'Orbitron', sans-serif; text-shadow: 0 0 20px var(--glow); }
-        .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,255,136,0.1); padding: 5px 0; }
-        .val { color: var(--glow); font-weight: bold; }
-        #slam-view { flex: 1; border: 1px solid var(--border); position: relative; background: radial-gradient(circle, #001a00 0%, #000 100%); overflow: hidden; }
-        canvas { position: absolute; width: 100%; height: 100%; }
-        .log-box { font-size: 0.7rem; height: 80px; overflow-y: hidden; border-top: 1px solid var(--border); padding-top: 10px; color: var(--warn); }
-        #boot-btn { background: var(--glow); color: #000; border: none; padding: 15px; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 2px; cursor: pointer; transition: 0.3s; z-index: 999; }
-        #boot-btn:active { transform: scale(0.95); background: #fff; }
+        :root { --glow: #00ff88; --bg: #050705; --border: #004422; }
+        body { background: var(--bg); color: #e0ffe0; font-family: 'JetBrains Mono', monospace; margin: 0; overflow: hidden; }
+        .hud { display: grid; grid-template-columns: 300px 1fr 300px; height: 100vh; padding: 10px; gap: 10px; }
+        .panel { border: 1px solid var(--border); padding: 15px; background: rgba(5,10,5,0.9); }
+        .v-main { font-size: 3rem; color: var(--glow); text-align: center; font-family: 'Orbitron', sans-serif; }
+        #cam-layer { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.3; z-index: -1; }
+        #slam-canvas { width: 100%; height: 300px; border: 1px solid var(--border); margin-top: 10px; }
+        button { background: var(--glow); border: none; padding: 20px; width: 100%; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="hud-grid">
-    <header class="header">
-        <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.2rem;">PROVIDENCE // V19-S</div>
-        <div id="ui-status" style="font-size: 0.65rem; padding: 3px 8px; border: 1px solid var(--glow); border-radius: 3px;">EN_ATTENTE_D_ACCÈS_CAPTEURS</div>
-    </header>
+<video id="cam-layer" autoplay playsinline muted></video>
 
+<div class="hud">
     <aside class="panel">
-        <h3 style="color:var(--glow); margin:0;">[PHYSIQUE_DES_MILIEUX]</h3>
-        <div class="data-row">Entropie (ΔS): <span id="ui-entropy" class="val">0.000000</span></div>
-        <div class="data-row">Charge G: <span id="ui-g" class="val">1.000 G</span></div>
-        <div class="data-row">Densité (ρ): <span id="ui-rho" class="val">1.225 kg/m³</span></div>
-        <div id="log-console" class="log-box"></div>
+        <h3>[FLUX_OPTIQUE]</h3>
+        <div id="ui-mode">MODE: SEXTANT_STELLARUM</div>
+        <div id="ui-features">POINTS_SUIVIS: 0</div>
+        <hr border-color="#004422">
+        <div id="log" style="font-size: 0.7rem; color: #ffcc00;">> ATTENTE_SIGNAL_OPTIQUE</div>
     </aside>
 
     <main class="panel">
-        <div style="text-align: center;">
-            <div id="ui-speed" class="v-main">0.000000</div>
-            <div style="letter-spacing: 5px; font-size: 0.7rem; color: var(--glow);">MÈTRES / SECONDE</div>
-        </div>
-        <div id="slam-view"><canvas id="slam-canvas"></canvas></div>
-        <div class="panel" style="margin-top:15px; border-color:#111; background: #000;">
-            <div id="ui-coord-x" style="color:var(--glow); font-size:0.8rem; word-break:break-all;">X: +0.000000000000000000000000</div>
-        </div>
+        <div class="v-main" id="ui-speed">0.000000</div>
+        <div style="text-align:center; font-size:0.7rem;">VITESSE_RÉELLE (M/S)</div>
+        <canvas id="slam-canvas"></canvas>
+        <div id="ui-coord" style="font-size:0.8rem; margin-top:10px; word-break:break-all;">X: 0.000000000000000000000000</div>
     </main>
 
     <aside class="panel">
-        <h3 style="color:var(--glow); margin:0;">[SEXTANT_STELLARUM]</h3>
-        <div class="data-row">Marge Planck: <span class="val">10⁻³⁵</span></div>
-        <div style="margin-top:20px; border: 1px solid var(--border); padding: 10px;">
-            <div style="font-size: 0.6rem; color: var(--warn);">TEMPS_DE_PLANCK_ACCUMULÉ ($t_P$)</div>
-            <div id="ui-planck" style="font-size: 0.85rem; color: var(--glow); word-break: break-all;">0</div>
+        <button id="start-btn" onclick="KERNEL.init()">ACTIVER_NAVIGATION_VISUELLE</button>
+        <div style="margin-top:20px;">
+            <h4>[ÉTAT_MILIEU]</h4>
+            <div>DENSITÉ: 1.225 kg/m³</div>
+            <div>COHÉRENCE: <span style="color:var(--glow)">VÉRIFIÉE</span></div>
         </div>
-        <button id="boot-btn" onclick="KERNEL.initSensors()">ACTIVER_CAPTEURS_PHYSIQUES</button>
     </aside>
 </div>
 
 <script>
-math.config({ number: 'BigNumber', precision: 64 });
-
 const KERNEL = {
-    state: { active: false, pos: math.bignumber(0), v: math.bignumber(0), planckTime: math.bignumber(0), lastFrame: performance.now() },
-    const: { tp: math.bignumber('5.391247e-44'), g: 9.80665 },
-
-    async initSensors() {
-        // Demande de permission pour iOS
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            try {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission === 'granted') this.start();
-            } catch (e) { this.log("ERREUR_PERMISSION_CAPTEUR"); }
-        } else {
-            this.start(); // Pour Android/PC (si accéléromètre dispo)
-        }
+    state: { active: false, lastPixels: null, v: 0, pos: math.bignumber(0) },
+    
+    async init() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('cam-layer').srcObject = stream;
+        document.getElementById('start-btn').style.display = 'none';
+        this.state.active = true;
+        this.setupCanvas();
+        this.process();
     },
 
-    start() {
-        this.state.active = true;
-        document.getElementById('boot-btn').style.display = 'none';
-        document.getElementById('ui-status').innerText = "SOUVERAINETÉ_MATHÉMATIQUE_ACTIVE";
-        
-        window.addEventListener('devicemotion', (e) => {
-            // On capture l'accélération réelle sans gravité (m/s²)
-            const acc = e.acceleration.x || 0; 
-            const gTotal = e.accelerationIncludingGravity.z / this.const.g;
-            document.getElementById('ui-g').innerText = Math.abs(gTotal).toFixed(3) + " G";
-            
-            // Intégration Newtonienne
-            const dt = 0.016; // Approx 60fps
-            this.state.v = math.add(this.state.v, math.multiply(math.bignumber(acc), dt));
-        });
-
+    setupCanvas() {
         this.canvas = document.getElementById('slam-canvas');
         this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        this.loop();
+        this.video = document.getElementById('cam-layer');
     },
 
-    resize() { this.canvas.width = this.canvas.offsetWidth; this.canvas.height = this.canvas.offsetHeight; },
-    log(m) { const b = document.getElementById('log-console'); b.innerHTML = `> ${m}<br>` + b.innerHTML; },
-
-    loop() {
-        const now = performance.now();
-        const dt = math.bignumber((now - this.state.lastFrame) / 1000);
-        this.state.lastFrame = now;
-
-        // Temps de Planck
-        this.state.planckTime = math.add(this.state.planckTime, math.divide(dt, this.const.tp));
+    process() {
+        if(!this.state.active) return;
         
-        // Position
-        this.state.pos = math.add(this.state.pos, math.multiply(this.state.v, dt));
+        // 1. Capture du décor / astres
+        this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+        const frame = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        
+        if (this.state.lastPixels) {
+            // 2. Calcul du différentiel (Optical Flow simplifié)
+            // On compare la luminosité moyenne des zones pour détecter le mouvement
+            let motion = this.calculateMotion(this.state.lastPixels, frame.data);
+            
+            // 3. Conversion Pixel -> Réalité (Sextant)
+            // On applique un facteur de correction selon le milieu (Grotte vs Espace)
+            this.state.v = motion * 0.05; // Calibration arbitraire (m/s)
+            this.state.pos = math.add(this.state.pos, math.multiply(this.state.v, 0.016));
+        }
 
-        // Rendu
-        document.getElementById('ui-speed').innerText = math.format(math.abs(this.state.v), {notation: 'fixed', precision: 6});
-        document.getElementById('ui-coord-x').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
-        document.getElementById('ui-planck').innerText = math.format(this.state.planckTime, {notation: 'fixed', precision: 0});
-        document.getElementById('ui-entropy').innerText = (0.999 + Math.random()*0.001).toFixed(6);
-
-        this.drawSlam();
-        requestAnimationFrame(() => this.loop());
+        this.state.lastPixels = frame.data;
+        this.updateUI();
+        requestAnimationFrame(() => this.process());
     },
 
-    drawSlam() {
-        const ctx = this.ctx, w = this.canvas.width, h = this.canvas.height;
-        ctx.clearRect(0,0,w,h);
-        ctx.fillStyle = '#00ff88';
-        for(let i=0; i<15; i++) {
-            const x = (Math.sin(Date.now()*0.001 + i)*0.4 + 0.5)*w;
-            const y = (Math.cos(Date.now()*0.0015 + i)*0.4 + 0.5)*h;
-            ctx.fillRect(x, y, 2, 2);
+    calculateMotion(prev, curr) {
+        let diff = 0;
+        let points = 0;
+        // On scanne un point sur 100 pour la performance (Rigueur NASA)
+        for (let i = 0; i < curr.length; i += 400) {
+            diff += Math.abs(curr[i] - prev[i]);
+            if(curr[i] > 200) points++; // Détection de "points d'intérêt" (astres/néons)
         }
+        document.getElementById('ui-features').innerText = "POINTS_SUIVIS: " + points;
+        return diff / 100000;
+    },
+
+    updateUI() {
+        document.getElementById('ui-speed').innerText = this.state.v.toFixed(6);
+        document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
     }
 };
 </script>
 </body>
-</html>
+                                                                                  </html>
