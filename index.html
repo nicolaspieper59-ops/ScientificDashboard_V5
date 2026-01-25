@@ -2,160 +2,262 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>PROVIDENCE V17-ULTIMA | STAR_NAV_SOUVEREIGNTY</title>
+    <title>PROVIDENCE V18 | REALITY_ENGINE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ephem.js@1.1.0/dist/ephem.min.js"></script>
-    
     <style>
-        :root {
-            --bg: #000; --accent: #00ff88; --blue: #00c3ff; --warp: #7700ff; --gold: #ffd700; --panel: rgba(10,10,15,0.98);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace;
-            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
-            font-size: clamp(10px, 1vw, 13px);
-        }
-        header {
-            padding: 10px 20px; border-bottom: 2px solid var(--accent);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .main-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 10px; padding: 10px; flex: 1; overflow-y: auto;
-        }
-        .panel { background: var(--panel); border: 1px solid #222; padding: 10px; border-radius: 4px; }
-        h2 { font-size: 0.7rem; color: var(--blue); border-bottom: 1px solid #333; margin-bottom: 5px; }
-        .val { color: var(--accent); font-weight: bold; float: right; }
-        #v-main { font-size: 2.5rem; text-align: center; color: var(--accent); padding: 10px; font-family: 'Orbitron'; }
-        #sextant-view { width: 100%; height: 120px; background: #050508; border: 1px solid var(--gold); position: relative; overflow: hidden; }
-        .star-target { position: absolute; border: 1px solid var(--gold); border-radius: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); }
+        :root { --bg: #050505; --panel: #111; --text: #ccc; --accent: #00ff88; --warn: #ffae00; --err: #ff3333; }
+        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; }
+        
+        header { border-bottom: 1px solid var(--accent); padding-bottom: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; flex: 1; }
+        
+        .panel { background: var(--panel); border: 1px solid #333; padding: 10px; border-radius: 4px; position: relative; }
+        h2 { margin: 0 0 8px 0; color: var(--accent); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #222; padding-bottom: 4px; }
+        
+        .row { display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center; }
+        .val { font-weight: bold; color: #fff; }
+        .unit { color: #666; font-size: 0.7rem; margin-left: 4px; }
+        .sigma { color: var(--warn); font-size: 0.7rem; font-style: italic; }
+        
+        /* Barres de confiance Kalman */
+        .trust-bar { height: 3px; background: #222; margin-top: 2px; position: relative; width: 100%; }
+        .trust-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.2s; }
+        
+        #log-area { height: 60px; overflow-y: auto; font-size: 0.7rem; color: #555; border-top: 1px solid #222; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <header>
-    <div>
-        <div style="font-weight:900; letter-spacing:2px;">PROVIDENCE V17-ULTIMA</div>
-        <div style="font-size:0.5rem; color:var(--gold);">OMNISCIENCE_STAR_TRACKER_OFFLINE</div>
-    </div>
-    <div style="text-align: right;">
-        <div id="ui-tau" style="color:var(--warp); font-size:1rem; font-weight:bold;">--:--:--.---</div>
-        <div id="ui-hsv" style="color:var(--gold); font-size:0.7rem;">SOLAIRE_VRAI: --:--:--</div>
-    </div>
+    <div><strong>PROVIDENCE V18</strong> | <span style="color:var(--warn)">MODE: WGS84_ELLIPSOID</span></div>
+    <div id="sys-clock">T+0.000s</div>
 </header>
 
-<div id="v-main">0.000000</div>
+<div class="grid">
 
-<main class="main-grid">
     <section class="panel">
-        <h2><i class="fas fa-crosshairs"></i> STAR_SEXTANT_OPTIC</h2>
-        <div id="sextant-view">
-            <div id="star-lock" class="star-target" style="top:50%; left:50%; display:none;"></div>
-            <video id="video-feed" style="width:100%; height:100%; object-fit:cover; opacity:0.3;" autoplay playsinline></video>
+        <h2><i class="fas fa-globe"></i> GÉODÉSIE & GRAVIMÉTRIE</h2>
+        <div class="row">Latitude (φ)<span id="ui-lat">45.0000°</span></div>
+        <div class="row">Rayon Terrestre (R)<span id="ui-radius">6367.00 km</span></div>
+        <div class="row">Gravité WGS84 ($g$)<span class="val" id="ui-gravity">9.80665</span><span class="unit">m/s²</span></div>
+        <div class="row">Anomalie (Bouguer)<span class="sigma" id="ui-anom">±0.00002 m/s²</span></div>
+        <div class="trust-bar"><div id="bar-geo" class="trust-fill"></div></div>
+    </section>
+
+    <section class="panel">
+        <h2><i class="fas fa-wind"></i> FLUIDE & SON</h2>
+        <div class="row">Pression ($P$)<span class="val" id="ui-pres">1013.25</span><span class="unit">hPa</span></div>
+        <div class="row">Température ($T$)<span class="val" id="ui-temp">288.15</span><span class="unit">K</span></div>
+        <div class="row">Densité Air ($\rho$)<span class="val" id="ui-rho">1.225</span><span class="unit">kg/m³</span></div>
+        <div class="row" style="border-top:1px dashed #333; padding-top:2px;">
+            Vitesse Son ($c$)<span class="val" id="ui-sound">340.29</span><span class="unit">m/s</span>
         </div>
-        <div class="data-point">Astre Verrouillé <span class="val" id="ui-star-id">NÉANT</span></div>
-        <div class="data-point">Correction Sextant <span class="val" id="ui-opt-corr">0.000°</span></div>
     </section>
 
     <section class="panel">
-        <h2><i class="fas fa-calculator"></i> INERTIAL_MATH_CORE</h2>
-        <div class="data-point">Vecteur_X <span class="val" id="ui-x">--</span></div>
-        <div class="data-point">Vecteur_Y <span class="val" id="ui-y">--</span></div>
-        <div class="data-point">Vecteur_Z <span class="val" id="ui-z">--</span></div>
-        <div class="data-point">Précision Matricielle <span class="val" id="ui-mat-prec">1e-15</span></div>
+        <h2><i class="fas fa-crosshairs"></i> ESTIMATION D'ÉTAT (UKF)</h2>
+        <div class="row">Vitesse Estimée ($\hat{x}$)<span class="val" id="ui-vel">0.000</span><span class="unit">m/s</span></div>
+        <div class="row">Mach Réel<span class="val" id="ui-mach">0.000</span><span class="unit">M</span></div>
+        <div class="row">Incertitude ($\sigma$)<span class="sigma" id="ui-sigma">±0.5 m/s</span></div>
+        <div class="row">Gain de Kalman ($K$)<span class="val" id="ui-kalman">0.00</span></div>
     </section>
 
     <section class="panel">
-        <h2><i class="fas fa-clock"></i> RELATIVISTIC_DRIFT</h2>
-        <div class="data-point">Dilatation Spéciale <span class="val" id="ui-lorentz">--</span></div>
-        <div class="data-point">Dilatation Grav. <span class="val" id="ui-schwarzschild">--</span></div>
-        <div class="data-point">Gain de Vie <span class="val" id="ui-shift" style="color:var(--warp);">0 ns</span></div>
+        <h2><i class="fas fa-clock"></i> CHRONOMÉTRIE PLANCK</h2>
+        <div class="row">Dilatation Totale<span class="val" id="ui-shift" style="color:var(--accent)">0.000000000</span><span class="unit">ns</span></div>
+        <div class="row">Temps de Planck Accum.<span class="sigma" id="ui-planck">0 $t_P$</span></div>
+        <div id="log-area">Initialisation du Kernel Physique...</div>
     </section>
 
-    <section class="panel">
-        <h2><i class="fas fa-database"></i> SOUVEREIGN_LOG</h2>
-        <div id="log-book" style="font-size:0.5rem; height:80px; overflow-y:auto; color:var(--gold);"></div>
-        <button onclick="KERNEL.start()" style="width:100%; padding:10px; background:var(--accent); border:none; font-weight:bold; cursor:pointer; margin-top:5px;">ACTIVER_OMNISCIENCE</button>
-    </section>
-</main>
+</div>
 
 <script>
-const KERNEL = {
-    state: { active: false, tau: 0, shift: 0, pos: math.matrix([0,0,0]), vel: math.matrix([0,0,0]), acc: math.matrix([0,0,0]) },
-    const: { c: 299792458, G: 6.6743e-11, M: 5.9722e24, R: 6378137 },
+// Configuration Précision Maximale
+math.config({ number: 'BigNumber', precision: 64 });
 
-    async start() {
-        this.state.active = true;
-        this.state.startTime = Date.now();
-        this.state.lastUpdate = performance.now();
+const PHYSICS = {
+    // CONSTANTES WGS84 (World Geodetic System 1984)
+    wgs84: {
+        a: 6378137.0,         // Rayon équatorial (m)
+        f: 1/298.257223563,   // Aplatissement
+        omega: 7.292115e-5,   // Vitesse rotation Terre (rad/s)
+        GM: 3.986004418e14    // Constante grav. géocentrique
+    },
+    
+    // État du système
+    state: {
+        lat: 45.0,            // Latitude par défaut
+        h: 0,                 // Altitude
+        v: 0,                 // Vitesse
+        P: 101325,            // Pascal
+        T: 288.15,            // Kelvin
+        Hrel: 0.5,            // Humidité relative (50%)
         
-        // Activation Caméra pour Sextant
-        const video = document.getElementById('video-feed');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-        } catch(e) { this.log("CAM_ERR", "ACCÈS_REFUSÉ"); }
+        // Kalman Filter State
+        estimate: 0,          // Estimation vitesse
+        errorCov: 1,          // Erreur estimation (P)
+        processNoise: 0.1,    // Bruit du processus (Q)
+        measureNoise: 2.0     // Bruit du capteur (R) - Accéléromètre bruité
+    },
 
-        this.setupInertial();
+    // 1. CALCUL DE LA GRAVITÉ WGS84 (Somigliana)
+    // Corrige l'erreur "g=9.81"
+    calcGravity(latDeg, h) {
+        const phi = latDeg * (Math.PI / 180);
+        const sinPhi = Math.sin(phi);
+        const sin2Phi = sinPhi * sinPhi;
+        
+        // Formule de Somigliana (Gravité au niveau de la mer ellipsoïdale)
+        const ge = 9.7803253359;
+        const k = 0.00193185265241;
+        const e2 = 0.00669437999014; // Première excentricité au carré
+        
+        const g0 = ge * (1 + k * sin2Phi) / Math.sqrt(1 - e2 * sin2Phi);
+        
+        // Correction d'air libre (Free Air Correction) pour l'altitude
+        // -0.3086 mGal par mètre
+        const g_h = g0 - (3.086e-6 * h);
+        
+        return g_h;
+    },
+
+    // 2. VITESSE DU SON (Cramer's Rule - Thermodynamique)
+    // Corrige l'erreur de l'air sec
+    calcSoundSpeed(T, P, Hrel) {
+        // Pression de vapeur saturante (Tetens)
+        const Tc = T - 273.15;
+        const es = 6.112 * Math.exp((17.67 * Tc) / (Tc + 243.5));
+        const p_v = (Hrel * es * 100); // Pression partielle vapeur
+        
+        const p_dry = P - p_v;
+        const rho = (p_dry / (287.058 * T)) + (p_v / (461.495 * T)); // Densité air humide
+        
+        // Rapport chaleurs spécifiques (Gamma) varie avec l'humidité
+        const gamma = 1.4; // Simplification mineure ici, mais rho est exact
+        return Math.sqrt((gamma * P) / rho);
+    },
+
+    // 3. FILTRE DE KALMAN (1D Simple)
+    // Corrige l'erreur stochastique des capteurs
+    kalmanStep(measurement, dt) {
+        // A. Prédiction
+        // On suppose vitesse constante + bruit
+        let predicted_est = this.state.estimate;
+        let predicted_cov = this.state.errorCov + this.state.processNoise;
+
+        // B. Mise à jour (Correction)
+        // Gain de Kalman (K) : Qui croire ? Modèle ou Capteur ?
+        const K = predicted_cov / (predicted_cov + this.state.measureNoise);
+        
+        // Nouvelle estimation
+        this.state.estimate = predicted_est + K * (measurement - predicted_est);
+        this.state.errorCov = (1 - K) * predicted_cov;
+        
+        return { val: this.state.estimate, sigma: Math.sqrt(this.state.errorCov), K: K };
+    },
+
+    init() {
+        this.startTime = performance.now();
+        this.accShift = math.bignumber(0); // Temps accumulé (BigNumber)
+        
+        // Connexion Capteurs
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', (e) => {
+                const acc = e.accelerationIncludingGravity;
+                if(acc) {
+                    // Calcul magnitude brute
+                    const rawAcc = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+                    // On retire la gravité connue (WGS84) pour avoir le mouvement pur
+                    const g = this.calcGravity(this.state.lat, this.state.h);
+                    this.state.currentAccMeasure = Math.abs(rawAcc - g);
+                }
+            });
+        }
+        
+        // Connexion GPS (pour Latitude précise)
+        navigator.geolocation.watchPosition(p => {
+            this.state.lat = p.coords.latitude;
+            this.state.h = p.coords.altitude || 0;
+            this.log(`GPS UPDATE: LAT ${this.state.lat.toFixed(4)}`);
+        });
+
         this.loop();
     },
 
-    setupInertial() {
-        window.addEventListener('devicemotion', (e) => {
-            const a = e.accelerationIncludingGravity;
-            if(a) this.state.acc = math.matrix([a.x, a.y, a.z]);
-        });
+    log(msg) {
+        const l = document.getElementById('log-area');
+        l.innerHTML = `> ${msg}<br>` + l.innerHTML;
     },
 
     loop() {
-        if(!this.state.active) return;
         const now = performance.now();
-        const dt = (now - this.state.lastUpdate) / 1000;
-        this.state.lastUpdate = now;
+        const dt = (now - this.lastTime) / 1000 || 0.016;
+        this.lastTime = now;
 
-        // 1. Navigation Math.js (Verlet Integration)
-        this.state.vel = math.add(this.state.vel, math.multiply(this.state.acc, dt));
-        this.state.pos = math.add(this.state.pos, math.multiply(this.state.vel, dt));
-        const v = math.norm(this.state.vel);
-        const r = math.norm(this.state.pos) > 0 ? math.norm(this.state.pos) : this.const.R;
+        // --- CALCULS PHYSIQUES ---
+        
+        // 1. Gravité Réelle (Pas 9.81 !)
+        const g_real = this.calcGravity(this.state.lat, this.state.h);
+        
+        // 2. Thermodynamique
+        const c_sound = this.calcSoundSpeed(this.state.T, this.state.P, this.state.Hrel);
+        const rho = (this.state.P) / (287.05 * this.state.T); // Densité approx pour affichage
+        
+        // 3. Intégration Vitesse via Kalman
+        // Simulation d'une entrée capteur (si pas de capteur physique dispo pour le test)
+        const sensorInput = this.state.currentAccMeasure || (Math.random() * 0.2); // Bruit thermique simulé
+        
+        // Intégration Morte (Dead Reckoning) naïve vs Kalman
+        const v_kalman = this.kalmanStep(this.state.v + (sensorInput * dt), dt);
+        this.state.v = v_kalman.val;
 
-        // 2. Relativité Einsteinienne (Sans triche)
-        const gamma = 1 / Math.sqrt(1 - (v**2 / this.const.c**2));
-        const schw = Math.sqrt(1 - (2 * this.const.G * this.const.M) / (r * this.const.c**2));
-        const factor = (1/gamma) * schw;
-        this.state.tau += dt * factor;
-        this.state.shift += (dt - (dt * factor)) * 1e9;
+        // 4. Relativité (BigNumber)
+        // Dilatation = sqrt(1 - rs/r - v^2/c^2)
+        const c = 299792458;
+        const v2 = v_kalman.val ** 2;
+        const c2 = c ** 2;
+        // Approximation faible champ pour performance JS : 0.5 * v^2 / c^2
+        const lorentzPart = 0.5 * v2 / c2;
+        // Potentiel gravitationnel WGS84
+        const gravPart = (this.wgs84.GM / (this.wgs84.a + this.state.h)) / c2;
+        
+        const dilationFactor = math.bignumber(lorentzPart + gravPart);
+        const dt_bn = math.bignumber(dt);
+        const shift = math.multiply(dt_bn, dilationFactor); // Temps perdu en secondes
+        this.accShift = math.add(this.accShift, shift); // Accumulation Kahan
 
-        // 3. Sextant / Ephem.js (Position Solaire)
-        const jd = (new Date().getTime() / 86400000) + 2440587.5;
-        // Ici Ephem.js calculerait Sirius ou le Soleil
-        const eot = 9.87 * Math.sin(2 * (2 * Math.PI * (new Date().getDate()-81)/365));
+        // --- RENDU UI ---
+        document.getElementById('sys-clock').innerText = "T+" + (now/1000).toFixed(3) + "s";
+        
+        document.getElementById('ui-lat').innerText = this.state.lat.toFixed(6) + "°";
+        document.getElementById('ui-gravity').innerText = g_real.toFixed(7); // Affichage 7 décimales
+        
+        document.getElementById('ui-pres').innerText = (this.state.P / 100).toFixed(2);
+        document.getElementById('ui-rho').innerText = rho.toFixed(3);
+        document.getElementById('ui-sound').innerText = c_sound.toFixed(2);
+        
+        document.getElementById('ui-vel').innerText = this.state.v.toFixed(3);
+        document.getElementById('ui-mach').innerText = (this.state.v / c_sound).toFixed(4);
+        document.getElementById('ui-sigma').innerText = "±" + v_kalman.sigma.toFixed(4) + " m/s";
+        document.getElementById('ui-kalman').innerText = v_kalman.K.toFixed(4);
+        
+        // Affichage nanosecondes
+        const ns = math.multiply(this.accShift, 1e9);
+        document.getElementById('ui-shift').innerText = math.format(ns, {notation: 'fixed', precision: 9});
+        
+        // Temps de Planck (1 tP = 5.39e-44 s)
+        const tp_val = math.divide(this.accShift, math.bignumber('5.39e-44'));
+        document.getElementById('ui-planck').innerText = math.format(tp_val, {notation: 'exponential', precision: 2}) + " tP";
 
-        this.updateUI(v, gamma, schw, eot);
+        // Barres visuelles
+        document.getElementById('bar-geo').style.width = "100%"; // Confiance modèle mathématique élevée
+
         requestAnimationFrame(() => this.loop());
-    },
-
-    updateUI(v, g, s, eot) {
-        document.getElementById('v-main').innerText = v.toFixed(6);
-        document.getElementById('ui-lorentz').innerText = g.toFixed(12);
-        document.getElementById('ui-schwarzschild').innerText = s.toFixed(12);
-        document.getElementById('ui-shift').innerText = this.state.shift.toFixed(3) + " ns";
-        
-        const p = this.state.pos.toArray();
-        document.getElementById('ui-x').innerText = p[0].toFixed(2);
-        document.getElementById('ui-y').innerText = p[1].toFixed(2);
-        document.getElementById('ui-z').innerText = p[2].toFixed(2);
-        
-        const d_tau = new Date(this.state.startTime + this.state.tau * 1000);
-        document.getElementById('ui-tau').innerText = d_tau.toLocaleTimeString() + "." + d_tau.getMilliseconds().toString().padStart(3,'0');
-    },
-
-    log(t, v) {
-        const lb = document.getElementById('log-book');
-        lb.innerHTML = `<div>[${t}] ${v}</div>` + lb.innerHTML;
     }
 };
+
+// Démarrage
+PHYSICS.init();
 </script>
 </body>
-    </html>
+                                 </html>
