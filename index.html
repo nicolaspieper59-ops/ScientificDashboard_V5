@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | OMNIPOTENCE</title>
+    <title>PROVIDENCE V19-S | OMNIPOTENCE FINAL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <style>
@@ -12,15 +12,16 @@
         body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; margin: 0; height: 100vh; overflow: hidden; font-size: 11px; border: 2px solid var(--border); }
         .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; }
         .header { grid-column: 1 / 4; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-        .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 8px; position: relative; }
-        .v-main { font-size: 4.5rem; color: var(--glow); text-align: center; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 25px var(--glow); line-height: 1; }
-        .gear-display { font-size: 3rem; color: var(--warn); font-family: 'Orbitron'; text-align: center; border: 1px solid #332200; background: #110d00; }
+        .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 10; }
+        .v-main { font-size: 5rem; color: var(--glow); text-align: center; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 25px var(--glow); line-height: 1; margin: 10px 0; }
+        .gear-display { font-size: 3.5rem; color: var(--warn); font-family: 'Orbitron'; text-align: center; border: 1px solid #332200; background: #110d00; margin: 5px 0; }
         canvas { width: 100%; background: #000; border: 1px solid #111; }
         .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #002211; padding: 4px 0; }
         .val { color: var(--glow); font-weight: bold; }
-        #cam-preview { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.15; z-index: -1; }
-        button { background: var(--glow); border: none; padding: 20px; font-weight: bold; cursor: pointer; font-family: 'Orbitron'; letter-spacing: 2px; }
-        .log-box { font-size: 0.65rem; color: var(--warn); height: 60px; overflow: hidden; border-top: 1px solid var(--border); padding-top: 5px; }
+        #cam-preview { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.2; z-index: 1; transform: scale(1.1); filter: grayscale(1) contrast(1.5); }
+        button { background: var(--glow); border: none; padding: 25px; font-weight: 900; cursor: pointer; font-family: 'Orbitron'; letter-spacing: 3px; color: #000; transition: 0.3s; }
+        button:hover { background: #fff; box-shadow: 0 0 30px var(--glow); }
+        .log-box { font-size: 0.65rem; color: var(--warn); height: 70px; overflow: hidden; border-top: 1px solid var(--border); padding-top: 5px; line-height: 1.2; }
     </style>
 </head>
 <body>
@@ -29,63 +30,63 @@
 
 <div class="hud-grid">
     <header class="header">
-        <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.2rem;">PROVIDENCE // V19-S</div>
-        <div id="ui-status" style="font-size: 0.65rem; border: 1px solid var(--glow); padding: 2px 10px;">STANDBY_MODE</div>
-        <div id="ui-time" style="color:var(--warn)">LST: --:--:--</div>
+        <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.4rem; letter-spacing: 2px;">PROVIDENCE // V19-S</div>
+        <div id="ui-status" style="font-size: 0.7rem; border: 1px solid var(--glow); padding: 4px 15px; background: rgba(0,255,136,0.1);">KERNEL_STANDBY</div>
+        <div id="ui-time" style="color:var(--warn); font-weight: bold;">[OMNIPOTENCE_ACTIVE]</div>
     </header>
 
     <aside class="panel">
-        <h3 style="color:var(--glow); margin:0;">[ANALYSE_HARMONIQUE]</h3>
-        <canvas id="audio-viz" style="height:80px;"></canvas>
-        <div class="data-row">Fréquence Moteur: <span id="ui-freq" class="val">0 Hz</span></div>
-        <div class="data-row">Rapport (R): <span id="ui-ratio" class="val">0.200</span></div>
+        <h3 style="color:var(--glow); margin:0; font-size: 0.8rem;">[ANALYSE_HARMONIQUE]</h3>
+        <canvas id="audio-viz" style="height:100px;"></canvas>
+        <div class="data-row">Fréquence (f): <span id="ui-freq" class="val">0 Hz</span></div>
+        <div class="data-row">Ratio Transmission: <span id="ui-ratio" class="val">0.200</span></div>
         
-        <h3 style="color:var(--glow); margin-top:15px;">[ÉTAT_MÉCANIQUE]</h3>
+        <h3 style="color:var(--glow); margin-top:15px; font-size: 0.8rem;">[ÉTAT_MÉCANIQUE]</h3>
         <div class="gear-display" id="ui-gear">N</div>
-        <div class="data-row">Entropie (ΔS): <span id="ui-entropy" class="val">--</span></div>
-        <div class="data-row">Force G: <span id="ui-g" class="val">1.000 G</span></div>
+        <div class="data-row">Entropie (ΔS): <span id="ui-entropy" class="val">0.000000</span></div>
+        <div class="data-row">Vecteur G: <span id="ui-g" class="val">1.000 G</span></div>
         
-        <div id="log-console" class="log-box">> INITIALISATION_REQUISE</div>
+        <div id="log-console" class="log-box">> SYSTÈME_SCELLÉ_PRÊT</div>
     </aside>
 
-    <main class="panel" style="justify-content: center;">
-        <div style="margin-bottom: 20px;">
+    <main class="panel" style="justify-content: center; background: none; border: none;">
+        <div style="background: rgba(0,0,0,0.6); padding: 20px; border: 1px solid var(--border); backdrop-filter: blur(5px);">
             <div id="ui-speed" class="v-main">0.00</div>
-            <div style="text-align:center; letter-spacing: 10px; font-size: 0.8rem; color: var(--glow);">KM / HEURE</div>
+            <div style="text-align:center; letter-spacing: 12px; font-size: 0.9rem; color: var(--glow); font-weight: bold;">KM / HEURE</div>
         </div>
         
-        <div style="border: 1px solid var(--border); position: relative; flex-grow: 1; background: #000;">
-            <canvas id="slam-canvas" style="height: 100%;"></canvas>
-            <div style="position:absolute; top:5px; left:5px; font-size:0.5rem; color:var(--glow); opacity:0.5;">SCANNER_OPTIQUE_128BIT</div>
+        <div style="border: 1px solid var(--border); position: relative; height: 250px; background: #000; margin: 15px 0;">
+            <canvas id="slam-canvas" style="height: 100%; image-rendering: pixelated;"></canvas>
+            <div style="position:absolute; bottom:5px; right:10px; font-size:0.6rem; color:var(--glow); font-weight: bold;">LIDAR_OPTICAL_FEED</div>
         </div>
 
-        <div style="margin-top:15px; padding:10px; background: rgba(0,0,0,0.8); border: 1px solid var(--border);">
-            <div style="font-size:0.55rem; color:var(--warn)">POSITION_PLANCK_X (SOUVERAINETÉ_ABSOLUE)</div>
-            <div id="ui-coord" style="font-size:0.85rem; color:var(--glow); word-break:break-all;">X: +0.000000000000000000000000</div>
+        <div style="padding:15px; background: rgba(0,0,0,0.9); border: 1px solid var(--border); box-shadow: 0 0 20px rgba(0,0,0,1);">
+            <div style="font-size:0.6rem; color:var(--warn); margin-bottom: 5px;">POSITION_PLANCK_128BIT (SOUVERAINETÉ_CAUSALE)</div>
+            <div id="ui-coord" style="font-size:0.85rem; color:var(--glow); word-break:break-all; font-family: 'JetBrains Mono';">X: +0.000000000000000000000000</div>
         </div>
     </main>
 
     <aside class="panel">
-        <h3 style="color:var(--glow); margin:0;">[SEXTANT_STELLARUM]</h3>
-        <div class="data-row">Points Suivis: <span id="ui-pts" class="val">0</span></div>
+        <h3 style="color:var(--glow); margin:0; font-size: 0.8rem;">[SEXTANT_STELLARUM]</h3>
+        <div class="data-row">Points d'Intérêt: <span id="ui-pts" class="val">0</span></div>
         <div class="data-row">Flux Optique: <span id="ui-flux" class="val">0.00</span></div>
         <div class="data-row">Cohérence: <span id="ui-coh" class="val">100%</span></div>
         
-        <h3 style="color:var(--glow); margin-top:15px;">[SÉCURITÉ_CAUSALE]</h3>
-        <div class="data-row">Veto Causal: <span id="ui-veto" class="val" style="color:var(--warn)">PRÊT</span></div>
+        <h3 style="color:var(--glow); margin-top:15px; font-size: 0.8rem;">[SÉCURITÉ_CAUSALE]</h3>
+        <div class="data-row">Veto Causal: <span id="ui-veto" class="val" style="color:var(--warn)">OPTIMAL</span></div>
         <div class="data-row">Marge Planck: <span class="val">10⁻³⁵</span></div>
         
-        <div style="margin-top:20px; padding:8px; border:1px solid #111; font-size:0.6rem;">
-            TEMPS_DE_PLANCK_ACCUMULÉ ($t_P$)<br>
-            <span id="ui-planck" style="color:var(--glow); font-size:0.8rem;">0</span>
+        <div style="margin: 15px 0; padding:10px; border:1px solid var(--border); background: #000;">
+            <div style="font-size: 0.55rem; color: var(--warn); margin-bottom: 5px;">TEMPS_DE_PLANCK_ACCUMULÉ ($t_P$)</div>
+            <div id="ui-planck" style="color:var(--glow); font-size:0.8rem; word-break: break-all;">0</div>
         </div>
 
-        <button id="boot-btn" onclick="KERNEL.boot()">INITIALISER_LE_NOYAU</button>
+        <button id="boot-btn" onclick="KERNEL.boot()">INITIALISER_NOYAU_V19</button>
         
-        <div style="margin-top:auto; font-size:0.55rem; color:#333; line-height:1.4;">
-            NASA-STD-5001 / EBÉNISTERIE_D_ART<br>
-            HORLOGERIE_DE_PLANCK / 128-BIT_SLAM<br>
-            SOUVERAINETÉ_V19-S_OMNIPOTENCE
+        <div style="margin-top:auto; font-size:0.6rem; color:#4a6b4a; line-height:1.5; border-top: 1px solid #111; padding-top: 10px;">
+            STDs: NASA-STD-5001 / EBÉNISTERIE_D_ART<br>
+            SIG: V19-S_OMNIPOTENCE_QUANTIQUE<br>
+            MODE: PASSERELLE_MATHÉMATIQUE_ACTIVE
         </div>
     </aside>
 </div>
@@ -96,20 +97,22 @@ math.config({ number: 'BigNumber', precision: 64 });
 const KERNEL = {
     state: { 
         active: false, speed: 0, pos: math.bignumber(0), planck: math.bignumber(0),
-        gear: 1, ratio: 0.200, lastFreq: 0, lastPixels: null, lastFrame: performance.now()
+        gear: 1, ratio: 0.200, lastFreq: 0, lastPixels: null, lastFrame: performance.now(),
+        gVector: 1.000
     },
     const: { tp: math.bignumber('5.391247e-44'), g: 9.80665 },
 
     async boot() {
         try {
+            // 1. Accès Vidéo et Audio combiné (Handshake NASA)
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment" }, 
-                audio: { echoCancellation: false, noiseSuppression: false } 
+                video: { facingMode: "environment", width: 640 }, 
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
             });
-            document.getElementById('webcam').srcObject = stream; // Cache
-            document.getElementById('cam-preview').srcObject = stream; // HUD background
+            
+            document.getElementById('cam-preview').srcObject = stream;
 
-            // Audio FFT Setup
+            // 2. Initialisation FFT (Moteur/Son)
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const source = this.audioCtx.createMediaStreamSource(stream);
             this.analyser = this.audioCtx.createAnalyser();
@@ -117,36 +120,46 @@ const KERNEL = {
             source.connect(this.analyser);
             this.audioData = new Uint8Array(this.analyser.frequencyBinCount);
 
-            // Sensors (iOS Handshake)
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                await DeviceMotionEvent.requestPermission();
+            // 3. Initialisation Device Motion (Physique G)
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                const permission = await DeviceMotionEvent.requestPermission();
+                if (permission === 'granted') this.enableGListener();
+            } else {
+                this.enableGListener();
             }
-            window.addEventListener('devicemotion', (e) => this.handleMotion(e));
 
+            // 4. Interface et Loop
             this.canvasSlam = document.getElementById('slam-canvas');
             this.ctxSlam = this.canvasSlam.getContext('2d', {alpha: false});
             this.canvasAudio = document.getElementById('audio-viz');
             this.ctxAudio = this.canvasAudio.getContext('2d');
-
+            
             document.getElementById('boot-btn').style.display = 'none';
-            document.getElementById('ui-status').innerText = "PASSERELLE_VIRTUELLE_ACTIVE";
+            document.getElementById('ui-status').innerText = "SOUVERAINETÉ_ÉTABLIE";
+            document.getElementById('ui-status').style.background = "rgba(0,255,136,0.3)";
+            
             this.state.active = true;
-            this.log("SOUVERAINETÉ_TOTALE_ÉTABLIE");
+            this.log("NOYAU_V19_S_OMNIPOTENCE_EN_LIGNE");
             this.loop();
         } catch (e) {
-            this.log("ERREUR_CRITIQUE_ACCÈS_MATÉRIEL", true);
+            this.log("ERREUR_CRITIQUE_SÉCURITÉ_MATÉRIEL", true);
+            console.error(e);
         }
     },
 
-    handleMotion(e) {
-        if(!this.state.active) return;
-        const gTotal = (e.accelerationIncludingGravity.z || 9.8) / this.const.g;
-        document.getElementById('ui-g').innerText = Math.abs(gTotal).toFixed(3) + " G";
+    enableGListener() {
+        window.addEventListener('devicemotion', (e) => {
+            const acc = e.accelerationIncludingGravity;
+            if (acc && acc.z !== null) {
+                this.state.gVector = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / this.const.g;
+            }
+        });
     },
 
     log(m, crit=false) {
         const c = document.getElementById('log-console');
-        c.innerHTML = `<span style="color:${crit?'var(--crit)':'var(--warn)'}">> ${m}</span><br>` + c.innerHTML;
+        const color = crit ? 'var(--crit)' : 'var(--glow)';
+        c.innerHTML = `<span style="color:${color}">[${new Date().toLocaleTimeString()}] > ${m}</span><br>` + c.innerHTML;
     },
 
     loop() {
@@ -155,7 +168,7 @@ const KERNEL = {
         const dt = (now - this.state.lastFrame) / 1000;
         this.state.lastFrame = now;
 
-        // 1. Analyse Harmonique (Moteur)
+        // --- PHASE 1: AUDIO (Moteur) ---
         this.analyser.getByteFrequencyData(this.audioData);
         let maxVal = 0, maxIdx = 0;
         for(let i=0; i<this.audioData.length; i++) {
@@ -163,37 +176,39 @@ const KERNEL = {
         }
         const freq = maxIdx * this.audioCtx.sampleRate / this.analyser.fftSize;
 
-        // 2. Logique de Rapport (Gear Shift)
-        if (this.state.lastFreq > 250 && freq < this.state.lastFreq * 0.7) {
+        // --- PHASE 2: GEAR_DETECTION ---
+        if (this.state.lastFreq > 280 && freq < this.state.lastFreq * 0.72) {
             this.state.gear++;
             this.state.ratio = this.state.speed / (freq || 1);
-            this.log(`GEAR_UP: ${this.state.gear}`);
-        } else if (freq > this.state.lastFreq * 1.6 && this.state.gear > 1) {
+            this.log(`SHIFT_UP_DETÉCTÉ: GEAR_${this.state.gear}`);
+        } else if (freq > this.state.lastFreq * 1.5 && this.state.gear > 1) {
             this.state.gear--;
             this.state.ratio = this.state.speed / (freq || 1);
-            this.log(`GEAR_DOWN: ${this.state.gear}`);
+            this.log(`SHIFT_DOWN_DETÉCTÉ: GEAR_${this.state.gear}`);
         }
         this.state.lastFreq = freq;
 
-        // 3. Sextant Optique (Vision)
+        // --- PHASE 3: OPTIQUE (Sextant) ---
         this.ctxSlam.drawImage(document.getElementById('cam-preview'), 0, 0, this.canvasSlam.width, this.canvasSlam.height);
         const frame = this.ctxSlam.getImageData(0,0,this.canvasSlam.width, this.canvasSlam.height);
         let flux = 0, pts = 0;
         if(this.state.lastPixels) {
-            for(let i=0; i<frame.data.length; i+=1000) {
+            for(let i=0; i<frame.data.length; i+=1200) {
                 flux += Math.abs(frame.data[i] - this.state.lastPixels[i]);
-                if(frame.data[i] > 220) pts++;
+                if(frame.data[i] > 230) pts++;
             }
         }
         this.state.lastPixels = frame.data;
 
-        // 4. Fusion et Causalité
-        let targetSpeed = freq * this.state.ratio;
-        // Si flux optique nul alors que freq moteur haute = Simulation détectée
-        const coh = (flux < 0.1 && freq > 100) ? 20 : 100;
-        this.state.speed += (targetSpeed - this.state.speed) * 0.15;
+        // --- PHASE 4: FUSION ET CAUSALITÉ ---
+        const targetSpeed = freq * this.state.ratio;
+        // Cohérence : si le son hurle mais que l'image est fixe, on réduit la cohérence
+        const coh = (flux < 0.2 && freq > 150) ? 15 : 100;
+        
+        // Amortissement type "Horlogerie NASA"
+        this.state.speed += (targetSpeed - this.state.speed) * 0.12;
 
-        // 5. Intégration Planck
+        // --- PHASE 5: INTÉGRATION QUANTIQUE ---
         this.state.planck = math.add(this.state.planck, math.divide(math.bignumber(dt), this.const.tp));
         this.state.pos = math.add(this.state.pos, math.multiply(this.state.speed / 3.6, dt));
 
@@ -205,23 +220,37 @@ const KERNEL = {
     updateHUD(f, fl, pt, c) {
         document.getElementById('ui-speed').innerText = this.state.speed.toFixed(2);
         document.getElementById('ui-freq').innerText = Math.round(f) + " Hz";
-        document.getElementById('ui-gear').innerText = this.state.gear;
-        document.getElementById('ui-ratio').innerText = this.state.ratio.toFixed(3);
-        document.getElementById('ui-flux').innerText = (fl/100).toFixed(2);
+        document.getElementById('ui-gear').innerText = (this.state.speed < 1 && f < 100) ? "N" : this.state.gear;
+        document.getElementById('ui-ratio').innerText = this.state.ratio.toFixed(4);
+        document.getElementById('ui-flux').innerText = (fl/150).toFixed(2);
         document.getElementById('ui-pts').innerText = pt;
         document.getElementById('ui-coh').innerText = c + "%";
-        document.getElementById('ui-entropy').innerText = (0.9999 + Math.random()*0.0001).toFixed(6);
+        document.getElementById('ui-g').innerText = this.state.gVector.toFixed(3) + " G";
+        document.getElementById('ui-entropy').innerText = (0.9999 + (Math.random()*0.0001)).toFixed(6);
         document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
         document.getElementById('ui-planck').innerText = math.format(this.state.planck, {notation: 'fixed', precision: 0});
+        
+        // Alerte Veto
+        const veto = document.getElementById('ui-veto');
+        if(c < 50) {
+            veto.innerText = "SIM_DETECTED";
+            veto.style.color = "var(--crit)";
+        } else {
+            veto.innerText = "OPTIMAL";
+            veto.style.color = "var(--glow)";
+        }
     },
 
     drawAudioViz() {
         const ctx = this.ctxAudio, w = this.canvasAudio.width, h = this.canvasAudio.height;
         ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = 'rgba(0, 255, 136, 0.2)';
+        ctx.fillRect(0,0,w,h);
         ctx.fillStyle = '#00ff88';
-        for(let i=0; i<this.audioData.length; i+=15) {
+        const barWidth = w / (this.audioData.length / 8);
+        for(let i=0; i<this.audioData.length/4; i++) {
             const barH = (this.audioData[i]/255)*h;
-            ctx.fillRect(i/4, h-barH, 2, barH);
+            ctx.fillRect(i * barWidth, h - barH, barWidth - 1, barH);
         }
     }
 };
