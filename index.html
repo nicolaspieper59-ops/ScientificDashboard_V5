@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | CARROUSEL COSMIQUE</title>
+    <title>PROVIDENCE V19-S | SINGULARITY FINAL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <style>
         :root { --glow: #00ff88; --bg: #050705; --warn: #ffcc00; --crit: #ff0044; --panel: rgba(10, 15, 10, 0.98); --border: #004422; --text: #e0ffe0; }
         * { box-sizing: border-box; -webkit-user-select: none; touch-action: none; }
         body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; margin: 0; height: 100vh; overflow: hidden; border: 2px solid var(--border); font-size: 11px; }
-        .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; }
+        .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; position: relative; z-index: 2; }
         .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; backdrop-filter: blur(15px); }
         .v-main { font-size: 5rem; color: var(--glow); text-align: center; font-family: 'Orbitron'; text-shadow: 0 0 25px var(--glow); line-height: 1; margin: 10px 0; }
         #cam-preview { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.15; z-index: 1; filter: grayscale(1) contrast(1.2); }
         canvas { background: #000; border: 1px solid #111; width: 100%; image-rendering: pixelated; }
         .val { color: var(--glow); font-weight: bold; }
         button { background: var(--glow); border: none; padding: 25px; font-weight: 900; cursor: pointer; font-family: 'Orbitron'; width: 100%; color: #000; letter-spacing: 2px; }
-        .log-box { font-size: 0.65rem; color: var(--warn); height: 80px; overflow: hidden; border-top: 1px solid var(--border); margin-top: auto; padding-top: 5px; line-height: 1.2; }
+        .log-box { font-size: 0.65rem; color: var(--warn); height: 100px; overflow-y: auto; border-top: 1px solid var(--border); margin-top: auto; padding-top: 5px; line-height: 1.2; font-family: 'JetBrains Mono'; }
         #horizon { height: 60px; border: 1px solid var(--border); position: relative; overflow: hidden; background: #001100; margin-bottom: 5px;}
         #horizon-line { position: absolute; width: 200%; height: 2px; background: var(--glow); top: 50%; left: -50%; transition: transform 0.1s linear; }
         .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #002211; padding: 4px 0; }
@@ -30,8 +30,7 @@
 <div class="hud-grid">
     <header style="grid-column: 1/4; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px;">
         <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.4rem; letter-spacing: 2px;">PROVIDENCE // V19-S</div>
-        <div id="ui-status" style="font-size: 0.7rem; border: 1px solid var(--glow); padding: 4px 15px; background: rgba(0,255,136,0.1);">CARROUSEL_STANDBY</div>
-        <div id="ui-time" style="color:var(--warn); font-weight: bold;">[SIMULATION_ACTIVE]</div>
+        <div id="ui-status" style="font-size: 0.7rem; border: 1px solid var(--glow); padding: 4px 15px; background: rgba(0,255,136,0.1);">NUCLEUS_STANDBY</div>
     </header>
 
     <aside class="panel">
@@ -39,23 +38,24 @@
         <div id="horizon"><div id="horizon-line"></div></div>
         <div class="data-row">G-VECTOR: <span id="ui-g" class="val">1.000</span></div>
         <div class="data-row">CHAOS (λ): <span id="ui-chaos" class="val">0.000</span></div>
+        <div class="data-row">SISMIQUE: <span id="ui-s-wave" class="val">CLEAR</span></div>
         
-        <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[ANALYSE_HARMONIQUE]</h3>
+        <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[AUDIO_FFT]</h3>
         <canvas id="audio-viz" style="height:80px;"></canvas>
-        <div id="ui-freq" class="val" style="text-align: center;">0 Hz</div>
+        <div id="ui-freq" class="val" style="text-align: center; margin-top: 5px;">0 Hz</div>
         
-        <div id="log-console" class="log-box">> PRÊT_POUR_CARROUSEL_COSMIQUE</div>
+        <div id="log-console" class="log-box">> SYSTEM_READY_FOR_BOOT</div>
     </aside>
 
     <main class="panel" style="background: none; border: none; justify-content: center;">
-        <div style="background: rgba(0,0,0,0.7); padding: 20px; border: 1px solid var(--border); box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+        <div style="background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid var(--border); box-shadow: 0 0 30px rgba(0,255,136,0.2);">
             <div id="ui-speed" class="v-main">0.00</div>
             <div style="text-align:center; letter-spacing: 12px; font-size: 0.9rem; color: var(--glow); font-weight: bold;">KM / HEURE</div>
         </div>
         
         <div style="border: 1px solid var(--border); position: relative; height: 200px; background: #000; margin: 15px 0;">
             <canvas id="slam-canvas" style="height: 100%; width: 100%;"></canvas>
-            <div style="position:absolute; bottom:5px; right:10px; font-size:0.6rem; color:var(--glow); font-weight: bold;">SEXTANT_OPTICAL_FEED (simulé)</div>
+            <div id="ui-env-tag" style="position:absolute; top:5px; left:10px; font-size:0.6rem; color:var(--warn); background:rgba(0,0,0,0.8); padding:2px 5px;">ENV: UNKNOWN</div>
         </div>
 
         <div style="padding:10px; background: rgba(0,0,0,0.9); border: 1px solid var(--border);">
@@ -66,21 +66,21 @@
 
     <aside class="panel">
         <h3 style="color:var(--glow); font-size: 0.8rem;">[CHRONOS_QUANTIQUE]</h3>
-        <div id="ui-planck" style="font-size: 0.75rem; word-break: break-all; color: var(--warn);">0</div>
+        <div id="ui-planck" style="font-size: 0.7rem; word-break: break-all; color: var(--warn); line-height: 1;">0</div>
         
-        <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[PARAMÈTRES_SIMULATION]</h3>
-        <div class="data-row">ASTRES_DÉTECTÉS: <span id="ui-pts" class="val">0</span></div>
+        <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[SEXTANT_DATA]</h3>
+        <div class="data-row">ASTRES: <span id="ui-pts" class="val">0</span></div>
         <div class="data-row">COHÉRENCE: <span id="ui-coh" class="val">100%</span></div>
-        <div class="data-row">MODE: <span id="ui-mode" class="val" style="color:var(--warn);">CARROUSEL</span></div>
+        <div class="data-row">VETO_CAUSAL: <span id="ui-veto" class="val">ACTIVE</span></div>
         
         <div style="margin-top: auto;">
-            <button id="boot-btn" onclick="KERNEL.boot()">INITIER_CARROUSEL_COSMIQUE</button>
+            <button id="boot-btn" onclick="KERNEL.boot()">INIT_SINGULARITY</button>
         </div>
         
-        <div style="margin-top:10px; font-size:0.55rem; color:#4a6b4a; line-height:1.2;">
-            SIM_PROTOCOL_001.2 ACTIVE<br>
-            SIGNAL: CARROUSEL_COSMIC<br>
-            MODE: METAPHYSICAL_OBSERVATION
+        <div style="margin-top:10px; font-size:0.5rem; color:#4a6b4a; line-height:1.2;">
+            SOUVERAINETÉ_DATA_V19-S<br>
+            MODE: MULTI_ENVIRONMENT_ADAPTIVE<br>
+            PRECISION: 64-BIT_FLOATING_PLANCK
         </div>
     </aside>
 </div>
@@ -93,10 +93,7 @@ const KERNEL = {
         active: false, speed: 0, pos: math.bignumber(0), planck: math.bignumber(0),
         lastFrame: performance.now(), ratio: 0.22, lastFreq: 0, chaos: 0,
         gVector: 1.000, lastGV: 1.000,
-        // Nouveau : pour la détection Sismique / Résonance
-        vibrationThreshold: 0.05, // Seuil de G pour détecter une vibration significative
-        // Nouveau : pour la réfraction de la glace
-        currentEnvironment: "CARROUSEL" 
+        vibrationDelta: 0, lastPixels: null
     },
     const: { 
         invTp: math.divide(math.bignumber(1), math.bignumber('5.391247e-44')),
@@ -104,13 +101,14 @@ const KERNEL = {
     },
 
     async boot() {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            const permission = await DeviceMotionEvent.requestPermission();
+            if (permission !== 'granted') return this.log("PERMISSION_MOTION_DENIED", true);
+        }
+
         try {
-            this.log("INIT_SÉQUENCE_ALPHA...");
             if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
-            
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment" }, audio: true 
-            });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
             document.getElementById('cam-preview').srcObject = stream;
 
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -121,50 +119,47 @@ const KERNEL = {
 
             window.addEventListener('devicemotion', (e) => this.handlePhysics(e));
 
-            this.ctxSlam = document.getElementById('slam-canvas').getContext('2d');
-            this.ctxAudio = document.getElementById('audio-viz').getContext('2d');
+            this.canvasSlam = document.getElementById('slam-canvas');
+            this.ctxSlam = this.canvasSlam.getContext('2d');
+            this.canvasAudio = document.getElementById('audio-viz');
+            this.ctxAudio = this.canvasAudio.getContext('2d');
 
             document.getElementById('boot-btn').style.display = 'none';
-            document.getElementById('ui-status').innerText = "CARROUSEL_ACTIVE";
-            document.getElementById('ui-mode').innerText = this.state.currentEnvironment;
+            document.getElementById('ui-status').innerText = "SINGULARITY_ACTIVE";
             this.state.active = true;
-            this.log("V19-S_CARROUSEL_COSMIQUE_ONLINE");
+            this.log("CORE_V19_S_ONLINE");
             this.loop();
-        } catch (e) { this.log("ERREUR_CRITIQUE_INITIALISATION", true); console.error(e); }
+        } catch (e) { this.log("BOOT_FAILED: CHECK_HTTPS", true); }
     },
 
     handlePhysics(e) {
+        if (!this.state.active) return;
         const acc = e.accelerationIncludingGravity;
         if (!acc) return;
         
-        // Calcul de la Magnitude G
-        const gV = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / this.const.g;
-        document.getElementById('ui-g').innerText = gV.toFixed(3);
+        this.state.gVector = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / this.const.g;
+        this.state.vibrationDelta = Math.abs(this.state.gVector - this.state.lastGV);
         
-        // DÉTECTION SISMIQUE / RÉSONANCE (pour pierre, boîte, glace, explosion)
-        const vibrationDelta = Math.abs(gV - this.state.lastGV);
-        if (vibrationDelta > this.state.vibrationThreshold && this.state.speed < 0.5) { // Si mouvement très faible mais vibration forte
-             this.log(`RESONANCE_DETECTED | ΔG:${vibrationDelta.toFixed(3)}`, false);
-             // Le système interprète la vibration comme une information de mouvement "interne"
-             this.state.chaos += vibrationDelta * 5; // Simule plus de chaos pour confirmer la vibration
-        }
-        this.state.lastGV = gV; // Mettre à jour pour le calcul de vibrationDelta au prochain frame
-
-        // Horizon Artificiel (physique)
+        // MAJ HUD PHYSIQUE
+        document.getElementById('ui-g').innerText = this.state.gVector.toFixed(3);
         const roll = Math.atan2(acc.x, acc.z) * (180/Math.PI);
         document.getElementById('horizon-line').style.transform = `rotate(${roll}deg)`;
 
-        // Protection contre les surcharges (Explosions)
-        if (gV > 15.0) {
-            this.log("KINETIC_OVERLOAD_DETECTED_SIMULATED", true);
-            this.state.ratio = this.state.ratio * 0.5; // Ajustement d'urgence
+        // DÉTECTION SISMIQUE (Pierre / Solide / Explosion)
+        if (this.state.vibrationDelta > 0.05) {
+            document.getElementById('ui-s-wave').innerText = "DETECTED";
+            document.getElementById('ui-s-wave').style.color = "var(--crit)";
+            if(this.state.vibrationDelta > 0.5) this.log("SHOCKWAVE_OR_IMPACT", true);
+        } else {
+            document.getElementById('ui-s-wave').innerText = "CLEAR";
+            document.getElementById('ui-s-wave').style.color = "var(--glow)";
         }
+        this.state.lastGV = this.state.gVector;
     },
 
     log(m, crit=false) {
         const c = document.getElementById('log-console');
         c.innerHTML = `<span style="color:${crit?'var(--crit)':'var(--warn)'}">> ${m}</span><br>` + c.innerHTML;
-        c.scrollTop = c.scrollHeight; // Scroll to bottom
     },
 
     loop() {
@@ -174,88 +169,63 @@ const KERNEL = {
         if (dt > 0.1 || dt <= 0) dt = 0.016; 
         this.state.lastFrame = now;
 
-        // 1. ANALYSE HARMONIQUE (Microphone du manège ou environnement)
+        // 1. ANALYSE HARMONIQUE
         this.analyser.getByteFrequencyData(this.audioData);
         let max = 0, idx = 0;
         for(let i=0; i<this.audioData.length; i++) { if(this.audioData[i] > max) { max = this.audioData[i]; idx = i; } }
         const freq = idx * this.audioCtx.sampleRate / this.analyser.fftSize;
-        document.getElementById('ui-freq').innerText = Math.round(freq) + " Hz";
 
-        // 2. MESURE DU CHAOS (Lyapunov approx)
-        this.state.chaos += Math.abs(freq - this.state.lastFreq) * dt * 0.1; // Diminuer l'impact pour simuler le mouvement du manège
-        this.state.chaos = Math.max(0, this.state.chaos - 0.01 * dt); // Dissipation lente
-        this.state.lastFreq = freq;
-        document.getElementById('ui-chaos').innerText = this.state.chaos.toFixed(4);
-
-        // 3. SEXTANT (Visual Tracking - ici, le "faux décor" ou le mouvement relatif)
+        // 2. SEXTANT & ENVIRONNEMENT
         this.ctxSlam.drawImage(document.getElementById('cam-preview'), 0, 0, this.canvasSlam.width, this.canvasSlam.height);
         const imgData = this.ctxSlam.getImageData(0,0,this.canvasSlam.width, this.canvasSlam.height);
         let pts = 0;
-        let opticalFlow = 0; // Calcul du "défilement des étoiles"
-        // Nous allons simuler des "étoiles" en détectant des points lumineux sur le faux décor
-        for(let i=0; i<imgData.data.length; i+=Math.floor(imgData.data.length/50)) { // Échantillonner moins pour les performances
-            if(imgData.data[i] > 200) { // Détecte les pixels lumineux
-                pts++;
-                // Simule un flux optique en fonction du mouvement global (à raffiner)
-                if (this.state.lastPixels && i < this.state.lastPixels.length) {
-                    opticalFlow += Math.abs(imgData.data[i] - this.state.lastPixels[i]);
-                }
-            }
-        }
-        this.state.lastPixels = imgData.data; // Conserver pour le prochain calcul de flux
+        for(let i=0; i<imgData.data.length; i+=1000) { if(imgData.data[i] > 200) pts++; }
 
-        // COHÉRENCE (Dépend du Chaos et de la détection visuelle)
-        let coherence = 100 - (this.state.chaos * 20); // Plus de chaos = moins de cohérence
-        if (pts < 5 && opticalFlow < 1000) coherence -= 50; // Si le décor est trop uniforme
-        coherence = Math.max(0, Math.min(100, coherence));
-        document.getElementById('ui-coh').innerText = Math.round(coherence) + "%";
-        document.getElementById('ui-pts').innerText = pts;
+        // DÉTECTION D'ENVIRONNEMENT (Logique adaptative)
+        let env = "OPEN_SPACE";
+        if (pts < 2 && freq < 10) env = "VOID_OR_ENCLOSURE";
+        if (this.state.vibrationDelta > 0.1 && pts < 5) env = "MUD_OR_SAND";
+        if (freq > 2000) env = "ATMOSPHERIC_FRICTION";
+        document.getElementById('ui-env-tag').innerText = "ENV: " + env;
 
-        // 4. INTÉGRATION SOUVERAINE (Le cœur de la simulation)
-        // La vitesse est maintenant une fonction du mouvement ressenti (G-Vector) et du son du manège
-        const perceivedMovement = (Math.abs(this.state.gVector - 1.0) * 100) + (freq * 0.05); // Intensité du mouvement
-        const targetSpeed = perceivedMovement * this.state.ratio * (coherence / 100); // Cohérence modère la vitesse perçue
+        // 3. VETO CAUSAL & CALCUL VITESSE
+        // Si mouvement visuel (pts) sans mouvement physique (G), Veto s'active (Holodeck/Cinéma)
+        const visualMotion = pts > 20 ? 1 : 0.1;
+        const physicalMotion = Math.abs(this.state.gVector - 1.0) > 0.02 ? 1 : 0.01;
+        const coherence = (visualMotion * physicalMotion) * 100;
+        document.getElementById('ui-coh').innerText = Math.min(100, coherence).toFixed(0) + "%";
+
+        const target = (freq * this.state.ratio) * (coherence / 100);
+        this.state.speed += (target - this.state.speed) * 0.1;
         
-        this.state.speed += (targetSpeed - this.state.speed) * 0.15; // Lissage plus réactif
-        
-        // Intégration de Planck (toujours absolue)
+        // 4. INTÉGRATION PLANCK & POSITION X
         const dPlanck = math.multiply(math.bignumber(dt), this.const.invTp);
         this.state.planck = math.add(this.state.planck, dPlanck);
-        
-        // Position X (intégrée à partir de la vitesse simulée)
         this.state.pos = math.add(this.state.pos, math.multiply(this.state.speed/3.6, dt));
 
-        this.updateHUD();
+        this.updateHUD(freq, pts);
+        this.drawViz();
         requestAnimationFrame(() => this.loop());
     },
 
-    updateHUD() {
+    updateHUD(f, pts) {
         document.getElementById('ui-speed').innerText = this.state.speed.toFixed(2);
+        document.getElementById('ui-freq').innerText = Math.round(f) + " Hz";
+        document.getElementById('ui-pts').innerText = pts;
         document.getElementById('ui-planck').innerText = math.format(this.state.planck, {notation: 'fixed', precision: 0});
         document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 15});
-        document.getElementById('ui-g').innerText = this.state.gVector.toFixed(3);
-        // Horizon n'est pas mis à jour ici car il est fait dans handlePhysics
+    },
+
+    drawViz() {
+        const ctx = this.ctxAudio, w = this.canvasAudio.width, h = this.canvasAudio.height;
+        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = '#00ff88';
+        for(let i=0; i<this.audioData.length; i+=10) {
+            const v = this.audioData[i] / 255 * h;
+            ctx.fillRect(i * (w/this.audioData.length)*10, h-v, 5, v);
+        }
     }
 };
-
-// Dessin de l'analyseur audio
-function drawAudioViz() {
-    requestAnimationFrame(drawAudioViz);
-    if (!KERNEL.state.active || !KERNEL.analyser) return;
-
-    KERNEL.analyser.getByteFrequencyData(KERNEL.audioData);
-    const ctx = KERNEL.ctxAudio, w = KERNEL.canvasAudio.width, h = KERNEL.canvasAudio.height;
-    ctx.clearRect(0,0,w,h);
-    ctx.fillStyle = '#00ff88';
-    const barWidth = (w / KERNEL.analyser.frequencyBinCount) * 4; // Ajusté pour un meilleur visuel
-    let x = 0;
-    for(let i = 0; i < KERNEL.analyser.frequencyBinCount; i+=4) { // Réduire le nombre de barres
-        const barHeight = KERNEL.audioData[i] / 2; // Réduire la hauteur
-        ctx.fillRect(x, h - barHeight, barWidth, barHeight);
-        x += barWidth + 1;
-    }
-}
-drawAudioViz(); // Démarrer le dessin de l'audio-viz
 </script>
 </body>
-                                        </html>
+</html>
