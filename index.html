@@ -2,51 +2,25 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PROVIDENCE V19-S | SOUVERAINETÉ TOTALE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #050705; --glow: #00ff88; --warn: #ffcc00; --crit: #ff0044;
-            --panel: rgba(10, 15, 10, 0.98); --border: #004422; --text: #e0ffe0;
-        }
-        * { box-sizing: border-box; cursor: crosshair; }
-        body {
-            background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace;
-            margin: 0; height: 100vh; overflow: hidden; font-size: 11px;
-            border: 2px solid var(--border);
-        }
-        .hud-grid {
-            display: grid; grid-template-columns: 320px 1fr 320px;
-            grid-template-rows: auto 1fr auto;
-            height: 100vh; padding: 15px; gap: 15px;
-        }
+        :root { --bg: #050705; --glow: #00ff88; --warn: #ffcc00; --crit: #ff0044; --panel: rgba(10, 15, 10, 0.98); --border: #004422; --text: #e0ffe0; }
+        * { box-sizing: border-box; cursor: crosshair; -webkit-touch-callout: none; -webkit-user-select: none; }
+        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; margin: 0; height: 100vh; overflow: hidden; font-size: 11px; border: 2px solid var(--border); }
+        .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; }
         .header { grid-column: 1 / 4; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-        .panel {
-            background: var(--panel); border: 1px solid var(--border);
-            padding: 15px; display: flex; flex-direction: column; gap: 10px;
-            box-shadow: 0 0 30px rgba(0,255,136,0.05); position: relative;
-        }
+        .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 30px rgba(0,255,136,0.05); position: relative; }
         .v-main { font-size: 3.5rem; color: var(--glow); font-family: 'Orbitron', sans-serif; text-shadow: 0 0 20px var(--glow); }
         .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,255,136,0.1); padding: 5px 0; }
         .val { color: var(--glow); font-weight: bold; }
-        .coord-128 { font-size: 0.8rem; color: var(--glow); word-break: break-all; margin: 4px 0; }
-        #slam-view {
-            flex: 1; border: 1px solid var(--border); position: relative;
-            background: radial-gradient(circle, #001a00 0%, #000 100%);
-            overflow: hidden;
-        }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .status-badge { font-size: 0.65rem; padding: 3px 8px; border: 1px solid var(--glow); border-radius: 3px; animation: blink 2s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        #slam-view { flex: 1; border: 1px solid var(--border); position: relative; background: radial-gradient(circle, #001a00 0%, #000 100%); overflow: hidden; }
+        canvas { position: absolute; width: 100%; height: 100%; }
         .log-box { font-size: 0.7rem; height: 80px; overflow-y: hidden; border-top: 1px solid var(--border); padding-top: 10px; color: var(--warn); }
-        button {
-            background: var(--glow); color: #000; border: none; padding: 15px;
-            font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 2px;
-            cursor: pointer; transition: 0.3s;
-        }
-        button:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 5px 15px var(--glow); }
+        #boot-btn { background: var(--glow); color: #000; border: none; padding: 15px; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 2px; cursor: pointer; transition: 0.3s; z-index: 999; }
+        #boot-btn:active { transform: scale(0.95); background: #fff; }
     </style>
 </head>
 <body>
@@ -54,59 +28,36 @@
 <div class="hud-grid">
     <header class="header">
         <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.2rem;">PROVIDENCE // V19-S</div>
-        <div class="status-badge">SOUVERAINETÉ_MATHÉMATIQUE_ACTIVE</div>
-        <div id="ui-time-real" style="color: var(--warn);">LST: --:--:--</div>
+        <div id="ui-status" style="font-size: 0.65rem; padding: 3px 8px; border: 1px solid var(--glow); border-radius: 3px;">EN_ATTENTE_D_ACCÈS_CAPTEURS</div>
     </header>
 
     <aside class="panel">
         <h3 style="color:var(--glow); margin:0;">[PHYSIQUE_DES_MILIEUX]</h3>
-        <div class="data-row">Entropie (ΔS): <span id="ui-entropy" class="val">--</span></div>
-        <div class="data-row">Hamiltonien (H): <span id="ui-energy" class="val">--</span></div>
+        <div class="data-row">Entropie (ΔS): <span id="ui-entropy" class="val">0.000000</span></div>
         <div class="data-row">Charge G: <span id="ui-g" class="val">1.000 G</span></div>
         <div class="data-row">Densité (ρ): <span id="ui-rho" class="val">1.225 kg/m³</span></div>
-        
-        <h3 style="color:var(--glow); margin-top:20px;">[SÉCURITÉ_CAUSALE]</h3>
-        <div class="data-row">Veto Causal: <span id="ui-causal" class="val">OPTIMAL</span></div>
-        <div class="data-row">Marge Planck: <span class="val">10⁻³⁵</span></div>
-        
         <div id="log-console" class="log-box"></div>
     </aside>
 
-    <main class="panel" style="padding: 20px;">
+    <main class="panel">
         <div style="text-align: center;">
             <div id="ui-speed" class="v-main">0.000000</div>
             <div style="letter-spacing: 5px; font-size: 0.7rem; color: var(--glow);">MÈTRES / SECONDE</div>
         </div>
-
-        <div id="slam-view">
-            <canvas id="slam-canvas"></canvas>
-            <div style="position:absolute; top:10px; left:10px; font-size:0.6rem; color:rgba(0,255,136,0.3);">SCANNER_OPTIQUE_128BIT</div>
-        </div>
-
+        <div id="slam-view"><canvas id="slam-canvas"></canvas></div>
         <div class="panel" style="margin-top:15px; border-color:#111; background: #000;">
-            <div id="ui-coord-x" class="coord-128">X: +0.000000000000000000000000</div>
-            <div id="ui-coord-y" class="coord-128">Y: +0.000000000000000000000000</div>
-            <div id="ui-coord-z" class="coord-128">Z: +0.000000000000000000000000</div>
+            <div id="ui-coord-x" style="color:var(--glow); font-size:0.8rem; word-break:break-all;">X: +0.000000000000000000000000</div>
         </div>
     </main>
 
     <aside class="panel">
         <h3 style="color:var(--glow); margin:0;">[SEXTANT_STELLARUM]</h3>
-        <div class="data-row">Source: <span class="val">PHASE_LUMINEUSE</span></div>
-        <div class="data-row">Anisotropie: <span id="ui-aniso" class="val">CORRIGÉE</span></div>
-        <div class="data-row">Réfraction (n): <span class="val">1.000293</span></div>
-
-        <div style="margin-top:20px; border: 1px solid var(--border); padding: 10px; background: rgba(0,0,0,0.5);">
-            <div style="font-size: 0.6rem; color: var(--warn); margin-bottom: 5px;">TEMPS_DE_PLANCK_ACCUMULÉ ($t_P$)</div>
+        <div class="data-row">Marge Planck: <span class="val">10⁻³⁵</span></div>
+        <div style="margin-top:20px; border: 1px solid var(--border); padding: 10px;">
+            <div style="font-size: 0.6rem; color: var(--warn);">TEMPS_DE_PLANCK_ACCUMULÉ ($t_P$)</div>
             <div id="ui-planck" style="font-size: 0.85rem; color: var(--glow); word-break: break-all;">0</div>
         </div>
-
-        <button id="boot-btn" onclick="KERNEL.boot()">INITIALISER_SOUVERAINETÉ</button>
-        
-        <div style="margin-top: auto; font-size: 0.6rem; color: #444;">
-            RIGUEUR: EBÉNISTERIE / HORLOGERIE / NASA<br>
-            VERSION: 19-S_OMNIPOTENCE
-        </div>
+        <button id="boot-btn" onclick="KERNEL.initSensors()">ACTIVER_CAPTEURS_PHYSIQUES</button>
     </aside>
 </div>
 
@@ -114,116 +65,75 @@
 math.config({ number: 'BigNumber', precision: 64 });
 
 const KERNEL = {
-    state: {
-        active: false,
-        pos: { x: math.bignumber(0), y: math.bignumber(0), z: math.bignumber(0) },
-        v: math.bignumber(0),
-        v_internal: math.bignumber(0),
-        planckTime: math.bignumber(0),
-        lastFrame: performance.now(),
-        lastEnergy: math.bignumber(0),
-        mass: math.bignumber(70)
+    state: { active: false, pos: math.bignumber(0), v: math.bignumber(0), planckTime: math.bignumber(0), lastFrame: performance.now() },
+    const: { tp: math.bignumber('5.391247e-44'), g: 9.80665 },
+
+    async initSensors() {
+        // Demande de permission pour iOS
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const permission = await DeviceMotionEvent.requestPermission();
+                if (permission === 'granted') this.start();
+            } catch (e) { this.log("ERREUR_PERMISSION_CAPTEUR"); }
+        } else {
+            this.start(); // Pour Android/PC (si accéléromètre dispo)
+        }
     },
 
-    const: {
-        tp: math.bignumber('5.391247e-44'),
-        g_ref: math.bignumber('9.80665'),
-        n_air: math.bignumber('1.000293')
-    },
-
-    boot() {
+    start() {
         this.state.active = true;
         document.getElementById('boot-btn').style.display = 'none';
-        this.log("KERNEL_SEALED: SOUVERAINETÉ TOTALE ÉTABLIE");
+        document.getElementById('ui-status').innerText = "SOUVERAINETÉ_MATHÉMATIQUE_ACTIVE";
         
-        // Initialisation Canvas
+        window.addEventListener('devicemotion', (e) => {
+            // On capture l'accélération réelle sans gravité (m/s²)
+            const acc = e.acceleration.x || 0; 
+            const gTotal = e.accelerationIncludingGravity.z / this.const.g;
+            document.getElementById('ui-g').innerText = Math.abs(gTotal).toFixed(3) + " G";
+            
+            // Intégration Newtonienne
+            const dt = 0.016; // Approx 60fps
+            this.state.v = math.add(this.state.v, math.multiply(math.bignumber(acc), dt));
+        });
+
         this.canvas = document.getElementById('slam-canvas');
         this.ctx = this.canvas.getContext('2d');
         this.resize();
-        window.addEventListener('resize', () => this.resize());
-        
         this.loop();
     },
 
-    resize() {
-        this.canvas.width = this.canvas.parentElement.offsetWidth;
-        this.canvas.height = this.canvas.parentElement.offsetHeight;
-    },
-
-    log(msg, crit = false) {
-        const box = document.getElementById('log-console');
-        const entry = document.createElement('div');
-        entry.style.color = crit ? 'var(--crit)' : 'var(--warn)';
-        entry.innerHTML = `> ${msg}`;
-        box.prepend(entry);
-    },
+    resize() { this.canvas.width = this.canvas.offsetWidth; this.canvas.height = this.canvas.offsetHeight; },
+    log(m) { const b = document.getElementById('log-console'); b.innerHTML = `> ${m}<br>` + b.innerHTML; },
 
     loop() {
-        if(!this.state.active) return;
         const now = performance.now();
         const dt = math.bignumber((now - this.state.lastFrame) / 1000);
         this.state.lastFrame = now;
 
-        // --- 1. SEXTANT & TEMPS PROPRE ---
-        const dt_planck = math.divide(dt, this.const.tp);
-        this.state.planckTime = math.add(this.state.planckTime, dt_planck);
-
-        // --- 2. RÉALISME : MANÈGE & ACCÉLÉRATION ---
-        // Simu: on génère une accélération sinusoïdale (type montagne russe)
-        const sim_acc = math.multiply(math.sin(now/1000), 2.5); 
-        this.state.v_internal = math.add(this.state.v_internal, math.multiply(sim_acc, dt));
+        // Temps de Planck
+        this.state.planckTime = math.add(this.state.planckTime, math.divide(dt, this.const.tp));
         
-        // --- 3. VETO DE CAUSALITÉ ---
-        // On compare la vitesse visuelle (simulée ici) avec la vitesse interne
-        let v_final = this.state.v_internal; 
-        const g_force = math.add(1, math.divide(math.abs(sim_acc), this.const.g_ref));
+        // Position
+        this.state.pos = math.add(this.state.pos, math.multiply(this.state.v, dt));
 
-        // --- 4. BILAN ÉNERGÉTIQUE ---
-        const ec = math.multiply(0.5, this.state.mass, math.pow(v_final, 2));
-        const ep = math.multiply(this.state.mass, this.const.g_ref, 10); // Hauteur fixe simu
-        const totalE = math.add(ec, ep);
-        const deltaE = math.abs(math.subtract(totalE, this.state.lastEnergy));
-        this.state.lastEnergy = totalE;
+        // Rendu
+        document.getElementById('ui-speed').innerText = math.format(math.abs(this.state.v), {notation: 'fixed', precision: 6});
+        document.getElementById('ui-coord-x').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
+        document.getElementById('ui-planck').innerText = math.format(this.state.planckTime, {notation: 'fixed', precision: 0});
+        document.getElementById('ui-entropy').innerText = (0.999 + Math.random()*0.001).toFixed(6);
 
-        // --- 5. ENTROPIE (SIMULATION DE DÉSORDRE THERMIQUE) ---
-        const entropy = 0.999 + (Math.random() * 0.001);
-
-        // --- 6. MISE À JOUR POSITION ---
-        this.state.pos.x = math.add(this.state.pos.x, math.multiply(v_final, dt));
-
-        this.render(v_final, g_force, entropy, totalE);
+        this.drawSlam();
         requestAnimationFrame(() => this.loop());
     },
 
-    render(v, g, s, energy) {
-        document.getElementById('ui-speed').innerText = math.format(v, {notation: 'fixed', precision: 6});
-        document.getElementById('ui-g').innerText = math.format(g, {notation: 'fixed', precision: 3}) + " G";
-        document.getElementById('ui-entropy').innerText = s.toFixed(6);
-        document.getElementById('ui-energy').innerText = math.format(energy, {notation: 'exponential', precision: 4}) + " J";
-        document.getElementById('ui-planck').innerText = math.format(this.state.planckTime, {notation: 'fixed', precision: 0});
-        
-        document.getElementById('ui-coord-x').innerText = "X: " + math.format(this.state.pos.x, {notation: 'fixed', precision: 24});
-        
-        this.drawSlam();
-    },
-
     drawSlam() {
-        const ctx = this.ctx;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        ctx.clearRect(0, 0, w, h);
-        
-        ctx.strokeStyle = 'rgba(0, 255, 136, 0.2)';
-        ctx.beginPath();
-        for(let i=0; i<w; i+=40) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
-        for(let j=0; j<h; j+=40) { ctx.moveTo(0,j); ctx.lineTo(w,j); }
-        ctx.stroke();
-
+        const ctx = this.ctx, w = this.canvas.width, h = this.canvas.height;
+        ctx.clearRect(0,0,w,h);
         ctx.fillStyle = '#00ff88';
-        for(let i=0; i<20; i++) {
-            const tx = (Math.sin(Date.now()*0.001 + i*500)*0.4 + 0.5) * w;
-            const ty = (Math.cos(Date.now()*0.0008 + i*700)*0.4 + 0.5) * h;
-            ctx.fillRect(tx, ty, 2, 2);
+        for(let i=0; i<15; i++) {
+            const x = (Math.sin(Date.now()*0.001 + i)*0.4 + 0.5)*w;
+            const y = (Math.cos(Date.now()*0.0015 + i)*0.4 + 0.5)*h;
+            ctx.fillRect(x, y, 2, 2);
         }
     }
 };
