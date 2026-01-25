@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | SINGULARITY</title>
+    <title>PROVIDENCE V19-S | FINAL SINGULARITY</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <style>
@@ -21,7 +21,6 @@
         #horizon { height: 60px; border: 1px solid var(--border); position: relative; overflow: hidden; background: #001100; margin-bottom: 5px;}
         #horizon-line { position: absolute; width: 200%; height: 2px; background: var(--glow); top: 50%; left: -50%; transition: transform 0.1s linear; }
         .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #002211; padding: 4px 0; }
-        #ui-planck { font-size: 0.65rem; color: var(--warn); word-break: break-all; line-height: 1; }
     </style>
 </head>
 <body>
@@ -38,7 +37,7 @@
         <h3 style="color:var(--glow); font-size: 0.8rem;">[MOUVEMENT_CAUSAL]</h3>
         <div id="horizon"><div id="horizon-line"></div></div>
         <div class="data-row">G-VECTOR: <span id="ui-g" class="val">1.000</span></div>
-        <div class="data-row">SISMIQUE: <span id="ui-s-wave" class="val">CLEAR</span></div>
+        <div class="data-row">RATIO_DYN: <span id="ui-dyn-ratio" class="val">0.000</span></div>
         
         <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[AUDIO_FFT]</h3>
         <canvas id="audio-viz" style="height:80px;"></canvas>
@@ -55,7 +54,7 @@
         
         <div style="border: 1px solid var(--border); position: relative; height: 180px; background: #000; margin: 15px 0;">
             <canvas id="slam-canvas" style="height: 100%; width: 100%;"></canvas>
-            <div id="ui-env-tag" style="position:absolute; top:5px; left:10px; font-size:0.6rem; color:var(--warn); background:rgba(0,0,0,0.8); padding:2px 5px;">ENV: ANALYSING...</div>
+            <div id="ui-env-tag" style="position:absolute; top:5px; left:10px; font-size:0.6rem; color:var(--warn); background:rgba(0,0,0,0.8); padding:2px 5px;">ENV: AUTO_DETECT</div>
         </div>
 
         <div style="padding:10px; background: rgba(0,0,0,0.9); border: 1px solid var(--border);">
@@ -65,12 +64,12 @@
 
     <aside class="panel">
         <h3 style="color:var(--glow); font-size: 0.8rem;">[CHRONOS_QUANTIQUE]</h3>
-        <div id="ui-planck">0</div>
+        <div id="ui-planck" style="font-size: 0.65rem; color: var(--warn); word-break: break-all;">0</div>
         
         <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[SEXTANT_DATA]</h3>
         <div class="data-row">ASTRES: <span id="ui-pts" class="val">0</span></div>
         <div class="data-row">COHÉRENCE: <span id="ui-coh" class="val">100%</span></div>
-        <div class="data-row">VETO: <span id="ui-veto" class="val">ACTIVE</span></div>
+        <div class="data-row">VETO_CAUSAL: <span id="ui-veto" class="val" style="color:var(--glow)">ACTIF</span></div>
         
         <div style="margin-top: auto;">
             <button id="boot-btn" onclick="KERNEL.boot()">INIT_SINGULARITY</button>
@@ -82,7 +81,7 @@
 math.config({ number: 'BigNumber', precision: 64 });
 
 const KERNEL = {
-    state: { active: false, speed: 0, pos: math.bignumber(0), planck: math.bignumber(0), lastFrame: performance.now(), ratio: 0.22, gVector: 1.0, lastGV: 1.0, vib: 0 },
+    state: { active: false, speed: 0, pos: math.bignumber(0), planck: math.bignumber(0), lastFrame: performance.now(), ratio: 0.001, gVector: 1.0, lastGV: 1.0, vib: 0 },
     const: { invTp: math.divide(math.bignumber(1), math.bignumber('5.391247e-44')), g: 9.80665 },
 
     async boot() {
@@ -108,9 +107,9 @@ const KERNEL = {
             document.getElementById('boot-btn').style.display = 'none';
             document.getElementById('ui-status').innerText = "SINGULARITY_ONLINE";
             this.state.active = true;
-            this.log("CORE_BOOT_SUCCESS");
+            this.log("CORE_V19_S_ACTIVE");
             this.loop();
-        } catch (e) { this.log("HARDWARE_FAILURE", true); }
+        } catch (e) { this.log("IO_ERROR", true); }
     },
 
     handlePhysics(e) {
@@ -134,8 +133,18 @@ const KERNEL = {
         if(!this.state.active) return;
         const now = performance.now();
         let dt = (now - this.state.lastFrame) / 1000;
+        
+        // --- VERROU DE SÉCURITÉ THERMODYNAMIQUE ---
+        if (dt > 0.5) {
+            this.state.pos = math.bignumber(0); 
+            this.log("CRITICAL_LAG: X_PURGED", true);
+            this.state.lastFrame = now;
+            requestAnimationFrame(() => this.loop());
+            return;
+        }
         this.state.lastFrame = now;
 
+        // 1. ANALYSE SENSORIELLE BRUTE
         this.analyser.getByteFrequencyData(this.audioData);
         let max = 0, idx = 0;
         for(let i=0; i<this.audioData.length; i++) { if(this.audioData[i]>max){max=this.audioData[i]; idx=i;} }
@@ -146,30 +155,49 @@ const KERNEL = {
         let pts = 0;
         for(let i=0; i<imgData.data.length; i+=2000) { if(imgData.data[i] > 180) pts++; }
 
-        // LOGIQUE OMNI-REALTÉ
-        let env = "STANDARD_REALITY";
-        const visM = Math.min(1, pts / 50);
-        const phyM = Math.min(1, this.state.vib * 10);
-        const coherence = ((visM * 0.4) + (phyM * 0.6)) * 100;
+        // 2. MOTEUR DE PROPORTIONNALITÉ DYNAMIQUE (Zéro Triche)
+        const energySonore = freq / 12000;
+        const energyCinetique = this.state.vib * 4;
+        const energyOptique = pts / 120;
         
-        if (pts < 5 && freq < 10) env = "VOID_NEANT";
-        if (this.state.vib > 0.4) env = "HIGH_ENERGY_AREA";
-        if (visM > 0.8 && phyM < 0.01) env = "SIM_OR_LUCID_DREAM";
-        document.getElementById('ui-env-tag').innerText = "ENV: " + env;
+        // Calcul automatique du ratio selon l'environnement global
+        const combinedEnergy = (energySonore * 0.4) + (energyCinetique * 0.3) + (energyOptique * 0.3);
+        this.state.ratio = Math.max(0.002, Math.min(0.98, combinedEnergy));
 
-        const target = (freq * this.state.ratio) * (coherence / 100);
+        // 3. VETO CAUSAL (Réalité vs Simulation)
+        // Si mouvement optique massif sans vibration G : suspicion de simulation
+        const isSimulated = (energyOptique > 0.4 && energyCinetique < 0.02);
+        const coherence = isSimulated ? 0.05 : 1.0;
+        
+        if(isSimulated) {
+            document.getElementById('ui-veto').innerText = "VETO_ACTIVE";
+            document.getElementById('ui-veto').style.color = "var(--crit)";
+        } else {
+            document.getElementById('ui-veto').innerText = "VETO_STABLE";
+            document.getElementById('ui-veto').style.color = "var(--glow)";
+        }
+
+        // 4. CALCULS FINAUX KM/H ET COORDONNÉES
+        const target = (freq * this.state.ratio) * coherence;
         this.state.speed += (target - this.state.speed) * 0.1;
         
-        const dP = math.multiply(math.bignumber(dt||0.016), this.const.invTp);
+        const dP = math.multiply(math.bignumber(dt), this.const.invTp);
         this.state.planck = math.add(this.state.planck, dP);
-        this.state.pos = math.add(this.state.pos, math.multiply(math.bignumber(this.state.speed/3.6), math.bignumber(dt||0.016)));
+        this.state.pos = math.add(this.state.pos, math.multiply(math.bignumber(this.state.speed/3.6), math.bignumber(dt)));
 
+        // 5. UPDATE HUD
         document.getElementById('ui-speed').innerText = this.state.speed.toFixed(2);
         document.getElementById('ui-freq').innerText = Math.round(freq) + " Hz";
         document.getElementById('ui-pts').innerText = pts;
-        document.getElementById('ui-coh').innerText = Math.round(coherence) + "%";
+        document.getElementById('ui-dyn-ratio').innerText = this.state.ratio.toFixed(4);
         document.getElementById('ui-planck').innerText = math.format(this.state.planck, {notation: 'exponential', precision: 5});
         document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 12});
+        
+        let env = "STATIC";
+        if (this.state.ratio > 0.6) env = "HYPER_KINETIC";
+        else if (this.state.ratio > 0.2) env = "MECHANICAL_MOTION";
+        else if (this.state.ratio > 0.01) env = "ORGANIC_LIFE";
+        document.getElementById('ui-env-tag').innerText = "ENV: " + env;
 
         this.drawViz();
         requestAnimationFrame(() => this.loop());
@@ -177,11 +205,10 @@ const KERNEL = {
 
     drawViz() {
         const ctx = this.ctxAudio, w = this.canvasAudio.width, h = this.canvasAudio.height;
-        ctx.clearRect(0,0,w,h);
-        ctx.fillStyle = '#00ff88';
-        for(let i=0; i<this.audioData.length; i+=20) {
+        ctx.clearRect(0,0,w,h); ctx.fillStyle = '#00ff88';
+        for(let i=0; i<this.audioData.length; i+=25) {
             const v = (this.audioData[i]/255)*h;
-            ctx.fillRect(i*(w/this.audioData.length)*20, h-v, 5, v);
+            ctx.fillRect(i*(w/this.audioData.length)*25, h-v, 5, v);
         }
     }
 };
