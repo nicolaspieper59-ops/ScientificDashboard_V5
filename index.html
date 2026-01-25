@@ -1,3 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PROVIDENCE V19-S | OMNIPOTENCE FINAL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --glow: #00ff88; --bg: #050705; --warn: #ffcc00; --crit: #ff0044; --panel: rgba(10, 15, 10, 0.98); --border: #004422; --text: #e0ffe0; }
+        * { box-sizing: border-box; -webkit-user-select: none; touch-action: none; }
+        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; margin: 0; height: 100vh; overflow: hidden; font-size: 11px; border: 2px solid var(--border); }
+        .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; }
+        .header { grid-column: 1 / 4; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 10; }
+        .v-main { font-size: 5rem; color: var(--glow); text-align: center; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 25px var(--glow); line-height: 1; margin: 10px 0; }
+        .gear-display { font-size: 3.5rem; color: var(--warn); font-family: 'Orbitron'; text-align: center; border: 1px solid #332200; background: #110d00; margin: 5px 0; }
+        canvas { width: 100%; background: #000; border: 1px solid #111; }
+        .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #002211; padding: 4px 0; }
+        .val { color: var(--glow); font-weight: bold; }
+        #cam-preview { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.2; z-index: 1; transform: scale(1.1); filter: grayscale(1) contrast(1.5); }
+        button { background: var(--glow); border: none; padding: 25px; font-weight: 900; cursor: pointer; font-family: 'Orbitron'; letter-spacing: 3px; color: #000; transition: 0.3s; }
+        button:hover { background: #fff; box-shadow: 0 0 30px var(--glow); }
+        .log-box { font-size: 0.65rem; color: var(--warn); height: 70px; overflow: hidden; border-top: 1px solid var(--border); padding-top: 5px; line-height: 1.2; }
+    </style>
+</head>
+<body>
+
+<video id="cam-preview" autoplay playsinline muted></video>
+
+<div class="hud-grid">
+    <header class="header">
+        <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.4rem; letter-spacing: 2px;">PROVIDENCE // V19-S</div>
+        <div id="ui-status" style="font-size: 0.7rem; border: 1px solid var(--glow); padding: 4px 15px; background: rgba(0,255,136,0.1);">KERNEL_STANDBY</div>
+        <div id="ui-time" style="color:var(--warn); font-weight: bold;">[OMNIPOTENCE_ACTIVE]</div>
+    </header>
+
+    <aside class="panel">
+        <h3 style="color:var(--glow); margin:0; font-size: 0.8rem;">[ANALYSE_HARMONIQUE]</h3>
+        <canvas id="audio-viz" style="height:100px;"></canvas>
+        <div class="data-row">Fréquence (f): <span id="ui-freq" class="val">0 Hz</span></div>
+        <div class="data-row">Ratio Transmission: <span id="ui-ratio" class="val">0.200</span></div>
+        
+        <h3 style="color:var(--glow); margin-top:15px; font-size: 0.8rem;">[ÉTAT_MÉCANIQUE]</h3>
+        <div class="gear-display" id="ui-gear">N</div>
+        <div class="data-row">Entropie (ΔS): <span id="ui-entropy" class="val">0.000000</span></div>
+        <div class="data-row">Vecteur G: <span id="ui-g" class="val">1.000 G</span></div>
+        
+        <div id="log-console" class="log-box">> SYSTÈME_SCELLÉ_PRÊT</div>
+    </aside>
+
+    <main class="panel" style="justify-content: center; background: none; border: none;">
+        <div style="background: rgba(0,0,0,0.6); padding: 20px; border: 1px solid var(--border); backdrop-filter: blur(5px);">
+            <div id="ui-speed" class="v-main">0.00</div>
+            <div style="text-align:center; letter-spacing: 12px; font-size: 0.9rem; color: var(--glow); font-weight: bold;">KM / HEURE</div>
+        </div>
+        
+        <div style="border: 1px solid var(--border); position: relative; height: 250px; background: #000; margin: 15px 0;">
+            <canvas id="slam-canvas" style="height: 100%; image-rendering: pixelated;"></canvas>
+            <div style="position:absolute; bottom:5px; right:10px; font-size:0.6rem; color:var(--glow); font-weight: bold;">LIDAR_OPTICAL_FEED</div>
+        </div>
+
+        <div style="padding:15px; background: rgba(0,0,0,0.9); border: 1px solid var(--border); box-shadow: 0 0 20px rgba(0,0,0,1);">
+            <div style="font-size:0.6rem; color:var(--warn); margin-bottom: 5px;">POSITION_PLANCK_128BIT (SOUVERAINETÉ_CAUSALE)</div>
+            <div id="ui-coord" style="font-size:0.85rem; color:var(--glow); word-break:break-all; font-family: 'JetBrains Mono';">X: +0.000000000000000000000000</div>
+        </div>
+    </main>
+
+    <aside class="panel">
+        <h3 style="color:var(--glow); margin:0; font-size: 0.8rem;">[SEXTANT_STELLARUM]</h3>
+        <div class="data-row">Points d'Intérêt: <span id="ui-pts" class="val">0</span></div>
+        <div class="data-row">Flux Optique: <span id="ui-flux" class="val">0.00</span></div>
+        <div class="data-row">Cohérence: <span id="ui-coh" class="val">100%</span></div>
+        
+        <h3 style="color:var(--glow); margin-top:15px; font-size: 0.8rem;">[SÉCURITÉ_CAUSALE]</h3>
+        <div class="data-row">Veto Causal: <span id="ui-veto" class="val" style="color:var(--warn)">OPTIMAL</span></div>
+        <div class="data-row">Marge Planck: <span class="val">10⁻³⁵</span></div>
+        
+        <div style="margin: 15px 0; padding:10px; border:1px solid var(--border); background: #000;">
+            <div style="font-size: 0.55rem; color: var(--warn); margin-bottom: 5px;">TEMPS_DE_PLANCK_ACCUMULÉ ($t_P$)</div>
+            <div id="ui-planck" style="color:var(--glow); font-size:0.8rem; word-break: break-all;">0</div>
+        </div>
+
+        <button id="boot-btn" onclick="KERNEL.boot()">INITIALISER_NOYAU_V19</button>
+        
+        <div style="margin-top:auto; font-size:0.6rem; color:#4a6b4a; line-height:1.5; border-top: 1px solid #111; padding-top: 10px;">
+            STDs: NASA-STD-5001 / EBÉNISTERIE_D_ART<br>
+            SIG: V19-S_OMNIPOTENCE_QUANTIQUE<br>
+            MODE: PASSERELLE_MATHÉMATIQUE_ACTIVE
+        </div>
+    </aside>
+</div>
+
 <script>
 math.config({ number: 'BigNumber', precision: 64 });
 
@@ -139,4 +232,6 @@ const KERNEL = {
         }
     }
 };
-                        </script>
+</script>
+</body>
+                </html>
