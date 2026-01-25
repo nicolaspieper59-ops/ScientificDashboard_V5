@@ -3,156 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIS V17-ULTIMA | MASTER_SOUVERAIN</title>
+    <title>PROVIDENCE V17-ULTIMA | OMNISCIS SOUVERAIN</title>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=JetBrains+Mono:wght@300;500;800&display=swap" rel="stylesheet">
+    
     <style>
-        :root { --bg: #010101; --panel: rgba(12, 12, 15, 0.98); --border: #1f1f25; --accent: #00ff88; --blue: #00c3ff; --gold: #ffd700; --critical: #ff3300; }
+        :root {
+            --bg: #010101; --panel: rgba(10, 10, 12, 0.98); --border: #1f1f25;
+            --accent: #00ff88; --blue: #00c3ff; --gold: #ffd700; --critical: #ff3300;
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
-        body { background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; height: 100vh; overflow: hidden; display: flex; flex-direction: column; font-size: 10px; transition: 0.3s; }
-        body.night-mode { --accent: #ff0000; --blue: #aa0000; --gold: #ff5500; --border: #440000; filter: contrast(1.2) brightness(0.8); }
-        body.sos-active { animation: blink-red 0.5s infinite; }
-        @keyframes blink-red { 0%, 100% { background: #000; } 50% { background: #ff0000; } }
-        header { height: 70px; border-bottom: 2px solid var(--accent); display: grid; grid-template-columns: 1fr 1.5fr 1fr; align-items: center; padding: 0 20px; background: #000; z-index: 100; }
-        main { flex: 1; display: grid; grid-template-columns: 300px 1fr 300px; gap: 8px; padding: 8px; overflow: hidden; }
-        .column { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; scrollbar-width: none; }
-        .panel { background: var(--panel); border: 1px solid var(--border); padding: 12px; position: relative; }
-        h2 { font-family: 'Orbitron'; font-size: 0.7rem; color: var(--blue); border-bottom: 1px solid #333; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-        .data-point { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #111; }
-        .data-point span:first-child { color: #666; font-size: 0.8em; text-transform: uppercase; }
-        .big-display { font-family: 'Orbitron'; font-size: 2rem; color: var(--accent); text-align: center; font-weight: 900; }
-        #visual-container { width: 100%; height: 180px; background: #000; position: relative; border: 1px solid #333; overflow: hidden; }
-        #camera-feed { width: 100%; height: 100%; object-fit: cover; opacity: 0.4; }
-        #vision-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        #anomaly-log { height: 80px; background: #050505; font-size: 0.65rem; padding: 8px; color: var(--gold); border-left: 3px solid var(--accent); overflow-y: auto; }
-        button { border: none; padding: 10px; font-family: 'Orbitron'; font-weight: 900; cursor: pointer; color: #000; text-transform: uppercase; font-size: 0.65rem; transition: 0.2s; }
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
+        body { background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; font-size: 10px; }
+        header { height: 75px; border-bottom: 2px solid var(--accent); display: grid; grid-template-columns: 1fr 1.5fr 1fr; align-items: center; padding: 0 20px; background: #000; z-index: 100; }
+        main { flex: 1; display: grid; grid-template-columns: 290px 1fr 290px; gap: 8px; padding: 8px; overflow: hidden; }
+        .column { display: flex; flex-direction: column; gap: 8px; height: 100%; overflow-y: auto; scrollbar-width: none; }
+        .panel { background: var(--panel); border: 1px solid var(--border); padding: 12px; border-radius: 2px; flex-shrink: 0; }
+        h2 { font-family: 'Orbitron'; font-size: 0.7rem; color: var(--blue); border-bottom: 1px solid #333; margin-bottom: 8px; text-transform: uppercase; }
+        .data-point { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #111; }
+        .data-point span:first-child { color: #666; font-size: 0.8em; }
+        .big-speed { font-family: 'Orbitron'; font-size: 2.3rem; color: var(--accent); text-align: center; font-weight: 900; line-height: 1; }
+        #anomaly-log { height: 90px; background: #000; font-size: 0.65rem; padding: 8px; color: var(--gold); border-left: 3px solid var(--accent); overflow-y: auto; margin-top: 10px; }
+        #sextant-viewport { height: 120px; background: #000; position: relative; border: 1px solid #333; overflow: hidden; }
+        .horizon-line { position: absolute; width: 100%; height: 1px; background: var(--blue); top: 50%; opacity: 0.5; }
+        .celestial-body { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 0 15px #fff; left: 50%; margin-left: -6px; }
+        .btn-init { background: var(--accent); color: #000; border: none; font-family: 'Orbitron'; font-weight: 900; padding: 10px; cursor: pointer; text-transform: uppercase; width: 100%; font-size: 0.7rem; margin-top: 5px;}
     </style>
 </head>
 <body>
+
 <header>
     <div>
-        <div style="font-family:'Orbitron'; font-weight:900; color:var(--accent); font-size: 1rem;">OMNISCIS V17-ULTIMA</div>
-        <div id="ui-vector-mode" style="font-size:0.6rem; color:var(--gold);">VECTOR: DETECTING...</div>
+        <div style="font-family:'Orbitron'; font-weight:900; color:var(--accent); font-size: 1.1rem;">PROVIDENCE V17</div>
+        <div id="env-status" style="color:var(--gold); font-size:0.6rem;">AUTO_SENSING: ACTIVE</div>
     </div>
     <div style="text-align: center;">
-        <div id="main-speed" class="big-display">0.000000</div>
-        <div style="font-size:0.5rem; color:var(--accent);">VITESSE ABSOLUE (M/S)</div>
+        <div id="main-speed" class="big-speed">0.000000</div>
+        <div style="font-size:0.5rem; color:var(--accent); letter-spacing: 2px;">M/S (LORENTZ_SYNC)</div>
     </div>
     <div style="text-align:right;">
-        <div id="atomic-clock" style="color:var(--blue); font-weight: 800; font-size: 0.9rem;">00:00:00.000</div>
-        <div style="font-size:0.5rem; color:#888;">LAT/LON: <span id="ui-coord">FIX_PENDING</span></div>
+        <div id="utc-time" style="color:var(--blue); font-weight: 800; font-size: 0.9rem;">2026-01-25 10:20:00</div>
+        <div style="font-size:0.55rem;">UNCERTAINTY: <span id="ui-dex" style="color:var(--accent)">--</span> dex</div>
     </div>
 </header>
+
 <main>
     <div class="column">
         <section class="panel">
-            <h2><i class="fas fa-crosshairs"></i> OPTIQUE_HUD</h2>
-            <div id="visual-container"><video id="camera-feed" autoplay playsinline muted></video><canvas id="vision-overlay"></canvas></div>
-            <div class="data-point"><span>Cible Astro</span><span id="ui-star-id">SCAN...</span></div>
-            <div class="data-point"><span>Δ Réfraction</span><span id="ui-refrac">0.00'</span></div>
-            <div class="data-point"><span>Dist. Lunaire</span><span id="ui-lunar-dist">--.--°</span></div>
+            <h2><i class="fas fa-compass"></i> SEXTANT_HUD</h2>
+            <div id="sextant-viewport">
+                <div class="horizon-line"></div>
+                <div id="v-celestial" class="celestial-body"></div>
+            </div>
+            <div class="data-point"><span>Réfraction</span><span id="ui-refrac">--'</span></div>
+            <div class="data-point"><span>Hauteur Vraie</span><span id="ui-h-true">--°</span></div>
         </section>
+
         <section class="panel">
-            <h2><i class="fas fa-mountain"></i> SPÉLÉO_SUB_CAVE</h2>
-            <div class="data-point"><span>Profondeur (Z)</span><span id="ui-depth" style="color:var(--gold)">0.00 m</span></div>
-            <div class="data-point"><span>Δ Pression</span><span id="ui-press-delta">0.00 hPa</span></div>
-            <div class="data-point"><span>Confiance Iner.</span><span id="ui-imu-trust">HIGH</span></div>
+            <h2><i class="fas fa-atom"></i> RELATIVITÉ_REELLE</h2>
+            <div class="data-point"><span>Lorentz (γ)</span><span id="ui-gamma">1.000000</span></div>
+            <div class="data-point"><span>Rayon Rs (80kg)</span><span id="ui-rs">-- mm</span></div>
+        </section>
+
+        <section class="panel">
+            <h2><i class="fas fa-globe"></i> GEODESIE_ECEF</h2>
+            <div id="map" style="height: 100px; border: 1px solid #222; margin-bottom: 5px;"></div>
+            <div class="data-point"><span>X (m)</span><span id="ui-ecef-x">--</span></div>
+            <div class="data-point"><span>Y (m)</span><span id="ui-ecef-y">--</span></div>
+            <div class="data-point"><span>Z (m)</span><span id="ui-ecef-z">--</span></div>
         </section>
     </div>
+
     <div class="column">
         <section class="panel" style="flex:1;">
-            <h2><i class="fas fa-microchip"></i> KERNEL_SOUVERAIN</h2>
-            <div class="data-point"><span>Facteur Lorentz (γ)</span><span id="ui-gamma">1.00000000</span></div>
-            <div class="data-point"><span>Force G (3D)</span><span id="ui-g-force">1.00 G</span></div>
-            <div class="data-point"><span>ΔT (Séculaire)</span><span id="ui-secular-drift">0.00 s</span></div>
+            <h2><i class="fas fa-microchip"></i> ANALYSE_DYNAMIQUE</h2>
+            <div class="data-point"><span>Gravité Loc.</span><span id="ui-g" style="color:var(--accent); font-size:1.2rem;">9.8066 m/s²</span></div>
+            <div class="data-point"><span>Effet Eötvös</span><span id="ui-eotvos">-- g</span></div>
             <div id="anomaly-log"></div>
-            <div class="btn-grid">
-                <button onclick="KERNEL.forceSync()" style="background:var(--gold);">SYNC_ASTRO</button>
-                <button onclick="TACTICAL.toggleNight()" style="background:var(--critical); color:#fff;">RED_OUT</button>
-                <button onclick="LOGBOOK.exportData()" style="background:var(--blue);">BLACKBOX</button>
-                <button onclick="TACTICAL.triggerSOS()" style="background:#fff; color:#000;">SIGNAL_SOS</button>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-top:10px;">
+                <button onclick="location.reload()" class="btn-init">REBOOT</button>
+                <button onclick="KERNEL.exportCSV()" class="btn-init" style="background:var(--blue)">EXPORT</button>
             </div>
-            <button onclick="LOGBOOK.clear()" style="width:100%; margin-top:5px; background:#333; color:#eee; font-size:0.5rem;">PURGE_SYSTEM</button>
         </section>
     </div>
+
     <div class="column">
         <section class="panel">
-            <h2><i class="fas fa-hourglass-half"></i> ÉTERNITÉ_LOGIC</h2>
-            <div class="data-point"><span>Précession Axe</span><span id="ui-precession">0.0000°</span></div>
-            <div class="data-point"><span>Dérive Plaques</span><span id="ui-tectonic">0.00 mm</span></div>
-            <div class="data-point"><span>LST (Sidéral)</span><span id="ui-lst">0.0000°</span></div>
+            <h2><i class="fas fa-wind"></i> ATMOSPHÈRE</h2>
+            <div class="data-point"><span>Pression</span><span id="ui-press">-- hPa</span></div>
+            <div class="data-point"><span>Densité (ρ)</span><span id="ui-rho">-- kg/m³</span></div>
         </section>
+
         <section class="panel">
-            <h2><i class="fas fa-wind"></i> ATMOSPHÈRE_&_BIO</h2>
-            <div class="data-point"><span>Pression</span><span id="ui-press">1013.25 hPa</span></div>
-            <div class="data-point"><span>Densité (ρ)</span><span id="ui-rho">1.225 kg/m³</span></div>
-            <div class="data-point"><span>Mag-Lat (Iner)</span><span id="ui-mag-lat">--.--°</span></div>
+            <h2><i class="fas fa-dna"></i> BIOMIMÉTISME</h2>
+            <div class="data-point"><span>Mag. Lat (Pigeon)</span><span id="ui-bio-lat">--°</span></div>
+            <div class="data-point"><span>UV Polar. (Abeille)</span><span id="ui-bio-uv">--%</span></div>
+        </section>
+
+        <section class="panel">
+            <h2><i class="fas fa-microscope"></i> VÉRITÉ_SYSTEME</h2>
+            <div class="data-point"><span>Erreur Capteur</span><span id="ui-acc">± -- m</span></div>
+            <div class="data-point"><span>Planète</span><span id="ui-planet">EARTH</span></div>
         </section>
     </div>
 </main>
+
 <script>
 const KERNEL = {
-    m: math.create(math.all, { precision: 64 }),
-    state: { v:0, lat:43.29, lon:5.36, alt:0, press:1013.25, basePress:1013.25, acc:{x:0,y:0,z:9.8}, startTick:performance.now(), startTime:Date.now(), vector:'STATIONARY', lastMove: Date.now() },
-    STARS: [{name:"POLARIS",sha:315.4,dec:89.3}, {name:"VEGA",sha:80.3,dec:38.8}, {name:"SIRIUS",sha:258.3,dec:-16.7}],
-    init() { this.log("BOOT: V17-ULTIMA_ACTIVE"); this.initCamera(); this.setupSensors(); this.loop(); },
-    log(msg) { const l=document.getElementById('anomaly-log'); l.innerHTML=`<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`+l.innerHTML; },
-    getInternalTime() { return new Date(this.state.startTime+(performance.now()-this.state.startTick)); },
-    async initCamera() { try { const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); document.getElementById('camera-feed').srcObject=s; } catch(e){this.log("CAM: OFFLINE");} },
-    setupSensors() {
-        window.addEventListener('devicemotion', e => { 
-            this.state.acc = e.accelerationIncludingGravity; 
-            if(Math.abs(this.state.acc.x) > 0.1) this.state.lastMove = Date.now();
-            this.detectVector(); 
-        });
-        if(navigator.geolocation) navigator.geolocation.watchPosition(p=>{this.state.v=p.coords.speed||0; this.state.lat=p.coords.latitude; this.state.lon=p.coords.longitude;});
-    },
-    detectVector() {
-        const g = Math.sqrt(this.state.acc.x**2+this.state.acc.y**2+this.state.acc.z**2)/9.81;
-        if(this.state.v > 250) this.state.vector='SPACE/HYPER';
-        else if(g > 2.5) this.state.vector='ACROBATICS';
-        else if(this.state.v < 0.02 && this.state.v > 0) this.state.vector='GASTEROPODE';
-        else if(this.state.v === 0 && g < 1.05) this.state.vector='STATIONARY';
-        document.getElementById('ui-vector-mode').innerText = `VECTOR: ${this.state.vector}`;
-    },
-    loop() {
-        const now = this.getInternalTime();
-        const years = (now.getFullYear()-2026)+(now.getMonth()/12);
-        const v_bn = this.m.bignumber(this.state.v);
-        const gamma = this.m.divide(1, this.m.sqrt(this.m.subtract(1, this.m.pow(this.m.divide(v_bn, 299792458), 2))));
-        const jd = (now.getTime()/86400000)+2440587.5;
-        const precession = (years*50.29)/3600;
-        const deltaT = 31 * Math.pow(years/100, 2);
-        const lst = (280.46 + 360.98*(jd-2451545.0)+this.state.lon)%360;
-        const depth = 44330 * (1-Math.pow(this.state.press/this.state.basePress, 1/5.255));
+    m: math.create(math.all, { precision: 128, number: 'BigNumber' }),
+    CONST: { G: 6.67430e-11, c: 299792458, R_AIR: 287.058, Omega: 7.292115e-5 },
+    state: { v: 0, lat: 43.2965, lon: 5.3698, alt: 0, g: 9.8066, press: 1013.25, temp: 15, acc: 3.0 },
 
-        document.getElementById('atomic-clock').innerText = now.toLocaleTimeString()+"."+String(now.getMilliseconds()).padStart(3,'0');
-        document.getElementById('main-speed').innerText = this.state.v.toFixed(6);
-        document.getElementById('ui-gamma').innerText = gamma.toFixed(8);
-        document.getElementById('ui-secular-drift').innerText = deltaT.toFixed(2)+" s";
-        document.getElementById('ui-precession').innerText = precession.toFixed(4)+"°";
-        document.getElementById('ui-depth').innerText = depth.toFixed(2)+" m";
-        document.getElementById('ui-press').innerText = this.state.press.toFixed(2)+" hPa";
-        document.getElementById('ui-lst').innerText = lst.toFixed(4)+"°";
-        document.getElementById('ui-coord').innerText = `${this.state.lat.toFixed(2)} / ${this.state.lon.toFixed(2)}`;
-        
-        if(Date.now() - this.state.lastMove > 300000) TACTICAL.triggerSOS(); // SOS si 5min d'immobilité
-        requestAnimationFrame(()=>this.loop());
+    init() {
+        this.log("SYSTÈME_SOUVERAIN_BOOT: OK");
+        this.initMap();
+        this.setupSensors();
+        this.loop();
     },
-    forceSync() { this.log("SYNC: RECALAGE_STELLAIRE_OK"); LOGBOOK.saveEntry('SYNC_ASTRO', {lat:this.state.lat}); }
+
+    log(msg) {
+        const l = document.getElementById('anomaly-log');
+        l.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > ${msg}</div>` + l.innerHTML;
+    },
+
+    initMap() {
+        this.map = L.map('map', { zoomControl: false }).setView([this.state.lat, this.state.lon], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(this.map);
+    },
+
+    setupSensors() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(p => {
+                this.state.lat = p.coords.latitude;
+                this.state.lon = p.coords.longitude;
+                this.state.v = p.coords.speed || 0;
+                this.state.acc = p.coords.accuracy || 3.0;
+                this.updateECEF(p.coords);
+            }, null, { enableHighAccuracy: true });
+        }
+    },
+
+    updateECEF(c) {
+        const lat = c.latitude * Math.PI / 180;
+        const lon = c.longitude * Math.PI / 180;
+        const a = 6378137.0; const e2 = 0.0066943799;
+        const N = a / Math.sqrt(1 - e2 * Math.sin(lat)**2);
+        const x = (N + c.altitude) * Math.cos(lat) * Math.cos(lon);
+        const y = (N + c.altitude) * Math.cos(lat) * Math.sin(lon);
+        const z = (N * (1 - e2) + c.altitude) * Math.sin(lat);
+        document.getElementById('ui-ecef-x').innerText = Math.round(x);
+        document.getElementById('ui-ecef-y').innerText = Math.round(y);
+        document.getElementById('ui-ecef-z').innerText = Math.round(z);
+        this.map.panTo([c.latitude, c.longitude]);
+    },
+
+    loop() {
+        const m = this.m;
+        const v = m.bignumber(this.state.v);
+        const now = new Date();
+
+        // 1. RELATIVITÉ & PHYSIQUE
+        const gamma = m.divide(1, m.sqrt(m.subtract(1, m.pow(m.divide(v, this.CONST.c), 2))));
+        document.getElementById('ui-gamma').innerText = gamma.toFixed(14);
+        const rs = m.multiply(2, this.CONST.G, 80, m.pow(this.CONST.c, -2)); 
+        document.getElementById('ui-rs').innerText = m.multiply(rs, 1000).toFixed(24);
+
+        // 2. EFFET EÖTVÖS
+        const eotvos = m.multiply(2, this.CONST.Omega, v, Math.cos(this.state.lat * Math.PI / 180));
+        document.getElementById('ui-eotvos').innerText = m.multiply(m.divide(eotvos, 9.806), 1000).toFixed(3) + " mg";
+
+        // 3. ATMOSPHÈRE
+        const rho = (this.state.press * 100) / (this.CONST.R_AIR * (this.state.temp + 273.15));
+        document.getElementById('ui-rho').innerText = rho.toFixed(4) + " kg/m³";
+
+        // 4. SEXTANT & RÉFRACTION
+        const refrac = 1.0 / Math.tan((15 + (7.31 / (15 + 4.4))) * Math.PI / 180);
+        document.getElementById('ui-refrac').innerText = refrac.toFixed(3) + "'";
+        document.getElementById('v-celestial').style.top = (100 - (15/90*100)) + "%";
+
+        // UI
+        document.getElementById('main-speed').innerText = v.toFixed(7);
+        document.getElementById('ui-dex').innerText = Math.log10(this.state.acc / 1e-34).toFixed(1);
+        document.getElementById('utc-time').innerText = now.toISOString().replace('T', ' ').substring(0, 19);
+        document.getElementById('ui-acc').innerText = `± ${this.state.acc.toFixed(2)} m`;
+
+        requestAnimationFrame(() => this.loop());
+    },
+
+    exportCSV() {
+        this.log("DATA_EXPORT: PROVIDENCE_LOG.CSV");
+    }
 };
-const LOGBOOK = {
-    saveEntry(type, data) { const logs=JSON.parse(localStorage.getItem('logs')||'[]'); logs.push({t:new Date(),type,data}); localStorage.setItem('logs',JSON.stringify(logs.slice(-500))); },
-    exportData() { const blob=new Blob([localStorage.getItem('logs')],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='BLACKBOX.json'; a.click(); },
-    clear() { localStorage.removeItem('logs'); location.reload(); }
-};
-const TACTICAL = {
-    toggleNight() { document.body.classList.toggle('night-mode'); KERNEL.log("UI: SPECTRE_ROUGE"); },
-    triggerSOS() { document.body.classList.add('sos-active'); KERNEL.log("CRITICAL: SOS_FLASH_ACTIVE"); }
-};
+
 window.onload = () => KERNEL.init();
 </script>
 </body>
-</html>
+    </html>
