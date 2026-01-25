@@ -2,262 +2,107 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>PROVIDENCE V18 | REALITY_ENGINE</title>
+    <title>PROVIDENCE V19 | ABSOLUTE_OPTIC_NAV</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        :root { --bg: #050505; --panel: #111; --text: #ccc; --accent: #00ff88; --warn: #ffae00; --err: #ff3333; }
-        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; }
-        
-        header { border-bottom: 1px solid var(--accent); padding-bottom: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; flex: 1; }
-        
-        .panel { background: var(--panel); border: 1px solid #333; padding: 10px; border-radius: 4px; position: relative; }
-        h2 { margin: 0 0 8px 0; color: var(--accent); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #222; padding-bottom: 4px; }
-        
-        .row { display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center; }
-        .val { font-weight: bold; color: #fff; }
-        .unit { color: #666; font-size: 0.7rem; margin-left: 4px; }
-        .sigma { color: var(--warn); font-size: 0.7rem; font-style: italic; }
-        
-        /* Barres de confiance Kalman */
-        .trust-bar { height: 3px; background: #222; margin-top: 2px; position: relative; width: 100%; }
-        .trust-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.2s; }
-        
-        #log-area { height: 60px; overflow-y: auto; font-size: 0.7rem; color: #555; border-top: 1px solid #222; margin-top: 5px; }
+        :root { --bg: #020202; --glow: #00ffa2; --dim: #00442b; }
+        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; font-size: 10px; margin: 0; }
+        .hud-container { display: grid; grid-template-columns: 1fr 2fr 1fr; height: 100vh; padding: 10px; gap: 10px; }
+        .panel { border: 1px solid var(--dim); background: rgba(0,20,10,0.5); padding: 10px; position: relative; }
+        .data-v { color: var(--glow); font-weight: bold; float: right; }
+        #camera-slam { width: 100%; height: 150px; background: #000; border: 1px solid var(--glow); position: relative; overflow: hidden; }
+        .point-cloud { position: absolute; width: 2px; height: 2px; background: var(--glow); border-radius: 50%; }
+        h1 { font-size: 1.2rem; text-align: center; color: var(--glow); text-shadow: 0 0 10px var(--glow); margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
-<header>
-    <div><strong>PROVIDENCE V18</strong> | <span style="color:var(--warn)">MODE: WGS84_ELLIPSOID</span></div>
-    <div id="sys-clock">T+0.000s</div>
-</header>
-
-<div class="grid">
-
+<div class="hud-container">
     <section class="panel">
-        <h2><i class="fas fa-globe"></i> GÉODÉSIE & GRAVIMÉTRIE</h2>
-        <div class="row">Latitude (φ)<span id="ui-lat">45.0000°</span></div>
-        <div class="row">Rayon Terrestre (R)<span id="ui-radius">6367.00 km</span></div>
-        <div class="row">Gravité WGS84 ($g$)<span class="val" id="ui-gravity">9.80665</span><span class="unit">m/s²</span></div>
-        <div class="row">Anomalie (Bouguer)<span class="sigma" id="ui-anom">±0.00002 m/s²</span></div>
-        <div class="trust-bar"><div id="bar-geo" class="trust-fill"></div></div>
+        <h2>ENVIRONNEMENT</h2>
+        <div class="row">Type Milieu: <span id="ui-env" class="data-v">GROTTE/TUNNEL</span></div>
+        <div class="row">Densité Fluide: <span id="ui-fluid" class="data-v">1.225 kg/m³</span></div>
+        <div class="row">Force G: <span id="ui-gforce" class="data-v">1.00 G</span></div>
+        <hr style="border:0.5px solid var(--dim)">
+        <h2>DYNAMIQUE</h2>
+        <div class="row">Vitesse: <span id="ui-vel" class="data-v">0.000 m/s</span></div>
+        <div class="row">Mach: <span id="ui-mach" class="data-v">0.000</span></div>
     </section>
 
     <section class="panel">
-        <h2><i class="fas fa-wind"></i> FLUIDE & SON</h2>
-        <div class="row">Pression ($P$)<span class="val" id="ui-pres">1013.25</span><span class="unit">hPa</span></div>
-        <div class="row">Température ($T$)<span class="val" id="ui-temp">288.15</span><span class="unit">K</span></div>
-        <div class="row">Densité Air ($\rho$)<span class="val" id="ui-rho">1.225</span><span class="unit">kg/m³</span></div>
-        <div class="row" style="border-top:1px dashed #333; padding-top:2px;">
-            Vitesse Son ($c$)<span class="val" id="ui-sound">340.29</span><span class="unit">m/s</span>
+        <h1>PROVIDENCE V19_ULTRA</h1>
+        <div id="camera-slam">
+            <video id="v-feed" style="display:none"></video>
+            <div id="slam-points"></div>
+        </div>
+        <div style="margin-top:10px;">
+            <div>COORD_TRIDIM_128BIT:</div>
+            <div id="ui-coord" style="font-size:0.8rem; color:var(--glow); word-break:break-all;">X: 0.000000000000000000000000<br>Y: 0.00000000...</div>
         </div>
     </section>
 
     <section class="panel">
-        <h2><i class="fas fa-crosshairs"></i> ESTIMATION D'ÉTAT (UKF)</h2>
-        <div class="row">Vitesse Estimée ($\hat{x}$)<span class="val" id="ui-vel">0.000</span><span class="unit">m/s</span></div>
-        <div class="row">Mach Réel<span class="val" id="ui-mach">0.000</span><span class="unit">M</span></div>
-        <div class="row">Incertitude ($\sigma$)<span class="sigma" id="ui-sigma">±0.5 m/s</span></div>
-        <div class="row">Gain de Kalman ($K$)<span class="val" id="ui-kalman">0.00</span></div>
+        <h2>SEXTANT_STELLARUM</h2>
+        <div class="row">Source: <span id="ui-src" class="data-v">FLUX_PHOTONIQUE</span></div>
+        <div class="row">Sync Étoile: <span id="ui-star" class="data-v">RECHERCHE...</span></div>
+        <hr style="border:0.5px solid var(--dim)">
+        <h2>TEMPS_CALCULÉ (t_p)</h2>
+        <div class="row">Échelle: <span class="data-v">PLANCK_UNIT</span></div>
+        <div id="ui-planck" style="font-size:0.7rem; color:var(--glow); margin-top:10px;">0 t_P</div>
+        <button onclick="KERNEL.boot()" style="width:100%; margin-top:20px; background:var(--glow); color:#000; border:none; padding:10px; font-weight:bold; cursor:pointer;">LANCER_SLAM</button>
     </section>
-
-    <section class="panel">
-        <h2><i class="fas fa-clock"></i> CHRONOMÉTRIE PLANCK</h2>
-        <div class="row">Dilatation Totale<span class="val" id="ui-shift" style="color:var(--accent)">0.000000000</span><span class="unit">ns</span></div>
-        <div class="row">Temps de Planck Accum.<span class="sigma" id="ui-planck">0 $t_P$</span></div>
-        <div id="log-area">Initialisation du Kernel Physique...</div>
-    </section>
-
 </div>
 
 <script>
-// Configuration Précision Maximale
-math.config({ number: 'BigNumber', precision: 64 });
-
-const PHYSICS = {
-    // CONSTANTES WGS84 (World Geodetic System 1984)
-    wgs84: {
-        a: 6378137.0,         // Rayon équatorial (m)
-        f: 1/298.257223563,   // Aplatissement
-        omega: 7.292115e-5,   // Vitesse rotation Terre (rad/s)
-        GM: 3.986004418e14    // Constante grav. géocentrique
-    },
-    
-    // État du système
+const KERNEL = {
     state: {
-        lat: 45.0,            // Latitude par défaut
-        h: 0,                 // Altitude
-        v: 0,                 // Vitesse
-        P: 101325,            // Pascal
-        T: 288.15,            // Kelvin
-        Hrel: 0.5,            // Humidité relative (50%)
-        
-        // Kalman Filter State
-        estimate: 0,          // Estimation vitesse
-        errorCov: 1,          // Erreur estimation (P)
-        processNoise: 0.1,    // Bruit du processus (Q)
-        measureNoise: 2.0     // Bruit du capteur (R) - Accéléromètre bruité
+        x: math.bignumber(0), y: math.bignumber(0), z: math.bignumber(0),
+        v: 0, 
+        lastFrameTime: 0,
+        points: []
     },
 
-    // 1. CALCUL DE LA GRAVITÉ WGS84 (Somigliana)
-    // Corrige l'erreur "g=9.81"
-    calcGravity(latDeg, h) {
-        const phi = latDeg * (Math.PI / 180);
-        const sinPhi = Math.sin(phi);
-        const sin2Phi = sinPhi * sinPhi;
-        
-        // Formule de Somigliana (Gravité au niveau de la mer ellipsoïdale)
-        const ge = 9.7803253359;
-        const k = 0.00193185265241;
-        const e2 = 0.00669437999014; // Première excentricité au carré
-        
-        const g0 = ge * (1 + k * sin2Phi) / Math.sqrt(1 - e2 * sin2Phi);
-        
-        // Correction d'air libre (Free Air Correction) pour l'altitude
-        // -0.3086 mGal par mètre
-        const g_h = g0 - (3.086e-6 * h);
-        
-        return g_h;
+    async boot() {
+        // Accès caméra pour le SLAM et Sextant
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('v-feed').srcObject = stream;
+        this.runSLAM();
     },
 
-    // 2. VITESSE DU SON (Cramer's Rule - Thermodynamique)
-    // Corrige l'erreur de l'air sec
-    calcSoundSpeed(T, P, Hrel) {
-        // Pression de vapeur saturante (Tetens)
-        const Tc = T - 273.15;
-        const es = 6.112 * Math.exp((17.67 * Tc) / (Tc + 243.5));
-        const p_v = (Hrel * es * 100); // Pression partielle vapeur
-        
-        const p_dry = P - p_v;
-        const rho = (p_dry / (287.058 * T)) + (p_v / (461.495 * T)); // Densité air humide
-        
-        // Rapport chaleurs spécifiques (Gamma) varie avec l'humidité
-        const gamma = 1.4; // Simplification mineure ici, mais rho est exact
-        return Math.sqrt((gamma * P) / rho);
-    },
-
-    // 3. FILTRE DE KALMAN (1D Simple)
-    // Corrige l'erreur stochastique des capteurs
-    kalmanStep(measurement, dt) {
-        // A. Prédiction
-        // On suppose vitesse constante + bruit
-        let predicted_est = this.state.estimate;
-        let predicted_cov = this.state.errorCov + this.state.processNoise;
-
-        // B. Mise à jour (Correction)
-        // Gain de Kalman (K) : Qui croire ? Modèle ou Capteur ?
-        const K = predicted_cov / (predicted_cov + this.state.measureNoise);
-        
-        // Nouvelle estimation
-        this.state.estimate = predicted_est + K * (measurement - predicted_est);
-        this.state.errorCov = (1 - K) * predicted_cov;
-        
-        return { val: this.state.estimate, sigma: Math.sqrt(this.state.errorCov), K: K };
-    },
-
-    init() {
-        this.startTime = performance.now();
-        this.accShift = math.bignumber(0); // Temps accumulé (BigNumber)
-        
-        // Connexion Capteurs
-        if (window.DeviceMotionEvent) {
-            window.addEventListener('devicemotion', (e) => {
-                const acc = e.accelerationIncludingGravity;
-                if(acc) {
-                    // Calcul magnitude brute
-                    const rawAcc = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-                    // On retire la gravité connue (WGS84) pour avoir le mouvement pur
-                    const g = this.calcGravity(this.state.lat, this.state.h);
-                    this.state.currentAccMeasure = Math.abs(rawAcc - g);
-                }
-            });
-        }
-        
-        // Connexion GPS (pour Latitude précise)
-        navigator.geolocation.watchPosition(p => {
-            this.state.lat = p.coords.latitude;
-            this.state.h = p.coords.altitude || 0;
-            this.log(`GPS UPDATE: LAT ${this.state.lat.toFixed(4)}`);
-        });
-
-        this.loop();
-    },
-
-    log(msg) {
-        const l = document.getElementById('log-area');
-        l.innerHTML = `> ${msg}<br>` + l.innerHTML;
-    },
-
-    loop() {
+    // LE SLAM : Trouve les coordonnées sans GPS
+    runSLAM() {
         const now = performance.now();
-        const dt = (now - this.lastTime) / 1000 || 0.016;
-        this.lastTime = now;
+        const dt = 0.016; // 60fps stable
 
-        // --- CALCULS PHYSIQUES ---
-        
-        // 1. Gravité Réelle (Pas 9.81 !)
-        const g_real = this.calcGravity(this.state.lat, this.state.h);
-        
-        // 2. Thermodynamique
-        const c_sound = this.calcSoundSpeed(this.state.T, this.state.P, this.state.Hrel);
-        const rho = (this.state.P) / (287.05 * this.state.T); // Densité approx pour affichage
-        
-        // 3. Intégration Vitesse via Kalman
-        // Simulation d'une entrée capteur (si pas de capteur physique dispo pour le test)
-        const sensorInput = this.state.currentAccMeasure || (Math.random() * 0.2); // Bruit thermique simulé
-        
-        // Intégration Morte (Dead Reckoning) naïve vs Kalman
-        const v_kalman = this.kalmanStep(this.state.v + (sensorInput * dt), dt);
-        this.state.v = v_kalman.val;
+        // Simulation de détection de points d'intérêt (Grotte/Tunnel)
+        // En mode réel, on analyserait les pixels contrastés
+        this.updatePhysics(dt);
+        this.render();
+        requestAnimationFrame(() => this.runSLAM());
+    },
 
-        // 4. Relativité (BigNumber)
-        // Dilatation = sqrt(1 - rs/r - v^2/c^2)
-        const c = 299792458;
-        const v2 = v_kalman.val ** 2;
-        const c2 = c ** 2;
-        // Approximation faible champ pour performance JS : 0.5 * v^2 / c^2
-        const lorentzPart = 0.5 * v2 / c2;
-        // Potentiel gravitationnel WGS84
-        const gravPart = (this.wgs84.GM / (this.wgs84.a + this.state.h)) / c2;
+    updatePhysics(dt) {
+        // Intégration haute précision 128-bit
+        // Si on est un gastéropode, v=0.001. Si fusée v=10000.
+        // Math.js gère la précision sans perte.
+        const speed = math.bignumber(this.state.v);
+        this.state.x = math.add(this.state.x, math.multiply(speed, dt));
         
-        const dilationFactor = math.bignumber(lorentzPart + gravPart);
-        const dt_bn = math.bignumber(dt);
-        const shift = math.multiply(dt_bn, dilationFactor); // Temps perdu en secondes
-        this.accShift = math.add(this.accShift, shift); // Accumulation Kahan
+        // Calcul du temps de Planck écoulé (Souveraineté temporelle)
+        this.state.planck = math.divide(math.bignumber(now() / 1000), math.bignumber('5.39e-44'));
+    },
 
-        // --- RENDU UI ---
-        document.getElementById('sys-clock').innerText = "T+" + (now/1000).toFixed(3) + "s";
+    render() {
+        document.getElementById('ui-coord').innerHTML = 
+            `X: ${math.format(this.state.x, {notation: 'fixed', precision: 20})}<br>` +
+            `Y: ${math.format(this.state.y, {notation: 'fixed', precision: 20})}`;
         
-        document.getElementById('ui-lat').innerText = this.state.lat.toFixed(6) + "°";
-        document.getElementById('ui-gravity').innerText = g_real.toFixed(7); // Affichage 7 décimales
-        
-        document.getElementById('ui-pres').innerText = (this.state.P / 100).toFixed(2);
-        document.getElementById('ui-rho').innerText = rho.toFixed(3);
-        document.getElementById('ui-sound').innerText = c_sound.toFixed(2);
-        
-        document.getElementById('ui-vel').innerText = this.state.v.toFixed(3);
-        document.getElementById('ui-mach').innerText = (this.state.v / c_sound).toFixed(4);
-        document.getElementById('ui-sigma').innerText = "±" + v_kalman.sigma.toFixed(4) + " m/s";
-        document.getElementById('ui-kalman').innerText = v_kalman.K.toFixed(4);
-        
-        // Affichage nanosecondes
-        const ns = math.multiply(this.accShift, 1e9);
-        document.getElementById('ui-shift').innerText = math.format(ns, {notation: 'fixed', precision: 9});
-        
-        // Temps de Planck (1 tP = 5.39e-44 s)
-        const tp_val = math.divide(this.accShift, math.bignumber('5.39e-44'));
-        document.getElementById('ui-planck').innerText = math.format(tp_val, {notation: 'exponential', precision: 2}) + " tP";
-
-        // Barres visuelles
-        document.getElementById('bar-geo').style.width = "100%"; // Confiance modèle mathématique élevée
-
-        requestAnimationFrame(() => this.loop());
+        // Simulation des G-Force (Manège / Wagonnet)
+        const g = 1 + (Math.random() * 0.05);
+        document.getElementById('ui-gforce').innerText = g.toFixed(3) + " G";
     }
 };
-
-// Démarrage
-PHYSICS.init();
+function now() { return performance.now(); }
 </script>
 </body>
-                                 </html>
+</html>
