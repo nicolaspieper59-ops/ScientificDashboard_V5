@@ -3,176 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V17-ULTIMA | SOUVERAIN</title>
+    <title>PROVIDENCE V17-ULTIMA | SOUVERAIN ABSOLU</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=JetBrains+Mono:wght@300;800&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #000; --accent: #00ff88; --blue: #00c3ff; --gold: #ffd700; --border: #1a1a1a; }
-        * { box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
-        body { background: var(--bg); color: #fff; font-family: 'JetBrains Mono', monospace; height: 100vh; overflow: hidden; display: flex; flex-direction: column; font-size: 10px; }
-        header { height: 75px; border-bottom: 2px solid var(--accent); display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; padding: 0 15px; }
-        main { flex: 1; display: grid; grid-template-columns: 310px 1fr 310px; gap: 8px; padding: 8px; overflow: hidden; }
-        .panel { background: rgba(5,5,5,0.95); border: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; position: relative; }
-        h2 { font-family: 'Orbitron'; font-size: 0.75rem; color: var(--blue); margin-bottom: 8px; border-bottom: 1px solid #222; text-transform: uppercase; letter-spacing: 1px; }
-        .data { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #111; }
-        .val { font-weight: 800; color: var(--accent); }
-        #video-feed { width: 100%; height: 140px; background: #000; object-fit: cover; border: 1px solid #333; margin-bottom: 8px; }
-        .big-val { font-family: 'Orbitron'; font-size: 2rem; text-align: center; color: var(--accent); font-weight: 900; }
-        #log { flex: 1; font-size: 0.65rem; color: var(--gold); overflow-y: auto; margin-top: 10px; border-left: 2px solid var(--gold); padding-left: 8px; font-style: italic; }
+        :root {
+            --bg: #020202; --card: rgba(10, 10, 15, 0.98); --border: #1a1a1f;
+            --accent: #00ff88; --blue: #00c3ff; --critical: #ff3300; --gold: #ffd700; --plasma: #ff6600; --cherenkov: #0066ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace;
+            height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; font-size: 10px; transition: 0.5s;
+        }
+        header { height: 60px; border-bottom: 2px solid var(--accent); display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; padding: 0 15px; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px; height: calc(100vh - 60px); overflow-y: auto; }
+        .column { display: flex; flex-direction: column; gap: 6px; height: 100%; }
+        .panel { background: var(--card); border: 1px solid var(--border); padding: 8px; border-radius: 2px; position: relative; }
+        h2 { font-family: 'Orbitron'; font-size: 0.65rem; color: var(--blue); margin-bottom: 6px; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 5px; text-transform: uppercase; }
+        .data-point { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.62rem; border-bottom: 1px solid #111; }
+        .val { color: var(--accent); font-weight: bold; }
+        .big-v { font-family: 'Orbitron'; font-size: 1.6rem; text-align: center; color: var(--accent); text-shadow: 0 0 10px var(--accent); }
+        select, button { background: #000; color: var(--accent); border: 1px solid #333; font-family: 'Orbitron'; font-size: 0.55rem; padding: 4px; cursor: pointer; width: 100%; }
+        #anomaly-log { flex: 1; overflow-y: auto; font-size: 0.55rem; color: var(--gold); background: #000; padding: 5px; border-left: 2px solid var(--gold); }
+        .alert-plasma { box-shadow: inset 0 0 20px var(--plasma); border-color: var(--plasma); }
     </style>
 </head>
 <body>
 
-<header>
+<header id="master-header">
     <div>
-        <div style="font-family:'Orbitron'; font-weight:900; color:var(--accent); font-size:1.2rem;">PROVIDENCE V17-ULTIMA</div>
-        <div style="font-size:0.6rem; color:var(--gold);">SOUVERAIN_ALMANAC_103_ID</div>
+        <div style="font-family:'Orbitron'; font-weight:900; color:var(--accent);">PROVIDENCE V17-ULTIMA</div>
+        <div style="font-size:0.55rem; color:var(--gold);">SOUVERAINETÉ_PHYSIQUE_TOTALE</div>
     </div>
-    <div class="big-val" id="ui-main-v">--</div>
+    <div class="big-v" id="ui-main-v">--</div>
     <div style="text-align: right;">
-        <div id="ui-clock" style="color:var(--blue); font-size: 1.1rem; font-weight: 800;">--:--:--</div>
-        <div style="font-size:0.55rem; color:#666;">UNCERTAINTY: <span id="ui-dex" style="color:var(--accent)">--</span> dex</div>
+        <div id="utc-clock" style="color:var(--blue); font-size: 0.9rem;">--:--:--</div>
+        <div style="font-size:0.5rem; color:#555;">HILL_SPHERE: <span id="ui-hill-status" style="color:var(--accent)">--</span></div>
     </div>
 </header>
 
-<main>
+<div class="dashboard-grid">
     <div class="column">
         <section class="panel">
-            <h2><i class="fas fa-satellite-dish"></i> OPTICAL_SLAM_ENGINE</h2>
-            <video id="video-feed" autoplay playsinline></video>
-            <div class="data"><span>ID_ASTRE_DETECT</span><span class="val" id="ui-target">--</span></div>
-            <div class="data"><span>ELEVATION_VRAIE</span><span class="val" id="ui-h-obs">--°</span></div>
-            <div class="data"><span>INTERCEPTE_FIX</span><span class="val" id="ui-intercept">--'</span></div>
+            <h2><i class="fas fa-star"></i> SEXTANT_103ID_SLAM</h2>
+            <video id="video-slam" style="width:100%; height:60px; background:#000; object-fit:cover;"></video>
+            <select id="star-selector">
+                <option>SÉLECTION_ASTRE_BALISE (103)</option>
+            </select>
+            <div class="data-point"><span>Réfraction (Cassini)</span><span class="val" id="ui-refrac">--'</span></div>
+            <div class="data-point"><span>Sidereal Time (TSLV)</span><span class="val" id="ui-tslv">--</span></div>
         </section>
 
         <section class="panel">
-            <h2><i class="fas fa-atom"></i> RELATIVITÉ_GÉNÉRALE</h2>
-            <div class="data"><span>Lorentz (γ)</span><span class="val" id="ui-gamma">--</span></div>
-            <div class="data"><span>Time_Drift</span><span class="val" id="ui-proper-time">-- ns</span></div>
-            <div class="data"><span>Schwartz_Radius</span><span class="val" id="ui-rs">-- mm</span></div>
+            <h2><i class="fas fa-rocket"></i> HOHMANN_LUNAR_KERN</h2>
+            <div class="data-point"><span>$\Delta V$ Injection</span><span class="val" id="ui-dv">-- m/s</span></div>
+            <div class="data-point"><span>Transit Estimé</span><span class="val" id="ui-transit">-- j</span></div>
+            <button onclick="CORE.calcHohmann()">SIMULER_TRANSFERT_LUNE</button>
+        </section>
+
+        <section class="panel">
+            <h2><i class="fas fa-compass"></i> GÉODÉSIE_WGS84_XYZ</h2>
+            <div class="data-point"><span>X (Radial)</span><span class="val" id="ui-x">-- m</span></div>
+            <div class="data-point"><span>Y (Tang.)</span><span class="val" id="ui-y">-- m</span></div>
+            <div class="data-point"><span>Z (Polaire)</span><span class="val" id="ui-z">-- m</span></div>
         </section>
     </div>
 
     <div class="column">
-        <section class="panel" style="flex:1;">
-            <h2><i class="fas fa-project-diagram"></i> POSITION_ECEF_TRIDIM</h2>
-            <div style="text-align:center; padding: 20px 0;">
-                <div style="font-size:0.6rem; color:#444;">COORDONNÉES_CENTRE_TERRE (X,Y,Z)</div>
-                <div class="val" id="ui-ecef-x" style="font-size:1.4rem;">--</div>
-                <div class="val" id="ui-ecef-y" style="font-size:1.4rem;">--</div>
-                <div class="val" id="ui-ecef-z" style="font-size:1.4rem;">--</div>
+        <section class="panel">
+            <h2><i class="fas fa-atom"></i> RELATIVITY_GENERAL</h2>
+            <div class="data-point"><span>Lorentz ($\gamma$)</span><span class="val" id="ui-gamma">--</span></div>
+            <div class="data-point"><span>Proper Time $\Delta$</span><span class="val" id="ui-proper-dt">-- ns</span></div>
+            <div class="data-point"><span>Rayon Schwarzschild</span><span class="val" id="ui-rs">-- mm</span></div>
+        </section>
+
+        <section class="panel">
+            <h2><i class="fas fa-gravity"></i> GRAVITATION_CORE</h2>
+            <div class="data-point"><span>Rayon de Hill</span><span class="val" id="ui-hill-val">-- km</span></div>
+            <div class="data-point"><span>Vitesse Évasion ($v_e$)</span><span class="val" id="ui-escape">-- km/s</span></div>
+            <div class="data-point"><span>Gravité Somigliana</span><span class="val" id="ui-g">-- m/s²</span></div>
+        </section>
+    </div>
+
+    <div class="column">
+        <section class="panel" id="fluid-panel">
+            <h2><i class="fas fa-wind"></i> FLUID_DYNAMICS_OMNI</h2>
+            <select id="mode-select" onchange="CORE.log('VECTEUR_CHANGÉ')">
+                <option value="SPACECRAFT">VAISSEAU SPATIAL</option>
+                <option value="BIRD">OISEAU / INSECTE</option>
+                <option value="WATER">BATEAU / TOBOGGAN (n=1.33)</option>
+                <option value="GASTROPOD">GASTROPODE / LENT</option>
+            </select>
+            <div class="data-point"><span>Densité ($\rho$ ISA)</span><span class="val" id="ui-rho">--</span></div>
+            <div class="data-point"><span>Nombre Reynolds (Re)</span><span class="val" id="ui-re">--</span></div>
+            <div class="data-point"><span>Mach Number</span><span class="val" id="ui-mach">--</span></div>
+            <div class="data-point"><span>Statut Cherenkov</span><span class="val" id="ui-cher-status">STABLE</span></div>
+        </section>
+
+        <section class="panel" id="reentry-panel">
+            <h2><i class="fas fa-fire"></i> HYPERSONIC_SURVIVAL</h2>
+            <div class="data-point"><span>Temp. Stagnation</span><span class="val" id="ui-temp-k">-- K</span></div>
+            <div class="data-point"><span>Flux Thermique</span><span class="val" id="ui-q-flux">-- MW/m²</span></div>
+            <div id="plasma-alert" style="color:var(--critical); font-size:0.5rem; display:none; text-align:center;">IONISATION_PLASMA_DETECTÉE</div>
+        </section>
+    </div>
+
+    <div class="column">
+        <section class="panel">
+            <h2><i class="fas fa-dna"></i> SIGNATURE_BIOLOGIQUE</h2>
+            <div class="data-point"><span>Puissance Humaine</span><span class="val">-- W</span></div>
+            <div class="data-point"><span>Score Fluidité</span><span class="val" id="smoothness-score">--/100</span></div>
+            <div class="data-point"><span>Adrénaline Index</span><span class="val">--</span></div>
+        </section>
+
+        <section class="panel" style="flex: 1;">
+            <h2><i class="fas fa-terminal"></i> MISSION_LOGS_PRO</h2>
+            <div id="anomaly-log">
+                <div>[SYSTEM] V17 ULTIMA SOUVERAIN READY.</div>
             </div>
-            <div id="log"></div>
         </section>
     </div>
-
-    <div class="column">
-        <section class="panel">
-            <h2><i class="fas fa-wind"></i> BIOSVT_ATMOSPHÈRE</h2>
-            <div class="data"><span>Pression_Loc</span><span class="val" id="ui-press">-- hPa</span></div>
-            <div class="data"><span>Réfraction_Cassini</span><span class="val" id="ui-refrac">--'</span></div>
-            <div class="data"><span>Densité_Rho</span><span class="val" id="ui-rho">-- kg/m³</span></div>
-        </section>
-
-        <section class="panel">
-            <h2><i class="fas fa-signature"></i> SIGNATURE_SOUVERAINE</h2>
-            <div class="data"><span>ID_SOUVERAIN</span><span class="val">PROV-V17-ALPHA</span></div>
-            <div class="data"><span>SLAM_SYNC</span><span class="val" id="ui-slam-sync">--/100</span></div>
-            <div class="data"><span>Gravité_Real</span><span class="val" id="ui-g">-- m/s²</span></div>
-        </section>
-    </div>
-</main>
+</div>
 
 <script>
-const KERNEL = {
-    m: math.create(math.all, { precision: 128, number: 'BigNumber' }),
-    // ALMANACH COMPLET 103 ID (Simplifié pour le code mais structurellement prêt)
-    ALMANAC: Array.from({length: 103}, (_, i) => ({ id: i + 1, name: `ASTRE_${i+1}`, sha: 0, dec: 0 })),
-    state: { v: null, g: null, x: null, y: null, z: null, acc: null, t_proper: 0 },
-    lastTick: performance.now(),
+    const CORE = {
+        m: math.create(math.all, { precision: 128, number: 'BigNumber' }),
+        state: { x:null, y:null, z:null, v:null, h:0 },
 
-    async init() {
-        this.log("INITIALISATION_SYSTÈME_SOUVERAIN...");
-        await this.initVision();
-        this.initSensors();
-        this.loop();
-    },
+        init() {
+            this.populate103ID();
+            this.initHardware();
+            this.loop();
+        },
 
-    log(msg) {
-        const l = document.getElementById('log');
-        l.innerHTML = `<div>[${new Date().toLocaleTimeString()}] > ${msg}</div>` + l.innerHTML;
-    },
+        populate103ID() {
+            const sel = document.getElementById('star-selector');
+            for(let i=1; i<=103; i++) {
+                let o = document.createElement('option');
+                o.value = i; o.innerText = `SOUVERAIN_ID_${i.toString().padStart(3,'0')}`;
+                sel.appendChild(o);
+            }
+        },
 
-    async initVision() {
-        const video = document.getElementById('video-feed');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            this.log("VISION_SLAM_128BIT: ACTIVE");
-        } catch(e) { this.log("OPTIQUE_REFUSÉE: MODE_SENS_UNIQUEMENT"); }
-    },
+        initHardware() {
+            navigator.geolocation.watchPosition(p => {
+                this.state.v = p.coords.speed || 0;
+                this.state.h = p.coords.altitude || 0;
+                this.updateWGS84(p.coords.latitude, p.coords.longitude, p.coords.altitude);
+            });
+            navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(s => {
+                document.getElementById('video-slam').srcObject = s;
+            }).catch(e => this.log("SLAM_CAM_OFFLINE"));
+        },
 
-    initSensors() {
-        if ('LinearAccelerationSensor' in window) {
-            let acc = new LinearAccelerationSensor({frequency: 60});
-            acc.onreading = () => {
-                this.state.g = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-            };
-            acc.start();
-        }
-        navigator.geolocation.watchPosition(p => {
-            this.state.v = p.coords.speed || null;
-            this.state.acc = p.coords.accuracy || null;
-            this.updateECEF(p.coords);
-        }, null, { enableHighAccuracy: true });
-    },
+        updateWGS84(lat, lon, h) {
+            const m = this.m;
+            const a = m.bignumber(6378137), f = m.divide(1, 298.257223563);
+            const e2 = m.subtract(m.multiply(2, f), m.pow(f, 2));
+            const phi = m.multiply(lat, Math.PI/180), lam = m.multiply(lon, Math.PI/180);
+            const N = m.divide(a, m.sqrt(m.subtract(1, m.multiply(e2, m.pow(m.sin(phi), 2)))));
+            this.state.x = m.multiply(m.add(N, h), m.cos(phi), m.cos(lam));
+            this.state.y = m.multiply(m.add(N, h), m.cos(phi), m.sin(lam));
+            this.state.z = m.multiply(m.add(m.multiply(N, m.subtract(1, e2)), h), m.sin(phi));
+            this.updateHill(h);
+        },
 
-    updateECEF(c) {
-        const m = this.m;
-        const lat = m.multiply(c.latitude, m.divide(Math.PI, 180));
-        const lon = m.multiply(c.longitude, m.divide(Math.PI, 180));
-        const a = m.bignumber(6378137);
-        const e2 = m.bignumber(0.0066943799);
-        const N = m.divide(a, m.sqrt(m.subtract(1, m.multiply(e2, m.pow(m.sin(lat), 2)))));
-        this.state.x = m.multiply(N, m.cos(lat), m.cos(lon));
-        this.state.y = m.multiply(N, m.cos(lat), m.sin(lon));
-        this.state.z = m.multiply(m.multiply(N, m.subtract(1, e2)), m.sin(lat));
-    },
+        updateHill(h) {
+            const m = this.m;
+            const r_hill = m.multiply(149600000, m.pow(m.divide(5.972e24, m.multiply(3, 1.989e30)), 1/3));
+            document.getElementById('ui-hill-val').innerText = m.round(r_hill);
+            document.getElementById('ui-hill-status').innerText = h > Number(r_hill)*1000 ? "OUT_OF_BOUNDS" : "DOMINANCE_TERRE";
+        },
 
-    loop() {
-        const m = this.m;
-        const now = performance.now();
-        const dt = (now - this.lastTick) / 1000;
-        this.lastTick = now;
+        calcHohmann() {
+            const m = this.m;
+            const r1 = m.add(6378137, m.bignumber(this.state.h));
+            const r2 = m.bignumber(384400000);
+            const mu = m.multiply(6.6743e-11, 5.972e24);
+            const dv = m.multiply(m.sqrt(m.divide(mu, r1)), m.subtract(m.sqrt(m.divide(m.multiply(2, r2), m.add(r1, r2))), 1));
+            document.getElementById('ui-dv').innerText = m.round(dv, 2) + " m/s";
+            this.log("HOHMANN_TLI_READY");
+        },
 
-        if (this.state.v !== null) {
-            const v = m.bignumber(this.state.v);
+        loop() {
+            const m = this.m;
+            const v = m.bignumber(this.state.v || 0);
             const c = m.bignumber(299792458);
+
+            // Relativité
             const gamma = m.divide(1, m.sqrt(m.subtract(1, m.pow(m.divide(v, c), 2))));
-            
-            // Calcul de la dilatation temporelle cumulée (Time Drift)
-            const drift = m.multiply(m.subtract(gamma, 1), dt, 1e9);
-            this.state.t_proper += Number(drift);
-
             document.getElementById('ui-gamma').innerText = gamma.toFixed(15);
-            document.getElementById('ui-proper-time').innerText = this.state.t_proper.toFixed(4);
             document.getElementById('ui-main-v').innerText = v.toFixed(6);
+
+            // Cherenkov (Eau n=1.33)
+            if(m.gt(v, m.divide(c, 1.33)) && document.getElementById('mode-select').value === "WATER") {
+                document.body.style.boxShadow = "inset 0 0 50px var(--cherenkov)";
+                document.getElementById('ui-cher-status').innerText = "EMISSION_BLEUE";
+            } else {
+                document.body.style.boxShadow = "none";
+                document.getElementById('ui-cher-status').innerText = "STABLE";
+            }
+
+            // Affichage XYZ
+            document.getElementById('ui-x').innerText = this.state.x ? m.round(this.state.x) : "--";
+            document.getElementById('ui-y').innerText = this.state.y ? m.round(this.state.y) : "--";
+            document.getElementById('ui-z').innerText = this.state.z ? m.round(this.state.z) : "--";
+            document.getElementById('utc-clock').innerText = new Date().toLocaleTimeString();
+            
+            requestAnimationFrame(() => this.loop());
+        },
+
+        log(msg) {
+            const l = document.getElementById('anomaly-log');
+            l.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + l.innerHTML;
         }
-
-        // Mise à jour interface
-        document.getElementById('ui-g').innerText = this.state.g ? this.state.g.toFixed(5) : "--";
-        document.getElementById('ui-ecef-x').innerText = this.state.x ? `X: ${m.round(this.state.x)}` : "--";
-        document.getElementById('ui-ecef-y').innerText = this.state.y ? `Y: ${m.round(this.state.y)}` : "--";
-        document.getElementById('ui-ecef-z').innerText = this.state.z ? `Z: ${m.round(this.state.z)}` : "--";
-        document.getElementById('ui-dex').innerText = this.state.acc ? Math.log10(this.state.acc / 1e-34).toFixed(1) : "--";
-        document.getElementById('ui-clock').innerText = new Date().toLocaleTimeString();
-
-        requestAnimationFrame(() => this.loop());
-    }
-};
-
-window.onload = () => KERNEL.init();
+    };
+    window.onload = () => CORE.init();
 </script>
 </body>
-</html>
+    </html>
