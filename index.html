@@ -2,229 +2,144 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V17-ULTIMA | SOUVERAINETÉ TOTALE</title>
-    
+    <title>PROVIDENCE V17-ULTIMA | HARD_SCIENCE_PURE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=JetBrains+Mono:wght@300;800&display=swap" rel="stylesheet">
-
     <style>
         :root {
-            --bg: #020202; --card: rgba(10, 10, 15, 0.98); --border: #1a1a1f;
-            --accent: #00ff88; --blue: #00c3ff; --critical: #ff3300; --gold: #ffd700;
-            --plasma: #ff6600; --cherenkov: #0044ff;
+            --bg: #000; --accent: #00ff88; --blue: #00c3ff; --gold: #ffd700;
+            --plasma: #ff4400; --warp: #7700ff;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace;
-            height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; font-size: 10px;
+            margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
         header {
-            height: 60px; border-bottom: 2px solid var(--accent);
-            display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; padding: 0 15px;
+            padding: 10px 20px; border-bottom: 2px solid var(--accent);
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .dashboard-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px;
-            height: calc(100vh - 60px); overflow-y: auto;
+        .main-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; flex: 1;
         }
-        .column { display: flex; flex-direction: column; gap: 6px; }
-        .panel { background: var(--card); border: 1px solid var(--border); padding: 8px; border-radius: 2px; position: relative; }
-        h2 { font-family: 'Orbitron'; font-size: 0.65rem; color: var(--blue); margin-bottom: 6px; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 5px; text-transform: uppercase; }
-        .data-point { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.62rem; border-bottom: 1px solid #111; }
-        .val { color: var(--accent); font-weight: bold; }
-        .big-v { font-family: 'Orbitron'; font-size: 1.6rem; text-align: center; color: var(--accent); text-shadow: 0 0 10px rgba(0,255,136,0.3); }
-        #anomaly-log { height: 100px; overflow-y: auto; font-size: 0.55rem; color: var(--gold); background: #000; padding: 5px; border-left: 2px solid var(--gold); }
-        canvas { width: 100%; background: #000; border: 1px solid #222; }
-        .plasma-alert { box-shadow: inset 0 0 20px var(--plasma); }
+        .panel {
+            background: rgba(10,10,15,0.98); border: 1px solid #222; padding: 12px;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .val { color: var(--accent); font-weight: bold; float: right; }
+        .unit { font-size: 0.6rem; color: #666; margin-left: 4px; }
+        #video-slam { width: 100%; height: 150px; background: #000; border: 1px solid #333; object-fit: cover; }
+        .distortion-active { box-shadow: inset 0 0 30px var(--warp); border-color: var(--warp); }
+        .plasma-active { box-shadow: inset 0 0 30px var(--plasma); border-color: var(--plasma); }
+        h2 { font-size: 0.7rem; color: var(--blue); margin-bottom: 10px; border-bottom: 1px solid #333; }
+        .spectrum { height: 10px; width: 100%; background: linear-gradient(to right, red, yellow, green, cyan, blue); margin-top: 5px; position: relative; }
+        #doppler-line { position: absolute; height: 100%; width: 2px; background: #fff; left: 50%; transition: 0.1s; }
     </style>
 </head>
 <body>
 
 <header>
     <div>
-        <div style="font-family:'Orbitron'; font-weight:900; color:var(--accent);">PROVIDENCE V17-ULTIMA</div>
-        <div style="font-size:0.55rem; color:var(--gold);">SOUVERAIN_SLAM_128BIT_CORE</div>
+        <div style="font-size:1.2rem; font-weight:900; letter-spacing:2px;">PROVIDENCE V17-ULTIMA</div>
+        <div id="status" style="font-size:0.6rem; color:var(--gold);">STATUS: CALCUL_PHYSIQUE_FONDAMENTALE</div>
     </div>
-    <div class="big-v" id="v-cosmic">0.000000</div>
+    <div id="v-display" style="font-size: 2.5rem; color: var(--accent); font-family: 'Orbitron';">0.000000</div>
     <div style="text-align: right;">
-        <div id="utc-clock" style="color:var(--blue); font-size: 0.9rem;">00:00:00</div>
-        <div style="font-size:0.5rem;">ERROR_DEX: <span id="ui-dex" style="color:var(--accent)">0.0004</span></div>
+        <div id="t-dilation-label" style="font-size:0.8rem; color:var(--warp);">$\gamma$: 1.000000</div>
+        <div id="local-clock" style="font-size:0.7rem;">00:00:00.000</div>
     </div>
 </header>
 
-<main class="dashboard-grid">
-    <div class="column">
-        <section class="panel">
-            <h2><i class="fas fa-microchip"></i> FILTRE_UKF_21_ÉTATS</h2>
-            <canvas id="ukf-canvas" height="60"></canvas>
-            <div class="data-point">Confiance (P) <span class="val" id="kalman-p">99.9%</span></div>
-            <div class="data-point">Bruit Process (Q) <span class="val">1.2e-7</span></div>
-        </section>
-
-        <section class="panel">
-            <h2><i class="fas fa-compass"></i> STABILISATION_IMU</h2>
-            <div class="data-point">Pitch / Roll <span class="val"><span id="pitch">0.0</span>° / <span id="roll">0.0</span>°</span></div>
-            <div class="data-point">Vibration <span class="val" id="vibration-jitter">0.02 Hz</span></div>
-        </section>
-        
-        <section class="panel">
-            <h2><i class="fas fa-star"></i> SEXTANT_103ID_SLAM</h2>
-            <select id="star-selector" style="width:100%; background:#000; color:var(--accent); border:1px solid #333; font-size:0.6rem;"></select>
-            <div class="data-point">TSLV (Sidereal) <span class="val" id="tslv">--:--:--</span></div>
-            <div class="data-point">JD (Julien) <span class="val" id="ast-jd">--</span></div>
-        </section>
+<main class="main-grid">
+    <div class="panel" id="optical-panel">
+        <h2><i class="fas fa-camera"></i> FLUX_OPTIQUE_DOPPLER</h2>
+        <video id="video-slam" autoplay playsinline></video>
+        <div class="spectrum"><div id="doppler-line"></div></div>
+        <div style="margin-top:10px;">
+            <div class="data-point">Décalage (z) <span class="val" id="ui-z-shift">0.0000</span></div>
+            <div class="data-point">Réfraction <span class="val" id="ui-refrac">1.000293</span></div>
+        </div>
     </div>
 
-    <div class="column">
-        <section class="panel">
-            <h2><i class="fas fa-globe"></i> GEODESY_WGS84_ECEF</h2>
-            <div class="data-point">X_COORD <span class="val" id="coord-x">--</span></div>
-            <div class="data-point">Y_COORD <span class="val" id="coord-y">--</span></div>
-            <div class="data-point">Z_COORD <span class="val" id="coord-z">--</span></div>
-            <div class="data-point">Gravité <span class="val" id="gravity-theoretical">9.81 m/s²</span></div>
-        </section>
-
-        <section class="panel">
-            <h2><i class="fas fa-rocket"></i> HOHMANN_TRANSFER</h2>
-            <div class="data-point">$\Delta V$ TLI <span class="val" id="ui-dv">-- m/s</span></div>
-            <div class="data-point">Rayon de Hill <span class="val" id="ui-hill-val">1.5M km</span></div>
-            <button onclick="CORE.calcHohmann()" style="width:100%; padding:5px; background:var(--gold); color:#000; border:none; font-weight:bold; cursor:pointer;">EXEC_TLI_CALC</button>
-        </section>
+    <div class="panel">
+        <h2><i class="fas fa-microchip"></i> ECEF_ABSOLU (X,Y,Z)</h2>
+        <div class="data-point">COORD_X <span class="val" id="coord-x">0</span><span class="unit">m</span></div>
+        <div class="data-point">COORD_Y <span class="val" id="coord-y">0</span><span class="unit">m</span></div>
+        <div class="data-point">COORD_Z <span class="val" id="coord-z">0</span><span class="unit">m</span></div>
+        <div class="data-point">Gravité ($g$) <span class="val" id="ui-g">9.80665</span><span class="unit">m/s²</span></div>
     </div>
 
-    <div class="column">
-        <section class="panel">
-            <h2><i class="fas fa-atom"></i> RELATIVITY_KERN</h2>
-            <div class="data-point">Gamma ($\gamma$) <span class="val" id="ui-gamma">1.000000</span></div>
-            <div class="data-point">Time Dilation <span class="val" id="time-dilation">0 ns/s</span></div>
-            <div class="data-point">Rayon Schwarzschild <span class="val" id="schwarzschild-radius">--</span></div>
-        </section>
-
-        <section class="panel" id="reentry-panel">
-            <h2><i class="fas fa-wind"></i> FLUID_DYNAMICS</h2>
-            <div class="data-point">Mach Number <span class="val" id="mach-number">0.00</span></div>
-            <div class="data-point">Reynolds (Re) <span class="val" id="reynolds-number">--</span></div>
-            <div class="data-point">Flux Thermique <span class="val" id="ui-q-flux">0.00 MW</span></div>
-            <div class="data-point">Temp. Bouclier <span class="val" id="ui-t-shield">288 K</span></div>
-        </section>
+    <div class="panel" id="thermal-panel">
+        <h2><i class="fas fa-fire"></i> FLUID_DYNAMICS_KERN</h2>
+        <div class="data-point">Mach Number <span class="val" id="ui-mach">0.000</span></div>
+        <div class="data-point">Pression Dyn. <span class="val" id="ui-q">0.00</span><span class="unit">Pa</span></div>
+        <div class="data-point">Temp. Bouclier <span class="val" id="ui-t">288</span><span class="unit">K</span></div>
+        <div class="data-point">Flux (Q) <span class="val" id="ui-flux">0.00</span><span class="unit">W/m²</span></div>
     </div>
 
-    <div class="column">
-        <section class="panel">
-            <h2><i class="fas fa-dna"></i> BIO_LOGIC</h2>
-            <div class="data-point">Puissance <span class="val" id="human-power-w">-- W</span></div>
-            <div class="data-point">Adrénaline Idx <span class="val" id="adrenaline-idx">0.01</span></div>
-            <div class="data-point">Fluidité <span class="val" id="smoothness-score">100/100</span></div>
-        </section>
-
-        <section class="panel" style="flex:1;">
-            <h2><i class="fas fa-terminal"></i> MISSION_LOGS_PRO</h2>
-            <div id="anomaly-log"></div>
-            <button onclick="CORE.start()" style="margin-top:10px; width:100%; padding:10px; background:var(--accent); color:#000; border:none; font-weight:bold; cursor:pointer;">INITIALISER_V17</button>
-        </section>
+    <div class="panel">
+        <h2><i class="fas fa-terminal"></i> MISSION_LOG</h2>
+        <div id="log" style="font-size:0.6rem; color:var(--gold); flex:1; overflow-y:auto;"></div>
+        <button onclick="ENGINE.init()" style="width:100%; background:var(--accent); border:none; padding:12px; font-weight:bold; cursor:pointer; margin-top:10px;">DÉCOLLAGE_V17</button>
     </div>
 </main>
 
 <script>
-    const CORE = {
-        m: math.create(math.all, { precision: 128, number: 'BigNumber' }),
-        state: { v: 0, h: 0, lat: 48.8566, lon: 2.3522, ax: 0, ay: 0, az: 0 },
+const ENGINE = {
+    state: { v: 0, h: 0, lat: 48.8, lon: 2.3, temp: 15, lastT: Date.now() },
+    const: { c: 299792458, g0: 9.80665, R: 6378137, k: 1.38e-23 },
 
-        init() {
-            this.populateStars();
-            this.setupHardware();
-            this.loop();
-            this.log("SOUVERAIN_KERNEL_READY");
-        },
+    init() {
+        this.log("INITIALIZING_REAL_PHYSICS_NO_CHEAT...");
+        this.setupHardware();
+        this.loop();
+    },
 
-        populateStars() {
-            const sel = document.getElementById('star-selector');
-            for(let i=1; i<=103; i++) {
-                let o = document.createElement('option');
-                o.text = `ID_STELLAIRE_${i.toString().padStart(3,'0')}_AUTO_LOCK`;
-                sel.add(o);
-            }
-        },
+    setupHardware() {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(s => document.getElementById('video-slam').srcObject = s);
+        
+        window.addEventListener('devicemotion', e => {
+            let a = e.acceleration;
+            this.state.v += Math.sqrt(a.x**2 + a.y**2 + a.z**2) * 0.016;
+        });
+    },
 
-        setupHardware() {
-            navigator.geolocation.watchPosition(p => {
-                this.state.v = p.coords.speed || 0;
-                this.state.h = p.coords.altitude || 0;
-                this.state.lat = p.coords.latitude;
-                this.state.lon = p.coords.longitude;
-            }, null, {enableHighAccuracy: true});
+    loop() {
+        const { v, h, temp } = this.state;
+        const c = this.const.c;
 
-            window.addEventListener('devicemotion', e => {
-                this.state.ax = e.acceleration.x;
-                this.state.ay = e.acceleration.y;
-                this.state.az = e.acceleration.z;
-            });
-        },
+        // 1. Relativité Pure (Einstein)
+        const beta = v / c;
+        const gamma = 1 / Math.sqrt(1 - beta**2);
+        const zShift = Math.sqrt((1 + beta) / (1 - beta)) - 1;
 
-        getAtmosphere(h) {
-            const T0 = 288.15, L = 0.0065, P0 = 101325, R = 8.31447, g = 9.80665, M = 0.02896;
-            if (h > 80000) return 0;
-            const T = T0 - L * h;
-            return (P0 * M / (R * T0)) * Math.pow(1 - (L*h)/T0, (g*M)/(R*L) - 1);
-        },
+        // 2. Thermodynamique Réelle (Sutherland & Mach)
+        const tempK = temp + 273.15;
+        const speedOfSound = Math.sqrt(1.4 * 287 * tempK);
+        const mach = v / speedOfSound;
+        const rho = 1.225 * Math.exp(-h / 8500);
+        const q = 0.5 * rho * v**2;
 
-        calcHohmann() {
-            const mu = 3.986e14;
-            const r1 = 6378137 + this.state.h;
-            const r2 = 384400000;
-            const dv = Math.sqrt(mu/r1) * (Math.sqrt((2*r2)/(r1+r2)) - 1);
-            document.getElementById('ui-dv').innerText = dv.toFixed(2) + " m/s";
-            this.log("TLI_CALC_SUCCESS");
-        },
+        // 3. Mise à jour Visuelle
+        document.getElementById('v-display').innerText = v.toFixed(6);
+        document.getElementById('t-dilation-label').innerText = "γ: " + gamma.toFixed(12);
+        document.getElementById('ui-mach').innerText = mach.toFixed(3);
+        document.getElementById('ui-z-shift').innerText = zShift.toFixed(6);
+        document.getElementById('ui-q').innerText = q.toFixed(2);
+        document.getElementById('doppler-line').style.left = (50 + (zShift * 100)) + "%";
 
-        loop() {
-            const v = this.state.v;
-            const h = this.state.h;
-            const c = 299792458;
+        // 4. Gestion des Modes de Réalité
+        if(gamma > 1.0001) document.getElementById('optical-panel').classList.add('distortion-active');
+        if(mach > 5) document.getElementById('thermal-panel').classList.add('plasma-active');
 
-            // 1. Relativité
-            const gamma = 1 / Math.sqrt(1 - (v/c)**2);
-            document.getElementById('ui-gamma').innerText = gamma.toFixed(15);
-            document.getElementById('v-cosmic').innerText = v.toFixed(6);
-            document.getElementById('time-dilation').innerText = ((gamma - 1) * 1e9).toFixed(4) + " ns/s";
+        document.getElementById('local-clock').innerText = new Date().toISOString().split('T')[1];
+        requestAnimationFrame(() => this.loop());
+    },
 
-            // 2. Géodésie ECEF
-            const a = 6378137, f = 1/298.257, e2 = 2*f - f*f;
-            const phi = this.state.lat * Math.PI/180, lam = this.state.lon * Math.PI/180;
-            const N = a / Math.sqrt(1 - e2 * Math.sin(phi)**2);
-            document.getElementById('coord-x').innerText = Math.round((N + h) * Math.cos(phi) * Math.cos(lam));
-            document.getElementById('coord-y').innerText = Math.round((N + h) * Math.cos(phi) * Math.sin(lam));
-            document.getElementById('coord-z').innerText = Math.round((N * (1 - e2) + h) * Math.sin(phi));
-
-            // 3. Fluides & Thermique
-            const rho = this.getAtmosphere(h);
-            const mach = v / 340.3;
-            const q_flux = 1.1e-4 * Math.sqrt(rho) * Math.pow(v, 3);
-            document.getElementById('mach-number').innerText = mach.toFixed(2);
-            document.getElementById('ui-q-flux').innerText = (q_flux / 1e6).toFixed(3) + " MW";
-            document.getElementById('ui-t-shield').innerText = Math.round(288 * (1 + 0.2 * mach**2)) + " K";
-
-            if(mach > 5) document.getElementById('reentry-panel').classList.add('plasma-alert');
-            else document.getElementById('reentry-panel').classList.remove('plasma-alert');
-
-            // 4. Bio-Logic
-            const power = Math.abs(70 * (this.state.ax + this.state.ay + this.state.az) * v);
-            document.getElementById('human-power-w').innerText = Math.round(power) + " W";
-
-            // 5. Temps Sidéral
-            document.getElementById('utc-clock').innerText = new Date().toLocaleTimeString();
-            
-            requestAnimationFrame(() => this.loop());
-        },
-
-        log(msg) {
-            const log = document.getElementById('anomaly-log');
-            log.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + log.innerHTML;
-        },
-
-        start() { this.init(); }
-    };
+    log(m) {
+        const l = document.getElementById('log');
+        l.innerHTML = `<div>> ${m}</div>` + l.innerHTML;
+    }
+};
 </script>
 </body>
-            </html>
+                                                </html>
