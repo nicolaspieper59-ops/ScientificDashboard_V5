@@ -92,6 +92,7 @@
 </div>
 
 <script>
+// CONFIGURATION MATHÉMATIQUE 64-BIT
 math.config({ number: 'BigNumber', precision: 64 });
 
 const KERNEL = {
@@ -104,7 +105,7 @@ const KERNEL = {
 
     async boot() {
         try {
-            // 1. Accès Vidéo et Audio combiné (Handshake NASA)
+            this.log("DÉMARRAGE_SÉQUENCE_HANDSHAKE...");
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "environment", width: 640 }, 
                 audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
@@ -112,15 +113,17 @@ const KERNEL = {
             
             document.getElementById('cam-preview').srcObject = stream;
 
-            // 2. Initialisation FFT (Moteur/Son)
+            // INITIALISATION AUDIO (FFT)
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
+            
             const source = this.audioCtx.createMediaStreamSource(stream);
             this.analyser = this.audioCtx.createAnalyser();
             this.analyser.fftSize = 2048;
             source.connect(this.analyser);
             this.audioData = new Uint8Array(this.analyser.frequencyBinCount);
 
-            // 3. Initialisation Device Motion (Physique G)
+            // INITIALISATION CAPTEURS (G-FORCE)
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 const permission = await DeviceMotionEvent.requestPermission();
                 if (permission === 'granted') this.enableGListener();
@@ -128,7 +131,7 @@ const KERNEL = {
                 this.enableGListener();
             }
 
-            // 4. Interface et Loop
+            // RENDU UI
             this.canvasSlam = document.getElementById('slam-canvas');
             this.ctxSlam = this.canvasSlam.getContext('2d', {alpha: false});
             this.canvasAudio = document.getElementById('audio-viz');
@@ -168,7 +171,7 @@ const KERNEL = {
         const dt = (now - this.state.lastFrame) / 1000;
         this.state.lastFrame = now;
 
-        // --- PHASE 1: AUDIO (Moteur) ---
+        // PHASE 1: FRÉQUENCE MOTEUR
         this.analyser.getByteFrequencyData(this.audioData);
         let maxVal = 0, maxIdx = 0;
         for(let i=0; i<this.audioData.length; i++) {
@@ -176,7 +179,7 @@ const KERNEL = {
         }
         const freq = maxIdx * this.audioCtx.sampleRate / this.analyser.fftSize;
 
-        // --- PHASE 2: GEAR_DETECTION ---
+        // PHASE 2: CALCUL DES RAPPORTS (BOITE)
         if (this.state.lastFreq > 280 && freq < this.state.lastFreq * 0.72) {
             this.state.gear++;
             this.state.ratio = this.state.speed / (freq || 1);
@@ -188,31 +191,39 @@ const KERNEL = {
         }
         this.state.lastFreq = freq;
 
-        // --- PHASE 3: OPTIQUE (Sextant) ---
+        // PHASE 3: SEXTANT STELLARUM (FLUX OPTIQUE)
         this.ctxSlam.drawImage(document.getElementById('cam-preview'), 0, 0, this.canvasSlam.width, this.canvasSlam.height);
         const frame = this.ctxSlam.getImageData(0,0,this.canvasSlam.width, this.canvasSlam.height);
         let flux = 0, pts = 0;
         if(this.state.lastPixels) {
             for(let i=0; i<frame.data.length; i+=1200) {
-                flux += Math.abs(frame.data[i] - this.state.lastPixels[i]);
-                if(frame.data[i] > 230) pts++;
+                // Flux de pixels
+                const diff = Math.abs(frame.data[i] - this.state.lastPixels[i]);
+                flux += diff;
+                // Détection de points d'intérêt (Astres)
+                if(frame.data[i] > 200) {
+                    pts++;
+                    // Traceur visuel sur le SLAM
+                    if (pts < 50) { 
+                        this.ctxSlam.fillStyle = "var(--glow)";
+                        this.ctxSlam.fillRect((i/4)%this.canvasSlam.width, (i/4)/this.canvasSlam.width, 2, 2);
+                    }
+                }
             }
         }
         this.state.lastPixels = frame.data;
 
-        // --- PHASE 4: FUSION ET CAUSALITÉ ---
+        // PHASE 4: VETO ET CAUSALITÉ
         const targetSpeed = freq * this.state.ratio;
-        // Cohérence : si le son hurle mais que l'image est fixe, on réduit la cohérence
-        const coh = (flux < 0.2 && freq > 150) ? 15 : 100;
-        
-        // Amortissement type "Horlogerie NASA"
+        const coherence = (flux < 5 && freq > 150) ? 15 : 100;
         this.state.speed += (targetSpeed - this.state.speed) * 0.12;
 
-        // --- PHASE 5: INTÉGRATION QUANTIQUE ---
-        this.state.planck = math.add(this.state.planck, math.divide(math.bignumber(dt), this.const.tp));
+        // PHASE 5: INTÉGRATION DE PLANCK
+        const planckDelta = math.divide(math.bignumber(dt), this.const.tp);
+        this.state.planck = math.add(this.state.planck, planckDelta);
         this.state.pos = math.add(this.state.pos, math.multiply(this.state.speed / 3.6, dt));
 
-        this.updateHUD(freq, flux, pts, coh);
+        this.updateHUD(freq, flux, pts, coherence);
         this.drawAudioViz();
         requestAnimationFrame(() => this.loop());
     },
@@ -230,7 +241,6 @@ const KERNEL = {
         document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 24});
         document.getElementById('ui-planck').innerText = math.format(this.state.planck, {notation: 'fixed', precision: 0});
         
-        // Alerte Veto
         const veto = document.getElementById('ui-veto');
         if(c < 50) {
             veto.innerText = "SIM_DETECTED";
@@ -256,4 +266,4 @@ const KERNEL = {
 };
 </script>
 </body>
-    </html>
+</html>
