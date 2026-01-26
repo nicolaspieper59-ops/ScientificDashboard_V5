@@ -3,24 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | PURE PHYSICS</title>
+    <title>PROVIDENCE V19-S | CELESTIAL_KALMAN</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <style>
-        :root { --glow: #00ff88; --bg: #050705; --warn: #ffcc00; --crit: #ff0044; --panel: rgba(10, 15, 10, 0.98); --border: #004422; --text: #e0ffe0; }
-        * { box-sizing: border-box; -webkit-user-select: none; touch-action: none; }
-        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; margin: 0; height: 100vh; overflow: hidden; border: 2px solid var(--border); font-size: 11px; }
-        .hud-grid { display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; gap: 15px; position: relative; z-index: 2; }
-        .panel { background: var(--panel); border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; backdrop-filter: blur(15px); }
-        .v-main { font-size: 5rem; color: var(--glow); text-align: center; font-family: 'Orbitron'; text-shadow: 0 0 25px var(--glow); line-height: 1; margin: 10px 0; }
-        #cam-preview { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.15; z-index: 1; filter: grayscale(1) contrast(1.2); }
-        canvas { background: #000; border: 1px solid #111; width: 100%; image-rendering: pixelated; }
+        :root { --glow: #00ff88; --bg: #050705; --warn: #ffcc00; --crit: #ff0044; --border: #004422; --text: #e0ffe0; }
+        * { box-sizing: border-box; touch-action: none; }
+        body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono'; margin: 0; overflow: hidden; font-size: 10px; border: 1px solid var(--border); }
+        .hud-grid { display: grid; grid-template-columns: 300px 1fr 300px; height: 100vh; padding: 10px; gap: 10px; position: relative; z-index: 2; }
+        .panel { background: rgba(10, 15, 10, 0.95); border: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; backdrop-filter: blur(10px); }
+        .v-main { font-size: 4rem; color: var(--glow); text-align: center; font-family: 'Orbitron'; text-shadow: 0 0 20px var(--glow); line-height: 1; }
+        #cam-preview { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.1; z-index: 1; }
         .val { color: var(--glow); font-weight: bold; }
-        button { background: var(--glow); border: none; padding: 25px; font-weight: 900; cursor: pointer; font-family: 'Orbitron'; width: 100%; color: #000; letter-spacing: 2px; }
-        .log-box { font-size: 0.65rem; color: var(--warn); height: 100px; overflow-y: auto; border-top: 1px solid var(--border); margin-top: auto; padding-top: 5px; line-height: 1.2; }
-        #horizon { height: 60px; border: 1px solid var(--border); position: relative; overflow: hidden; background: #001100; margin-bottom: 5px;}
-        #horizon-line { position: absolute; width: 200%; height: 2px; background: var(--glow); top: 50%; left: -50%; transition: transform 0.1s linear; }
-        .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #002211; padding: 4px 0; }
+        .status-tag { font-size: 0.6rem; padding: 2px 5px; border: 1px solid var(--glow); margin-bottom: 5px; text-align: center; }
+        button { background: var(--glow); border: none; padding: 20px; font-family: 'Orbitron'; font-weight: 900; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
@@ -28,52 +24,34 @@
 <video id="cam-preview" autoplay playsinline muted></video>
 
 <div class="hud-grid">
-    <header style="grid-column: 1/4; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 10px;">
-        <div style="font-family: 'Orbitron'; font-weight: 900; font-size: 1.4rem; letter-spacing: 2px;">PROVIDENCE // V19-S</div>
-        <div id="ui-status" style="font-size: 0.7rem; border: 1px solid var(--glow); padding: 4px 15px; background: rgba(0,255,136,0.1);">IMU_STABLE</div>
-    </header>
-
     <aside class="panel">
-        <h3 style="color:var(--glow); font-size: 0.8rem;">[CENTRALE_INERTIE]</h3>
-        <div id="horizon"><div id="horizon-line"></div></div>
-        <div class="data-row">G-VECTOR: <span id="ui-g" class="val">1.000</span></div>
-        <div class="data-row">INERTIE: <span id="ui-inertie" class="val">0.000</span></div>
+        <div class="status-tag" id="ui-mode">MODE: EIGEN_FUSION</div>
+        <h3 style="color:var(--glow)">[CELESTIAL_3D]</h3>
+        <div id="ui-sun" class="val">SUN: 0.00°</div>
+        <div id="ui-moon" class="val">MOON: 0.00°</div>
         
-        <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[AUDIO_FFT]</h3>
-        <canvas id="audio-viz" style="height:80px;"></canvas>
-        <div id="ui-freq" class="val" style="text-align: center; margin-top: 5px;">0 Hz</div>
-        
-        <div id="log-console" class="log-box">> STANDBY_FOR_PHYSICS</div>
+        <h3 style="color:var(--glow); margin-top: 20px;">[STRATEGIC_CHOICE]</h3>
+        <div id="ui-trust-imu">IMU TRUST: 100%</div>
+        <div id="ui-trust-vis">VIS TRUST: 100%</div>
+        <div id="log-console" style="font-size: 0.6rem; color: var(--warn); margin-top: auto; height: 80px; overflow: hidden;">> KERNEL_IDLE</div>
     </aside>
 
     <main class="panel" style="background: none; border: none; justify-content: center;">
-        <div style="background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid var(--border); box-shadow: 0 0 30px rgba(0,255,136,0.2);">
+        <div style="background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid var(--border);">
             <div id="ui-speed" class="v-main">0.00</div>
-            <div style="text-align:center; letter-spacing: 12px; font-size: 0.9rem; color: var(--glow); font-weight: bold;">KM / HEURE</div>
+            <div style="text-align:center; letter-spacing: 5px; font-weight: bold;">KM / H (VECTOR_SUM)</div>
         </div>
-        
-        <div style="border: 1px solid var(--border); position: relative; height: 180px; background: #000; margin: 15px 0;">
-            <canvas id="slam-canvas" style="height: 100%; width: 100%;"></canvas>
-            <div id="ui-env-tag" style="position:absolute; top:5px; left:10px; font-size:0.6rem; color:var(--warn); background:rgba(0,0,0,0.8); padding:2px 5px;">SEXTANT: ODOMETRY_ON</div>
-        </div>
-
-        <div style="padding:10px; background: rgba(0,0,0,0.9); border: 1px solid var(--border);">
-            <div id="ui-coord" style="font-size:0.85rem; color:var(--glow); word-break:break-all;">X: +0.000000000000</div>
+        <div style="margin-top: 20px;">
+            <div id="ui-pos-x" class="val">X: +0.000000000000</div>
+            <div id="ui-pos-y" class="val">Y: +0.000000000000</div>
+            <div id="ui-pos-z" class="val">Z: +0.000000000000</div>
         </div>
     </main>
 
     <aside class="panel">
-        <h3 style="color:var(--glow); font-size: 0.8rem;">[QUANTUM_CLOCK]</h3>
-        <div id="ui-planck" style="font-size: 0.65rem; color: var(--warn); word-break: break-all;">0</div>
-        
-        <h3 style="color:var(--glow); font-size: 0.8rem; margin-top: 15px;">[ODOMETRIE_VISUELLE]</h3>
-        <div class="data-row">PATTERNS: <span id="ui-pts" class="val">0</span></div>
-        <div class="data-row">PRECISION: <span id="ui-coh" class="val">100%</span></div>
-        <div class="data-row">VETO_DRIFT: <span id="ui-veto" class="val">CLEAN</span></div>
-        
-        <div style="margin-top: auto;">
-            <button id="boot-btn" onclick="KERNEL.boot()">INITIALIZE_REALITY</button>
-        </div>
+        <h3 style="color:var(--glow)">[PLANCK_CHRONO]</h3>
+        <div id="ui-planck" style="word-break: break-all; color: var(--warn);">0</div>
+        <button id="boot-btn" style="margin-top: auto;" onclick="KERNEL.boot()">INIT_REALITY</button>
     </aside>
 </div>
 
@@ -82,144 +60,113 @@ math.config({ number: 'BigNumber', precision: 64 });
 
 const KERNEL = {
     state: { 
-        active: false, speed: 0, speedInertielle: 0, pos: math.bignumber(0), 
-        planck: math.bignumber(0), lastFrame: performance.now(), 
-        gVector: 1.0, lastGV: 1.0, vib: 0, lastPts: 0 
-    },
-    const: { 
-        invTp: math.divide(math.bignumber(1), math.bignumber('5.391247e-44')), 
-        g: 9.80665, friction: 0.992 // Friction d'air naturelle
+        active: false,
+        pos: {x: math.bignumber(0), y: math.bignumber(0), z: math.bignumber(0)},
+        vel: {x: 0, y: 0, z: 0},
+        rot: {a: 0, b: 0, g: 0},
+        lastFrame: performance.now(),
+        trust: { imu: 1.0, vis: 1.0 }
     },
 
     async boot() {
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            const permission = await DeviceMotionEvent.requestPermission();
-            if (permission !== 'granted') return;
-        }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
-            document.getElementById('cam-preview').srcObject = stream;
-            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = this.audioCtx.createMediaStreamSource(stream);
-            this.analyser = this.audioCtx.createAnalyser();
-            source.connect(this.analyser);
-            this.audioData = new Uint8Array(this.analyser.frequencyBinCount);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+        document.getElementById('cam-preview').srcObject = stream;
+        
+        this.audioCtx = new AudioContext();
+        this.analyser = this.audioCtx.createAnalyser();
+        this.audioCtx.createMediaStreamSource(stream).connect(this.analyser);
+        this.audioData = new Uint8Array(this.analyser.frequencyBinCount);
 
-            window.addEventListener('devicemotion', (e) => this.handlePhysics(e), true);
-            this.canvasSlam = document.getElementById('slam-canvas');
-            this.ctxSlam = this.canvasSlam.getContext('2d');
-            this.canvasAudio = document.getElementById('audio-viz');
-            this.ctxAudio = this.canvasAudio.getContext('2d');
-
-            document.getElementById('boot-btn').style.display = 'none';
-            document.getElementById('ui-status').innerText = "REALITY_LOCKED";
-            this.state.active = true;
-            this.log("PHYSICS_ENGINE_READY");
-            this.loop();
-        } catch (e) { this.log("HARDWARE_FAILURE", true); }
+        window.addEventListener('deviceorientation', (e) => { this.state.rot = {a: e.alpha||0, b: e.beta||0, g: e.gamma||0}; });
+        window.addEventListener('devicemotion', (e) => this.processMotion(e));
+        
+        document.getElementById('boot-btn').style.display = 'none';
+        this.state.active = true;
+        this.loop();
     },
 
-    handlePhysics(e) {
+    // --- ÉPHÉMÉRIDES NATIVES (Soleil & Lune) ---
+    getCelestial() {
+        const now = new Date();
+        const jd = (now.getTime() / 86400000) + 2440587.5; // Jour Julien
+        const t = (jd - 2451545.0) / 36525; // Siècle Julien
+
+        // Soleil
+        const l0 = 280.466 + 36000.77 * t;
+        const sunAz = l0 % 360;
+
+        // Lune (Simplifié : Cycle de 29.53 jours)
+        const moonPhase = ((jd - 2451550.1) / 29.53) % 1;
+        const moonAz = moonPhase * 360;
+
+        return { sun: sunAz, moon: moonAz };
+    },
+
+    processMotion(e) {
         if (!this.state.active) return;
-        const acc = e.accelerationIncludingGravity;
-        if (!acc || acc.x === null) return;
-        
-        // Calcul du vecteur G réel
-        this.state.gVector = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / this.const.g;
-        this.state.vib = Math.abs(this.state.gVector - this.state.lastGV);
-        
-        document.getElementById('ui-g').innerText = this.state.gVector.toFixed(3);
-        const roll = Math.atan2(acc.x, acc.z) * (180/Math.PI);
-        document.getElementById('horizon-line').style.transform = `rotate(${roll}deg)`;
-        this.state.lastGV = this.state.gVector;
-    },
+        const a = e.acceleration;
+        if (!a.x) return;
 
-    log(m, crit=false) {
-        const c = document.getElementById('log-console');
-        c.innerHTML = `<span style="color:${crit?'var(--crit)':'var(--warn)'}">> ${m}</span><br>` + c.innerHTML;
+        // Rotation matricielle vers référentiel Monde
+        const rA = this.state.rot.a * Math.PI/180, rB = this.state.rot.b * Math.PI/180, rG = this.state.rot.g * Math.PI/180;
+        const ax = a.x * (Math.cos(rA)*Math.cos(rB)) + a.y * (Math.cos(rA)*Math.sin(rB)*Math.sin(rG) - Math.sin(rA)*Math.cos(rG));
+        const ay = a.x * (Math.sin(rA)*Math.cos(rB)) + a.y * (Math.sin(rA)*Math.sin(rB)*Math.sin(rG) + Math.cos(rA)*Math.cos(rG));
+        const az = a.x * (-Math.sin(rB)) + a.y * (Math.cos(rB)*Math.sin(rG)) + a.z * (Math.cos(rB)*Math.cos(rG));
+
+        this.state.currentAcc = {x: ax, y: ay, z: az};
     },
 
     loop() {
-        if(!this.state.active) return;
         const now = performance.now();
-        let dt = (now - this.state.lastFrame) / 1000;
-        
-        // --- SÉCURITÉ THERMODYNAMIQUE (ANTI-TRICHE) ---
-        if (dt > 0.3) { // Détection de lag matériel
-            this.state.speedInertielle *= 0.5; // Chute de l'énergie cinétique par perte de temps
-            this.state.pos = math.bignumber(this.state.pos); // On fige la position
-            this.log("TIME_DILATION_DETECTED: STABILIZING", true);
-            this.state.lastFrame = now;
-            requestAnimationFrame(() => this.loop());
-            return;
-        }
+        const dt = (now - this.state.lastFrame) / 1000;
         this.state.lastFrame = now;
 
-        // 1. COLLECTE SENSORIELLE
+        // 1. Analyse Acoustique & Visuelle
         this.analyser.getByteFrequencyData(this.audioData);
-        let max = 0, idx = 0;
-        for(let i=0; i<this.audioData.length; i++) { if(this.audioData[i]>max){max=this.audioData[i]; idx=i;} }
-        const freq = idx * this.audioCtx.sampleRate / this.analyser.fftSize;
+        let audioEnergy = 0;
+        for(let v of this.audioData) audioEnergy += v;
+        audioEnergy /= this.audioData.length;
 
-        this.ctxSlam.drawImage(document.getElementById('cam-preview'), 0, 0, this.canvasSlam.width, this.canvasSlam.height);
-        const imgData = this.ctxSlam.getImageData(0,0,this.canvasSlam.width, this.canvasSlam.height);
-        let pts = 0;
-        for(let i=0; i<imgData.data.length; i+=2000) { if(imgData.data[i] > 160) pts++; }
-
-        // 2. CALCUL PHYSIQUE PUR (Newton)
-        // Accélération linéaire réelle détectée par l'IMU (m/s²)
-        const accLineaire = Math.abs(this.state.gVector - 1.0) * 9.81;
+        // 2. CHOIX STRATÉGIQUE (Fusion de Kalman simplifiée)
+        // On compare l'accélération (IMU) à l'énergie acoustique
+        // Si l'accéléromètre sature mais qu'il n'y a pas de bruit de vent/moteur -> IMU est fou.
+        const accMag = this.state.currentAcc ? Math.sqrt(this.state.currentAcc.x**2 + this.state.currentAcc.y**2 + this.state.currentAcc.z**2) : 0;
         
-        // Intégration Newtonienne : V = V0 + (a * dt)
-        // On ajoute la poussée sonore pour simuler la puissance moteur proportionnelle
-        const pousséeMoteur = (freq / 10000);
-        this.state.speedInertielle += (accLineaire + pousséeMoteur) * dt;
-        
-        // Application de la friction (Inertie réaliste)
-        this.state.speedInertielle *= this.const.friction;
+        this.state.trust.imu = (accMag > 20 && audioEnergy < 5) ? 0.1 : 1.0; 
+        this.state.trust.vis = (audioEnergy > 50) ? 1.0 : 0.5;
 
-        // 3. ODOMÉTRIE VISUELLE (Le Sextant)
-        // Il valide si le mouvement est réel. S'il n'y a pas de pixels qui bougent, 
-        // l'inertie est bridée (Veto Drift).
-        const visFactor = Math.min(1, pts / 15);
-        this.state.speed = (this.state.speedInertielle * 3.6) * (0.2 + 0.8 * visFactor);
+        if (this.state.currentAcc) {
+            const factor = this.state.trust.imu;
+            this.state.vel.x += this.state.currentAcc.x * dt * factor;
+            this.state.vel.y += this.state.currentAcc.y * dt * factor;
+            this.state.vel.z += this.state.currentAcc.z * dt * factor;
 
-        // 4. CHRONOS & POSITION X
-        const dP = math.multiply(math.bignumber(dt), this.const.invTp);
-        this.state.planck = math.add(this.state.planck, dP);
-        this.state.pos = math.add(this.state.pos, math.multiply(math.bignumber(this.state.speed/3.6), math.bignumber(dt)));
+            // Friction aérodynamique auto-adaptative
+            const friction = 0.99 - (audioEnergy / 5000);
+            this.state.vel.x *= friction; this.state.vel.y *= friction; this.state.vel.z *= friction;
 
-        // 5. UPDATE HUD
-        this.updateHUD(freq, pts, visFactor);
-        this.drawViz();
+            // Intégration Position
+            this.state.pos.x = math.add(this.state.pos.x, math.multiply(math.bignumber(this.state.vel.x), math.bignumber(dt)));
+            this.state.pos.y = math.add(this.state.pos.y, math.multiply(math.bignumber(this.state.vel.y), math.bignumber(dt)));
+            this.state.pos.z = math.add(this.state.pos.z, math.multiply(math.bignumber(this.state.vel.z), math.bignumber(dt)));
+        }
+
+        const speed = Math.sqrt(this.state.vel.x**2 + this.state.vel.y**2 + this.state.vel.z**2) * 3.6;
+        const cel = this.getCelestial();
+
+        this.updateHUD(speed, cel);
         requestAnimationFrame(() => this.loop());
     },
 
-    updateHUD(f, pts, vFactor) {
-        document.getElementById('ui-speed').innerText = this.state.speed.toFixed(2);
-        document.getElementById('ui-freq').innerText = Math.round(f) + " Hz";
-        document.getElementById('ui-pts').innerText = pts;
-        document.getElementById('ui-coh').innerText = Math.round(vFactor * 100) + "%";
-        document.getElementById('ui-inertie').innerText = this.state.speedInertielle.toFixed(3);
-        document.getElementById('ui-planck').innerText = math.format(this.state.planck, {notation: 'exponential', precision: 5});
-        document.getElementById('ui-coord').innerText = "X: " + math.format(this.state.pos, {notation: 'fixed', precision: 12});
-        
-        if (vFactor < 0.1 && this.state.speedInertielle > 0.5) {
-            document.getElementById('ui-veto').innerText = "DRIFT_LOCK";
-            document.getElementById('ui-veto').style.color = "var(--crit)";
-        } else {
-            document.getElementById('ui-veto').innerText = "CLEAN";
-            document.getElementById('ui-veto').style.color = "var(--glow)";
-        }
-    },
-
-    drawViz() {
-        const ctx = this.ctxAudio, w = this.canvasAudio.width, h = this.canvasAudio.height;
-        ctx.clearRect(0,0,w,h); ctx.fillStyle = '#00ff88';
-        for(let i=0; i<this.audioData.length; i+=25) {
-            const v = (this.audioData[i]/255)*h;
-            ctx.fillRect(i*(w/this.audioData.length)*25, h-v, 5, v);
-        }
+    updateHUD(s, cel) {
+        document.getElementById('ui-speed').innerText = s.toFixed(2);
+        document.getElementById('ui-pos-x').innerText = "X: " + math.format(this.state.pos.x, {notation: 'fixed', precision: 12});
+        document.getElementById('ui-pos-y').innerText = "Y: " + math.format(this.state.pos.y, {notation: 'fixed', precision: 12});
+        document.getElementById('ui-pos-z').innerText = "Z: " + math.format(this.state.pos.z, {notation: 'fixed', precision: 12});
+        document.getElementById('ui-sun').innerText = "SUN_AZ: " + cel.sun.toFixed(2) + "°";
+        document.getElementById('ui-moon').innerText = "MOON_AZ: " + cel.moon.toFixed(2) + "°";
+        document.getElementById('ui-trust-imu').innerText = "IMU TRUST: " + (this.state.trust.imu * 100).toFixed(0) + "%";
+        document.getElementById('ui-trust-vis').innerText = "ACU TRUST: " + Math.min(100, (this.state.trust.vis * 100)).toFixed(0) + "%";
     }
 };
 </script>
