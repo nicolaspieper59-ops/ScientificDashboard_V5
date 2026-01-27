@@ -7,68 +7,135 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
-    
     <style>
-        :root {
-            --bg: #010101; --card: rgba(10, 10, 12, 0.95); --border: #1a1a20;
-            --accent: #00ff88; --critical: #ff3300; --blue: #00c3ff; --gold: #ffd700;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; 
-            height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column;
-            font-size: 10px;
-        }
+:root {
+    --bg: #000000;
+    --hud-color: #00ff88;
+    --alert-color: #ff3300;
+    --glass: rgba(0, 20, 10, 0.6);
+}
 
-        /* Scanline effect for HUD aesthetic */
-        body::before {
-            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
-            z-index: 100; background-size: 100% 2px, 3px 100%; pointer-events: none;
-        }
+body, html {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--hud-color);
+}
 
-        header { height: 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; justify-content: space-between; background: #000; }
-        main { flex: 1; display: grid; grid-template-columns: 320px 1fr 320px; gap: 8px; padding: 8px; overflow: hidden; }
-        
-        .panel { background: var(--card); border: 1px solid var(--border); padding: 12px; border-radius: 4px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
-        h2 { font-size: 0.7rem; color: var(--blue); text-transform: uppercase; border-left: 3px solid var(--blue); padding-left: 8px; margin-bottom: 5px; font-family: 'Orbitron'; letter-spacing: 1px; }
-        h3 { font-size: 0.6rem; color: var(--gold); margin-top: 5px; text-transform: uppercase; opacity: 0.8; letter-spacing: 0.5px; }
-
-        .data-point { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #1a1a1a; align-items: center; }
-        .data-point span:first-child { color: #888; font-size: 0.65rem; }
-        .data-point span:last-child { color: var(--accent); font-weight: bold; font-size: 0.75rem; text-shadow: 0 0 5px rgba(0,255,136,0.3); }
-
-        #ui-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; opacity: 0.3; filter: grayscale(1) contrast(1.2); }
-        #map { height: 160px; background: #000; border: 1px solid #222; width: 100%; border-radius: 2px; margin: 5px 0; }
-        
-        .v-main-container { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; background: rgba(0,0,0,0.4); border: 1px dashed rgba(0,255,136,0.2); }
-        .v-main { font-size: 5rem; color: var(--accent); font-family: 'Orbitron'; text-shadow: 0 0 30px var(--accent); line-height: 1; }
-
-        footer { height: 180px; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 8px; background: #050505; }
-
-        .btn-init { width: 100%; padding: 15px; background: var(--accent); color: #000; border: none; font-weight: 900; cursor: pointer; border-radius: 2px; font-family: 'Orbitron'; text-transform: uppercase; font-size: 0.8rem; transition: 0.3s; }
-        .btn-init:hover { background: #fff; box-shadow: 0 0 20px var(--accent); }
-        
-        #anomaly-log { flex: 1; background: rgba(0,0,0,0.8); padding: 8px; font-size: 0.6rem; color: var(--warn); overflow-y: auto; border: 1px solid #111; font-family: 'JetBrains Mono'; color: #ffcc00; }
-        .critical { color: var(--critical) !important; }
-        #camera-hud {
+/* --- COUCHE 1 : VIDÉO (FOND) --- */
+#ui-canvas {
     position: fixed;
     top: 0; left: 0;
     width: 100vw; height: 100vh;
-    pointer-events: none;
-    z-index: 10;
+    object-fit: cover;
+    z-index: 0; /* Au fond */
 }
-.pitch-ladder {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    border-left: 2px solid var(--accent);
-    border-right: 2px solid var(--accent);
-    width: 200px; height: 150px;
-                   }
+
+/* --- COUCHE 2 : VISUALISATION 3D (MILIEU) --- */
+.v-main-container {
+    position: fixed;
+    top: 50%; left: 0;
+    transform: translateY(-50%);
+    width: 100%; height: 300px;
+    z-index: 10;
+    pointer-events: none; /* Laisse passer les clics */
+}
+
+/* --- COUCHE 3 : AR HUD (HORIZON) --- */
+#camera-hud {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: 15;
+    pointer-events: none;
+}
+
+/* --- COUCHE 4 : UI TEXTE (DEVANT) --- */
+.hud-panel {
+    position: fixed;
+    padding: 15px;
+    background: var(--glass);
+    border: 1px solid var(--hud-color);
+    backdrop-filter: blur(4px);
+    z-index: 20;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+}
+
+/* Positionnement des Panneaux */
+#p-top-left { top: 10px; left: 10px; width: 200px; }
+#p-top-right { top: 10px; right: 10px; width: 220px; text-align: right; }
+#p-bottom { 
+    bottom: 10px; left: 10px; right: 10px; 
+    height: auto; 
+    display: flex; 
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Typographie & Données */
+h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    margin: 0 0 10px 0;
+    border-bottom: 1px solid var(--hud-color);
+    padding-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.data-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+}
+
+.val { font-weight: bold; color: #fff; }
+
+/* Boutons de Contrôle */
+.btn-ctrl {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--hud-color);
+    color: var(--hud-color);
+    padding: 8px 12px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    pointer-events: auto; /* IMPORTANT: Rend les boutons cliquables */
+    transition: all 0.2s;
+    margin-right: 5px;
+}
+
+.btn-ctrl:hover { background: var(--hud-color); color: #000; }
+.btn-ctrl.critical { border-color: var(--alert-color); color: var(--alert-color); }
+.btn-ctrl.critical:hover { background: var(--alert-color); color: #fff; }
+
+/* Bouton Topographie Flottant */
+#topo-controls {
+    pointer-events: auto;
+}
+
+/* Log d'anomalie */
+#anomaly-log {
+    width: 100%;
+    height: 60px;
+    overflow-y: auto;
+    font-size: 0.65rem;
+    color: #aaa;
+    margin-top: 5px;
+    border-top: 1px dotted #444;
+}
+
+/* Masquage Mobile pour éviter l'encombrement si nécessaire */
+@media (max-width: 400px) {
+    .v-main-container { opacity: 0.7; height: 200px; }
+    h2 { font-size: 0.75rem; }
+    .data-row { font-size: 0.7rem; }
+}
     </style>
 </head>
 <body>
