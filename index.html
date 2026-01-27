@@ -54,6 +54,21 @@
         
         #anomaly-log { flex: 1; background: rgba(0,0,0,0.8); padding: 8px; font-size: 0.6rem; color: var(--warn); overflow-y: auto; border: 1px solid #111; font-family: 'JetBrains Mono'; color: #ffcc00; }
         .critical { color: var(--critical) !important; }
+        #camera-hud {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 10;
+}
+.pitch-ladder {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    width: 200px; height: 150px;
+                   }
     </style>
 </head>
 <body>
@@ -161,6 +176,11 @@
             <button id="export-metrics-btn" class="btn-ctrl">CSV_EXPORT</button>
             <button id="emergency-stop-btn" class="btn-ctrl critical">EMG_STOP</button>
             <button id="clear-log-btn" class="btn-ctrl" onclick="document.getElementById('anomaly-log').innerHTML=''">CLEAR_LOG</button>
+            <div id="topo-controls" style="position:fixed; bottom:200px; right:20px; z-index:100;">
+    <button onclick="TOPO_SURVEY.addWaypoint('REPERE_GEOLOGIQUE')" 
+            style="width:60px; height:60px; border-radius:50%; background:var(--gold); border:none; box-shadow: 0 0 15px var(--gold);">
+        <i class="fas fa-map-marker-alt" style="color:#000; font-size:1.5rem;"></i>
+    </button>
         </div>
     </div>
 </footer>
