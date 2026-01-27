@@ -1057,3 +1057,239 @@ document.getElementById('emergency-stop-btn').onclick = () => {
     BLACK_BOX.exportCSV();
     OMNISCIENCE.log("ARRÊT D'URGENCE & SAUVEGARDE");
 };
+// À ajouter à la fin du bloc try de OMNISCIENCE.init()
+VISUALIZER_3D.init();
+this.log("MOTEUR_3D_RENDU_INITIALISÉ");
+const VISUALIZER_3D = {
+    scene: null, camera: null, renderer: null, pathLine: null,
+    points: [], maxPoints: 1000,
+
+    init() {
+        const container = document.querySelector('.v-main-container');
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, container.clientWidth / 200, 0.1, 1000);
+        
+        this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        this.renderer.setSize(container.clientWidth, 200);
+        container.appendChild(this.renderer.domElement);
+
+        // Grille de référence (Sol théorique)
+        const grid = new THREE.GridHelper(100, 100, 0x00ff88, 0x222222);
+        this.scene.add(grid);
+
+        // Configuration de la ligne de trajectoire
+        const material = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 2 });
+        const geometry = new THREE.BufferGeometry();
+        this.pathLine = new THREE.Line(geometry, material);
+        this.scene.add(this.pathLine);
+
+        this.camera.position.set(5, 5, 5);
+        this.camera.lookAt(0, 0, 0);
+    },
+
+    update(pos) {
+        // Conversion BigNumber -> Float pour Three.js
+        const x = Number(pos.x);
+        const y = Number(pos.y);
+        const z = Number(pos.z);
+
+        this.points.push(new THREE.Vector3(x, y, z));
+        if (this.points.length > this.maxPoints) this.points.shift();
+
+        this.pathLine.geometry.setFromPoints(this.points);
+        
+        // La caméra suit le point actuel avec un léger retard pour la fluidité
+        this.camera.position.lerp(new THREE.Vector3(x + 2, y + 2, z + 2), 0.05);
+        this.camera.lookAt(x, y, z);
+
+        this.renderer.render(this.scene, this.camera);
+    }
+    const HUD_AR = {
+    canvas: null, ctx: null,
+
+    init() {
+        this.canvas = document.createElement('canvas');
+        this.canvas.id = 'camera-hud';
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        document.body.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d');
+    },
+
+    draw(state) {
+        const { ctx, canvas } = this;
+        const w = canvas.width, h = canvas.height;
+        const cx = w / 2, cy = h / 2;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Récupération des angles du Quaternion pour l'horizon
+        const q = state.quat;
+        const roll = Math.atan2(2*(q[0]*q[1] + q[2]*q[3]), 1 - 2*(q[1]*q[1] + q[2]*q[2]));
+        const pitch = Math.asin(2*(q[0]*q[2] - q[3]*q[1]));
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-roll); // L'horizon tourne à l'inverse du roll
+
+        // Ligne d'horizon
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-200, pitch * 500); // Décalage vertical selon le pitch
+        ctx.lineTo(200, pitch * 500);
+        ctx.stroke();
+
+        // Échelle de tangage (Pitch Ladder)
+        for (let i = -30; i <= 30; i += 10) {
+            if (i === 0) continue;
+            let y = (pitch * 500) - (i * 5);
+            ctx.beginPath();
+            ctx.moveTo(-50, y); ctx.lineTo(50, y);
+            ctx.stroke();
+            ctx.fillStyle = '#00ff88';
+            ctx.fillText(i + "°", 60, y + 3);
+        }
+
+        ctx.restore();
+
+        // Vecteur de poussée (Cercle central)
+        ctx.strokeStyle = '#00ff88';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+};
+
+};
+// Dans OMNISCIENCE.mainLoop()
+VISUALIZER_3D.update(this.state.pos);
+const ENVIRONMENT_MANAGER = {
+    detectMode(v, g) {
+        if (v > 800) return "SPATIAL"; // Relativité active
+        if (v > 250) return "AÉRONAUTIQUE"; // Horizon AR prioritaire
+        if (g < 0.5) return "MICRO-GRAVITÉ"; // Calibration spécifique
+        return "TERRESTRE"; // Filtrage des vibrations actif
+    }
+};
+const MARINE_MODULE = {
+    // Calcul de profondeur basé sur la pression (P = rho * g * h)
+    getDepth(paxPa) {
+        const rho_sea = 1025; // kg/m3
+        const depth = paxPa / (rho_sea * 9.80665);
+        return depth.toFixed(2); // Profondeur en mètres
+    },
+    
+    // Calcul de la dérive (Drift Angle)
+    getDriftAngle(heading, velocityVector) {
+        const moveAngle = Math.atan2(velocityVector.y, velocityVector.x) * 180 / Math.PI;
+        return (moveAngle - heading);
+    }
+};
+const MACHINE_SUPPORT_LOGIC = {
+    analyze(accelZ, baroPressure) {
+        // Détection d'ascenseur
+        if (Math.abs(accelZ - 9.81) > 0.2) {
+            const floorHeight = 3.5; // mètre standard
+            const currentFloor = OMNISCIENCE.state.pos.z / floorHeight;
+            OMNISCIENCE.log(`ASCENSEUR_DETECTÉ : ÉTAGE_${Math.round(currentFloor)}`);
+        }
+        
+        // Calcul de la vitesse du support (Tapis/Escalier)
+        // On compare la vitesse calculée par les pas (podométrie) 
+        // à la vitesse calculée par l'accélération globale.
+        const supportSpeed = OMNISCIENCE.state.vel.x - this.getWalkingSpeed();
+        return supportSpeed;
+    },
+    
+    getWalkingSpeed() {
+        // Analyse de la fréquence des chocs (pas)
+        return 1.4; // Moyenne humaine en m/s
+    }
+};
+const SUBSURFACE_CORE = {
+    // Verrouillage de la position quand le mouvement est très lent (rampage)
+    lockCoordinate(pos, velocity) {
+        if (velocity < 0.05) {
+            // On stabilise les micro-oscillations du capteur pour ne pas 
+            // "polluer" la carte de la grotte avec du bruit.
+            return math.round(pos, 4); 
+        }
+        return pos;
+    },
+
+    // Calcul de la profondeur relative par rapport à l'entrée de la grotte
+    getCaveDepth(currentPressure, entryPressure) {
+        // Formule barométrique simplifiée pour les faibles altitudes
+        const deltaP = entryPressure - currentPressure;
+        const depth = deltaP * 8.5; // ~8.5m par hPa près du sol
+        return depth.toFixed(2);
+    }
+};
+const TOPO_SURVEY = {
+    markers: [],
+
+    addWaypoint(label = "Point d'Intérêt") {
+        const state = OMNISCIENCE.state;
+        const waypoint = {
+            id: Date.now(),
+            label: label,
+            coords: {
+                x: state.pos.x.toString(),
+                y: state.pos.y.toString(),
+                z: state.pos.z.toString()
+            },
+            orientation: [...state.quat],
+            pressure: document.getElementById('pressure-hpa').innerText,
+            timestamp: new Date().toISOString()
+        };
+
+        this.markers.push(waypoint);
+        
+        // Ajout visuel dans la scène Three.js
+        VISUALIZER_3D.addMarker(state.pos);
+        
+        OMNISCIENCE.log(`TOPOGRAPHIE : ${label} enregistré à Z:${waypoint.coords.z}`);
+        return waypoint;
+    }
+};
+const MISSION_REPORTER = {
+    generateReport() {
+        const report = {
+            metadata: {
+                mission_id: `MISSION_${Date.now()}`,
+                system_version: "OMNISCIENCE V17 PRO MAX",
+                explorer_coord_start: {
+                    lat: OMNISCIENCE.state.lat,
+                    lon: OMNISCIENCE.state.lon
+                },
+                calibration_bias: AUTO_CALIBRATOR.bias
+            },
+            telemetry: BLACK_BOX.logs, // Trajectoire complète
+            topography: TOPO_SURVEY.markers, // Points d'intérêt (POI)
+            statistics: {
+                total_distance: document.getElementById('distance-totale').innerText,
+                max_g_force: this.calculateMaxG(),
+                total_proper_time_tau: OMNISCIENCE.state.tau,
+                final_jd: OMNISCIENCE.state.jd
+            }
+        };
+
+        this.download(report);
+    },
+
+    calculateMaxG() {
+        // Extraction de la valeur max depuis les logs de la boîte noire
+        return Math.max(...BLACK_BOX.logs.map(l => l.g || 0)).toFixed(2);
+    },
+
+    download(data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${data.metadata.mission_id}_FINAL_REPORT.json`;
+        a.click();
+        OMNISCIENCE.log("RAPPORT DE MISSION EXPORTÉ AVEC SUCCÈS");
+    }
+};
