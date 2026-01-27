@@ -3,406 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROVIDENCE V19-S | SINGULARITY MASTER</title>
+    <title>OMNISCIENCE V17 PRO MAX • TOTAL_RECALL_CORE</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="turf.min.js"></script>
-    <script src="ephem.js"></script>
-
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
     
     <style>
-        /* --- CORE VISUALS --- */
-        :root { 
-            --glow: #00ff88; 
-            --bg: #020502; 
-            --warn: #ffcc00; 
-            --crit: #ff0044; 
-            --border: rgba(0, 255, 136, 0.3);
-            --glass: rgba(0, 10, 0, 0.85);
+        :root {
+            --bg: #010101; --card: rgba(10, 10, 12, 0.95); --border: #1a1a20;
+            --accent: #00ff88; --critical: #ff3300; --blue: #00c3ff; --gold: #ffd700;
         }
-
-        * { box-sizing: border-box; user-select: none; }
-        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
-            background: var(--bg); 
-            color: #e0ffe0; 
-            font-family: 'JetBrains Mono', monospace; 
-            margin: 0; 
-            overflow: hidden; 
-            font-size: 11px; 
-            height: 100vh;
-            width: 100vw;
+            background: var(--bg); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; 
+            height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column;
+            font-size: 10px;
         }
 
-        /* --- ARRIÈRE-PLAN CAMÉRA & EFFETS --- */
-        #cam-layer {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: cover;
-            z-index: -2;
-            opacity: 0.3;
-            filter: contrast(1.2) grayscale(0.8);
+        /* Scanline effect for HUD aesthetic */
+        body::before {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            z-index: 100; background-size: 100% 2px, 3px 100%; pointer-events: none;
         }
 
-        .scanline {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
-            background-size: 100% 4px;
-            z-index: -1;
-            pointer-events: none;
-        }
+        header { height: 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; justify-content: space-between; background: #000; }
+        main { flex: 1; display: grid; grid-template-columns: 320px 1fr 320px; gap: 8px; padding: 8px; overflow: hidden; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); padding: 12px; border-radius: 4px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        h2 { font-size: 0.7rem; color: var(--blue); text-transform: uppercase; border-left: 3px solid var(--blue); padding-left: 8px; margin-bottom: 5px; font-family: 'Orbitron'; letter-spacing: 1px; }
+        h3 { font-size: 0.6rem; color: var(--gold); margin-top: 5px; text-transform: uppercase; opacity: 0.8; letter-spacing: 0.5px; }
 
-        /* --- LAYOUT GRID --- */
-        .hud-overlay { 
-            display: grid; 
-            grid-template-columns: 320px 1fr 320px; 
-            grid-template-rows: 1fr;
-            height: 100%; 
-            padding: 20px; 
-            gap: 20px; 
-        }
+        .data-point { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #1a1a1a; align-items: center; }
+        .data-point span:first-child { color: #888; font-size: 0.65rem; }
+        .data-point span:last-child { color: var(--accent); font-weight: bold; font-size: 0.75rem; text-shadow: 0 0 5px rgba(0,255,136,0.3); }
 
-        /* --- PANNEAUX (GLASSMORPHISM) --- */
-        .panel { 
-            border: 1px solid var(--border); 
-            background: var(--glass); 
-            padding: 15px; 
-            display: flex; 
-            flex-direction: column; 
-            backdrop-filter: blur(8px); 
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.05);
-            transition: border-color 0.3s;
-        }
+        #ui-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -1; opacity: 0.3; filter: grayscale(1) contrast(1.2); }
+        #map { height: 160px; background: #000; border: 1px solid #222; width: 100%; border-radius: 2px; margin: 5px 0; }
+        
+        .v-main-container { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; background: rgba(0,0,0,0.4); border: 1px dashed rgba(0,255,136,0.2); }
+        .v-main { font-size: 5rem; color: var(--accent); font-family: 'Orbitron'; text-shadow: 0 0 30px var(--accent); line-height: 1; }
 
-        /* --- TYPOGRAPHIE & DATA --- */
-        h3 { 
-            margin: 0 0 10px 0; 
-            color: var(--glow); 
-            font-size: 0.8rem; 
-            border-bottom: 1px solid var(--border); 
-            padding-bottom: 5px; 
-            letter-spacing: 2px;
-        }
+        footer { height: 180px; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 8px; background: #050505; }
 
-        .data-row { 
-            display: flex; 
-            justify-content: space-between; 
-            margin-bottom: 6px; 
-            border-bottom: 1px dashed rgba(0, 255, 136, 0.1);
-        }
-
-        .data-label { color: #88aa88; font-size: 0.7rem; }
-        .val { color: var(--glow); font-weight: bold; text-shadow: 0 0 5px rgba(0,255,136,0.5); }
-
-        /* --- SECTION CENTRALE (VITESSE) --- */
-        .center-stage {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-
-        .speed-box {
-            border: 2px solid var(--border);
-            padding: 20px 40px;
-            background: rgba(0,0,0,0.6);
-            transform: skewX(-10deg);
-        }
-
-        .v-main { 
-            font-size: 5rem; 
-            color: var(--glow); 
-            font-family: 'Orbitron', sans-serif; 
-            text-shadow: 0 0 30px var(--glow); 
-            line-height: 1; 
-            transform: skewX(10deg); /* Compense le skew du conteneur */
-        }
-
-        .coord-box {
-            margin-top: 30px;
-            font-size: 0.85rem;
-            color: #fff;
-            background: rgba(0, 20, 0, 0.8);
-            padding: 10px;
-            border-left: 3px solid var(--glow);
-            width: 100%;
-        }
-
-        /* --- LOGS & BOUTONS --- */
-        #console-log { 
-            font-size: 0.65rem; 
-            color: var(--warn); 
-            overflow-y: hidden; 
-            height: 100px; 
-            border-top: 1px solid var(--border); 
-            margin-top: auto; 
-            padding-top: 10px;
-            font-family: monospace;
-            opacity: 0.8;
-        }
-
-        #boot-btn { 
-            margin-top: 10px; 
-            padding: 15px; 
-            background: var(--glow); 
-            color: #000;
-            border: none; 
-            font-family: 'Orbitron'; 
-            font-weight: 900; 
-            cursor: pointer; 
-            letter-spacing: 2px;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-        }
-        #boot-btn:hover { background: #fff; box-shadow: 0 0 20px var(--glow); }
-
-        /* --- MODES RELATIVISTES --- */
-        .mode-interstellar { --glow: #00ddee; --border: #0088aa; }
-        .mode-warning { --glow: #ffcc00; --border: #aa8800; }
-
-        /* --- RESPONSIVE MOBILE --- */
-        @media (max-width: 900px) {
-            .hud-overlay { 
-                grid-template-columns: 1fr; 
-                grid-template-rows: auto auto auto;
-                overflow-y: auto;
-            }
-            .v-main { font-size: 3rem; }
-        }
+        .btn-init { width: 100%; padding: 15px; background: var(--accent); color: #000; border: none; font-weight: 900; cursor: pointer; border-radius: 2px; font-family: 'Orbitron'; text-transform: uppercase; font-size: 0.8rem; transition: 0.3s; }
+        .btn-init:hover { background: #fff; box-shadow: 0 0 20px var(--accent); }
+        
+        #anomaly-log { flex: 1; background: rgba(0,0,0,0.8); padding: 8px; font-size: 0.6rem; color: var(--warn); overflow-y: auto; border: 1px solid #111; font-family: 'JetBrains Mono'; color: #ffcc00; }
+        .critical { color: var(--critical) !important; }
     </style>
 </head>
 <body>
 
-<video id="cam-layer" autoplay playsinline muted></video>
-<div class="scanline"></div>
+<video id="ui-canvas" autoplay playsinline muted></video>
 
-<div class="hud-overlay">
+<header>
+    <div style="color: var(--accent); letter-spacing: 2px; font-family: 'Orbitron';">OMNISCIENCE_V17_PRO_MAX // <span id="ui-sampling-rate">100Hz</span></div>
+    <div style="font-family: 'Orbitron'; font-size: 0.9rem; color: var(--blue);"><i class="far fa-clock"></i> <span id="ui-clock">00:00:00</span></div>
+    <div style="font-size: 0.7rem; color: #666;">LATENCY: <span id="tslv">0ms</span></div>
+</header>
+
+<main>
+    <div class="panel">
+        <h2><i class="fas fa-layer-group"></i> Navigation_EKF_21</h2>
+        <div id="map"></div>
+        <div class="data-point"><span>Lat/Lon (EKF)</span><span><span id="lat-ekf">--</span> / <span id="lon-ekf">--</span></span></div>
+        <div class="data-point"><span>Altitude (EKF)</span><span id="alt-ekf">--</span></div>
+        <div class="data-point"><span>Vitesse Stable</span><span id="speed-stable-kmh">--</span></div>
+        <div class="data-point"><span>Cap (Heading)</span><span id="heading-display">--</span></div>
+        <div class="data-point"><span>Incertitude (P)</span><span id="ukf-v-uncert-2">--</span></div>
+        
+        <h3>Physique de Mission</h3>
+        <div class="data-point"><span>Lorentz Factor (γ)</span><span id="ui-lorentz">1.00000000</span></div>
+        <div class="data-point"><span>Force G Inst.</span><span id="force-g-inst">--</span></div>
+        <div class="data-point"><span>Dilatation Temps</span><span id="total-time-dilation">--</span></div>
+        <div class="data-point"><span>Gravité Théo.</span><span id="gravity-theoretical">--</span></div>
+        <div class="data-point"><span>Pression Dyn (q)</span><span id="dynamic-pressure">--</span></div>
+    </div>
+
+    <div class="panel" style="border: 1px solid var(--accent); background: rgba(0,40,20,0.1);">
+        <h2><i class="fas fa-microchip"></i> Visual_Core_Inertial</h2>
+        <div class="v-main-container">
+            <div id="val-speed" class="v-main">0.00</div>
+            <div id="ui-speed-unit" style="text-align:center; letter-spacing:10px; color: var(--accent); font-size: 0.8rem;">METERS / SEC</div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top: 10px;">
+            <div>
+                <h3>Position SLAM (mm)</h3>
+                <div class="data-point"><span>X-Rel</span><span id="pos-x">0.0000</span></div>
+                <div class="data-point"><span>Y-Alt</span><span id="pos-y">0.0000</span></div>
+                <div class="data-point"><span>Z-Rel</span><span id="pos-z">0.0000</span></div>
+            </div>
+            <div>
+                <h3>Odométrie 3D</h3>
+                <div class="data-point"><span>Distance</span><span id="distance-totale">--</span></div>
+                <div class="data-point"><span>V-Cosmic</span><span id="v-cosmic">--</span></div>
+                <div class="data-point"><span>Stress Str.</span><span id="structural-stress">--</span></div>
+            </div>
+        </div>
+        <div id="anomaly-log">> AWAITING_BOOT_SEQUENCE...</div>
+        <button id="main-init-btn" class="btn-init" onclick="startAdventure()">Initialiser le Coeur</button>
+    </div>
+
+    <div class="panel">
+        <h2><i class="fas fa-wind"></i> Environment_Sensors</h2>
+        <div class="data-point"><span>Temp. Air (°C)</span><span id="air-temp-c">--</span></div>
+        <div class="data-point"><span>Pression (hPa)</span><span id="pressure-hpa">--</span></div>
+        <div class="data-point"><span>Densité Air (ρ)</span><span id="air-density">--</span></div>
+        <div class="data-point"><span>Humidité (%)</span><span id="humidity-pct">--</span></div>
+        <div class="data-point"><span>Point de Rosée</span><span id="dew-point">--</span></div>
+        
+        <h3>Atmosphère & Bio-Scan</h3>
+        <div class="data-point"><span>PM2.5 / PM10</span><span><span id="pm25-val">--</span> / <span id="pm10-val">--</span></span></div>
+        <div class="data-point"><span>NO2 / Ozone</span><span><span id="no2-val">--</span> / <span id="o3-val">--</span></span></div>
+        <div class="data-point"><span>Saturation O2</span><span id="O2-saturation">--</span></div>
+        <div class="data-point"><span>Photosynthèse</span><span id="photosynthesis-rate">--</span></div>
+        <div class="data-point"><span>CAPE Index</span><span id="CAPE">--</span></div>
+        <div class="data-point"><span>Lumière (Lux)</span><span id="ambient-light">--</span></div>
+    </div>
+</main>
+
+<footer>
+    <div class="panel">
+        <h2><i class="fas fa-hourglass-start"></i> Temporal_Sync</h2>
+        <div class="data-point"><span>Julian Date</span><span id="ast-jd">--</span></div>
+        <div class="data-point"><span>Temps Propre (τ)</span><span id="val-tau">--</span></div>
+        <div class="data-point"><span>Delta T (ΔT)</span><span id="ast-deltat">--</span></div>
+        <div class="data-point"><span>Equation Time</span><span id="equation-time">--</span></div>
+    </div>
     
-    <aside class="panel" id="panel-left">
-        <h3>[CHRONOS_SYSTEM]</h3>
-        <div class="data-row"><span class="data-label">JD_EPHEM (TDB)</span><span id="ui-jd" class="val">LOAD...</span></div>
-        <div class="data-row"><span class="data-label">LORENTZ (γ)</span><span id="ui-gamma" class="val">1.000</span></div>
-        <div class="data-row"><span class="data-label">PROPER TIME (τ)</span><span id="ui-tau" class="val">0.00s</span></div>
-        
-        <h3 style="margin-top: 20px;">[CELESTIAL_NAV]</h3>
-        <div class="data-row"><span class="data-label">SUN_AZIMUTH</span><span id="ui-sun-az" class="val">---</span></div>
-        <div class="data-row"><span class="data-label">SUN_ALTITUDE</span><span id="ui-sun-alt" class="val">---</span></div>
-        <div class="data-row"><span class="data-label">MOON_DIST</span><span id="ui-moon-dist" class="val">---</span></div>
-    </aside>
-
-    <main class="panel center-stage" style="background: none; border: none; box-shadow: none;">
-        <div class="speed-box">
-            <div id="ui-speed-val" class="v-main">0.00</div>
-            <div id="ui-speed-unit" style="text-align:center; letter-spacing:5px; color:var(--glow); opacity:0.8;">M / S</div>
+    <div class="panel">
+        <h2><i class="fas fa-sun"></i> Heliocentric</h2>
+        <div class="data-point"><span>Soleil (Az/Alt)</span><span><span id="sun-azimuth">--</span> / <span id="sun-alt">--</span></span></div>
+        <div class="data-point"><span>Lever / Coucher</span><span><span id="sunrise-times">--</span> / <span id="sunset-times">--</span></span></div>
+        <div class="data-point"><span>Durée Jour</span><span id="day-duration">--</span></div>
+        <div class="data-point"><span>Horizon Dist.</span><span id="distance-horizon">--</span></div>
+    </div>
+    
+    <div class="panel">
+        <h2><i class="fas fa-moon"></i> Selenocentric</h2>
+        <div class="data-point"><span>Phase / Illum.</span><span><span id="moon-phase-name">--</span> / <span id="moon-illuminated">--</span></span></div>
+        <div class="data-point"><span>Lune (Az/Alt)</span><span><span id="moon-azimuth">--</span> / <span id="moon-alt">--</span></span></div>
+        <div class="data-point"><span>Distance Lune</span><span id="moon-distance">--</span></div>
+        <div class="data-point"><span>Status Ephem</span><span id="ephem-status">READY</span></div>
+    </div>
+    
+    <div class="panel">
+        <h2><i class="fas fa-terminal"></i> Mission_Control</h2>
+        <div class="data-point"><span>MATH_PRECISION</span><span>64 digits</span></div>
+        <div class="data-point"><span>CORE_STATUS</span><span id="ui-res">ACTIVE</span></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:5px;">
+            <button id="toggle-gps-btn" class="btn-ctrl">GPS_TOGGLE</button>
+            <button id="export-metrics-btn" class="btn-ctrl">CSV_EXPORT</button>
+            <button id="emergency-stop-btn" class="btn-ctrl critical">EMG_STOP</button>
+            <button id="clear-log-btn" class="btn-ctrl" onclick="document.getElementById('anomaly-log').innerHTML=''">CLEAR_LOG</button>
         </div>
+    </div>
+</footer>
 
-        <div class="coord-box">
-            <div id="ui-pos-x">X: +0.000000000000</div>
-            <div id="ui-pos-y">Y: +0.000000000000</div>
-            <div id="ui-pos-z">Z: +0.000000000000</div>
-            <div id="ui-status" style="color:var(--warn); margin-top:5px; text-align:right;">STANDBY</div>
-        </div>
-    </main>
-
-    <aside class="panel" id="panel-right">
-        <h3>[PROPORTIONAL_ENG]</h3>
-        <div class="data-row"><span class="data-label">TURF_RES</span><span id="ui-res" class="val">AUTO</span></div>
-        <div class="data-row"><span class="data-label">MATH_PRECISION</span><span id="ui-prec" class="val">64</span></div>
-        <div class="data-row"><span class="data-label">GEOID_CORRECT</span><span id="ui-geoid" class="val">ON</span></div>
-        
-        <h3 style="margin-top: 20px;">[KERNEL_LOG]</h3>
-        <div id="console-log">
-            > SYSTEM_READY<br>> WAITING_FOR_USER_INPUT...
-        </div>
-        <button id="boot-btn" onclick="PROVIDENCE.boot()">INITIALIZE</button>
-    </aside>
-
+<div id="scientific-hidden-buffer" style="display:none;">
+    <span id="in-mass">80</span><span id="in-cx">0.4</span>
+    <span id="mach-number"></span><span id="vertical-speed"></span>
+    <span id="time-dilation-vitesse"></span><span id="time-dilation-gravite"></span>
 </div>
 
-<script>
-// --- CONFIGURATION HAUTE PRÉCISION ---
-math.config({ number: 'BigNumber', precision: 64 });
+<script src="gnss-dashboard-full.js"></script>                  
 
-const PROVIDENCE = {
-    // Constantes Physiques
-    C: 299792458, 
-    GEOID_OFFSET: 48.25, // Calibration Marseille (Moyenne)
-
-    state: {
-        active: false,
-        velocity: 0,
-        // Vecteur Position 3D (BigNumber)
-        pos: { x: math.bignumber(0), y: math.bignumber(0), z: math.bignumber(0) },
-        // Temps
-        jd: 2461065.5, // Départ arbitraire (sera recalé par ephem.js)
-        tau: 0,        // Temps propre
-        lastTick: 0
-    },
-
-    // --- 1. DÉMARRAGE DU SYSTÈME ---
-    async boot() {
-        this.log("KERNEL_BOOT_SEQUENCE_INITIATED...");
-        
-        // Accès Caméra
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('cam-layer').srcObject = stream;
-            this.log("OPTICAL_SENSORS_ONLINE");
-        } catch(e) {
-            this.log("ERR: OPTICAL_SENSORS_FAIL - " + e.message);
-        }
-
-        // Accès IMU (Accéléromètre)
-        if (window.DeviceMotionEvent) {
-            window.addEventListener('devicemotion', (e) => this.physicsLoop(e));
-            this.log("INERTIAL_SENSORS_LOCKED");
-        } else {
-            this.log("ERR: NO_IMU_DETECTED");
-        }
-
-        document.getElementById('boot-btn').style.display = 'none';
-        this.state.active = true;
-        this.state.lastTick = performance.now();
-        
-        // Lancement de la boucle de rendu principale
-        this.renderLoop();
-    },
-
-    // --- 2. PHYSIQUE & RELATIVITÉ (Boucle Événementielle) ---
-    physicsLoop(e) {
-        if (!this.state.active) return;
-        const acc = e.acceleration;
-        if (!acc || !acc.x) return;
-
-        // Calcul de la magnitude du vecteur d'accélération
-        const aMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-        
-        // Intégration (dt = 1/60s approx, devrait être delta réel)
-        const dt = 0.016; 
-        
-        // Mise à jour vélocité (m/s)
-        this.state.velocity += aMag * dt;
-
-        // 1. SCALING PROPORTIONNEL
-        // Ajuste la précision mathématique selon la vitesse
-        const scale = this.getScaleFactor(this.state.velocity);
-        math.config({ precision: scale.prec });
-
-        // 2. MISE À JOUR POSITION (BigNumber)
-        // x = x + v * dt
-        const move = math.multiply(math.bignumber(this.state.velocity), math.bignumber(dt));
-        this.state.pos.x = math.add(this.state.pos.x, move); // Simplifié sur X pour l'exemple
-    },
-
-    // --- 3. MOTEUR "SINGULARITÉ" (Calculs Proportionnels) ---
-    getScaleFactor(v) {
-        // Résolution Turf.js (en mètres)
-        // v très petit -> res très petite (mm). v très grand -> res grande (km)
-        const res = Math.max(0.001, v / 100);
-        
-        // Facteur Lorentz (Relativité)
-        const beta = Math.min(v / this.C, 0.99999999);
-        const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
-        
-        // Précision Math.js (Digits)
-        // Plus on va vite, moins on a besoin de décimales fines sur la position locale
-        const prec = Math.round(Math.max(8, 32 - Math.log10(v + 1) * 2));
-        
-        return { res, gamma, prec };
-    },
-
-    // --- 4. NAVIGATION CÉLESTE (EPHEM.JS) ---
-    getCelestialData(jd) {
-        let sunData = { az: 0, alt: 0 };
-        let moonDist = 0;
-
-        // Protection : Vérifie si ephem.js (VSOP) est chargé
-        try {
-            if (typeof vsop2013 !== 'undefined') {
-                const sun = vsop2013.sun.position(jd);
-                // Conversion cartésien -> sphérique simplifiée pour affichage
-                const r = Math.sqrt(sun.x**2 + sun.y**2 + sun.z**2);
-                sunData.alt = (Math.asin(sun.z / r) * 180 / Math.PI).toFixed(4);
-                sunData.az = (Math.atan2(sun.y, sun.x) * 180 / Math.PI).toFixed(4);
-            }
-            if (typeof elp2000 !== 'undefined') {
-                const moon = elp2000.position(jd);
-                moonDist = Math.sqrt(moon.x**2 + moon.y**2 + moon.z**2).toFixed(0);
-            }
-        } catch (e) {
-            // Fallback silencieux si la bibliothèque calcule encore
-        }
-
-        return { sun: sunData, moon: moonDist };
-    },
-
-    // --- 5. BOUCLE DE RENDU (RAF) ---
-    renderLoop() {
-        if (!this.state.active) return;
-
-        const now = performance.now();
-        const dt_sec = (now - this.state.lastTick) / 1000;
-        this.state.lastTick = now;
-
-        // Récupération des facteurs d'échelle actuels
-        const scale = this.getScaleFactor(this.state.velocity);
-
-        // --- GESTION DU TEMPS ---
-        // Temps Coordonné (JD) avance normalement
-        this.state.jd += (dt_sec / 86400);
-        // Temps Propre (Tau) ralentit si Gamma augmente
-        this.state.tau += (dt_sec / scale.gamma);
-
-        // --- UI UPDATES ---
-        
-        // 1. Panneau Gauche
-        document.getElementById('ui-jd').innerText = this.state.jd.toFixed(6);
-        document.getElementById('ui-gamma').innerText = scale.gamma.toFixed(6);
-        document.getElementById('ui-tau').innerText = this.state.tau.toFixed(2) + "s";
-        
-        const celestial = this.getCelestialData(this.state.jd);
-        document.getElementById('ui-sun-az').innerText = celestial.sun.az + "°";
-        document.getElementById('ui-sun-alt').innerText = celestial.sun.alt + "°";
-        document.getElementById('ui-moon-dist').innerText = celestial.moon + " km";
-
-        // 2. Panneau Central (Changement d'unité Relativiste)
-        if (this.state.velocity > 10000) {
-            // Mode Haute Vitesse -> Affichage en % de C
-            document.getElementById('ui-speed-val').innerText = (this.state.velocity / this.C).toFixed(8);
-            document.getElementById('ui-speed-unit').innerText = "FRACTION OF LIGHT (C)";
-            document.getElementById('ui-status').innerText = "RELATIVISTIC_FLIGHT";
-            document.getElementById('ui-status').style.color = "var(--crit)";
-            document.body.classList.add('mode-interstellar');
-        } else {
-            // Mode Classique
-            document.getElementById('ui-speed-val').innerText = this.state.velocity.toFixed(2);
-            document.getElementById('ui-speed-unit').innerText = "METERS / SEC";
-            document.getElementById('ui-status').innerText = "NEWTONIAN_FLIGHT";
-            document.getElementById('ui-status').style.color = "var(--glow)";
-            document.body.classList.remove('mode-interstellar');
-        }
-
-        document.getElementById('ui-pos-x').innerText = "X: " + math.format(this.state.pos.x, {notation: 'fixed', precision: 6});
-        // (Y et Z seraient mis à jour similairement)
-
-        // 3. Panneau Droit
-        document.getElementById('ui-res').innerText = scale.res.toFixed(3) + "m";
-        document.getElementById('ui-prec').innerText = scale.prec + " digits";
-
-        requestAnimationFrame(() => this.renderLoop());
-    },
-
-    // Utilitaire de Log
-    log(msg) {
-        const c = document.getElementById('console-log');
-        const time = new Date().toISOString().split('T')[1].split('.')[0];
-        c.innerHTML = `[${time}] ${msg}<br>` + c.innerHTML;
-    }
-};
-</script>
 </body>
-    </html>
+        </html>
