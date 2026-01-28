@@ -11,13 +11,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
     
     <style>
-        /* --- CHARTE GRAPHIQUE SCI-FI --- */
         :root {
-            --accent: #00ff88;      /* Vert HUD Matrix */
-            --critical: #ff3300;    /* Alerte Rouge */
-            --blue: #00d4ff;        /* Info Bleue */
-            --gold: #ffd700;        /* Topographie */
-            --glass: rgba(0, 15, 10, 0.85); /* Fond verre fumé */
+            --accent: #00ff88;
+            --blue: #00d4ff;
+            --critical: #ff3300;
+            --gold: #ffd700;
+            --glass: rgba(0, 15, 10, 0.85);
         }
 
         body, html {
@@ -26,178 +25,146 @@
             background: #000;
             color: var(--accent);
             font-family: 'JetBrains Mono', monospace;
-            overflow: hidden; /* Empêche le scroll élastique sur mobile */
-            user-select: none; /* Empêche la sélection de texte accidentelle */
+            overflow: hidden;
+            user-select: none;
         }
 
-        /* --- ARCHITECTURE DES CALQUES (Z-INDEX) --- */
-        
-        /* 1. FOND : Flux Vidéo Caméra */
-        #ui-canvas {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            object-fit: cover; z-index: 0;
-        }
+        /* --- COUCHES DE RENDU (Z-INDEX) --- */
+        #ui-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; }
+        .v-main-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 5; pointer-events: none; }
+        #camera-hud { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; }
 
-        /* 2. MILIEU : Trajectoire 3D (Three.js) */
-        .v-main-container {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 5; pointer-events: none; /* Laisse passer les clics */
-        }
-
-        /* 3. AVANT-PLAN : Horizon Artificiel (AR) */
-        #camera-hud {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 10; pointer-events: none;
-        }
-
-        /* 4. INTERFACE : Panneaux de Données */
-        .panel {
+        /* --- PANNEAUX HUD --- */
+        .hud-panel {
             position: fixed;
             background: var(--glass);
             border: 1px solid rgba(0, 255, 136, 0.3);
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.1);
             padding: 10px;
-            backdrop-filter: blur(8px); /* Effet flou derrière le texte */
+            backdrop-filter: blur(8px);
             z-index: 20;
+            border-radius: 4px;
             font-size: 0.7rem;
-            border-radius: 6px;
-            transition: opacity 0.3s;
         }
 
-        /* POSITIONNEMENT DES PANNEAUX */
-        #p-nav { top: 10px; left: 10px; width: 200px; }
-        #p-phys { top: 10px; right: 10px; width: 200px; text-align: right; }
-        #p-env { bottom: 110px; left: 10px; width: 180px; }
-        #p-control { 
-            bottom: 10px; left: 10px; right: 10px; 
-            height: auto; min-height: 80px;
-            display: flex; flex-direction: column; justify-content: space-between; 
-        }
+        /* Positionnement */
+        #panel-nav { top: 10px; left: 10px; width: 240px; }
+        #panel-phys { top: 10px; right: 10px; width: 240px; text-align: right; }
+        #panel-env { bottom: 120px; left: 10px; width: 220px; }
+        #panel-control { bottom: 10px; left: 10px; right: 10px; height: auto; }
 
-        /* TYPOGRAPHIE */
-        h2 { 
-            font-family: 'Orbitron'; font-size: 0.7rem; margin: 0 0 8px 0; 
-            border-bottom: 1px solid var(--accent); padding-bottom: 3px; 
-            color: var(--blue); letter-spacing: 1px;
-        }
-        h3 { 
-            font-size: 0.6rem; text-transform: uppercase; color: #888; 
-            margin: 8px 0 2px 0; border-left: 2px solid var(--accent); padding-left: 5px;
-        }
+        h2 { font-family: 'Orbitron'; font-size: 0.75rem; margin: 0 0 8px 0; border-bottom: 1px solid var(--accent); color: var(--blue); }
+        .data-row { display: flex; justify-content: space-between; margin: 3px 0; }
+        .val { color: #fff; font-weight: bold; }
 
-        .data-point { display: flex; justify-content: space-between; margin: 3px 0; }
-        .val { color: #fff; font-weight: bold; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
-
-        /* BOUTONS INTERACTIFS */
+        /* BOUTONS */
         .btn-ctrl {
             background: rgba(0, 40, 20, 0.9);
             border: 1px solid var(--accent);
             color: var(--accent);
-            padding: 8px 12px;
-            font-family: 'Orbitron'; font-size: 0.65rem;
+            padding: 6px 10px;
+            font-family: 'Orbitron'; font-size: 0.6rem;
             cursor: pointer; pointer-events: auto;
             text-transform: uppercase;
-            flex-grow: 1; margin: 2px;
         }
-        .btn-ctrl:active { background: var(--accent); color: #000; }
+        .btn-ctrl:hover { background: var(--accent); color: #000; }
         .critical { border-color: var(--critical); color: var(--critical); }
-        .critical:active { background: var(--critical); color: #fff; }
 
-        /* Bouton Init Central */
         #main-init-btn {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 100; padding: 20px 40px; font-size: 1.2rem;
-            background: rgba(0,0,0,0.9); border: 2px solid var(--accent);
-            box-shadow: 0 0 30px var(--accent);
+            z-index: 100; padding: 20px; font-size: 1rem; box-shadow: 0 0 30px var(--accent);
         }
 
-        /* Log Système Défilant */
         #anomaly-log {
-            width: 100%; height: 35px; overflow-y: auto; 
-            color: #aaa; font-size: 0.6rem; margin-top: 5px;
-            border-top: 1px dotted #444; padding-top: 3px;
+            width: 100%; height: 40px; overflow-y: auto; color: #888; 
+            font-size: 0.6rem; margin-top: 5px; border-top: 1px dotted #333;
         }
 
-        /* Bouton Topographie Flottant */
-        #topo-controls {
-            position: fixed; right: 20px; bottom: 120px; z-index: 30;
-            pointer-events: auto;
+        #topo-btn {
+            position: fixed; right: 20px; bottom: 120px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: var(--gold); border: none; z-index: 30;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            cursor: pointer; pointer-events: auto;
         }
     </style>
 </head>
 <body>
 
-    <video id="ui-canvas" autoplay playsinline muted></video> <div class="v-main-container"></div> <button id="main-init-btn" class="btn-ctrl" onclick="startAdventure()">
-        <i class="fas fa-power-off"></i> INITIALISER LE NOYAU V17
-    </button>
+<video id="ui-canvas" autoplay playsinline muted></video>
+<div class="v-main-container"></div>
 
-    <div id="p-nav" class="panel">
-        <h2><i class="fas fa-crosshairs"></i> NAV_INERTIAL</h2>
-        <div class="data-point"><span>VITESSE</span><span class="val"><span id="val-speed">0.00</span> m/s</span></div>
-        <div class="data-point"><span>DISTANCE</span><span class="val"><span id="distance-totale">0.00</span> m</span></div>
-        
-        <h3>COORDONNÉES (RK4)</h3>
-        <div class="data-point"><span>POS_X (Rel)</span><span id="pos-x" class="val">0.0000</span></div>
-        <div class="data-point"><span>POS_Y (Avanc)</span><span id="pos-y" class="val">0.0000</span></div>
-        <div class="data-point"><span>POS_Z (Alt)</span><span id="pos-z" class="val">0.0000</span></div>
-        
-        <div style="display:none;">
-            <span id="lat-ekf">--</span><span id="lon-ekf">--</span>
-            <span id="alt-ekf">--</span><span id="heading-display">--</span>
-            <span id="speed-stable-kmh">--</span>
-        </div>
-    </div>
+<button id="main-init-btn" class="btn-ctrl" onclick="startAdventure()">INITIALISER LE NOYAU V17</button>
 
-    <div id="p-phys" class="panel">
-        <h2><i class="fas fa-atom"></i> PHYSIQUE_Q</h2>
-        <div class="data-point"><span>LORENTZ (γ)</span><span id="ui-lorentz" class="val">1.000000</span></div>
-        <div class="data-point"><span>TEMPS (τ)</span><span id="val-tau" class="val">0.0000s</span></div>
-        <div class="data-point"><span>JOUR JULIEN</span><span id="ast-jd" class="val">--</span></div>
-        
-        <h3>STRUCTURE</h3>
-        <div class="data-point"><span>FORCE G</span><span id="force-g-inst" class="val">1.00 G</span></div>
-        <div class="data-point"><span>STRESS</span><span id="structural-stress" class="val">0 Pa</span></div>
-    </div>
+<div id="panel-nav" class="hud-panel">
+    <h2><i class="fas fa-location-arrow"></i> NAVIGATION_EKF</h2>
+    <div class="data-row"><span>LAT / LON</span><span class="val"><span id="lat-ekf">--</span> / <span id="lon-ekf">--</span></span></div>
+    <div class="data-row"><span>ALTITUDE</span><span id="alt-ekf" class="val">--</span></div>
+    <div class="data-row"><span>VITESSE STABLE</span><span id="speed-stable-kmh" class="val">--</span></div>
+    <div class="data-row"><span>CAP (HEADING)</span><span id="heading-display" class="val">--</span></div>
+    
+    <h2 style="margin-top:10px;"><i class="fas fa-cube"></i> SLAM_ODOMETRY</h2>
+    <div class="data-row"><span>X-REL</span><span id="pos-x" class="val">0.0000</span></div>
+    <div class="data-row"><span>Y-REL</span><span id="pos-y" class="val">0.0000</span></div>
+    <div class="data-row"><span>Z-REL</span><span id="pos-z" class="val">0.0000</span></div>
+    <div class="data-row"><span>DISTANCE TOTALE</span><span id="distance-totale" class="val">--</span></div>
+</div>
 
-    <div id="p-env" class="panel">
-        <h2><i class="fas fa-globe-europe"></i> SENSORS</h2>
-        <div class="data-point"><span>PRESSION</span><span class="val"><span id="pressure-hpa">1013</span> hPa</span></div>
-        <div class="data-point"><span>AZIMUT SOL</span><span id="sun-azimuth" class="val">--°</span></div>
-        <div class="data-point"><span>ALT SOL</span><span id="sun-alt" class="val">--°</span></div>
-        <span id="ambient-light" style="display:none;"></span>
-    </div>
+<div id="panel-phys" class="hud-panel">
+    <h2><i class="fas fa-atom"></i> PHYSIQUE_REL</h2>
+    <div class="data-row"><span>FACTOR γ</span><span id="ui-lorentz" class="val">1.000000</span></div>
+    <div class="data-row"><span>PROPER TIME τ</span><span id="val-tau" class="val">--</span></div>
+    <div class="data-row"><span>G-FORCE INST</span><span id="force-g-inst" class="val">--</span></div>
+    <div class="data-row"><span>STRESS STR.</span><span id="structural-stress" class="val">--</span></div>
+    <div class="data-row"><span>PRESSION DYN.</span><span id="dynamic-pressure" class="val">--</span></div>
+    
+    <h2 style="margin-top:10px;"><i class="fas fa-clock"></i> TEMPORAL_SYNC</h2>
+    <div class="data-row"><span>JULIAN DATE</span><span id="ast-jd" class="val">--</span></div>
+    <div class="data-row"><span>CLOCK</span><span id="ui-clock" class="val">00:00:00</span></div>
+    <div class="data-row"><span>LATENCY</span><span id="tslv" class="val">0ms</span></div>
+</div>
 
-    <div id="p-control" class="panel">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <h2>MISSION_CONTROL</h2>
-                <div class="data-point"><span>STATUS:</span><span id="ui-res" class="val" style="color:var(--accent)">READY</span></div>
-                <div class="data-point"><span>CLOCK:</span><span id="ui-clock" class="val">--:--:--</span></div>
-            </div>
-            
-            <div style="display:flex; width: 60%;">
-                <button id="export-metrics-btn" class="btn-ctrl">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
-                <button onclick="OMNISCIENCE.calibrate()" class="btn-ctrl">
-                    <i class="fas fa-sync"></i> CALIB
-                </button>
-                <button id="emergency-stop-btn" class="btn-ctrl critical">
-                    <i class="fas fa-skull"></i> STOP
-                </button>
-            </div>
+<div id="panel-env" class="hud-panel">
+    <h2><i class="fas fa-wind"></i> ENV_SENSORS</h2>
+    <div class="data-row"><span>TEMP. AIR</span><span id="air-temp-c" class="val">--</span></div>
+    <div class="data-row"><span>PRESSION (hPa)</span><span id="pressure-hpa" class="val">--</span></div>
+    <div class="data-row"><span>AIR DENSITY ρ</span><span id="air-density" class="val">--</span></div>
+    <div class="data-row"><span>HUMIDITÉ</span><span id="humidity-pct" class="val">--</span></div>
+    <div class="data-row"><span>LUMIÈRE (Lux)</span><span id="ambient-light" class="val">--</span></div>
+</div>
+
+<div id="panel-control" class="hud-panel">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="width: 40%;">
+            <h2><i class="fas fa-terminal"></i> MISSION_CONTROL</h2>
+            <div class="data-row"><span>STATUS</span><span id="ui-res" class="val">IDLE</span></div>
+            <div class="data-row"><span>SAMPLING</span><span id="ui-sampling-rate" class="val">100Hz</span></div>
         </div>
         
-        <div id="anomaly-log">> SYSTEM_BOOT_SEQUENCE_INITIATED...</div>
+        <div style="width: 55%; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+            <button id="toggle-gps-btn" class="btn-ctrl">GPS_TOGGLE</button>
+            <button id="export-metrics-btn" class="btn-ctrl">CSV_EXPORT</button>
+            <button onclick="document.getElementById('anomaly-log').innerHTML=''" class="btn-ctrl">CLEAR_LOG</button>
+            <button id="emergency-stop-btn" class="btn-ctrl critical">EMG_STOP</button>
+        </div>
     </div>
+    <div id="anomaly-log">> SYSTEM_BOOT_SEQUENCE_INIT...</div>
+</div>
 
-    <div id="topo-controls">
-        <button onclick="TOPO_SURVEY.addWaypoint('POINT_MANUEL')" 
-                style="width:60px; height:60px; border-radius:50%; background:var(--gold); border:2px solid #fff; box-shadow: 0 0 20px var(--gold); cursor:pointer;">
-            <i class="fas fa-map-marker-alt" style="color:#000; font-size:1.5rem;"></i>
-        </button>
-    </div>
+<button id="topo-btn" onclick="TOPO_SURVEY.addWaypoint('REPERE_GEOLOGIQUE')">
+    <i class="fas fa-map-marker-alt" style="font-size: 1.5rem; color: #000;"></i>
+</button>
 
-    <script src="gnss-dashboard-full.js"></script>
+<div id="scientific-hidden-buffer" style="display:none;">
+    <span id="in-mass">80</span>
+    <span id="in-cx">0.4</span>
+    <span id="total-time-dilation"></span>
+    <span id="gravity-theoretical"></span>
+    <span id="v-cosmic"></span>
+    <span id="sun-azimuth"></span>
+    <span id="sun-alt"></span>
+</div>
+
+<script src="gnss-dashboard-full.js"></script>
+
 </body>
-                                                                                                       </html>
+        </html>
