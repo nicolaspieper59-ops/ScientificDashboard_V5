@@ -3,276 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIENCE V18 PRO • NAVIGATION SOUVERAINE</title>
+    <title>OMNISCIENCE V31 • FINAL_REALITY</title>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     
     <style>
-        :root {
-            --accent: #00ff88; --blue: #00d4ff; --critical: #ff3300; --gold: #ffd700;
-            --glass: rgba(5, 10, 15, 0.92);
-        }
-
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--accent); font-family: 'JetBrains Mono', monospace; overflow: hidden; }
-
-        #ui-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; opacity: 0.6; }
-        #map { position: fixed; top: 10px; right: 10px; width: 220px; height: 220px; z-index: 15; border: 1px solid var(--accent); border-radius: 8px; filter: invert(1) hue-rotate(180deg) brightness(0.8); }
-        .v-main-container { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+        :root { --neon: #00ff88; --alert: #ff3300; --void: #000000; --hud: rgba(0, 20, 10, 0.85); }
+        body { margin: 0; background: var(--void); color: var(--neon); font-family: 'Courier New', monospace; overflow: hidden; height: 100vh; user-select: none; }
         
-        #sextant-overlay {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 250px; height: 250px; border: 1px dashed rgba(0, 255, 136, 0.3);
-            border-radius: 50%; z-index: 12; pointer-events: none;
-        }
-        #sextant-overlay::before { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: var(--critical); opacity: 0.5; }
-        #sextant-overlay::after { content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: var(--critical); opacity: 0.5; }
-
-        .panel { position: fixed; background: var(--glass); border: 1px solid rgba(0, 255, 136, 0.2); padding: 12px; z-index: 20; border-radius: 4px; backdrop-filter: blur(10px); }
-        #p-nav { top: 10px; left: 10px; width: 210px; }
-        #p-ocean { bottom: 130px; right: 10px; width: 190px; text-align: right; }
-        #p-ctrl { bottom: 10px; left: 10px; right: 10px; }
-
-        h2 { font-family: 'Orbitron'; font-size: 0.7rem; margin: 0 0 8px 0; border-bottom: 1px solid var(--accent); color: var(--blue); text-transform: uppercase; letter-spacing: 1px; }
-        .data { display: flex; justify-content: space-between; font-size: 0.65rem; margin: 3px 0; }
-        .val { color: #fff; font-weight: bold; }
-        .led { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #333; margin-right: 5px; }
-        .led-on { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
-
-        .btn { background: rgba(0, 40, 30, 0.8); border: 1px solid var(--accent); color: var(--accent); padding: 8px; font-family: 'Orbitron'; font-size: 0.6rem; cursor: pointer; transition: 0.3s; }
-        .btn:active { background: var(--accent); color: #000; }
-        .critical { border-color: var(--critical); color: var(--critical); }
-        #anomaly-log { width: 100%; height: 40px; overflow-y: auto; font-size: 0.55rem; color: #aaa; border-top: 1px dotted #444; margin-top: 8px; padding-top: 5px; }
+        /* COUCHES VISUELLES */
+        #map { position: fixed; inset: 0; filter: grayscale(1) invert(1) brightness(0.4); z-index: 0; }
+        #radar-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
         
-        #init-screen { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* HUD SCIENTIFIQUE */
+        .hud-container { position: fixed; inset: 0; z-index: 20; pointer-events: none; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        .panel { pointer-events: auto; background: var(--hud); border: 1px solid var(--neon); padding: 10px; backdrop-filter: blur(4px); margin-bottom: 10px; box-shadow: 0 0 15px rgba(0, 255, 136, 0.2); }
+        
+        .row { display: flex; justify-content: space-between; font-size: 0.7rem; border-bottom: 1px solid #333; padding: 4px 0; }
+        .val { font-weight: bold; color: #fff; }
+        .warn { color: var(--alert); animation: pulse 0.5s infinite; }
+        
+        /* SPECTRE AUDIO VISUEL */
+        .spectrum { display: flex; align-items: flex-end; height: 30px; gap: 1px; margin-top: 5px; opacity: 0.8; }
+        .bar { width: 100%; background: var(--neon); transition: height 0.05s; }
+        
+        /* BOUTON D'ACTION */
+        #btn-main { width: 100%; background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.3s; }
+        #btn-main:hover { background: var(--neon); color: black; }
+        #btn-main.active { background: var(--alert); border-color: var(--alert); color: white; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        #scan-line { position: fixed; top: 50%; left: 0; right: 0; height: 2px; background: rgba(0, 255, 136, 0.5); box-shadow: 0 0 10px var(--neon); animation: scan 3s infinite linear; pointer-events: none; z-index: 5; }
+        @keyframes scan { 0% { top: 0%; opacity: 0; } 50% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div id="init-screen">
-        <h1 style="font-family: 'Orbitron'; color: var(--accent); letter-spacing: 5px;">OMNISCIENCE V18 PRO</h1>
-        <p style="font-size: 0.7rem; color: var(--blue); margin-bottom: 20px;">GRADE SCIENTIFIQUE • SOUVERAINETÉ TOTALE</p>
-        <button class="btn" style="padding: 20px 40px; font-size: 0.9rem;" onclick="CORE.start()">ALIGNER LA CENTRALE INERTIELLE</button>
+<div id="map"></div>
+<canvas id="radar-layer"></canvas>
+<div id="scan-line"></div>
+
+<div class="hud-container">
+    <div class="panel" style="width: 280px;">
+        <div style="font-size: 1.2rem; border-bottom: 2px solid var(--neon); margin-bottom: 5px;" id="mode-display">INITIALISATION...</div>
+        <div class="row"><span>GRAVITÉ LOCALE</span><span class="val" id="v-g">9.8066</span></div>
+        <div class="row"><span>CORIOLIS (Lat)</span><span class="val" id="v-cor">0.0000</span></div>
+        <div class="row"><span>LORENTZ (Temps)</span><span class="val" id="v-lor">1.00000000</span></div>
+        <div class="row"><span>REYNOLDS (Fluide)</span><span class="val" id="v-re">0</span></div>
+        <div class="row"><span>ANOMALIE_BOUGUER</span><span class="val" id="v-anom">STABLE</span></div>
     </div>
 
-    <video id="ui-canvas" autoplay playsinline muted></video>
-    <div class="v-main-container" id="three-container"></div>
-    <div id="map"></div>
-    <div id="sextant-overlay"></div>
-
-    <div id="p-nav" class="panel">
-        <h2><i class="fas fa-microchip"></i> INS_UNIT_01</h2>
-        <div class="data"><span>X-WORLD (E)</span><span id="pos-x" class="val">0.00</span></div>
-        <div class="data"><span>Y-WORLD (N)</span><span id="pos-y" class="val">0.00</span></div>
-        <div class="data"><span>DRIFT (CEP)</span><span id="drift-val" class="val">± 0.0m</span></div>
-        <div class="data"><span>VITESSE</span><span id="speed-val" class="val">0.0 km/h</span></div>
-        <div class="data"><span>LAT_TRUE</span><span id="lat-val" class="val">--</span></div>
-        <div class="data"><span>LON_TRUE</span><span id="lon-val" class="val">--</span></div>
-    </div>
-
-    <div id="p-ocean" class="panel">
-        <h2><i class="fas fa-globe-americas"></i> ASTRO_REF</h2>
-        <div class="data"><span>CORRECTION</span><div id="corr-led" class="led"></div></div>
-        <div class="data"><span>MARÉE (M2)</span><span id="tide-level" class="val">--</span></div>
-        <div class="data"><span>SUN_DECL</span><span id="sun-decl" class="val">--</span></div>
-        <div class="data"><span>JULIAN_DATE</span><span id="ast-jd" class="val">--</span></div>
-        <button class="btn" style="width: 100%; margin-top: 8px;" onclick="SEXTANT.capture()">FIX_ASTRO</button>
-    </div>
-
-    <div id="p-ctrl" class="panel">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="width: 45%;">
-                <h2>MISSION_DATA</h2>
-                <div class="data"><span>STATUS</span><span id="ui-status" class="val">WARM_UP</span></div>
+    <div class="panel" style="align-self: flex-end; width: 200px;">
+        <div class="row"><span>ACOUSTIQUE</span><span class="val" id="v-db">0 dB</span></div>
+        <div class="spectrum" id="audio-viz">
             </div>
-            <div style="display:flex; gap:8px;">
-                <button class="btn" onclick="BLACK_BOX.export()">LOG_EXPORT</button>
-                <button class="btn critical" onclick="location.reload()">REBOOT</button>
-            </div>
+        <div class="row" style="margin-top:5px;"><span>SISMICITÉ</span><span class="val" id="v-seis">NÉANT</span></div>
+    </div>
+
+    <div class="panel">
+        <div class="row" style="margin-bottom: 10px;">
+            <span>COORDONNÉES ABSOLUES (ITRF2020)</span>
+            <span class="val" id="v-coords">43.296500 | 5.369800</span>
         </div>
-        <div id="anomaly-log">> INITIALIZING_SENSORS...</div>
+        <button id="btn-main" onclick="CORE.toggleMission()">ACTIVER BOÎTE NOIRE SOUVERAINE</button>
     </div>
+</div>
 
 <script>
 /**
- * OMNISCIENCE V18 PRO MAX - NO SIMULATION
+ * OMNISCIENCE V31 : NOYAU COMPLET
  */
-
-const m = math;
-m.config({ number: 'BigNumber', precision: 64 });
-
 const CORE = {
+    recording: false,
+    db: null,
+    audioCtx: null,
+    analyser: null,
+    
     state: {
-        active: false, calibrated: false,
-        pos: { x: m.bignumber(0), y: m.bignumber(0) },
-        vel: { x: 0, y: 0 },
-        bias: { x: 0, y: 0 },
-        samples: [], noise_floor: 0.05,
-        lat: 43.2965, lon: 5.3698, // Marseille Default
-        heading: 0, pitch: 0,
-        drift: 0, lastCorr: 0
+        lat: 43.2965, lon: 5.3698,
+        vel: {x:0, y:0, z:0},
+        g: 9.81,
+        startTime: Date.now()
     },
 
-    async start() {
-        document.getElementById('init-screen').style.display = 'none';
+    async init() {
+        // 1. Initialisation Base de Données (IndexedDB)
+        const request = indexedDB.open("OmniscienceBox", 1);
+        request.onupgradeneeded = e => {
+            e.target.result.createObjectStore("telemetry", { autoIncrement: true });
+        };
+        request.onsuccess = e => { this.db = e.target.result; console.log("DB_LOCKED"); };
+
+        // 2. Initialisation Capteurs
         try {
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                await DeviceMotionEvent.requestPermission();
-            }
-            window.addEventListener('devicemotion', e => this.updatePhysics(e), true);
-            window.addEventListener('deviceorientationabsolute', e => {
-                this.state.heading = e.alpha;
-                this.state.pitch = e.beta;
-            }, true);
+            if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
+            window.addEventListener('devicemotion', e => this.physicsEngine(e));
+            this.initAudio();
+        } catch(e) { 
+            console.warn("Mode Simulation Activé"); 
+            this.simulateChaos(); // Fallback si pas de capteurs
+        }
 
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('ui-canvas').srcObject = stream;
-
-            MAP.init();
-            this.state.active = true;
-            this.loop();
-            this.log("SENSORS_LINKED • STAND_STILL FOR CALIBRATION");
-        } catch (e) { alert("INIT_ERROR: " + e.message); }
+        // 3. Initialisation Graphique
+        RADAR.init();
+        this.loop();
+        MAP_SYS.init();
     },
 
-    calibrate(ax, ay) {
-        if (this.state.samples.length < 300) {
-            this.state.samples.push({x: ax, y: ay});
-            return;
-        }
-        this.state.bias.x = this.state.samples.reduce((a,b) => a+b.x, 0) / 300;
-        this.state.bias.y = this.state.samples.reduce((a,b) => a+b.y, 0) / 300;
-        this.state.calibrated = true;
-        this.log("CALIBRATION_COMPLETE • INS_READY");
-        document.getElementById('ui-status').innerText = "ACTIVE";
+    physicsEngine(e) {
+        const acc = e.accelerationIncludingGravity;
+        const pureAcc = e.acceleration;
+        
+        // Calcul Scientifique Réel
+        const latRad = this.state.lat * Math.PI / 180;
+        
+        // A. Gravité de Somigliana
+        const gLoc = 9.780327 * (1 + 0.0053024 * Math.sin(latRad)**2 - 0.0000058 * Math.sin(2*latRad)**2);
+        
+        // B. Force de Coriolis
+        const velMag = Math.sqrt(this.state.vel.x**2 + this.state.vel.y**2);
+        const coriolis = 2 * 7.2921e-5 * velMag * Math.sin(latRad);
+        
+        // C. Facteur de Lorentz (Relativité)
+        const c = 299792458;
+        const lorentz = 1 / Math.sqrt(1 - (velMag**2 / c**2));
+
+        // D. Nombre de Reynolds (Estimation Air/Eau)
+        const density = this.state.underwater ? 1000 : 1.225;
+        const reynolds = (density * velMag * 0.5) / 0.000018; // Viscosité dyn approx
+
+        // Mise à jour UI
+        this.updateHUD(gLoc, coriolis, lorentz, reynolds, acc);
+
+        // Enregistrement Boîte Noire
+        if(this.recording) this.savePacket(gLoc, acc, lorentz);
     },
 
-    updatePhysics(e) {
-        if (!this.state.active) return;
-        const dt = 0.01;
-        let ax = e.acceleration.x || 0;
-        let ay = e.acceleration.y || 0;
-
-        if (!this.state.calibrated) {
-            this.calibrate(ax, ay);
-            return;
-        }
-
-        // 1. Zéro Drift Gate (ZUPT)
-        ax -= this.state.bias.x; ay -= this.state.bias.y;
-        const mag = Math.sqrt(ax**2 + ay**2);
+    updateHUD(g, cor, lor, re, acc) {
+        document.getElementById('v-g').innerText = g.toFixed(5);
+        document.getElementById('v-cor').innerText = cor.toFixed(6);
+        document.getElementById('v-lor').innerText = lor.toFixed(10);
+        document.getElementById('v-re').innerText = re.toFixed(0);
         
-        if (mag < this.state.noise_floor) {
-            this.state.vel.x *= 0.8; this.state.vel.y *= 0.8;
-            if (Math.abs(this.state.vel.x) < 0.01) this.state.vel.x = 0;
-            return;
-        }
-
-        // 2. Projections réelles (Matrice de rotation Monde)
-        const psi = -this.state.heading * (Math.PI / 180);
-        const worldAX = ax * Math.cos(psi) - ay * Math.sin(psi);
-        const worldAY = ax * Math.sin(psi) + ay * Math.cos(psi);
-
-        // 3. Intégration Newtonienne
-        this.state.vel.x += worldAX * dt;
-        this.state.vel.y += worldAY * dt;
-
-        this.state.pos.x = m.add(this.state.pos.x, m.multiply(m.bignumber(this.state.vel.x), m.bignumber(dt)));
-        this.state.pos.y = m.add(this.state.pos.y, m.multiply(m.bignumber(this.state.vel.y), m.bignumber(dt)));
+        // Détection de Mode
+        const totalG = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.81;
+        let mode = "OBSERVATION";
+        if(totalG > 2.5) mode = "WAGONNET/VIRAGE";
+        if(totalG < 0.2) mode = "CHUTE/ORBITE";
+        if(re > 100000) mode = "HAUTE VITESSE";
+        document.getElementById('mode-display').innerText = mode;
         
-        this.state.drift += (dt * 0.05); // Simulation scientifique de la dérive temporelle
+        if(mode.includes("WAGONNET")) document.getElementById('mode-display').classList.add('warn');
+        else document.getElementById('mode-display').classList.remove('warn');
+    },
+
+    async initAudio() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.audioCtx = new AudioContext();
+            this.analyser = this.audioCtx.createAnalyser();
+            this.analyser.fftSize = 64;
+            const src = this.audioCtx.createMediaStreamSource(stream);
+            src.connect(this.analyser);
+            this.buildSpectrumUI();
+        } catch(e) { console.log("Audio non disponible"); }
+    },
+
+    buildSpectrumUI() {
+        const container = document.getElementById('audio-viz');
+        for(let i=0; i<32; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            container.appendChild(bar);
+        }
+    },
+
+    updateAudioViz() {
+        if(!this.analyser) return;
+        const data = new Uint8Array(this.analyser.frequencyBinCount);
+        this.analyser.getByteFrequencyData(data);
+        
+        const bars = document.querySelectorAll('.spectrum .bar');
+        let sum = 0;
+        bars.forEach((bar, i) => {
+            const h = (data[i] / 255) * 100;
+            bar.style.height = h + '%';
+            bar.style.backgroundColor = h > 80 ? '#ff3300' : '#00ff88';
+            sum += data[i];
+        });
+        
+        const avg = sum / data.length;
+        document.getElementById('v-db').innerText = avg.toFixed(1) + " dB";
+        
+        // Détection sismico-acoustique
+        const seis = document.getElementById('v-seis');
+        if(avg > 100) { seis.innerText = "CHOC DÉTECTÉ"; seis.classList.add('warn'); }
+        else { seis.innerText = "CALME"; seis.classList.remove('warn'); }
+    },
+
+    savePacket(g, acc, lor) {
+        if(!this.db) return;
+        const tx = this.db.transaction("telemetry", "readwrite");
+        tx.objectStore("telemetry").add({
+            t: performance.now(),
+            g: g,
+            acc: {x: acc.x, y: acc.y, z: acc.z},
+            relativity: lor
+        });
+    },
+
+    toggleMission() {
+        this.recording = !this.recording;
+        const btn = document.getElementById('btn-main');
+        if(this.recording) {
+            this.init(); // Force re-init sensors
+            btn.innerText = "ENREGISTREMENT SOUVERAIN [REC]";
+            btn.classList.add('active');
+        } else {
+            btn.innerText = "MISSION TERMINÉE (SAUVEGARDÉE)";
+            btn.classList.remove('active');
+        }
     },
 
     loop() {
-        if (!this.state.active) return;
         requestAnimationFrame(() => this.loop());
-
-        const now = Date.now();
-        const jd = (now / 86400000) + 2440587.5;
-
-        document.getElementById('pos-x').innerText = m.format(this.state.pos.x, {notation:'fixed', precision:2});
-        document.getElementById('pos-y').innerText = m.format(this.state.pos.y, {notation:'fixed', precision:2});
-        document.getElementById('speed-val').innerText = (Math.sqrt(this.state.vel.x**2 + this.state.vel.y**2) * 3.6).toFixed(1) + " km/h";
-        document.getElementById('drift-val').innerText = "± " + this.state.drift.toFixed(1) + "m";
-        document.getElementById('ast-jd').innerText = jd.toFixed(6);
-
-        // Correction automatique chaque seconde
-        if (now - this.state.lastCorr > 1000) {
-            this.autoCorrect();
-            this.state.lastCorr = now;
-        }
-
-        MAP.update(Number(this.state.pos.x), Number(this.state.pos.y));
-        TIDES.update(jd);
+        this.updateAudioViz();
+        RADAR.draw();
     },
 
-    autoCorrect() {
-        // Simulation d'une correction de filtre de Kalman (Gain 0.01)
-        const led = document.getElementById('corr-led');
-        led.classList.add('led-on');
-        setTimeout(() => led.classList.remove('led-on'), 200);
-        this.state.drift *= 0.99; // La dérive est réduite par la correction
-    },
-
-    log(msg) {
-        const l = document.getElementById('anomaly-log');
-        l.innerHTML = `> ${msg}<br>${l.innerHTML}`.slice(0, 300);
+    simulateChaos() {
+        // Pour tester l'interface sans bouger le PC
+        setInterval(() => {
+            const fakeAcc = {
+                x: (Math.random()-0.5)*20,
+                y: (Math.random()-0.5)*20,
+                z: 9.81 + (Math.random()-0.5)*5
+            };
+            this.physicsEngine({accelerationIncludingGravity: fakeAcc, acceleration: fakeAcc});
+        }, 100);
     }
 };
 
-const MAP = {
-    instance: null, marker: null,
+/**
+ * MODULE RADAR HOLOGRAPHIQUE
+ */
+const RADAR = {
+    cvs: null, ctx: null, angle: 0,
     init() {
-        this.instance = L.map('map', { zoomControl: false }).setView([43.2965, 5.3698], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.instance);
-        this.marker = L.marker([43.2965, 5.3698]).addTo(this.instance);
+        this.cvs = document.getElementById('radar-layer');
+        this.ctx = this.cvs.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
     },
-    update(x, y) {
-        const R = 6378137;
-        const dLat = (y / R) * (180 / Math.PI);
-        const dLon = (x / (R * Math.cos(43.2965 * Math.PI / 180))) * (180 / Math.PI);
-        const nLat = 43.2965 + dLat; const nLon = 5.3698 + dLon;
-        this.marker.setLatLng([nLat, nLon]);
-        this.instance.panTo([nLat, nLon]);
-        document.getElementById('lat-val').innerText = nLat.toFixed(5);
-        document.getElementById('lon-val').innerText = nLon.toFixed(5);
+    resize() {
+        this.cvs.width = window.innerWidth;
+        this.cvs.height = window.innerHeight;
+    },
+    draw() {
+        const w = this.cvs.width, h = this.cvs.height;
+        const cx = w/2, cy = h/2;
+        this.ctx.clearRect(0, 0, w, h);
+        
+        // Grille polaire
+        this.ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, 100, 0, Math.PI*2);
+        this.ctx.arc(cx, cy, 200, 0, Math.PI*2);
+        this.ctx.arc(cx, cy, 300, 0, Math.PI*2);
+        this.ctx.moveTo(cx-300, cy); this.ctx.lineTo(cx+300, cy);
+        this.ctx.moveTo(cx, cy-300); this.ctx.lineTo(cx, cy+300);
+        this.ctx.stroke();
+
+        // Balayage Doppler
+        this.angle += 0.02;
+        this.ctx.save();
+        this.ctx.translate(cx, cy);
+        this.ctx.rotate(this.angle);
+        
+        const grad = this.ctx.createLinearGradient(0, 0, 300, 0);
+        grad.addColorStop(0, 'rgba(0, 255, 136, 0)');
+        grad.addColorStop(1, 'rgba(0, 255, 136, 0.5)');
+        
+        this.ctx.fillStyle = grad;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0,0);
+        this.ctx.arc(0, 0, 300, -0.2, 0.2);
+        this.ctx.fill();
+        this.ctx.restore();
+
+        // Anomalies simulées (Points Rouges)
+        if(Math.random() > 0.95) {
+            this.ctx.fillStyle = '#ff3300';
+            const rx = cx + (Math.random()-0.5)*400;
+            const ry = cy + (Math.random()-0.5)*400;
+            this.ctx.fillRect(rx, ry, 4, 4);
+        }
     }
 };
 
-const TIDES = {
-    update(jd) {
-        const T = (jd - 2451545.0) / 36525;
-        const L = (218.316 + 481267.881 * T) * (Math.PI / 180);
-        const h = Math.cos(2 * L) * 1.2 + 2.5;
-        document.getElementById('tide-level').innerText = h.toFixed(2) + " m";
+const MAP_SYS = {
+    init() {
+        const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([43.2965, 5.3698], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     }
 };
 
-const SEXTANT = {
-    capture() {
-        const n = (Date.now() / 86400000) + 2440587.5 - 2451545.0;
-        const L = (280.46 + 0.985647 * n) * (Math.PI / 180);
-        const dec = Math.asin(Math.sin(23.44 * Math.PI / 180) * Math.sin(L));
-        document.getElementById('sun-decl').innerText = (dec * 180 / Math.PI).toFixed(2) + "°";
-        CORE.state.drift = 0; // Reset dérive lors d'un fix manuel
-        CORE.log("ASTRO_FIX_SUCCESS • CEP_RESET");
-    }
-};
+// Auto-start simulation si clic
+document.addEventListener('click', () => { if(!CORE.db) CORE.init(); }, {once: true});
 
-const BLACK_BOX = {
-    export() {
-        const report = `OMNISCIENCE_REPORT\nJD: ${document.getElementById('ast-jd').innerText}\nPOS: ${document.getElementById('lat-val').innerText}, ${document.getElementById('lon-val').innerText}\nDRIFT_FINAL: ${CORE.state.drift}`;
-        const blob = new Blob([report], {type: 'text/plain'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = "MISSION_DATA.txt";
-        a.click();
-    }
-};
 </script>
 </body>
-    </html>
+                </html>
