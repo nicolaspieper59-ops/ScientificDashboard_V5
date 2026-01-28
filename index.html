@@ -3,144 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIENCE V49 • LUMINA_CORE</title>
+    <title>OMNISCIENCE V50 • PATHFINDER</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     
     <style>
         :root { 
-            --accent: #00ffcc; /* Par défaut : Ion Green */
-            --bg: #020505; 
-            --glass: rgba(5, 15, 15, 0.9);
-            --text: #ffffff;
-            --transition: 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            --accent: #00ffcc; --bg: #020505; --glass: rgba(5, 12, 12, 0.95);
+            --text: #ffffff; --transition: 0.5s ease;
         }
 
-        /* Thème Nuit (Amber) */
-        body.night-mode { 
-            --accent: #ff9500; 
-            --bg: #080400;
-            --glass: rgba(20, 10, 0, 0.95);
-        }
+        body.night-mode { --accent: #ff9500; --bg: #080400; --glass: rgba(15, 8, 0, 0.95); }
 
-        * { box-sizing: border-box; transition: background var(--transition), color var(--transition), border var(--transition); }
+        * { box-sizing: border-box; }
         body { 
             margin: 0; background: var(--bg); color: var(--accent); 
-            font-family: 'Inter', 'JetBrains Mono', monospace; 
-            overflow: hidden; height: 100vh;
+            font-family: 'Inter', monospace; overflow: hidden; height: 100vh;
         }
 
-        #map { position: fixed; inset: 0; filter: contrast(1.1) brightness(0.2) grayscale(1) invert(1); z-index: 0; opacity: 0.4; }
+        #map { position: fixed; inset: 0; filter: contrast(1.1) brightness(0.3) grayscale(1) invert(1); z-index: 0; }
 
         .hud { 
             position: fixed; inset: 0; z-index: 100; pointer-events: none;
-            padding: 25px; display: grid; grid-template-columns: 360px 1fr 360px; gap: 25px;
+            padding: 20px; display: grid; grid-template-columns: 340px 1fr 340px; gap: 20px;
         }
 
         .panel { 
-            pointer-events: auto; background: var(--glass); 
-            border: 1px solid rgba(255,255,255,0.05); border-radius: 16px;
-            backdrop-filter: blur(20px); padding: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            display: flex; flex-direction: column; gap: 15px;
+            pointer-events: auto; background: var(--glass); border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(25px);
+            padding: 20px; display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.8);
         }
 
-        .header { 
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;
-        }
+        .title-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        .title { font-size: 0.7rem; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }
 
-        .title { font-size: 0.75rem; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }
+        .card { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; }
+        .label { font-size: 0.6rem; opacity: 0.5; text-transform: uppercase; display: block; }
+        .number { font-size: 1.2rem; font-weight: 700; color: #fff; font-family: 'JetBrains Mono'; }
 
-        /* Metrics */
-        .metric-card { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 10px; }
-        .label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.5; display: block; }
-        .number { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+        canvas { width: 100%; height: 80px; border-radius: 10px; margin-top: 5px; background: rgba(0,0,0,0.2); }
 
-        canvas { width: 100%; height: 90px; border-radius: 8px; margin-top: 5px; }
-
-        #status-bubble { 
+        #alert-hub { 
             grid-column: 2; align-self: start; justify-self: center;
-            padding: 12px 30px; border-radius: 30px; background: var(--glass);
-            border: 1px solid var(--accent); color: var(--accent);
-            font-weight: 800; font-size: 0.8rem; letter-spacing: 2px;
+            padding: 10px 25px; border-radius: 40px; background: var(--glass);
+            border: 1px solid var(--accent); font-weight: 900; font-size: 0.7rem;
+            letter-spacing: 2px; transition: var(--transition);
         }
 
-        .btn-ui { 
+        .btn-action { 
             pointer-events: auto; background: var(--accent); color: #000; 
-            border: none; padding: 18px; border-radius: 12px;
-            font-weight: 900; cursor: pointer; font-size: 0.9rem;
+            border: none; padding: 15px; border-radius: 12px;
+            font-weight: 900; cursor: pointer; text-transform: uppercase;
         }
 
-        #overlay { 
-            position: fixed; inset: 0; background: var(--bg); z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-        }
+        #overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
-<div id="overlay">
-    <button class="btn-ui" onclick="CORE.ignite()">SYNC QUANTUM SENSORS</button>
-</div>
+<div id="overlay"><button class="btn-action" style="padding: 30px 60px" onclick="CORE.ignite()">INITIALIZE PATHFINDER</button></div>
 
 <div class="hud">
     <div class="panel">
-        <div class="header"><span class="title">Sub-Surface</span><span id="v-mode-tag">ION_G</span></div>
-        <canvas id="cv-grav"></canvas>
-        <div class="metric-card">
-            <span class="label">Gravitational Anomaly</span>
-            <span class="number" id="v-delta">0.000 mGal</span>
-        </div>
-        <div class="metric-card">
-            <span class="label">Local Density Est.</span>
-            <span class="number" id="v-dens">---</span>
-        </div>
+        <div class="title-row"><span class="title">Quantum Gravity</span><span id="v-rate">0 Hz</span></div>
+        <canvas id="cv-g"></canvas>
+        <div class="card"><span class="label">Local Anomaly</span><span class="number" id="v-anom">0.000 mGal</span></div>
+        <div class="card"><span class="label">Time Flux (Rel)</span><span class="number" id="v-time">0.00 ns</span></div>
     </div>
 
-    <div id="status-bubble">SYSTEM_NOMINAL</div>
+    <div id="alert-hub">CORE_READY</div>
 
     <div class="panel">
-        <div class="header"><span class="title">Chronos Drift</span><span id="v-clock">00:00</span></div>
-        <div class="metric-card">
-            <span class="label">Time Dilatation (Cumulative)</span>
-            <span class="number" id="v-drift">0.000000 ns</span>
+        <div class="title-row"><span class="title">Navigation Log</span><span id="v-coords">0.0, 0.0</span></div>
+        <div id="log" style="font-size: 0.65rem; height: 180px; overflow-y: auto; opacity: 0.7; line-height: 1.5;">
+            > System standby...
         </div>
-        <div class="header" style="margin-top:10px;"><span class="title">Geodesic Log</span></div>
-        <div id="log" style="font-size: 0.7rem; height: 100px; overflow-y: auto; line-height: 1.6;">
-            > Initializing adaptation kernel...
-        </div>
-        <button class="btn-ui" style="margin-top:auto;" onclick="CORE.toggleNight()">SWITCH VISUAL SPECTRUM</button>
+        <button class="btn-action" onclick="CORE.toggleNight()">Toggle Night Spectrum</button>
     </div>
 </div>
 
 <script>
 const CORE = {
-    active: false,
-    g_ref: 9.80665,
-    history: new Array(50).fill(0),
-    drift: 0,
-    lastT: performance.now(),
+    active: false, g_ref: 9.806, history: new Array(60).fill(0),
+    lastT: performance.now(), drift: 0, currentAnom: 0,
 
     async ignite() {
-        if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
-        }
+        if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
         document.getElementById('overlay').style.display = 'none';
         
-        // Auto-Calibration de 2 secondes
-        this.log("Calibrating to world gravity...");
+        this.log("Syncing with planetary rotation...");
         let samples = [];
         const cal = (e) => {
             const g = e.accelerationIncludingGravity;
             samples.push(Math.sqrt(g.x**2 + g.y**2 + g.z**2));
-            if(samples.length > 50) {
+            if(samples.length > 40) {
                 this.g_ref = samples.reduce((a,b)=>a+b)/samples.length;
-                this.log(`Ref fixed at ${this.g_ref.toFixed(4)} m/s²`);
                 window.removeEventListener('devicemotion', cal);
-                this.active = true;
                 this.start();
             }
         };
@@ -148,48 +109,41 @@ const CORE = {
     },
 
     start() {
-        window.addEventListener('devicemotion', (e) => this.engine(e));
+        this.active = true;
+        window.addEventListener('devicemotion', e => this.physics(e));
+        MAP_SYS.init();
         this.render();
-        MAP_INIT();
     },
 
-    engine(e) {
+    physics(e) {
         if(!this.active) return;
         const now = performance.now();
         const dt = (now - this.lastT) / 1000;
         this.lastT = now;
 
         const g = e.accelerationIncludingGravity;
-        const curr = Math.sqrt(g.x**2 + g.y**2 + g.z**2);
-        const anomaly = (curr - this.g_ref) * 100000; // mGal
+        const raw = Math.sqrt(g.x**2 + g.y**2 + g.z**2);
+        this.currentAnom = (raw - this.g_ref) * 100000;
         
-        this.history.push(anomaly);
+        this.history.push(this.currentAnom);
         this.history.shift();
-
-        // Relativité
-        this.drift += (this.g_ref / 8.987e16) * 1e9 * dt;
-
-        this.updateUI(anomaly);
-    },
-
-    updateUI(anom) {
-        document.getElementById('v-delta').innerText = `${anom.toFixed(3)} mGal`;
-        document.getElementById('v-drift').innerText = `${this.drift.toFixed(7)} ns`;
-        document.getElementById('v-clock').innerText = new Date().toLocaleTimeString().slice(0,5);
         
-        const bubble = document.getElementById('status-bubble');
-        if(anom < -80) {
-            bubble.innerText = "⚠ VOID_DETECTED";
-            bubble.style.borderColor = "red";
-        } else {
-            bubble.innerText = "SYSTEM_NOMINAL";
-            bubble.style.borderColor = "var(--accent)";
-        }
+        this.drift += (this.g_ref / 8.987e16) * 1e9 * dt;
+        this.updateUI();
     },
 
-    toggleNight() {
-        document.body.classList.toggle('night-mode');
-        this.log(`Visual spectrum shifted.`);
+    updateUI() {
+        document.getElementById('v-anom').innerText = this.currentAnom.toFixed(3) + " mGal";
+        document.getElementById('v-time').innerText = this.drift.toFixed(6) + " ns";
+        
+        const hub = document.getElementById('alert-hub');
+        if(this.currentAnom < -100) {
+            hub.innerText = "⚠ MASS_DEFICIT_DETECTED";
+            hub.style.color = "#ff3300";
+        } else {
+            hub.innerText = "SIGNAL_STABLE";
+            hub.style.color = "var(--accent)";
+        }
     },
 
     log(m) {
@@ -197,24 +151,39 @@ const CORE = {
         l.innerHTML = `> ${m}<br>` + l.innerHTML;
     },
 
+    toggleNight() { document.body.classList.toggle('night-mode'); },
+
     render() {
-        const cv = document.getElementById('cv-grav'), ctx = cv.getContext('2d');
-        const draw = () => {
-            ctx.clearRect(0, 0, cv.width, cv.height);
+        const cv = document.getElementById('cv-g'), ctx = cv.getContext('2d');
+        const loop = () => {
+            ctx.clearRect(0,0,cv.width, cv.height);
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--accent');
-            ctx.lineWidth = 3; ctx.beginPath();
-            this.history.forEach((v, i) => ctx.lineTo(i*(cv.width/50), 45 + v*0.5));
+            ctx.lineWidth = 2; ctx.beginPath();
+            this.history.forEach((v, i) => ctx.lineTo(i*(cv.width/60), 40 + v*0.4));
             ctx.stroke();
-            requestAnimationFrame(draw);
+            requestAnimationFrame(loop);
         };
-        draw();
+        loop();
     }
 };
 
-function MAP_INIT() {
-    const m = L.map('map', {zoomControl: false, attributionControl: false}).setView([43.29, 5.37], 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(m);
-}
+const MAP_SYS = {
+    map: null, path: null,
+    init() {
+        this.map = L.map('map', {zoomControl: false, attributionControl: false}).setView([43.29, 5.37], 17);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(this.map);
+        
+        navigator.geolocation.watchPosition(p => {
+            const pos = [p.coords.latitude, p.coords.longitude];
+            this.map.panTo(pos);
+            document.getElementById('v-coords').innerText = p.coords.latitude.toFixed(4) + ", " + p.coords.longitude.toFixed(4);
+            
+            // Heatmap Tracking: Couleur selon l'anomalie
+            const color = CORE.currentAnom < -80 ? '#ff3300' : (CORE.currentAnom > 80 ? '#00ffcc' : '#3366ff');
+            L.circle(pos, {radius: 2, color: color, fillOpacity: 0.8}).addTo(this.map);
+        }, null, {enableHighAccuracy: true});
+    }
+};
 </script>
 </body>
 </html>
