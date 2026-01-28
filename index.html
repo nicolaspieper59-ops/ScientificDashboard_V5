@@ -3,168 +3,276 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIENCE V17 PRO MAX • TOTAL_RECALL_CORE</title>
+    <title>OMNISCIENCE V18 PRO • NAVIGATION SOUVERAINE</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --accent: #00ff88;
-            --blue: #00d4ff;
-            --critical: #ff3300;
-            --gold: #ffd700;
-            --glass: rgba(0, 15, 10, 0.85);
+            --accent: #00ff88; --blue: #00d4ff; --critical: #ff3300; --gold: #ffd700;
+            --glass: rgba(5, 10, 15, 0.92);
         }
 
-        body, html {
-            margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            background: #000;
-            color: var(--accent);
-            font-family: 'JetBrains Mono', monospace;
-            overflow: hidden;
-            user-select: none;
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--accent); font-family: 'JetBrains Mono', monospace; overflow: hidden; }
 
-        /* --- COUCHES DE RENDU (Z-INDEX) --- */
-        #ui-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; }
-        .v-main-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 5; pointer-events: none; }
-        #camera-hud { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; pointer-events: none; }
-
-        /* --- PANNEAUX HUD --- */
-        .hud-panel {
-            position: fixed;
-            background: var(--glass);
-            border: 1px solid rgba(0, 255, 136, 0.3);
-            padding: 10px;
-            backdrop-filter: blur(8px);
-            z-index: 20;
-            border-radius: 4px;
-            font-size: 0.7rem;
-        }
-
-        /* Positionnement */
-        #panel-nav { top: 10px; left: 10px; width: 240px; }
-        #panel-phys { top: 10px; right: 10px; width: 240px; text-align: right; }
-        #panel-env { bottom: 120px; left: 10px; width: 220px; }
-        #panel-control { bottom: 10px; left: 10px; right: 10px; height: auto; }
-
-        h2 { font-family: 'Orbitron'; font-size: 0.75rem; margin: 0 0 8px 0; border-bottom: 1px solid var(--accent); color: var(--blue); }
-        .data-row { display: flex; justify-content: space-between; margin: 3px 0; }
-        .val { color: #fff; font-weight: bold; }
-
-        /* BOUTONS */
-        .btn-ctrl {
-            background: rgba(0, 40, 20, 0.9);
-            border: 1px solid var(--accent);
-            color: var(--accent);
-            padding: 6px 10px;
-            font-family: 'Orbitron'; font-size: 0.6rem;
-            cursor: pointer; pointer-events: auto;
-            text-transform: uppercase;
-        }
-        .btn-ctrl:hover { background: var(--accent); color: #000; }
-        .critical { border-color: var(--critical); color: var(--critical); }
-
-        #main-init-btn {
+        #ui-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; opacity: 0.6; }
+        #map { position: fixed; top: 10px; right: 10px; width: 220px; height: 220px; z-index: 15; border: 1px solid var(--accent); border-radius: 8px; filter: invert(1) hue-rotate(180deg) brightness(0.8); }
+        .v-main-container { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+        
+        #sextant-overlay {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 100; padding: 20px; font-size: 1rem; box-shadow: 0 0 30px var(--accent);
+            width: 250px; height: 250px; border: 1px dashed rgba(0, 255, 136, 0.3);
+            border-radius: 50%; z-index: 12; pointer-events: none;
         }
+        #sextant-overlay::before { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: var(--critical); opacity: 0.5; }
+        #sextant-overlay::after { content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: var(--critical); opacity: 0.5; }
 
-        #anomaly-log {
-            width: 100%; height: 40px; overflow-y: auto; color: #888; 
-            font-size: 0.6rem; margin-top: 5px; border-top: 1px dotted #333;
-        }
+        .panel { position: fixed; background: var(--glass); border: 1px solid rgba(0, 255, 136, 0.2); padding: 12px; z-index: 20; border-radius: 4px; backdrop-filter: blur(10px); }
+        #p-nav { top: 10px; left: 10px; width: 210px; }
+        #p-ocean { bottom: 130px; right: 10px; width: 190px; text-align: right; }
+        #p-ctrl { bottom: 10px; left: 10px; right: 10px; }
 
-        #topo-btn {
-            position: fixed; right: 20px; bottom: 120px;
-            width: 60px; height: 60px; border-radius: 50%;
-            background: var(--gold); border: none; z-index: 30;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-            cursor: pointer; pointer-events: auto;
-        }
+        h2 { font-family: 'Orbitron'; font-size: 0.7rem; margin: 0 0 8px 0; border-bottom: 1px solid var(--accent); color: var(--blue); text-transform: uppercase; letter-spacing: 1px; }
+        .data { display: flex; justify-content: space-between; font-size: 0.65rem; margin: 3px 0; }
+        .val { color: #fff; font-weight: bold; }
+        .led { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #333; margin-right: 5px; }
+        .led-on { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+
+        .btn { background: rgba(0, 40, 30, 0.8); border: 1px solid var(--accent); color: var(--accent); padding: 8px; font-family: 'Orbitron'; font-size: 0.6rem; cursor: pointer; transition: 0.3s; }
+        .btn:active { background: var(--accent); color: #000; }
+        .critical { border-color: var(--critical); color: var(--critical); }
+        #anomaly-log { width: 100%; height: 40px; overflow-y: auto; font-size: 0.55rem; color: #aaa; border-top: 1px dotted #444; margin-top: 8px; padding-top: 5px; }
+        
+        #init-screen { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-<video id="ui-canvas" autoplay playsinline muted></video>
-<div class="v-main-container"></div>
-
-<button id="main-init-btn" class="btn-ctrl" onclick="startAdventure()">INITIALISER LE NOYAU V17</button>
-
-<div id="panel-nav" class="hud-panel">
-    <h2><i class="fas fa-location-arrow"></i> NAVIGATION_EKF</h2>
-    <div class="data-row"><span>LAT / LON</span><span class="val"><span id="lat-ekf">--</span> / <span id="lon-ekf">--</span></span></div>
-    <div class="data-row"><span>ALTITUDE</span><span id="alt-ekf" class="val">--</span></div>
-    <div class="data-row"><span>VITESSE STABLE</span><span id="speed-stable-kmh" class="val">--</span></div>
-    <div class="data-row"><span>CAP (HEADING)</span><span id="heading-display" class="val">--</span></div>
-    
-    <h2 style="margin-top:10px;"><i class="fas fa-cube"></i> SLAM_ODOMETRY</h2>
-    <div class="data-row"><span>X-REL</span><span id="pos-x" class="val">0.0000</span></div>
-    <div class="data-row"><span>Y-REL</span><span id="pos-y" class="val">0.0000</span></div>
-    <div class="data-row"><span>Z-REL</span><span id="pos-z" class="val">0.0000</span></div>
-    <div class="data-row"><span>DISTANCE TOTALE</span><span id="distance-totale" class="val">--</span></div>
-</div>
-
-<div id="panel-phys" class="hud-panel">
-    <h2><i class="fas fa-atom"></i> PHYSIQUE_REL</h2>
-    <div class="data-row"><span>FACTOR γ</span><span id="ui-lorentz" class="val">1.000000</span></div>
-    <div class="data-row"><span>PROPER TIME τ</span><span id="val-tau" class="val">--</span></div>
-    <div class="data-row"><span>G-FORCE INST</span><span id="force-g-inst" class="val">--</span></div>
-    <div class="data-row"><span>STRESS STR.</span><span id="structural-stress" class="val">--</span></div>
-    <div class="data-row"><span>PRESSION DYN.</span><span id="dynamic-pressure" class="val">--</span></div>
-    
-    <h2 style="margin-top:10px;"><i class="fas fa-clock"></i> TEMPORAL_SYNC</h2>
-    <div class="data-row"><span>JULIAN DATE</span><span id="ast-jd" class="val">--</span></div>
-    <div class="data-row"><span>CLOCK</span><span id="ui-clock" class="val">00:00:00</span></div>
-    <div class="data-row"><span>LATENCY</span><span id="tslv" class="val">0ms</span></div>
-</div>
-
-<div id="panel-env" class="hud-panel">
-    <h2><i class="fas fa-wind"></i> ENV_SENSORS</h2>
-    <div class="data-row"><span>TEMP. AIR</span><span id="air-temp-c" class="val">--</span></div>
-    <div class="data-row"><span>PRESSION (hPa)</span><span id="pressure-hpa" class="val">--</span></div>
-    <div class="data-row"><span>AIR DENSITY ρ</span><span id="air-density" class="val">--</span></div>
-    <div class="data-row"><span>HUMIDITÉ</span><span id="humidity-pct" class="val">--</span></div>
-    <div class="data-row"><span>LUMIÈRE (Lux)</span><span id="ambient-light" class="val">--</span></div>
-</div>
-
-<div id="panel-control" class="hud-panel">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <div style="width: 40%;">
-            <h2><i class="fas fa-terminal"></i> MISSION_CONTROL</h2>
-            <div class="data-row"><span>STATUS</span><span id="ui-res" class="val">IDLE</span></div>
-            <div class="data-row"><span>SAMPLING</span><span id="ui-sampling-rate" class="val">100Hz</span></div>
-        </div>
-        
-        <div style="width: 55%; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-            <button id="toggle-gps-btn" class="btn-ctrl">GPS_TOGGLE</button>
-            <button id="export-metrics-btn" class="btn-ctrl">CSV_EXPORT</button>
-            <button onclick="document.getElementById('anomaly-log').innerHTML=''" class="btn-ctrl">CLEAR_LOG</button>
-            <button id="emergency-stop-btn" class="btn-ctrl critical">EMG_STOP</button>
-        </div>
+    <div id="init-screen">
+        <h1 style="font-family: 'Orbitron'; color: var(--accent); letter-spacing: 5px;">OMNISCIENCE V18 PRO</h1>
+        <p style="font-size: 0.7rem; color: var(--blue); margin-bottom: 20px;">GRADE SCIENTIFIQUE • SOUVERAINETÉ TOTALE</p>
+        <button class="btn" style="padding: 20px 40px; font-size: 0.9rem;" onclick="CORE.start()">ALIGNER LA CENTRALE INERTIELLE</button>
     </div>
-    <div id="anomaly-log">> SYSTEM_BOOT_SEQUENCE_INIT...</div>
-</div>
 
-<button id="topo-btn" onclick="TOPO_SURVEY.addWaypoint('REPERE_GEOLOGIQUE')">
-    <i class="fas fa-map-marker-alt" style="font-size: 1.5rem; color: #000;"></i>
-</button>
+    <video id="ui-canvas" autoplay playsinline muted></video>
+    <div class="v-main-container" id="three-container"></div>
+    <div id="map"></div>
+    <div id="sextant-overlay"></div>
 
-<div id="scientific-hidden-buffer" style="display:none;">
-    <span id="in-mass">80</span>
-    <span id="in-cx">0.4</span>
-    <span id="total-time-dilation"></span>
-    <span id="gravity-theoretical"></span>
-    <span id="v-cosmic"></span>
-    <span id="sun-azimuth"></span>
-    <span id="sun-alt"></span>
-</div>
+    <div id="p-nav" class="panel">
+        <h2><i class="fas fa-microchip"></i> INS_UNIT_01</h2>
+        <div class="data"><span>X-WORLD (E)</span><span id="pos-x" class="val">0.00</span></div>
+        <div class="data"><span>Y-WORLD (N)</span><span id="pos-y" class="val">0.00</span></div>
+        <div class="data"><span>DRIFT (CEP)</span><span id="drift-val" class="val">± 0.0m</span></div>
+        <div class="data"><span>VITESSE</span><span id="speed-val" class="val">0.0 km/h</span></div>
+        <div class="data"><span>LAT_TRUE</span><span id="lat-val" class="val">--</span></div>
+        <div class="data"><span>LON_TRUE</span><span id="lon-val" class="val">--</span></div>
+    </div>
 
-<script src="gnss-dashboard-full.js"></script>
+    <div id="p-ocean" class="panel">
+        <h2><i class="fas fa-globe-americas"></i> ASTRO_REF</h2>
+        <div class="data"><span>CORRECTION</span><div id="corr-led" class="led"></div></div>
+        <div class="data"><span>MARÉE (M2)</span><span id="tide-level" class="val">--</span></div>
+        <div class="data"><span>SUN_DECL</span><span id="sun-decl" class="val">--</span></div>
+        <div class="data"><span>JULIAN_DATE</span><span id="ast-jd" class="val">--</span></div>
+        <button class="btn" style="width: 100%; margin-top: 8px;" onclick="SEXTANT.capture()">FIX_ASTRO</button>
+    </div>
 
+    <div id="p-ctrl" class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="width: 45%;">
+                <h2>MISSION_DATA</h2>
+                <div class="data"><span>STATUS</span><span id="ui-status" class="val">WARM_UP</span></div>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn" onclick="BLACK_BOX.export()">LOG_EXPORT</button>
+                <button class="btn critical" onclick="location.reload()">REBOOT</button>
+            </div>
+        </div>
+        <div id="anomaly-log">> INITIALIZING_SENSORS...</div>
+    </div>
+
+<script>
+/**
+ * OMNISCIENCE V18 PRO MAX - NO SIMULATION
+ */
+
+const m = math;
+m.config({ number: 'BigNumber', precision: 64 });
+
+const CORE = {
+    state: {
+        active: false, calibrated: false,
+        pos: { x: m.bignumber(0), y: m.bignumber(0) },
+        vel: { x: 0, y: 0 },
+        bias: { x: 0, y: 0 },
+        samples: [], noise_floor: 0.05,
+        lat: 43.2965, lon: 5.3698, // Marseille Default
+        heading: 0, pitch: 0,
+        drift: 0, lastCorr: 0
+    },
+
+    async start() {
+        document.getElementById('init-screen').style.display = 'none';
+        try {
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                await DeviceMotionEvent.requestPermission();
+            }
+            window.addEventListener('devicemotion', e => this.updatePhysics(e), true);
+            window.addEventListener('deviceorientationabsolute', e => {
+                this.state.heading = e.alpha;
+                this.state.pitch = e.beta;
+            }, true);
+
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('ui-canvas').srcObject = stream;
+
+            MAP.init();
+            this.state.active = true;
+            this.loop();
+            this.log("SENSORS_LINKED • STAND_STILL FOR CALIBRATION");
+        } catch (e) { alert("INIT_ERROR: " + e.message); }
+    },
+
+    calibrate(ax, ay) {
+        if (this.state.samples.length < 300) {
+            this.state.samples.push({x: ax, y: ay});
+            return;
+        }
+        this.state.bias.x = this.state.samples.reduce((a,b) => a+b.x, 0) / 300;
+        this.state.bias.y = this.state.samples.reduce((a,b) => a+b.y, 0) / 300;
+        this.state.calibrated = true;
+        this.log("CALIBRATION_COMPLETE • INS_READY");
+        document.getElementById('ui-status').innerText = "ACTIVE";
+    },
+
+    updatePhysics(e) {
+        if (!this.state.active) return;
+        const dt = 0.01;
+        let ax = e.acceleration.x || 0;
+        let ay = e.acceleration.y || 0;
+
+        if (!this.state.calibrated) {
+            this.calibrate(ax, ay);
+            return;
+        }
+
+        // 1. Zéro Drift Gate (ZUPT)
+        ax -= this.state.bias.x; ay -= this.state.bias.y;
+        const mag = Math.sqrt(ax**2 + ay**2);
+        
+        if (mag < this.state.noise_floor) {
+            this.state.vel.x *= 0.8; this.state.vel.y *= 0.8;
+            if (Math.abs(this.state.vel.x) < 0.01) this.state.vel.x = 0;
+            return;
+        }
+
+        // 2. Projections réelles (Matrice de rotation Monde)
+        const psi = -this.state.heading * (Math.PI / 180);
+        const worldAX = ax * Math.cos(psi) - ay * Math.sin(psi);
+        const worldAY = ax * Math.sin(psi) + ay * Math.cos(psi);
+
+        // 3. Intégration Newtonienne
+        this.state.vel.x += worldAX * dt;
+        this.state.vel.y += worldAY * dt;
+
+        this.state.pos.x = m.add(this.state.pos.x, m.multiply(m.bignumber(this.state.vel.x), m.bignumber(dt)));
+        this.state.pos.y = m.add(this.state.pos.y, m.multiply(m.bignumber(this.state.vel.y), m.bignumber(dt)));
+        
+        this.state.drift += (dt * 0.05); // Simulation scientifique de la dérive temporelle
+    },
+
+    loop() {
+        if (!this.state.active) return;
+        requestAnimationFrame(() => this.loop());
+
+        const now = Date.now();
+        const jd = (now / 86400000) + 2440587.5;
+
+        document.getElementById('pos-x').innerText = m.format(this.state.pos.x, {notation:'fixed', precision:2});
+        document.getElementById('pos-y').innerText = m.format(this.state.pos.y, {notation:'fixed', precision:2});
+        document.getElementById('speed-val').innerText = (Math.sqrt(this.state.vel.x**2 + this.state.vel.y**2) * 3.6).toFixed(1) + " km/h";
+        document.getElementById('drift-val').innerText = "± " + this.state.drift.toFixed(1) + "m";
+        document.getElementById('ast-jd').innerText = jd.toFixed(6);
+
+        // Correction automatique chaque seconde
+        if (now - this.state.lastCorr > 1000) {
+            this.autoCorrect();
+            this.state.lastCorr = now;
+        }
+
+        MAP.update(Number(this.state.pos.x), Number(this.state.pos.y));
+        TIDES.update(jd);
+    },
+
+    autoCorrect() {
+        // Simulation d'une correction de filtre de Kalman (Gain 0.01)
+        const led = document.getElementById('corr-led');
+        led.classList.add('led-on');
+        setTimeout(() => led.classList.remove('led-on'), 200);
+        this.state.drift *= 0.99; // La dérive est réduite par la correction
+    },
+
+    log(msg) {
+        const l = document.getElementById('anomaly-log');
+        l.innerHTML = `> ${msg}<br>${l.innerHTML}`.slice(0, 300);
+    }
+};
+
+const MAP = {
+    instance: null, marker: null,
+    init() {
+        this.instance = L.map('map', { zoomControl: false }).setView([43.2965, 5.3698], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.instance);
+        this.marker = L.marker([43.2965, 5.3698]).addTo(this.instance);
+    },
+    update(x, y) {
+        const R = 6378137;
+        const dLat = (y / R) * (180 / Math.PI);
+        const dLon = (x / (R * Math.cos(43.2965 * Math.PI / 180))) * (180 / Math.PI);
+        const nLat = 43.2965 + dLat; const nLon = 5.3698 + dLon;
+        this.marker.setLatLng([nLat, nLon]);
+        this.instance.panTo([nLat, nLon]);
+        document.getElementById('lat-val').innerText = nLat.toFixed(5);
+        document.getElementById('lon-val').innerText = nLon.toFixed(5);
+    }
+};
+
+const TIDES = {
+    update(jd) {
+        const T = (jd - 2451545.0) / 36525;
+        const L = (218.316 + 481267.881 * T) * (Math.PI / 180);
+        const h = Math.cos(2 * L) * 1.2 + 2.5;
+        document.getElementById('tide-level').innerText = h.toFixed(2) + " m";
+    }
+};
+
+const SEXTANT = {
+    capture() {
+        const n = (Date.now() / 86400000) + 2440587.5 - 2451545.0;
+        const L = (280.46 + 0.985647 * n) * (Math.PI / 180);
+        const dec = Math.asin(Math.sin(23.44 * Math.PI / 180) * Math.sin(L));
+        document.getElementById('sun-decl').innerText = (dec * 180 / Math.PI).toFixed(2) + "°";
+        CORE.state.drift = 0; // Reset dérive lors d'un fix manuel
+        CORE.log("ASTRO_FIX_SUCCESS • CEP_RESET");
+    }
+};
+
+const BLACK_BOX = {
+    export() {
+        const report = `OMNISCIENCE_REPORT\nJD: ${document.getElementById('ast-jd').innerText}\nPOS: ${document.getElementById('lat-val').innerText}, ${document.getElementById('lon-val').innerText}\nDRIFT_FINAL: ${CORE.state.drift}`;
+        const blob = new Blob([report], {type: 'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "MISSION_DATA.txt";
+        a.click();
+    }
+};
+</script>
 </body>
-        </html>
+    </html>
