@@ -2,306 +2,173 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHE V93 • UNIVERSAL HAL</title>
-    
+    <title>ARCHE V97 • GALACTIC SEXTANT</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    
     <script src="ephem.js"></script>
     <script src="weather.js"></script>
 
     <style>
-        :root { --ion: #00ffcc; --warn: #ffaa00; --err: #ff0055; --bg: #000000; --panel: rgba(20,20,20,0.9); }
-        * { box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 11px; user-select: none; }
-        body { margin: 0; background: var(--bg); color: var(--ion); overflow: hidden; height: 100vh; }
+        :root { --ion: #00ffcc; --astro: #ffaa00; --bg: #020202; }
+        body { margin: 0; background: var(--bg); color: var(--ion); font-family: 'JetBrains Mono', monospace; overflow: hidden; }
+        #map { position: fixed; inset: 0; filter: invert(1) contrast(1.1) brightness(0.1) grayscale(1); z-index: 0; }
         
-        #map { position: fixed; inset: 0; filter: invert(1) contrast(1.3) brightness(0.2) hue-rotate(180deg); z-index: 0; }
-        #canvas-slam { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
-        
-        .hud { position: fixed; inset: 10px; display: grid; grid-template-columns: 300px 1fr 300px; grid-template-rows: auto 1fr auto; gap: 10px; pointer-events: none; z-index: 100; }
-        /* Responsive pour Tablette/Mobile */
-        @media (max-width: 800px) { .hud { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; } }
+        /* Overlay Sextant Caméra (Simulé) */
+        #sextant-overlay { 
+            position: fixed; inset: 0; border: 2px solid rgba(0,255,204,0.1);
+            pointer-events: none; z-index: 5;
+            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.4) 100%);
+        }
 
-        .panel { background: var(--panel); border: 1px solid #333; padding: 10px; pointer-events: auto; backdrop-filter: blur(5px); }
+        .hud { position: fixed; inset: 20px; display: grid; grid-template-columns: 300px 1fr 300px; gap: 20px; pointer-events: none; z-index: 100; }
+        .panel { background: rgba(5,8,10,0.9); border: 1px solid var(--ion); padding: 15px; pointer-events: auto; backdrop-filter: blur(10px); }
+        .val { color: #fff; font-size: 1.3em; font-variant-numeric: tabular-nums; }
+        .label { font-size: 0.8em; opacity: 0.6; text-transform: uppercase; }
         
-        .title { border-bottom: 2px solid var(--ion); margin-bottom: 8px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
-        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .val { font-size: 1.1rem; font-weight: bold; color: #fff; }
-        
-        /* Indicateurs Matériels */
-        .hw-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: #222; color: #555; border: 1px solid #444; }
-        .hw-tag.active { background: var(--ion); color: #000; border-color: var(--ion); box-shadow: 0 0 8px var(--ion); }
-        .hw-tag.fallback { background: var(--warn); color: #000; border-color: var(--warn); }
-        .hw-tag.missing { opacity: 0.3; text-decoration: line-through; }
-
-        .btn { background: var(--ion); color: #000; border: none; padding: 15px; width: 100%; font-weight: 900; margin-top: 10px; cursor: pointer; }
-        #boot { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .crosshair { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; border: 1px solid var(--astro); transform: translate(-50%, -50%); border-radius: 50%; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
-<canvas id="canvas-slam"></canvas>
-
-<div id="boot">
-    <h1 style="color:#fff; letter-spacing: 5px;">ARCHE V93</h1>
-    <div id="device-detect" style="color:var(--warn); margin-bottom: 20px;">DETECTING HARDWARE...</div>
-    <button class="btn" style="width: auto; padding: 15px 50px;" onclick="CORE.ignite()">ENGAGE SYSTEMS</button>
-</div>
+<div id="sextant-overlay"><div class="crosshair"></div></div>
 
 <div class="hud">
     <div class="panel">
-        <div class="title">HARDWARE HAL</div>
-        <div style="display:flex; gap:5px; margin-bottom:10px;">
-            <span id="tag-acc" class="hw-tag">ACCEL</span>
-            <span id="tag-gyr" class="hw-tag">GYRO</span>
-            <span id="tag-mag" class="hw-tag">MAG</span>
-            <span id="tag-bar" class="hw-tag">BARO</span>
-            <span id="tag-gps" class="hw-tag">GPS</span>
-        </div>
+        <div style="font-weight: 900; border-bottom: 1px solid var(--astro); color: var(--astro); margin-bottom:10px;">CELESTIAL DATA</div>
         
-        <div class="row">
-            <span>SOURCE ALTITUDE</span>
-            <span id="v-alt-source" style="color:var(--warn)">SCANNING</span>
-        </div>
-        <div class="row">
-            <span>LUMINOSITÉ</span>
-            <span class="val" id="v-lux">--</span>
-        </div>
-        <div class="row">
-            <span>PRESSION</span>
-            <span class="val" id="v-pres">--</span>
+        <div class="label">Soleil (Azimut)</div>
+        <div class="val" id="sun-azi">--°</div>
+        
+        <div class="label">Lune (Azimut)</div>
+        <div class="val" id="moon-azi">--°</div>
+        
+        <div class="label" style="margin-top:15px;">Élévation Solaire</div>
+        <div id="sun-gauge" style="width:100%; height:4px; background:#222; margin-top:5px;">
+            <div id="sun-bar" style="width:0%; height:100%; background:var(--astro);"></div>
         </div>
     </div>
 
-    <div></div>
+    <div style="display:flex; align-items:center; justify-content:center;">
+        <div style="text-align:center; background:rgba(0,0,0,0.5); padding:10px;">
+            <div class="label">Viseur Sextant</div>
+            <div id="v-sync" style="color:var(--astro)">SCANNING HORIZON...</div>
+        </div>
+    </div>
 
     <div class="panel">
-        <div class="title">INERTIAL 6-DoF</div>
-        <div class="row">
-            <span>V-LINEAR</span>
-            <span class="val" id="v-speed">0.00 <span style="font-size:0.7rem">m/s</span></span>
-        </div>
-        <div class="row">
-            <span>HEADING</span>
-            <span class="val" id="v-head">000°</span>
-        </div>
-        <div id="v-vec-state" style="text-align:center; padding:5px; background:#111; margin-top:5px; border:1px solid #333;">NEUTRAL</div>
-    </div>
+        <div style="font-weight: 900; border-bottom: 1px solid var(--ion); margin-bottom:10px;">SLAM ENGINE (128b)</div>
+        
+        <div class="label">Vitesse Scalaire</div>
+        <div class="val" id="v-speed">0.0000 <span style="font-size:0.5em">m/s</span></div>
+        
+        <div class="label">Position X (Prec)</div>
+        <div class="val" id="v-posx" style="font-size:0.9em">0.000000</div>
+        
+        <div class="label">Position Y (Prec)</div>
+        <div class="val" id="v-posy" style="font-size:0.9em">0.000000</div>
 
-    <div class="panel" style="grid-row: 3; grid-column: 1 / -1;">
-        <div class="title" style="display:inline-block; margin-right:20px;">TELEMETRY</div>
-        <span style="margin-right:15px;">ALT: <span class="val" id="v-alt">0.00</span> m</span>
-        <span style="margin-right:15px;">DIST: <span class="val" id="v-dist">0.00</span> m</span>
-        <span>DELTA-P: <span id="v-dp">--</span></span>
-        <button class="btn" style="padding: 5px; width: auto; float:right;" onclick="ARCHIVE.save()">REC</button>
+        <button onclick="CORE.reset()" style="margin-top:20px; width:100%; background:var(--ion); border:none; padding:10px; font-weight:bold; cursor:pointer;">RE-CALIBRER CAP</button>
     </div>
 </div>
 
 <script>
-const CORE = {
-    active: false,
-    caps: { baro: false, mag: false }, // Capacités détectées
-    state: { x:0, y:0, vx:0, vy:0, z:0 },
-    orient: { alpha:0, beta:0, gamma:0 },
-    p0_station: 1013.25,
-    path: [], distance: 0, lastT: 0,
+math.config({ number: 'BigNumber', precision: 32 });
 
-    async ignite() {
-        // Demande permission iOS/Android 13+
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
-        }
-        document.getElementById('boot').style.display = 'none';
-        
-        this.detectHardware();
-        this.startLoops();
-        MAP_ENGINE.init();
-        this.active = true;
+const CORE = {
+    pos: { x: math.bignumber(0), y: math.bignumber(0) },
+    v: { x: math.bignumber(0), y: math.bignumber(0) },
+    heading: 0,
+    lastT: performance.now(),
+
+    init() {
+        this.setupMap();
+        this.startAstro();
+        this.startInertia();
         this.render();
     },
 
-    detectHardware() {
-        // 1. Baromètre (Critique pour S10e vs Lenovo)
-        if ('PressureSensor' in window) {
-            try {
-                const baro = new PressureSensor({frequency: 10});
-                baro.onreading = () => this.handleBaro(baro.pressure);
-                baro.onerror = (e) => this.fallbackAlt("BARO_ERR"); // Si présent mais cassé
-                baro.start();
-                this.caps.baro = true;
-                this.updateTag('tag-bar', 'active');
-                document.getElementById('v-alt-source').innerText = "BAROMETRIC (S10e Mode)";
-                document.getElementById('v-alt-source').style.color = "var(--ion)";
-            } catch(e) { this.fallbackAlt("NO_PERM"); }
-        } else {
-            this.fallbackAlt("NO_HW"); // Cas Lenovo
-        }
-
-        // 2. Luxmètre
-        if ('AmbientLightSensor' in window) {
-            try {
-                const lux = new AmbientLightSensor();
-                lux.onreading = () => document.getElementById('v-lux').innerText = lux.illuminance.toFixed(0) + " lx";
-                lux.start();
-            } catch(e){}
-        }
+    setupMap() {
+        this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([48.85, 2.34], 18);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
     },
 
-    fallbackAlt(reason) {
-        console.log("Barometer fail:", reason);
-        this.caps.baro = false;
-        this.updateTag('tag-bar', 'missing');
-        this.updateTag('tag-gps', 'fallback');
-        document.getElementById('v-alt-source').innerText = "GPS GEOMETRIC (Lenovo Mode)";
-        document.getElementById('v-alt-source').style.color = "var(--warn)";
-        document.getElementById('v-pres').innerText = "N/A";
-        document.getElementById('v-dp').innerText = "N/A";
+    startAstro() {
+        setInterval(() => {
+            const now = new Date();
+            // Utilisation des données de ephem.js
+            if(typeof vsop2013 !== 'undefined') {
+                const jd = now.getTime() / 1000.0;
+                const sun = vsop2013.earth.position(jd);
+                
+                // Calcul Azimut (simplifié pour le démonstrateur)
+                const azi = (Math.atan2(sun.y, sun.x) * 180 / Math.PI + 360) % 360;
+                const elev = Math.atan2(sun.z, Math.sqrt(sun.x**2 + sun.y**2)) * 180 / Math.PI;
+
+                document.getElementById('sun-azi').innerText = azi.toFixed(2) + "°";
+                document.getElementById('sun-bar').style.width = Math.max(0, elev) + "%";
+                
+                if(elev < 0) document.getElementById('v-sync').innerText = "MODE: LUNAIRE ACTIVE";
+                else document.getElementById('v-sync').innerText = "MODE: SOLAIRE ACTIVE";
+            }
+        }, 1000);
     },
 
-    startLoops() {
-        // GPS (Météo + Fallback Altitude)
-        navigator.geolocation.watchPosition(pos => {
-            this.updateTag('tag-gps', 'active');
-            
-            // Si pas de baromètre (Lenovo), on utilise le GPS pour l'altitude
-            if(!this.caps.baro) {
-                this.state.z = pos.coords.altitude || 0;
-                document.getElementById('v-alt').innerText = this.state.z.toFixed(1);
-            }
-            
-            // Init Météo P0
-            if(!this.p0_fetched) {
-                this.fetchWeather(pos.coords.latitude, pos.coords.longitude);
-                this.p0_fetched = true;
-            }
-        }, err => console.log(err), {enableHighAccuracy: true});
+    startInertia() {
+        window.addEventListener('devicemotion', (e) => {
+            const now = performance.now();
+            const dt = math.bignumber((now - this.lastT) / 1000);
+            this.lastT = now;
 
-        // Inertie (Accéléromètre)
-        window.addEventListener('devicemotion', e => {
-            this.updateTag('tag-acc', 'active');
-            this.processPhysics(e);
+            let ax = math.bignumber(e.acceleration.x || 0);
+            let ay = math.bignumber(e.acceleration.y || 0);
+
+            // Filtrage bruit 128-bit
+            if (math.abs(ax).lt(0.1)) ax = math.bignumber(0);
+            if (math.abs(ay).lt(0.1)) ay = math.bignumber(0);
+
+            // Rotation du vecteur selon le cap
+            const rad = this.heading * Math.PI / 180;
+            const cos = math.bignumber(Math.cos(rad));
+            const sin = math.bignumber(Math.sin(rad));
+
+            const worldX = math.subtract(math.multiply(ax, cos), math.multiply(ay, sin));
+            const worldY = math.add(math.multiply(ax, sin), math.multiply(ay, cos));
+
+            // Intégration
+            this.v.x = math.add(this.v.x, math.multiply(worldX, dt));
+            this.v.y = math.add(this.v.y, math.multiply(worldY, dt));
+            
+            this.pos.x = math.add(this.pos.x, math.multiply(this.v.x, dt));
+            this.pos.y = math.add(this.pos.y, math.multiply(this.v.y, dt));
+
+            // UI Update
+            const speed = math.sqrt(math.add(math.square(this.v.x), math.square(this.v.y)));
+            document.getElementById('v-speed').innerText = math.format(speed, {precision: 5});
+            document.getElementById('v-posx').innerText = math.format(this.pos.x, {notation: 'fixed', precision: 6});
+            document.getElementById('v-posy').innerText = math.format(this.pos.y, {notation: 'fixed', precision: 6});
         });
 
-        // Orientation (Gyro/Mag)
-        window.addEventListener('deviceorientation', e => {
-            this.orient = { alpha: e.alpha||0, beta: e.beta||0, gamma: e.gamma||0 };
-            document.getElementById('v-head').innerText = Math.round(e.alpha||0) + "°";
-            
-            // Si alpha bouge, on assume que le magnétomètre ou le gyro fusionné fonctionne
-            if(e.alpha !== null) {
-                this.updateTag('tag-gyr', 'active');
-                this.updateTag('tag-mag', 'active');
-            } else {
-                this.updateTag('tag-mag', 'missing'); // Lenovo sans compas
-            }
+        window.addEventListener('deviceorientation', (e) => {
+            this.heading = e.alpha || 0;
         });
     },
 
-    async fetchWeather(lat, lon) {
-        try {
-            const r = await fetch(`api/weather?lat=${lat}&lon=${lon}`);
-            const d = await r.json();
-            if(d.main) this.p0_station = d.main.pressure;
-        } catch(e){}
-    },
-
-    handleBaro(p) {
-        // Mode S10e : Hypsométrie réelle
-        document.getElementById('v-pres').innerText = p.toFixed(1) + " hPa";
-        this.state.z = 44330 * (1 - Math.pow(p / this.p0_station, 1/5.255));
-        document.getElementById('v-alt').innerText = this.state.z.toFixed(2);
-        
-        const delta = p - this.p0_station;
-        const dpEl = document.getElementById('v-dp');
-        dpEl.innerText = (delta>0?"+":"") + delta.toFixed(2) + " hPa";
-        dpEl.style.color = Math.abs(delta) > 2 ? "var(--warn)" : "#888";
-    },
-
-    processPhysics(e) {
-        if(!this.active) return;
-        const now = performance.now();
-        if(this.lastT === 0) { this.lastT = now; return; }
-        const dt = (now - this.lastT) / 1000;
-        this.lastT = now;
-
-        // Compensation 6-DoF
-        const ax = e.acceleration.x || 0;
-        const ay = e.acceleration.y || 0;
-        
-        const alpha = this.orient.alpha * Math.PI / 180;
-        // Rotation simple
-        const worldX = ax * Math.cos(alpha) - ay * Math.sin(alpha);
-        const worldY = ax * Math.sin(alpha) + ay * Math.cos(alpha);
-        
-        // Gate (filtre bruit)
-        if(Math.abs(worldX) > 0.2) this.state.vx += worldX * dt;
-        if(Math.abs(worldY) > 0.2) this.state.vy += worldY * dt;
-        
-        // Friction virtuelle pour ne pas glisser à l'infini quand on s'arrête
-        this.state.vx *= 0.98; 
-        this.state.vy *= 0.98;
-
-        this.state.x += this.state.vx * dt;
-        this.state.y += this.state.vy * dt;
-        
-        const speed = Math.sqrt(this.state.vx**2 + this.state.vy**2);
-        this.distance += speed * dt;
-
-        document.getElementById('v-speed').innerText = speed.toFixed(2) + " m/s";
-        document.getElementById('v-dist').innerText = this.distance.toFixed(1);
-        
-        // UI Vecteur
-        const vState = document.getElementById('v-vec-state');
-        if(ay > 0.5) { vState.innerText = "PROPULSION"; vState.style.color="var(--ion)"; vState.style.borderColor="var(--ion)"; }
-        else if(ay < -0.5) { vState.innerText = "FREINAGE"; vState.style.color="var(--warn)"; vState.style.borderColor="var(--warn)"; }
-        else { vState.innerText = "ROUE LIBRE"; vState.style.color="#555"; vState.style.borderColor="#333"; }
-
-        // Ajout Path
-        this.path.push({x:this.state.x, y:this.state.y});
-        if(this.path.length>2000) this.path.shift();
+    reset() {
+        this.v.x = math.bignumber(0);
+        this.v.y = math.bignumber(0);
+        this.pos.x = math.bignumber(0);
+        this.pos.y = math.bignumber(0);
     },
 
     render() {
-        const c = document.getElementById('canvas-slam');
-        const ctx = c.getContext('2d');
-        c.width = window.innerWidth; c.height = window.innerHeight;
-        const cx = c.width/2, cy = c.height/2;
-        
-        ctx.clearRect(0,0,c.width, c.height);
-        ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
-        ctx.beginPath();
-        this.path.forEach((p,i) => {
-            const sx = cx + p.x * 20;
-            const sy = cy - p.y * 20;
-            if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
-        });
-        ctx.stroke();
-        requestAnimationFrame(()=>this.render());
-    },
-    
-    updateTag(id, cls) {
-        const el = document.getElementById(id);
-        if(!el.classList.contains('missing')) el.className = 'hw-tag ' + cls;
+        // Optionnel : Tracer la ligne de déplacement sur la carte ici
+        requestAnimationFrame(() => this.render());
     }
 };
 
-const MAP_ENGINE = {
-    init() {
-        const m = L.map('map', {zoomControl:false, attributionControl:false}).setView([0,0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
-    }
-};
-
-const ARCHIVE = {
-    save() {
-        const d = { mission:"V93_HAL", device: navigator.userAgent, path: CORE.path };
-        const b = new Blob([JSON.stringify(d)],{type:'application/json'});
-        const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download="LOG.json"; a.click();
-    }
-};
+window.onload = () => CORE.init();
 </script>
 </body>
-                                                                                              </html>
+        </html>
