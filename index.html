@@ -3,192 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIENCE V72 • ULTIMA ARCHE</title>
+    <title>ARCHE V73 • ULTIMA</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     
     <style>
-        :root { --ion: #00ffcc; --path: #ffaa00; --bg: #000; --err: #ff0055; --panel: rgba(5,15,15,0.95); }
-        * { box-sizing: border-box; outline: none; }
+        :root { --ion: #00ffcc; --path: #ffaa00; --bg: #000; --err: #ff0055; --panel: rgba(2,10,10,0.9); }
         body { margin: 0; background: var(--bg); color: var(--ion); font-family: 'JetBrains Mono', monospace; overflow: hidden; height: 100vh; font-size: 11px; }
-        
-        #map { position: fixed; inset: 0; filter: invert(1) hue-rotate(180deg) brightness(0.15) contrast(1.2); z-index: 0; }
+        #map { position: fixed; inset: 0; filter: invert(1) hue-rotate(180deg) brightness(0.2) contrast(1.2); z-index: 0; }
         #canvas-path { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
-        #video-feed { position: fixed; inset: 0; object-fit: cover; opacity: 0.2; z-index: -1; filter: grayscale(1); }
-
         .hud { position: fixed; inset: 15px; display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; gap: 15px; pointer-events: none; z-index: 100; }
-        .panel { background: var(--panel); border: 1px solid var(--ion); padding: 15px; pointer-events: auto; backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(0,255,204,0.1); }
-        
-        .title { font-size: 0.7rem; font-weight: 900; letter-spacing: 2px; border-bottom: 1px solid var(--ion); margin-bottom: 10px; padding-bottom: 5px; display: flex; justify-content: space-between; }
-        .data { display: flex; justify-content: space-between; margin: 6px 0; align-items: center; }
-        .val { color: #fff; font-weight: bold; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
-        
-        .btn { background: var(--ion); color: #000; border: none; padding: 12px; cursor: pointer; font-weight: 900; width: 100%; letter-spacing: 1px; transition: 0.2s; }
-        .btn:hover { filter: brightness(1.2); box-shadow: 0 0 15px var(--ion); }
-        .btn-sos { background: none; border: 2px solid var(--err); color: var(--err); margin-top: 8px; display: none; animation: blink 1s infinite; }
-
+        .panel { background: var(--panel); border: 1px solid var(--ion); padding: 15px; pointer-events: auto; backdrop-filter: blur(8px); }
+        .val { color: #fff; font-weight: bold; font-size: 1.2rem; }
+        .btn { background: var(--ion); color: #000; border: none; padding: 12px; cursor: pointer; font-weight: 900; width: 100%; transition: 0.2s; }
+        .btn-sos { background: none; border: 2px solid var(--err); color: var(--err); display: none; animation: blink 1s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        #boot-screen { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        #boot { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
     </style>
 </head>
 <body>
 
-<video id="video-feed" autoplay playsinline></video>
 <div id="map"></div>
 <canvas id="canvas-path"></canvas>
 
-<div id="boot-screen">
-    <h1 style="letter-spacing: 15px; margin-bottom: 5px;">ARCHE_V72</h1>
-    <p style="opacity: 0.6; margin-bottom: 30px;">SOUVEREIGN REALITY KERNEL • 128-BIT</p>
-    <button class="btn" style="width: auto; padding: 20px 60px;" onclick="KERNEL.ignite()">SYNC NEURAL LINK</button>
+<div id="boot">
+    <h1 style="letter-spacing: 10px;">ARCHE_V73</h1>
+    <button class="btn" style="width:auto; padding: 20px 60px;" onclick="KERNEL.ignite()">INITIALISER LE NOYAU</button>
 </div>
 
 <div class="hud">
     <div class="panel">
-        <div class="title">DYNAMIC VECTOR <span id="tag-sym">NEUTRE</span></div>
-        <div class="data"><span>G-FORCE ABS</span><span class="val" id="v-gabs">9.80665</span></div>
-        <div class="data"><span>V-SPEED</span><span class="val" id="v-speed">0.00 km/h</span></div>
-        <div class="data"><span>VAR (σ)</span><span id="v-noise">0.000000</span></div>
+        <div style="border-bottom: 1px solid var(--ion); margin-bottom: 10px;">VECTEUR DYNAMIQUE <span id="tag-sym">NEUTRE</span></div>
+        <div style="display:flex; justify-content:space-between;">G-FORCE ABS <span class="val" id="v-gabs">9.81</span></div>
+        <div style="display:flex; justify-content:space-between;">V-SPEED <span class="val" id="v-speed">0.00 km/h</span></div>
+        <div style="font-size: 0.7rem; color: var(--path);" id="v-signature">SCANNING SIGNATURES...</div>
     </div>
 
-    <div></div> <div class="panel">
-        <div class="title">COSMIC ANCHOR (SEXTANT)</div>
-        <div class="data"><span>HEADING</span><span class="val" id="v-head">0.00°</span></div>
-        <div class="data"><span>PITCH / ROLL</span><span id="v-orient">0 / 0</span></div>
-        <div class="data"><span id="v-signature" style="color: var(--path); font-size: 0.7rem;">SCANNING SIGNATURES...</span></div>
-    </div>
+    <div></div>
 
-    <div class="panel" style="grid-row: 3;">
-        <div class="title">ARIADNE PATHFINDER</div>
-        <div class="data"><span>DISTANCE</span><span class="val" id="v-dist">0.00</span> m</div>
-        <div class="data"><span>POI NODES</span><span class="val" id="v-poi">0</span></div>
-        <div id="poi-alert" style="color: var(--path); display:none; font-weight:bold; text-align:center;">NOEUD DÉTECTÉ</div>
+    <div class="panel">
+        <div style="border-bottom: 1px solid var(--ion); margin-bottom: 10px;">SEXTANT / COMPAS</div>
+        <div style="display:flex; justify-content:space-between;">CAP <span class="val" id="v-head">0.00°</span></div>
+        <div style="display:flex; justify-content:space-between;">INCLINAISON <span id="v-orient">0 / 0</span></div>
     </div>
 
     <div class="panel" style="grid-row: 3;">
-        <div class="title">SYSTEM ARCHIVE</div>
-        <button class="btn" onclick="ARCHIVE.export()">DOWNLOAD .REAL DATA</button>
-        <button id="sos-btn" class="btn btn-sos" onclick="KERNEL.triggerSOS()">SOS: IMMOBILITÉ DÉTECTÉE</button>
+        <div>FIL D'ARIANE</div>
+        <div style="display:flex; justify-content:space-between;">DISTANCE <span class="val" id="v-dist">0.00</span> m</div>
+        <div id="poi-alert" style="color: var(--path); display:none;">NOEUD DÉTECTÉ</div>
+    </div>
+
+    <div class="panel" style="grid-row: 3;">
+        <button class="btn" onclick="ARCHIVE.export()">EXPORT .REAL</button>
+        <button id="sos-btn" class="btn btn-sos" onclick="KERNEL.triggerSOS()">APPEL SOS : IMMOBILITÉ</button>
     </div>
 </div>
 
 <script>
 const KERNEL = {
-    active: false, bias: 0, velocity: 0, distance: 0,
+    active: false, velocity: 0, distance: 0, bias: 0,
     path: [{x: 0, y: 0}], heading: 0, lastT: performance.now(),
-    immobileTime: 0, 
+    immobileTime: 0,
 
     async ignite() {
-        try {
-            if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            document.getElementById('video-feed').srcObject = stream;
-        } catch(e) { console.log("Caméra non dispo (Sextant manuel)"); }
-
-        document.getElementById('boot-screen').style.display = 'none';
+        if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
+        document.getElementById('boot').style.display = 'none';
         MAP_ENGINE.init();
-        window.addEventListener('devicemotion', e => this.computeInertia(e));
-        window.addEventListener('deviceorientation', e => this.computeOrientation(e));
+        window.addEventListener('devicemotion', e => this.compute(e));
+        window.addEventListener('deviceorientation', e => this.computeOri(e));
         this.active = true;
-        this.renderLoop();
+        this.render();
     },
 
-    computeInertia(e) {
+    compute(e) {
         if(!this.active) return;
         const now = performance.now();
         const dt = (now - this.lastT) / 1000;
         this.lastT = now;
 
+        // Force G absolue
         const accG = e.accelerationIncludingGravity;
         const rawG = Math.sqrt(accG.x**2 + accG.y**2 + accG.z**2);
         
-        // --- 1. GESTION DE LA SYMÉTRIE (Accél vs Décél) ---
+        // Symétrie (Y est l'axe de marche standard)
         const linY = e.acceleration.y || 0;
-        const symTag = document.getElementById('tag-sym');
-        if(linY > 0.3) { symTag.innerText = "ACCÉL (+)"; symTag.style.color = "var(--ion)"; }
-        else if(linY < -0.3) { symTag.innerText = "DÉCÉL (-)"; symTag.style.color = "var(--err)"; }
-        else { symTag.innerText = "V-CONST"; symTag.style.color = "#fff"; }
+        const sym = document.getElementById('tag-sym');
+        sym.innerText = linY > 0.3 ? "ACCÉL (+)" : (linY < -0.3 ? "DÉCÉL (-)" : "STABLE");
+        sym.style.color = linY > 0.3 ? "var(--ion)" : (linY < -0.3 ? "var(--err)" : "#fff");
 
-        // --- 2. FILTRE ZUPT (Zero Velocity Update) & BIAIS ---
+        // Filtre ZUPT (Anti-dérive)
         const diff = Math.abs(rawG - 9.80665);
-        if(diff < 0.06) {
+        if(diff < 0.08) {
             this.immobileTime += dt;
-            this.velocity = 0; 
-            this.bias = rawG - 9.80665; // Recalibrage atomique au repos
-            if(this.immobileTime > 45) document.getElementById('sos-btn').style.display = 'block';
+            this.velocity *= 0.9; // Friction virtuelle pour stabiliser
+            if(Math.abs(this.velocity) < 0.01) this.velocity = 0;
+            this.bias = rawG - 9.80665;
+            if(this.immobileTime > 30) document.getElementById('sos-btn').style.display = 'block';
         } else {
             this.immobileTime = 0;
             document.getElementById('sos-btn').style.display = 'none';
             this.velocity += (rawG - 9.80665 - this.bias) * dt;
         }
 
-        // --- 3. DÉTECTION DE SIGNATURES (Atomes / Gastéropodes / Humains) ---
-        this.identifySignature(diff);
+        this.identify(diff);
 
-        // --- 4. TRAJECTOIRE ARIADNE (Labyrinthe) ---
-        if(Math.abs(this.velocity) > 0.05) {
+        // Pathfinding
+        if(Math.abs(this.velocity) > 0.1) {
             this.distance += Math.abs(this.velocity) * dt;
             const rad = (this.heading * Math.PI) / 180;
             const last = this.path[this.path.length - 1];
             
             const newNode = {
-                x: last.x + Math.sin(rad) * this.velocity,
-                y: last.y - Math.cos(rad) * this.velocity,
-                isPOI: Math.abs(e.rotationRate?.alpha || 0) > 100 // Détection virage serré
+                x: last.x + Math.sin(rad) * this.velocity * 0.5,
+                y: last.y - Math.cos(rad) * this.velocity * 0.5,
+                isPOI: Math.abs(e.rotationRate?.alpha || 0) > 80
             };
             this.path.push(newNode);
             if(this.path.length > 2000) this.path.shift();
             if(newNode.isPOI) this.triggerPOI();
         }
-
-        this.updateUI(rawG, diff);
+        this.updateUI(rawG);
     },
 
-    identifySignature(delta) {
-        let sig = "BRUIT DE FOND";
-        if(delta > 0.000001 && delta < 0.00008) sig = "VIBRATION ATOMIQUE (THERMIQUE)";
-        else if(delta > 0.0001 && delta < 0.008) sig = "GASTROPODE / BIOMÉCANIQUE";
-        else if(delta > 0.4 && delta < 1.5) sig = "PAS HUMAIN (MARCHE)";
-        else if(delta > 5.0) sig = "FORCE CINÉTIQUE MAJEURE";
-        document.getElementById('v-signature').innerText = sig;
+    identify(d) {
+        let s = "BRUIT";
+        if(d < 0.0001) s = "ATOMIQUE/THERMIQUE";
+        else if(d < 0.01) s = "BIOLOGIQUE (GASTROPODE)";
+        else if(d < 1.0) s = "MOUVEMENT HUMAIN";
+        else s = "FORCE CINÉTIQUE";
+        document.getElementById('v-signature').innerText = s;
     },
 
-    computeOrientation(e) {
-        this.heading = e.alpha || 0;
-        document.getElementById('v-head').innerText = this.heading.toFixed(2) + "°";
-        document.getElementById('v-orient').innerText = `${Math.round(e.beta)} / ${Math.round(e.gamma)}`;
-    },
-
+    computeOri(e) { this.heading = e.alpha || 0; },
+    
     triggerPOI() {
-        const el = document.getElementById('poi-alert');
-        el.style.display = 'block';
-        document.getElementById('v-poi').innerText = this.path.filter(p => p.isPOI).length;
-        setTimeout(() => el.style.display = 'none', 1500);
+        const a = document.getElementById('poi-alert');
+        a.style.display = 'block';
+        setTimeout(() => a.style.display = 'none', 1000);
     },
 
-    updateUI(g, noise) {
-        document.getElementById('v-gabs').innerText = g.toFixed(6);
-        document.getElementById('v-speed').innerText = (Math.abs(this.velocity) * 3.6).toFixed(2) + " km/h";
-        document.getElementById('v-noise').innerText = noise.toFixed(8);
-        document.getElementById('v-dist').innerText = this.distance.toFixed(2);
+    triggerSOS() { alert("SIGNAL SOS GÉNÉRÉ : Position inertielle verrouillée."); },
+
+    updateUI(g) {
+        document.getElementById('v-gabs').innerText = g.toFixed(4);
+        document.getElementById('v-speed').innerText = (Math.abs(this.velocity) * 3.6).toFixed(1) + " km/h";
+        document.getElementById('v-dist').innerText = this.distance.toFixed(1);
+        document.getElementById('v-head').innerText = this.heading.toFixed(0) + "°";
     },
 
-    renderLoop() {
+    render() {
         const c = document.getElementById('canvas-path'), ctx = c.getContext('2d');
+        c.width = window.innerWidth; c.height = window.innerHeight;
         const draw = () => {
             ctx.clearRect(0,0,c.width, c.height);
-            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
+            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
             ctx.beginPath();
-            const cx = window.innerWidth/2, cy = window.innerHeight/2;
-            
+            const cx = c.width/2, cy = c.height/2;
             this.path.forEach((p, i) => {
-                const sx = cx + p.x * 20; const sy = cy + p.y * 20;
+                const sx = cx + p.x * 30, sy = cy + p.y * 30;
                 if(i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
-                if(p.isPOI) {
-                    ctx.fillStyle = '#ffaa00';
-                    ctx.fillRect(sx-3, sy-3, 6, 6);
-                }
+                if(p.isPOI) { ctx.fillStyle = '#ffaa00'; ctx.fillRect(sx-3, sy-3, 6, 6); ctx.moveTo(sx,sy); }
             });
             ctx.stroke();
             requestAnimationFrame(draw);
@@ -199,26 +174,20 @@ const KERNEL = {
 
 const MAP_ENGINE = {
     init() {
-        const m = L.map('map', {zoomControl: false, attributionControl: false}).setView([48.8566, 2.3522], 16);
+        const m = L.map('map', {zoomControl: false, attributionControl: false}).setView([43.2965, 5.3698], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
     }
 };
 
 const ARCHIVE = {
     export() {
-        const data = { mission: Date.now(), path: KERNEL.path, distance: KERNEL.distance };
-        const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+        const b = new Blob([JSON.stringify(KERNEL.path)], {type: 'application/json'});
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `SOUVEREIGN_DATA_${Date.now()}.REAL`;
+        a.href = URL.createObjectURL(b);
+        a.download = `LOG_V73_${Date.now()}.REAL`;
         a.click();
     }
 };
-
-window.onload = () => {
-    const c = document.getElementById('canvas-path');
-    c.width = window.innerWidth; c.height = window.innerHeight;
-};
 </script>
 </body>
-                                              </html>
+    </html>
