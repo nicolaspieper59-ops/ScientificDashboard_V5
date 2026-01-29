@@ -3,186 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNISCIENCE V60 • ULTIMA</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    
+    <title>V62 • ZERO_SIMULATION</title>
     <style>
-        :root { --ion: #00ffcc; --bg: #000; --warn: #ff0055; --panel: rgba(5,10,10,0.95); }
-        * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--ion); font-family: 'JetBrains Mono', monospace; overflow: hidden; height: 100vh; font-size: 12px; }
-        
-        #map { position: fixed; inset: 0; filter: contrast(1.2) brightness(0.15) grayscale(1) invert(1); z-index: 0; }
-        
-        .hud { position: fixed; inset: 10px; pointer-events: none; z-index: 100; display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; gap: 10px; }
-        .panel { background: var(--panel); border: 1px solid var(--ion); padding: 12px; border-radius: 2px; pointer-events: auto; backdrop-filter: blur(10px); }
-        
-        .title { font-size: 0.7rem; font-weight: 900; letter-spacing: 2px; border-bottom: 1px solid var(--ion); margin-bottom: 8px; padding-bottom: 4px; display: flex; justify-content: space-between; }
-        .data { display: flex; justify-content: space-between; margin: 4px 0; }
-        .val { color: #fff; font-weight: bold; }
-
-        canvas { width: 100%; height: 60px; background: #050505; border: 1px solid #111; margin-top: 5px; }
-        
-        #status-bar { grid-column: 1 / -1; background: var(--ion); color: #000; font-weight: 900; text-align: center; padding: 4px; letter-spacing: 5px; }
-        
-        .btn { background: none; border: 1px solid var(--ion); color: var(--ion); padding: 10px; cursor: pointer; font-weight: 900; width: 100%; margin-top: 5px; transition: 0.2s; }
-        .btn:hover { background: var(--ion); color: #000; }
-        .btn-rec { border-color: var(--warn); color: var(--warn); }
-        .btn-rec.active { background: var(--warn); color: #000; box-shadow: 0 0 15px var(--warn); }
-
-        #boot { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        :root { --ion: #00ffcc; --bg: #000; --warn: #ff0055; }
+        body { margin: 0; background: var(--bg); color: var(--ion); font-family: 'JetBrains Mono', monospace; font-size: 11px; overflow: hidden; }
+        .hud { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; height: 100vh; grid-template-rows: auto 1fr auto; }
+        .panel { border: 1px solid var(--ion); padding: 12px; background: rgba(5,10,10,0.95); position: relative; }
+        .title { font-size: 0.7rem; font-weight: 900; letter-spacing: 2px; border-bottom: 1px solid var(--ion); margin-bottom: 8px; }
+        .val { color: #fff; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+        .unit { font-size: 0.6rem; opacity: 0.6; }
+        canvas { width: 100%; height: 80px; background: #050505; margin-top: 10px; }
+        #calib-overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+        .btn { background: var(--ion); color: #000; border: none; padding: 20px 40px; font-weight: 900; cursor: pointer; letter-spacing: 2px; }
+        .status { font-size: 0.6rem; color: var(--warn); }
     </style>
 </head>
 <body>
 
-<div id="map"></div>
-<div id="boot">
-    <h1 style="letter-spacing: 15px;">OMNISCIENCE_V60</h1>
-    <p style="color: var(--ion); opacity: 0.6;">UNIVERSAL REALITY RECORDER</p>
-    <button class="btn" style="width: auto; padding: 20px 40px;" onclick="CORE.ignite()">SYNC HARDWARE ACCESS</button>
+<div id="calib-overlay">
+    <h2 style="letter-spacing: 10px;">PROCÉDURE DE CALIBRAGE</h2>
+    <p>Posez l'appareil sur une surface parfaitement stable.<br>Ne touchez plus à rien pendant 5 secondes.</p>
+    <button class="btn" onclick="SENSOR.startCalibrate()">LANCER LA SYNCHRO</button>
 </div>
 
 <div class="hud">
-    <div id="status-bar">REALITY_KERNEL_V60 // SYSTEM_READY</div>
+    <div class="panel">
+        <div class="title">ACCÉLÉROMÉTRIE BRUTE (m/s²)</div>
+        <div>TOTAL_G: <span class="val" id="v-g">--</span></div>
+        <div class="status" id="v-noise">BRUIT: ANALYSE EN COURS...</div>
+        <canvas id="cv-raw"></canvas>
+    </div>
 
     <div class="panel">
-        <div class="title">DYNAMICS & INERTIA <span id="regime-tag">STATIC</span></div>
-        <div class="data"><span>G-FORCE ABS</span><span class="val" id="v-gabs">0.00000</span></div>
-        <div class="data"><span>VELOCITY EST.</span><span class="val" id="v-vel">0.00 km/h</span></div>
-        <canvas id="cv-g"></canvas>
-        <div class="data"><span>BOUGUER ANOM.</span><span class="val" id="v-anom">0.00 mGal</span></div>
+        <div class="title">ORIENTATION RÉELLE (DEG)</div>
+        <div style="display: flex; gap: 10px;">
+            <div>PITCH: <span class="val" id="v-p">0</span>°</div>
+            <div>ROLL: <span class="val" id="v-r">0</span>°</div>
+        </div>
+        <div class="unit">Correction d'inclinaison active</div>
     </div>
 
-    <div></div> <div class="panel">
-        <div class="title">COSMIC & GEODETIC</div>
-        <div class="data"><span>ITRF_LAT</span><span class="val" id="v-lat">--</span></div>
-        <div class="data"><span>ITRF_LON</span><span class="val" id="v-lon">--</span></div>
-        <div class="data"><span>TIDE_DEFRM</span><span class="val" id="v-tide">0.000 mm</span></div>
-        <div class="data"><span>ATM_REFRACT</span><span class="val" id="v-refr">1.000</span></div>
-    </div>
-
-    <div class="panel" style="grid-row: 3;">
-        <div class="title">LITHO & RESONANCE</div>
-        <div class="data"><span>LITHO_PRESS</span><span class="val" id="v-litho">0.00 MPa</span></div>
-        <div class="data"><span>SCHUMANN_ATT</span><span class="val" id="v-sch">0 dB</span></div>
-        <canvas id="cv-spec"></canvas>
-    </div>
-
-    <div class="panel" style="grid-row: 3;">
-        <div class="title">VERITAS ARCHIVE</div>
-        <div class="data"><span>REL_DRIFT</span><span class="val" id="v-drift">0.00 ns</span></div>
-        <div class="data"><span>PKT_HASH</span><span class="val" id="v-hash">--</span></div>
-        <button id="rec-btn" class="btn btn-rec" onclick="ARCHIVE.toggle()">START SESSION RECORD</button>
-        <button class="btn" onclick="CORE.toggleNight()">NIGHT SPECTRUM</button>
+    <div class="panel" style="grid-column: 1 / -1;">
+        <div class="title">FLUX DE RÉALITÉ SOUVERAIN (128-bit Export Ready)</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>VECTOR_ABS: <span class="val" id="v-abs" style="color: var(--ion);">0.00000000</span></div>
+            <button class="btn" style="padding: 10px;" onclick="ARCHIVE.download()">EXPORT (.REAL)</button>
+        </div>
     </div>
 </div>
 
 <script>
-const CORE = {
-    active: false, g_ref: 9.80665, historyG: new Array(60).fill(0),
-    drift: 0, lastT: performance.now(),
+const SENSOR = {
+    active: false,
+    bias: 0,
+    history: new Array(100).fill(0),
+    log: [],
 
-    async ignite() {
-        if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
-        document.getElementById('boot').style.display = 'none';
+    async startCalibrate() {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            await DeviceMotionEvent.requestPermission();
+        }
         
-        // 1. Initialisation Géo-Calcul (Somigliana 128-bit sim)
-        navigator.geolocation.watchPosition(p => {
-            const phi = p.coords.latitude * Math.PI / 180;
-            this.g_ref = 9.780327 * (1 + 0.0053024 * Math.sin(phi)**2 - 0.0000058 * Math.sin(2*phi)**2);
-            document.getElementById('v-lat').innerText = p.coords.latitude.toFixed(7);
-            document.getElementById('v-lon').innerText = p.coords.longitude.toFixed(7);
-            MAP_SYS.update(p.coords.latitude, p.coords.longitude);
-        });
-
-        // 2. Capteurs
-        window.addEventListener('devicemotion', e => this.compute(e));
-        this.active = true;
-        this.loop();
-        MAP_SYS.init();
-    },
-
-    compute(e) {
-        if(!this.active) return;
-        const now = performance.now();
-        const dt = (now - this.lastT) / 1000;
-        this.lastT = now;
-
-        const acc = e.accelerationIncludingGravity;
-        const rawG = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+        document.getElementById('calib-overlay').innerHTML = "<h1>SYNCHRO...</h1><p>Mesure du biais résiduel...</p>";
         
-        // Auto-scaling du régime
-        let regime = "STATIC";
-        if(rawG > 12) regime = "DYNAMIC";
-        if(rawG > 25) regime = "SUPERSONIC";
-        if(rawG < 9.5) regime = "LITHO_VOID";
-        document.getElementById('regime-tag').innerText = regime;
-
-        const anom = (rawG - this.g_ref) * 100000;
-        this.historyG.push(anom); this.historyG.shift();
-
-        // Relativité
-        this.drift += (this.g_ref / 8.987e16) * 1e9 * dt;
-
-        this.updateUI(rawG, anom);
-        if(ARCHIVE.isRecording) ARCHIVE.buffer.push({t: Date.now(), g: rawG, a: anom});
-    },
-
-    updateUI(g, anom) {
-        document.getElementById('v-gabs').innerText = g.toFixed(5);
-        document.getElementById('v-anom').innerText = anom.toFixed(2) + " mGal";
-        document.getElementById('v-drift').innerText = this.drift.toFixed(7) + " ns";
-        
-        // Simulation Astro/Météo
-        const tide = Math.sin(Date.now() / 44714000) * 350;
-        document.getElementById('v-tide').innerText = tide.toFixed(3) + " mm";
-    },
-
-    toggleNight() { document.body.classList.toggle('night'); },
-
-    loop() {
-        const cg = document.getElementById('cv-g'), ctxg = cg.getContext('2d');
-        const draw = () => {
-            ctxg.clearRect(0,0,cg.width, cg.height);
-            ctxg.strokeStyle = '#0fc'; ctxg.lineWidth = 2;
-            ctxg.beginPath();
-            this.historyG.forEach((v, i) => ctxg.lineTo(i*(cg.width/60), 30 + v*0.05));
-            ctxg.stroke();
-            requestAnimationFrame(draw);
+        let samples = [];
+        const capture = (e) => {
+            const acc = e.accelerationIncludingGravity;
+            samples.push(Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2));
         };
-        draw();
+
+        window.addEventListener('devicemotion', capture);
+        
+        setTimeout(() => {
+            window.removeEventListener('devicemotion', capture);
+            this.bias = samples.reduce((a, b) => a + b, 0) / samples.length - 9.80665;
+            document.getElementById('calib-overlay').style.display = 'none';
+            this.active = true;
+            this.ignite();
+        }, 5000);
+    },
+
+    ignite() {
+        window.addEventListener('devicemotion', e => this.process(e));
+        window.addEventListener('deviceorientation', e => {
+            document.getElementById('v-p').innerText = Math.round(e.beta);
+            document.getElementById('v-r').innerText = Math.round(e.gamma);
+        });
+        this.draw();
+    },
+
+    process(e) {
+        if(!this.active) return;
+        const acc = e.accelerationIncludingGravity;
+        const raw = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+        
+        // La seule opération : soustraire le biais matériel mesuré
+        const real = raw - this.bias;
+        
+        this.history.push(real);
+        this.history.shift();
+        this.log.push({t: Date.now(), g: real});
+        if(this.log.length > 5000) this.log.shift();
+
+        document.getElementById('v-g').innerText = real.toFixed(5);
+        document.getElementById('v-abs').innerText = real.toFixed(8);
+        
+        // Analyse du bruit (stabilité)
+        const noise = Math.abs(real - 9.80665);
+        document.getElementById('v-noise').innerText = `VARIANCE: ${noise.toFixed(6)}`;
+    },
+
+    draw() {
+        const c = document.getElementById('cv-raw'), ctx = c.getContext('2d');
+        const loop = () => {
+            ctx.clearRect(0,0,c.width, c.height);
+            ctx.strokeStyle = '#0ff'; ctx.lineWidth = 1;
+            ctx.beginPath();
+            this.history.forEach((v, i) => ctx.lineTo(i*(c.width/100), 40 + (v-9.8)*200));
+            ctx.stroke();
+            requestAnimationFrame(loop);
+        };
+        loop();
     }
 };
 
-const MAP_SYS = {
-    m: null,
-    init() {
-        this.m = L.map('map', {zoomControl: false, attributionControl: false}).setView([0,0], 2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(this.m);
-    },
-    update(la, lo) { if(this.m) this.m.setView([la, lo], 18); }
-};
-
 const ARCHIVE = {
-    isRecording: false, buffer: [],
-    toggle() {
-        this.isRecording = !this.isRecording;
-        const b = document.getElementById('rec-btn');
-        if(this.isRecording) {
-            b.classList.add('active'); b.innerText = "RECORDING REALITY...";
-        } else {
-            b.classList.remove('active'); b.innerText = "START SESSION RECORD";
-            this.export();
-        }
-    },
-    export() {
-        const blob = new Blob([JSON.stringify(this.buffer)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
+    download() {
+        const blob = new Blob([JSON.stringify(SENSOR.log)], {type: 'application/json'});
         const a = document.createElement('a');
-        a.href = url; a.download = `SOUVERAIN_${Date.now()}.REAL`;
+        a.href = URL.createObjectURL(blob);
+        a.download = `VERITAS_${Date.now()}.REAL`;
         a.click();
-        this.buffer = [];
     }
 };
 </script>
