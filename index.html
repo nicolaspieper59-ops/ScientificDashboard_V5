@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHE V90 • ABSOLUTE INERTIA</title>
+    <title>ARCHE V93 • UNIVERSAL HAL</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -13,16 +13,31 @@
     <script src="weather.js"></script>
 
     <style>
-        :root { --ion: #00ffcc; --warn: #ffaa00; --err: #ff0055; --panel: rgba(5,5,5,0.98); }
-        * { box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
-        body { margin: 0; background: #000; color: var(--ion); overflow: hidden; height: 100vh; }
-        #map { position: fixed; inset: 0; filter: invert(1) contrast(1.5) brightness(0.1); z-index: 0; }
+        :root { --ion: #00ffcc; --warn: #ffaa00; --err: #ff0055; --bg: #000000; --panel: rgba(20,20,20,0.9); }
+        * { box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 11px; user-select: none; }
+        body { margin: 0; background: var(--bg); color: var(--ion); overflow: hidden; height: 100vh; }
+        
+        #map { position: fixed; inset: 0; filter: invert(1) contrast(1.3) brightness(0.2) hue-rotate(180deg); z-index: 0; }
         #canvas-slam { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
-        .hud { position: fixed; inset: 10px; display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; gap: 10px; pointer-events: none; z-index: 100; }
-        .panel { background: var(--panel); border: 1px solid var(--ion); padding: 10px; pointer-events: auto; backdrop-filter: blur(15px); }
-        .val { color: #fff; font-size: 1.2rem; font-weight: 900; font-variant-numeric: tabular-nums; }
-        .title { border-bottom: 1px solid var(--ion); margin-bottom: 8px; padding-bottom: 4px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
-        .btn { background: var(--ion); color: #000; border: none; padding: 10px; cursor: pointer; font-weight: 900; width: 100%; text-transform: uppercase; }
+        
+        .hud { position: fixed; inset: 10px; display: grid; grid-template-columns: 300px 1fr 300px; grid-template-rows: auto 1fr auto; gap: 10px; pointer-events: none; z-index: 100; }
+        /* Responsive pour Tablette/Mobile */
+        @media (max-width: 800px) { .hud { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; } }
+
+        .panel { background: var(--panel); border: 1px solid #333; padding: 10px; pointer-events: auto; backdrop-filter: blur(5px); }
+        
+        .title { border-bottom: 2px solid var(--ion); margin-bottom: 8px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .val { font-size: 1.1rem; font-weight: bold; color: #fff; }
+        
+        /* Indicateurs Matériels */
+        .hw-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: #222; color: #555; border: 1px solid #444; }
+        .hw-tag.active { background: var(--ion); color: #000; border-color: var(--ion); box-shadow: 0 0 8px var(--ion); }
+        .hw-tag.fallback { background: var(--warn); color: #000; border-color: var(--warn); }
+        .hw-tag.missing { opacity: 0.3; text-decoration: line-through; }
+
+        .btn { background: var(--ion); color: #000; border: none; padding: 15px; width: 100%; font-weight: 900; margin-top: 10px; cursor: pointer; }
+        #boot { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -30,177 +45,263 @@
 <div id="map"></div>
 <canvas id="canvas-slam"></canvas>
 
-<div id="boot" style="position:fixed; inset:0; background:#000; z-index:1000; display:flex; align-items:center; justify-content:center; flex-direction:column;">
-    <h1 style="letter-spacing: 20px;">ARCHE_V90</h1>
-    <p style="color:var(--warn)">INERTIAL INVERSION • 6-AXIS SLAM</p>
-    <button class="btn" style="width:auto; padding:20px 80px;" onclick="CORE.ignite()">ENGAGE PHYSICS</button>
+<div id="boot">
+    <h1 style="color:#fff; letter-spacing: 5px;">ARCHE V93</h1>
+    <div id="device-detect" style="color:var(--warn); margin-bottom: 20px;">DETECTING HARDWARE...</div>
+    <button class="btn" style="width: auto; padding: 15px 50px;" onclick="CORE.ignite()">ENGAGE SYSTEMS</button>
 </div>
 
 <div class="hud">
     <div class="panel">
-        <div class="title">SEXTANT & ASTRO</div>
-        <div>SOLEIL: <span class="val" id="v-sun">--</span>° | LUNE: <span class="val" id="v-moon">--</span>°</div>
-        <div>CAP MAG: <span class="val" id="v-mag">000</span>°</div>
-        <div style="color:var(--warn); margin-top:5px;">STATION P0: <span id="v-p0">--</span> hPa</div>
+        <div class="title">HARDWARE HAL</div>
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <span id="tag-acc" class="hw-tag">ACCEL</span>
+            <span id="tag-gyr" class="hw-tag">GYRO</span>
+            <span id="tag-mag" class="hw-tag">MAG</span>
+            <span id="tag-bar" class="hw-tag">BARO</span>
+            <span id="tag-gps" class="hw-tag">GPS</span>
+        </div>
+        
+        <div class="row">
+            <span>SOURCE ALTITUDE</span>
+            <span id="v-alt-source" style="color:var(--warn)">SCANNING</span>
+        </div>
+        <div class="row">
+            <span>LUMINOSITÉ</span>
+            <span class="val" id="v-lux">--</span>
+        </div>
+        <div class="row">
+            <span>PRESSION</span>
+            <span class="val" id="v-pres">--</span>
+        </div>
     </div>
 
     <div></div>
 
     <div class="panel">
-        <div class="title">INERTIAL SLAM (RAW)</div>
-        <div style="display:flex; justify-content:space-between;">LINEAR V <span class="val" id="v-speed">0.00</span> m/s</div>
-        <div style="display:flex; justify-content:space-between;">G-FORCE <span class="val" id="v-g">1.000</span> G</div>
-        <div id="v-vector" style="font-size:0.8rem; color:var(--warn); margin-top:5px;">VECTOR: NEUTRAL</div>
+        <div class="title">INERTIAL 6-DoF</div>
+        <div class="row">
+            <span>V-LINEAR</span>
+            <span class="val" id="v-speed">0.00 <span style="font-size:0.7rem">m/s</span></span>
+        </div>
+        <div class="row">
+            <span>HEADING</span>
+            <span class="val" id="v-head">000°</span>
+        </div>
+        <div id="v-vec-state" style="text-align:center; padding:5px; background:#111; margin-top:5px; border:1px solid #333;">NEUTRAL</div>
     </div>
 
-    <div class="panel" style="grid-row: 3;">
-        <div class="title">HYPSOMÉTRIE DIFF</div>
-        <div>ALTITUDE: <span class="val" id="v-alt">0.00</span> m</div>
-        <div style="font-size:0.7rem; margin-top:4px;">DELTA P (INT/EXT): <span id="v-dp">--</span> hPa</div>
-    </div>
-
-    <div class="panel" style="grid-row: 3;">
-        <div class="title">MISSION TELEMETRY</div>
-        <div>DIST: <span class="val" id="v-dist">0.00</span> m</div>
-        <button class="btn" onclick="ARCHIVE.download()">EXPORT .REAL (6DoF)</button>
+    <div class="panel" style="grid-row: 3; grid-column: 1 / -1;">
+        <div class="title" style="display:inline-block; margin-right:20px;">TELEMETRY</div>
+        <span style="margin-right:15px;">ALT: <span class="val" id="v-alt">0.00</span> m</span>
+        <span style="margin-right:15px;">DIST: <span class="val" id="v-dist">0.00</span> m</span>
+        <span>DELTA-P: <span id="v-dp">--</span></span>
+        <button class="btn" style="padding: 5px; width: auto; float:right;" onclick="ARCHIVE.save()">REC</button>
     </div>
 </div>
 
 <script>
 const CORE = {
     active: false,
-    state: { x:0, y:0, vx:0, vy:0, heading:0, alt:0 },
-    p0_station: 1013.25, 
-    lastT: performance.now(), distance: 0,
-    path: [{x:0, y:0}],
+    caps: { baro: false, mag: false }, // Capacités détectées
+    state: { x:0, y:0, vx:0, vy:0, z:0 },
+    orient: { alpha:0, beta:0, gamma:0 },
+    p0_station: 1013.25,
+    path: [], distance: 0, lastT: 0,
 
     async ignite() {
-        if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
-        document.getElementById('boot').style.display = 'none';
-
-        this.syncEnvironment();
-        
-        window.addEventListener('deviceorientation', e => {
-            this.state.heading = e.alpha || 0;
-            document.getElementById('v-mag').innerText = Math.round(this.state.heading).toString().padStart(3,'0');
-        });
-
-        window.addEventListener('devicemotion', e => this.physicsEngine(e));
-        
-        if ('PressureSensor' in window) {
-            const baro = new PressureSensor({frequency: 20});
-            baro.onreading = () => this.updateAltitude(baro.pressure);
-            baro.start();
+        // Demande permission iOS/Android 13+
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            await DeviceMotionEvent.requestPermission();
         }
-
+        document.getElementById('boot').style.display = 'none';
+        
+        this.detectHardware();
+        this.startLoops();
         MAP_ENGINE.init();
         this.active = true;
         this.render();
     },
 
-    syncEnvironment() {
-        navigator.geolocation.getCurrentPosition(async pos => {
-            // Weather API pour P0 station (extérieur)
-            const weather = await fetch(`api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`).then(r => r.json());
-            if(weather.main) {
-                this.p0_station = weather.main.pressure;
-                document.getElementById('v-p0').innerText = this.p0_station;
+    detectHardware() {
+        // 1. Baromètre (Critique pour S10e vs Lenovo)
+        if ('PressureSensor' in window) {
+            try {
+                const baro = new PressureSensor({frequency: 10});
+                baro.onreading = () => this.handleBaro(baro.pressure);
+                baro.onerror = (e) => this.fallbackAlt("BARO_ERR"); // Si présent mais cassé
+                baro.start();
+                this.caps.baro = true;
+                this.updateTag('tag-bar', 'active');
+                document.getElementById('v-alt-source').innerText = "BAROMETRIC (S10e Mode)";
+                document.getElementById('v-alt-source').style.color = "var(--ion)";
+            } catch(e) { this.fallbackAlt("NO_PERM"); }
+        } else {
+            this.fallbackAlt("NO_HW"); // Cas Lenovo
+        }
+
+        // 2. Luxmètre
+        if ('AmbientLightSensor' in window) {
+            try {
+                const lux = new AmbientLightSensor();
+                lux.onreading = () => document.getElementById('v-lux').innerText = lux.illuminance.toFixed(0) + " lx";
+                lux.start();
+            } catch(e){}
+        }
+    },
+
+    fallbackAlt(reason) {
+        console.log("Barometer fail:", reason);
+        this.caps.baro = false;
+        this.updateTag('tag-bar', 'missing');
+        this.updateTag('tag-gps', 'fallback');
+        document.getElementById('v-alt-source').innerText = "GPS GEOMETRIC (Lenovo Mode)";
+        document.getElementById('v-alt-source').style.color = "var(--warn)";
+        document.getElementById('v-pres').innerText = "N/A";
+        document.getElementById('v-dp').innerText = "N/A";
+    },
+
+    startLoops() {
+        // GPS (Météo + Fallback Altitude)
+        navigator.geolocation.watchPosition(pos => {
+            this.updateTag('tag-gps', 'active');
+            
+            // Si pas de baromètre (Lenovo), on utilise le GPS pour l'altitude
+            if(!this.caps.baro) {
+                this.state.z = pos.coords.altitude || 0;
+                document.getElementById('v-alt').innerText = this.state.z.toFixed(1);
             }
-            // Ephem pour Soleil/Lune
-            if(typeof vsop2013 !== 'undefined') {
-                const now = new Date().getTime() / 1000;
-                const sun = vsop2013.earth.position(now); 
-                document.getElementById('v-sun').innerText = (Math.atan2(sun.z, Math.sqrt(sun.x**2 + sun.y**2)) * 180/Math.PI).toFixed(1);
-                document.getElementById('v-moon').innerText = "CALC..."; // Simulation ephéméride lune
+            
+            // Init Météo P0
+            if(!this.p0_fetched) {
+                this.fetchWeather(pos.coords.latitude, pos.coords.longitude);
+                this.p0_fetched = true;
+            }
+        }, err => console.log(err), {enableHighAccuracy: true});
+
+        // Inertie (Accéléromètre)
+        window.addEventListener('devicemotion', e => {
+            this.updateTag('tag-acc', 'active');
+            this.processPhysics(e);
+        });
+
+        // Orientation (Gyro/Mag)
+        window.addEventListener('deviceorientation', e => {
+            this.orient = { alpha: e.alpha||0, beta: e.beta||0, gamma: e.gamma||0 };
+            document.getElementById('v-head').innerText = Math.round(e.alpha||0) + "°";
+            
+            // Si alpha bouge, on assume que le magnétomètre ou le gyro fusionné fonctionne
+            if(e.alpha !== null) {
+                this.updateTag('tag-gyr', 'active');
+                this.updateTag('tag-mag', 'active');
+            } else {
+                this.updateTag('tag-mag', 'missing'); // Lenovo sans compas
             }
         });
     },
 
-    updateAltitude(p_int) {
-        // Calcul différentiel : on compare la pression intérieure (capteur) 
-        // à la pression station (extérieure). 
-        const deltaP = p_int - this.p0_station;
-        document.getElementById('v-dp').innerText = deltaP.toFixed(2);
-        
-        // Loi de Laplace corrigée
-        this.state.alt = 44330 * (1 - Math.pow(p_int / this.p0_station, 1/5.255));
-        document.getElementById('v-alt').innerText = this.state.alt.toFixed(2);
+    async fetchWeather(lat, lon) {
+        try {
+            const r = await fetch(`api/weather?lat=${lat}&lon=${lon}`);
+            const d = await r.json();
+            if(d.main) this.p0_station = d.main.pressure;
+        } catch(e){}
     },
 
-    physicsEngine(e) {
+    handleBaro(p) {
+        // Mode S10e : Hypsométrie réelle
+        document.getElementById('v-pres').innerText = p.toFixed(1) + " hPa";
+        this.state.z = 44330 * (1 - Math.pow(p / this.p0_station, 1/5.255));
+        document.getElementById('v-alt').innerText = this.state.z.toFixed(2);
+        
+        const delta = p - this.p0_station;
+        const dpEl = document.getElementById('v-dp');
+        dpEl.innerText = (delta>0?"+":"") + delta.toFixed(2) + " hPa";
+        dpEl.style.color = Math.abs(delta) > 2 ? "var(--warn)" : "#888";
+    },
+
+    processPhysics(e) {
         if(!this.active) return;
         const now = performance.now();
+        if(this.lastT === 0) { this.lastT = now; return; }
         const dt = (now - this.lastT) / 1000;
         this.lastT = now;
 
-        const acc = e.acceleration;
-        const gAcc = e.accelerationIncludingGravity;
+        // Compensation 6-DoF
+        const ax = e.acceleration.x || 0;
+        const ay = e.acceleration.y || 0;
+        
+        const alpha = this.orient.alpha * Math.PI / 180;
+        // Rotation simple
+        const worldX = ax * Math.cos(alpha) - ay * Math.sin(alpha);
+        const worldY = ax * Math.sin(alpha) + ay * Math.cos(alpha);
+        
+        // Gate (filtre bruit)
+        if(Math.abs(worldX) > 0.2) this.state.vx += worldX * dt;
+        if(Math.abs(worldY) > 0.2) this.state.vy += worldY * dt;
+        
+        // Friction virtuelle pour ne pas glisser à l'infini quand on s'arrête
+        this.state.vx *= 0.98; 
+        this.state.vy *= 0.98;
 
-        // Inversion Accélération / Décélération
-        const vectorLabel = document.getElementById('v-vector');
-        if(acc.y > 0.5) { vectorLabel.innerText = "VECTOR: ACCELERATING"; vectorLabel.style.color = "var(--ion)"; }
-        else if(acc.y < -0.5) { vectorLabel.innerText = "VECTOR: DECELERATING"; vectorLabel.style.color = "var(--err)"; }
-        else { vectorLabel.innerText = "VECTOR: NEUTRAL"; }
-
-        // SLAM Sextant : Rotation matricielle du mouvement
-        const angle = (this.state.heading * Math.PI) / 180;
-        const worldAx = acc.x * Math.cos(angle) - acc.y * Math.sin(angle);
-        const worldAy = acc.x * Math.sin(angle) + acc.y * Math.cos(angle);
-
-        // Intégration Riemann Pure (Pas de friction, pas de triche)
-        this.state.vx += worldAx * dt;
-        this.state.vy += worldAy * dt;
+        this.state.x += this.state.vx * dt;
+        this.state.y += this.state.vy * dt;
         
         const speed = Math.sqrt(this.state.vx**2 + this.state.vy**2);
         this.distance += speed * dt;
 
-        this.state.x += this.state.vx * dt;
-        this.state.y += this.state.vy * dt;
-
-        document.getElementById('v-speed').innerText = speed.toFixed(2);
+        document.getElementById('v-speed').innerText = speed.toFixed(2) + " m/s";
         document.getElementById('v-dist').innerText = this.distance.toFixed(1);
-        document.getElementById('v-g').innerText = (Math.sqrt(gAcc.x**2 + gAcc.y**2 + gAcc.z**2) / 9.80665).toFixed(3);
+        
+        // UI Vecteur
+        const vState = document.getElementById('v-vec-state');
+        if(ay > 0.5) { vState.innerText = "PROPULSION"; vState.style.color="var(--ion)"; vState.style.borderColor="var(--ion)"; }
+        else if(ay < -0.5) { vState.innerText = "FREINAGE"; vState.style.color="var(--warn)"; vState.style.borderColor="var(--warn)"; }
+        else { vState.innerText = "ROUE LIBRE"; vState.style.color="#555"; vState.style.borderColor="#333"; }
+
+        // Ajout Path
+        this.path.push({x:this.state.x, y:this.state.y});
+        if(this.path.length>2000) this.path.shift();
     },
 
     render() {
-        const c = document.getElementById('canvas-slam'), ctx = c.getContext('2d');
+        const c = document.getElementById('canvas-slam');
+        const ctx = c.getContext('2d');
         c.width = window.innerWidth; c.height = window.innerHeight;
-        const draw = () => {
-            ctx.clearRect(0,0,c.width, c.height);
-            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            const cx = c.width/2, cy = c.height/2;
-            this.path.push({x: this.state.x, y: this.state.y});
-            if(this.path.length > 5000) this.path.shift();
-            
-            this.path.forEach((p, i) => {
-                const sx = cx + p.x * 30, sy = cy - p.y * 30;
-                if(i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
-            });
-            ctx.stroke();
-            requestAnimationFrame(draw);
-        };
-        draw();
+        const cx = c.width/2, cy = c.height/2;
+        
+        ctx.clearRect(0,0,c.width, c.height);
+        ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        this.path.forEach((p,i) => {
+            const sx = cx + p.x * 20;
+            const sy = cy - p.y * 20;
+            if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+        });
+        ctx.stroke();
+        requestAnimationFrame(()=>this.render());
+    },
+    
+    updateTag(id, cls) {
+        const el = document.getElementById(id);
+        if(!el.classList.contains('missing')) el.className = 'hw-tag ' + cls;
     }
 };
 
 const MAP_ENGINE = {
     init() {
-        this.map = L.map('map', {zoomControl: false, attributionControl: false}).setView([43.2965, 5.3698], 18);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+        const m = L.map('map', {zoomControl:false, attributionControl:false}).setView([0,0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
     }
 };
 
 const ARCHIVE = {
-    download() {
-        const data = { mission: "ARCHE_V90", path: CORE.path, alt_final: CORE.state.alt, dist: CORE.distance };
-        const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `MISSION_6DOF.REAL`;
-        a.click();
+    save() {
+        const d = { mission:"V93_HAL", device: navigator.userAgent, path: CORE.path };
+        const b = new Blob([JSON.stringify(d)],{type:'application/json'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download="LOG.json"; a.click();
     }
 };
 </script>
 </body>
-</html>
+                                                                                              </html>
