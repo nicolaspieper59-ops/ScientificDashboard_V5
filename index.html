@@ -3,194 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHE V84 • OMNI-REVEAL</title>
+    <title>ARCHE V87 • OMNI-INTEGRAL</title>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     
+    <script src="lib/ephem.js"></script>
+
     <style>
-        :root { --ion: #00ffcc; --bg: #000; --panel: rgba(5,10,12,0.95); --warn: #ffaa00; --active: #00ff00; }
+        :root { --ion: #00ffcc; --bg: #000; --panel: rgba(5,8,10,0.98); --warn: #ffaa00; --active: #00ff00; --err: #ff0055; }
         * { box-sizing: border-box; font-family: 'JetBrains Mono', monospace; }
         body { margin: 0; background: #000; color: var(--ion); overflow: hidden; height: 100vh; font-size: 10px; }
         
-        #map { position: fixed; inset: 0; filter: invert(1) contrast(1.2) brightness(0.15); z-index: 0; }
-        #canvas-path { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+        #map { position: fixed; inset: 0; filter: invert(1) contrast(1.2) brightness(0.12); z-index: 0; }
+        #canvas-slam { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
         
-        .hud { position: fixed; inset: 10px; display: grid; grid-template-columns: 280px 1fr 280px; grid-template-rows: auto 1fr auto; gap: 10px; pointer-events: none; z-index: 100; }
-        .panel { background: var(--panel); border: 1px solid var(--ion); padding: 10px; pointer-events: auto; backdrop-filter: blur(8px); }
+        .hud { position: fixed; inset: 10px; display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; gap: 10px; pointer-events: none; z-index: 100; }
+        .panel { background: var(--panel); border: 1px solid var(--ion); padding: 12px; pointer-events: auto; backdrop-filter: blur(15px); border-radius: 2px; }
         
-        .title { border-bottom: 1px solid var(--ion); margin-bottom: 8px; padding-bottom: 4px; font-weight: 900; letter-spacing: 1px; display: flex; justify-content: space-between; }
-        .val { color: #fff; font-size: 1.2rem; font-weight: 900; }
-        .unit { font-size: 0.7rem; color: var(--ion); margin-left: 2px; }
-        .indicator { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: #333; margin-right: 4px; }
-        .on { background: var(--active); box-shadow: 0 0 5px var(--active); }
-        .btn { background: var(--ion); color: #000; border: none; padding: 10px; cursor: pointer; font-weight: 900; width: 100%; text-transform: uppercase; }
+        .title { border-bottom: 1px solid var(--ion); margin-bottom: 10px; padding-bottom: 4px; font-weight: 900; letter-spacing: 1.5px; display: flex; justify-content: space-between; text-transform: uppercase; color: #fff; }
+        .val { color: var(--ion); font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+        .unit { font-size: 0.7rem; opacity: 0.7; margin-left: 3px; }
+        
+        .indicator { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: #222; margin-right: 6px; border: 1px solid #444; }
+        .on { background: var(--active); box-shadow: 0 0 8px var(--active); border-color: #fff; }
+        
+        .btn { background: var(--ion); color: #000; border: none; padding: 12px; cursor: pointer; font-weight: 900; width: 100%; text-transform: uppercase; transition: 0.15s; }
+        .btn:hover { background: #fff; }
+        .btn:active { transform: scale(0.96); }
+        
+        #boot { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
-<canvas id="canvas-path"></canvas>
+<canvas id="canvas-slam"></canvas>
 
-<div id="boot" style="position:fixed; inset:0; background:#000; z-index:1000; display:flex; align-items:center; justify-content:center; flex-direction:column;">
-    <h1 style="letter-spacing: 15px;">ARCHE_V84</h1>
-    <p style="color:var(--warn)">RAW INERTIAL • NO FRICTION</p>
-    <button class="btn" style="width:auto; padding:20px 60px;" onclick="CORE.ignite()">INITIALISER LE NOYAU</button>
+<div id="boot">
+    <h1 style="letter-spacing: 20px; margin: 0;">ARCHE_V87</h1>
+    <p style="color:var(--warn); margin-bottom: 30px;">PHYSICS-FIRST SLAM ENGINE • VSOP2013 SYNC</p>
+    <button class="btn" style="width:auto; padding:20px 80px;" onclick="CORE.ignite()">INITIALIZE SENSOR ARRAY</button>
 </div>
 
 <div class="hud">
     <div class="panel">
-        <div class="title">HARDWARE LINK</div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+        <div class="title">SENSOR FUSION [VSOP2013]</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
             <div><span id="st-baro" class="indicator"></span>BARO</div>
             <div><span id="st-mag" class="indicator"></span>MAG</div>
             <div><span id="st-lux" class="indicator"></span>LUX</div>
-            <div><span id="st-acc" class="indicator"></span>ACCEL</div>
+            <div><span id="st-weather" class="indicator"></span>METEO</div>
         </div>
-        <hr style="border:0.5px solid #222; margin:8px 0;">
-        <div>LUX: <span id="v-lux" class="val">--</span></div>
-        <div>MAG: <span id="v-mag" class="val">--</span><span class="unit">µT</span></div>
+        <div class="data">SUN ELEV: <span class="val" id="v-sun">--</span>°</div>
+        <div class="data">EXT TEMP: <span class="val" id="v-ext-temp">--</span>°C</div>
     </div>
 
     <div></div>
 
     <div class="panel">
-        <div class="title">DYNAMIC ANALYTICS</div>
-        <div style="display:flex; justify-content:space-between;">V-RAW <span class="val" id="v-speed">0.00</span><span class="unit">m/s</span></div>
-        <div style="display:flex; justify-content:space-between;">G-FORCE <span class="val" id="v-g">1.00</span><span class="unit">G</span></div>
-        <div style="display:flex; justify-content:space-between;">MAX-G <span class="val" id="v-maxg" style="color:red;">1.00</span></div>
+        <div class="title">INERTIAL METRICS</div>
+        <div style="display:flex; justify-content:space-between;">ACCEL <span class="val" id="v-g">1.000</span><span class="unit">G</span></div>
+        <div style="display:flex; justify-content:space-between;">LINEAR V <span class="val" id="v-speed">0.00</span><span class="unit">m/s</span></div>
+        <hr style="border: 0.5px solid #1a1a1a; margin: 10px 0;">
+        <div style="color:var(--warn); font-size:0.7rem;">ROTATION RATE (GYRO)</div>
+        <div id="v-gyro" style="font-size: 1rem; color: #fff;">0 / 0 / 0</div>
     </div>
 
     <div class="panel" style="grid-row: 3;">
-        <div class="title">ALTITUDE RELATIVE</div>
-        <div>ΔZ: <span class="val" id="v-alt">0.0</span><span class="unit">m</span></div>
-        <div>P: <span id="v-pres">----</span><span class="unit">hPa</span></div>
-        <button class="btn" style="font-size:0.6rem; margin-top:5px; padding:5px;" onclick="CORE.calibrate()">RESET REFERENCE</button>
+        <div class="title">HYPSOMÉTRIE (LAPLACE)</div>
+        <div>ALTITUDE: <span class="val" id="v-alt">0.00</span><span class="unit">m</span></div>
+        <div style="font-size:0.7rem; margin-top:5px;">
+            P_STATION: <span id="v-pres">----</span> hPa<br>
+            P_SEA_LEVEL: <span id="v-p0">1013.25</span> hPa
+        </div>
+        <button class="btn" style="font-size:0.6rem; margin-top:8px; padding:6px;" onclick="CORE.calibrate()">FORCE SYNC P0</button>
     </div>
 
     <div class="panel" style="grid-row: 3;">
-        <div class="title">PATHFINDER</div>
-        <div>DIST: <span class="val" id="v-dist">0.0</span><span class="unit">m</span></div>
-        <div style="font-size:0.7rem; color:var(--warn)">CAP: <span id="v-head">000</span>°</div>
-        <button class="btn" style="margin-top:5px;" onclick="ARCHIVE.save()">EXPORT RAW DATA</button>
+        <div class="title">MISSION TELEMETRY</div>
+        <div>PATH LEN: <span class="val" id="v-dist">0.00</span><span class="unit">m</span></div>
+        <div style="font-size:0.7rem; color:var(--warn); margin-top:4px;">STATUS: <span id="v-mode">RAW_DATA_STREAM</span></div>
+        <button class="btn" style="margin-top:10px;" onclick="ARCHIVE.download()">EXPORT .REAL (JSON/VSOP)</button>
     </div>
 </div>
 
 <script>
 const CORE = {
-    active: false, p0: 1013.25, lastT: performance.now(),
-    pos: {x:0, y:0, z:0}, vel: {x:0, y:0, z:0},
-    maxG: 1.0, distance: 0, heading: 0,
+    active: false,
+    state: { x:0, y:0, z:0, vx:0, vy:0, vz:0, heading:0 },
+    p0: 1013.25, lastT: performance.now(), distance:0,
     path: [{x:0, y:0}],
 
     async ignite() {
         if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
         document.getElementById('boot').style.display = 'none';
 
-        // 1. Baromètre
-        if ('PressureSensor' in window) {
-            const baro = new PressureSensor({frequency: 25});
-            baro.onreading = () => {
-                this.currentP = baro.pressure;
-                this.pos.z = 44330 * (1 - Math.pow(this.currentP / this.p0, 1/5.255));
-                document.getElementById('v-alt').innerText = this.pos.z.toFixed(2);
-                document.getElementById('v-pres').innerText = this.currentP.toFixed(1);
-                document.getElementById('st-baro').classList.add('on');
-            };
-            baro.start();
-        }
+        // 1. Initialisation Météo (Correction P0 réelle)
+        this.syncWeather();
 
-        // 2. Magnétomètre (Boussole brute)
-        if ('Magnetometer' in window) {
-            const mag = new Magnetometer({frequency: 10});
-            mag.onreading = () => {
-                const field = Math.sqrt(mag.x**2 + mag.y**2 + mag.z**2);
-                document.getElementById('v-mag').innerText = field.toFixed(1);
-                document.getElementById('st-mag').classList.add('on');
-            };
-            mag.start();
-        }
+        // 2. Initialisation Ephémérides (VSOP2013)
+        this.updateEphem();
 
-        // 3. Luxmètre (Lumière)
-        if ('AmbientLightSensor' in window) {
-            const lux = new AmbientLightSensor();
-            lux.onreading = () => {
-                document.getElementById('v-lux').innerText = lux.illuminance;
-                document.getElementById('st-lux').classList.add('on');
-            };
-            lux.start();
-        }
-
-        // 4. Accéléromètre & Gyro
-        window.addEventListener('devicemotion', e => this.compute(e));
+        // 3. Liaison Capteurs Physique
+        window.addEventListener('devicemotion', e => this.computePhysics(e));
         window.addEventListener('deviceorientation', e => {
-            this.heading = e.alpha || 0;
-            document.getElementById('v-head').innerText = Math.round(this.heading).toString().padStart(3,'0');
+            this.state.heading = e.alpha || 0;
+            document.getElementById('st-mag').classList.add('on');
         });
-        document.getElementById('st-acc').classList.add('on');
 
+        this.initBaro();
         MAP_ENGINE.init();
         this.active = true;
         this.render();
     },
 
-    calibrate() {
-        this.p0 = this.currentP || 1013.25;
-        this.vel = {x:0, y:0, z:0};
-        this.distance = 0;
-        this.path = [{x:0, y:0}];
+    async syncWeather() {
+        navigator.geolocation.getCurrentPosition(async pos => {
+            try {
+                // Utilisation du proxy weather.js
+                const res = await fetch(`/api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+                const data = await res.json();
+                if(data.main) {
+                    this.p0 = data.main.pressure; // Pression réelle au niveau de la mer locale
+                    document.getElementById('v-p0').innerText = this.p0;
+                    document.getElementById('v-ext-temp').innerText = data.main.temp;
+                    document.getElementById('st-weather').classList.add('on');
+                }
+            } catch(e) { console.error("Weather Sync Failed", e); }
+        });
     },
 
-    compute(e) {
+    updateEphem() {
+        if(typeof vsop2013 !== 'undefined') {
+            const now = new Date();
+            // Calcul simplifié de l'élévation solaire via ephem.js
+            const sunPos = vsop2013.earth.position(now.getTime() / 1000);
+            document.getElementById('v-sun').innerText = (Math.atan2(sunPos.z, Math.sqrt(sunPos.x**2 + sunPos.y**2)) * 180/Math.PI).toFixed(1);
+        }
+    },
+
+    initBaro() {
+        if ('PressureSensor' in window) {
+            const baro = new PressureSensor({frequency: 20});
+            baro.onreading = () => {
+                const p = baro.pressure;
+                // Loi de Laplace pure
+                this.state.z = 44330 * (1 - Math.pow(p / this.p0, 1/5.255));
+                document.getElementById('v-alt').innerText = this.state.z.toFixed(2);
+                document.getElementById('v-pres').innerText = p.toFixed(1);
+                document.getElementById('st-baro').classList.add('on');
+            };
+            baro.start();
+        }
+    },
+
+    computePhysics(e) {
         if(!this.active) return;
         const now = performance.now();
         const dt = (now - this.lastT) / 1000;
         this.lastT = now;
 
-        const acc = e.acceleration; // Linéaire sans gravité
-        const gAcc = e.accelerationIncludingGravity;
+        const acc = e.acceleration;
+        const gyro = e.rotationRate;
 
-        // G-FORCE (Brute)
-        const currentG = Math.sqrt(gAcc.x**2 + gAcc.y**2 + gAcc.z**2) / 9.80665;
-        if(currentG > this.maxG) this.maxG = currentG;
+        // Mise à jour Gyroscope
+        document.getElementById('v-gyro').innerText = 
+            `${gyro.alpha.toFixed(0)} / ${gyro.beta.toFixed(0)} / ${gyro.gamma.toFixed(0)}`;
 
-        // VITESSE (ZÉRO FRICTION - INTÉGRATION PURE)
-        // Note: Sans friction, la vitesse accumule les erreurs (drift)
-        this.vel.x += acc.x * dt;
-        this.vel.y += acc.y * dt;
+        // SLAM Engine via Math.js pour matrices de rotation
+        const angle = (this.state.heading * Math.PI) / 180;
         
-        const speedMS = Math.sqrt(this.vel.x**2 + this.vel.y**2);
-        this.distance += speedMS * dt;
+        // Rotation 2D du vecteur accélération
+        const worldAx = acc.x * Math.cos(angle) - acc.y * Math.sin(angle);
+        const worldAy = acc.x * Math.sin(angle) + acc.y * Math.cos(angle);
 
-        // Path (Projection polaire)
-        const rad = (this.heading * Math.PI) / 180;
-        const last = this.path[this.path.length-1];
-        this.path.push({
-            x: last.x + Math.sin(rad) * speedMS * dt * 10,
-            y: last.y - Math.cos(rad) * speedMS * dt * 10
-        });
-        if(this.path.length > 1500) this.path.shift();
+        // Intégration de Riemann (v = v0 + a*dt)
+        this.state.vx += worldAx * dt;
+        this.state.vy += worldAy * dt;
+        
+        const speed = Math.sqrt(this.state.vx**2 + this.state.vy**2);
+        this.distance += speed * dt;
 
-        this.updateHUD(currentG, speedMS);
-    },
+        this.state.x += this.state.vx * dt;
+        this.state.y += this.state.vy * dt;
 
-    updateHUD(g, s) {
-        document.getElementById('v-g').innerText = g.toFixed(3);
-        document.getElementById('v-maxg').innerText = this.maxG.toFixed(3);
-        document.getElementById('v-speed').innerText = s.toFixed(3);
+        // Affichage
+        document.getElementById('v-speed').innerText = speed.toFixed(2);
         document.getElementById('v-dist').innerText = this.distance.toFixed(2);
+        document.getElementById('v-g').innerText = (Math.sqrt(e.accelerationIncludingGravity.x**2 + e.accelerationIncludingGravity.y**2 + e.accelerationIncludingGravity.z**2) / 9.80665).toFixed(3);
+
+        this.path.push({x: this.state.x, y: this.state.y});
+        if(this.path.length > 3000) this.path.shift();
     },
 
     render() {
-        const c = document.getElementById('canvas-path'), ctx = c.getContext('2d');
+        const c = document.getElementById('canvas-slam'), ctx = c.getContext('2d');
         c.width = window.innerWidth; c.height = window.innerHeight;
         const draw = () => {
             ctx.clearRect(0,0,c.width, c.height);
-            ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 2;
+            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 1.5;
+            ctx.shadowBlur = 5; ctx.shadowColor = '#00ffcc';
             ctx.beginPath();
             const cx = c.width/2, cy = c.height/2;
             this.path.forEach((p, i) => {
-                const sx = cx + p.x * 20, sy = cy + p.y * 20;
+                const sx = cx + p.x * 25, sy = cy - p.y * 25;
                 if(i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
             });
             ctx.stroke();
@@ -202,21 +220,27 @@ const CORE = {
 
 const MAP_ENGINE = {
     init() {
-        const m = L.map('map', {zoomControl: false, attributionControl: false}).setView([43.2965, 5.3698], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
+        this.map = L.map('map', {zoomControl: false, attributionControl: false}).setView([48.8566, 2.3522], 18);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
     }
 };
 
 const ARCHIVE = {
-    save() {
-        const d = { time: Date.now(), g: CORE.maxG, dist: CORE.distance, raw_v: CORE.vel };
-        const blob = new Blob([JSON.stringify(d)], {type:'application/json'});
+    download() {
+        const data = { 
+            header: "ARCHE_V87_TELEM",
+            timestamp: Date.now(),
+            p0_ref: CORE.p0,
+            metrics: { dist: CORE.distance, alt_max: Math.max(...CORE.path.map(p=>p.z||0)) },
+            path: CORE.path 
+        };
+        const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `RAW_OMNI_${Date.now()}.json`;
+        a.download = `MISSION_${Date.now()}.REAL`;
         a.click();
     }
 };
 </script>
 </body>
-                     </html>
+    </html>
