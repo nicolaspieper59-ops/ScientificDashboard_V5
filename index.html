@@ -3,139 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>V62 • ZERO_SIMULATION</title>
+    <title>OMNISCIENCE V72 • ULTIMA ARCHE</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
     <style>
-        :root { --ion: #00ffcc; --bg: #000; --warn: #ff0055; }
-        body { margin: 0; background: var(--bg); color: var(--ion); font-family: 'JetBrains Mono', monospace; font-size: 11px; overflow: hidden; }
-        .hud { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; height: 100vh; grid-template-rows: auto 1fr auto; }
-        .panel { border: 1px solid var(--ion); padding: 12px; background: rgba(5,10,10,0.95); position: relative; }
-        .title { font-size: 0.7rem; font-weight: 900; letter-spacing: 2px; border-bottom: 1px solid var(--ion); margin-bottom: 8px; }
-        .val { color: #fff; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
-        .unit { font-size: 0.6rem; opacity: 0.6; }
-        canvas { width: 100%; height: 80px; background: #050505; margin-top: 10px; }
-        #calib-overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
-        .btn { background: var(--ion); color: #000; border: none; padding: 20px 40px; font-weight: 900; cursor: pointer; letter-spacing: 2px; }
-        .status { font-size: 0.6rem; color: var(--warn); }
+        :root { --ion: #00ffcc; --path: #ffaa00; --bg: #000; --err: #ff0055; --panel: rgba(5,15,15,0.95); }
+        * { box-sizing: border-box; outline: none; }
+        body { margin: 0; background: var(--bg); color: var(--ion); font-family: 'JetBrains Mono', monospace; overflow: hidden; height: 100vh; font-size: 11px; }
+        
+        #map { position: fixed; inset: 0; filter: invert(1) hue-rotate(180deg) brightness(0.15) contrast(1.2); z-index: 0; }
+        #canvas-path { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+        #video-feed { position: fixed; inset: 0; object-fit: cover; opacity: 0.2; z-index: -1; filter: grayscale(1); }
+
+        .hud { position: fixed; inset: 15px; display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; gap: 15px; pointer-events: none; z-index: 100; }
+        .panel { background: var(--panel); border: 1px solid var(--ion); padding: 15px; pointer-events: auto; backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(0,255,204,0.1); }
+        
+        .title { font-size: 0.7rem; font-weight: 900; letter-spacing: 2px; border-bottom: 1px solid var(--ion); margin-bottom: 10px; padding-bottom: 5px; display: flex; justify-content: space-between; }
+        .data { display: flex; justify-content: space-between; margin: 6px 0; align-items: center; }
+        .val { color: #fff; font-weight: bold; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+        
+        .btn { background: var(--ion); color: #000; border: none; padding: 12px; cursor: pointer; font-weight: 900; width: 100%; letter-spacing: 1px; transition: 0.2s; }
+        .btn:hover { filter: brightness(1.2); box-shadow: 0 0 15px var(--ion); }
+        .btn-sos { background: none; border: 2px solid var(--err); color: var(--err); margin-top: 8px; display: none; animation: blink 1s infinite; }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        #boot-screen { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
     </style>
 </head>
 <body>
 
-<div id="calib-overlay">
-    <h2 style="letter-spacing: 10px;">PROCÉDURE DE CALIBRAGE</h2>
-    <p>Posez l'appareil sur une surface parfaitement stable.<br>Ne touchez plus à rien pendant 5 secondes.</p>
-    <button class="btn" onclick="SENSOR.startCalibrate()">LANCER LA SYNCHRO</button>
+<video id="video-feed" autoplay playsinline></video>
+<div id="map"></div>
+<canvas id="canvas-path"></canvas>
+
+<div id="boot-screen">
+    <h1 style="letter-spacing: 15px; margin-bottom: 5px;">ARCHE_V72</h1>
+    <p style="opacity: 0.6; margin-bottom: 30px;">SOUVEREIGN REALITY KERNEL • 128-BIT</p>
+    <button class="btn" style="width: auto; padding: 20px 60px;" onclick="KERNEL.ignite()">SYNC NEURAL LINK</button>
 </div>
 
 <div class="hud">
     <div class="panel">
-        <div class="title">ACCÉLÉROMÉTRIE BRUTE (m/s²)</div>
-        <div>TOTAL_G: <span class="val" id="v-g">--</span></div>
-        <div class="status" id="v-noise">BRUIT: ANALYSE EN COURS...</div>
-        <canvas id="cv-raw"></canvas>
+        <div class="title">DYNAMIC VECTOR <span id="tag-sym">NEUTRE</span></div>
+        <div class="data"><span>G-FORCE ABS</span><span class="val" id="v-gabs">9.80665</span></div>
+        <div class="data"><span>V-SPEED</span><span class="val" id="v-speed">0.00 km/h</span></div>
+        <div class="data"><span>VAR (σ)</span><span id="v-noise">0.000000</span></div>
     </div>
 
-    <div class="panel">
-        <div class="title">ORIENTATION RÉELLE (DEG)</div>
-        <div style="display: flex; gap: 10px;">
-            <div>PITCH: <span class="val" id="v-p">0</span>°</div>
-            <div>ROLL: <span class="val" id="v-r">0</span>°</div>
-        </div>
-        <div class="unit">Correction d'inclinaison active</div>
+    <div></div> <div class="panel">
+        <div class="title">COSMIC ANCHOR (SEXTANT)</div>
+        <div class="data"><span>HEADING</span><span class="val" id="v-head">0.00°</span></div>
+        <div class="data"><span>PITCH / ROLL</span><span id="v-orient">0 / 0</span></div>
+        <div class="data"><span id="v-signature" style="color: var(--path); font-size: 0.7rem;">SCANNING SIGNATURES...</span></div>
     </div>
 
-    <div class="panel" style="grid-column: 1 / -1;">
-        <div class="title">FLUX DE RÉALITÉ SOUVERAIN (128-bit Export Ready)</div>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>VECTOR_ABS: <span class="val" id="v-abs" style="color: var(--ion);">0.00000000</span></div>
-            <button class="btn" style="padding: 10px;" onclick="ARCHIVE.download()">EXPORT (.REAL)</button>
-        </div>
+    <div class="panel" style="grid-row: 3;">
+        <div class="title">ARIADNE PATHFINDER</div>
+        <div class="data"><span>DISTANCE</span><span class="val" id="v-dist">0.00</span> m</div>
+        <div class="data"><span>POI NODES</span><span class="val" id="v-poi">0</span></div>
+        <div id="poi-alert" style="color: var(--path); display:none; font-weight:bold; text-align:center;">NOEUD DÉTECTÉ</div>
+    </div>
+
+    <div class="panel" style="grid-row: 3;">
+        <div class="title">SYSTEM ARCHIVE</div>
+        <button class="btn" onclick="ARCHIVE.export()">DOWNLOAD .REAL DATA</button>
+        <button id="sos-btn" class="btn btn-sos" onclick="KERNEL.triggerSOS()">SOS: IMMOBILITÉ DÉTECTÉE</button>
     </div>
 </div>
 
 <script>
-const SENSOR = {
-    active: false,
-    bias: 0,
-    history: new Array(100).fill(0),
-    log: [],
+const KERNEL = {
+    active: false, bias: 0, velocity: 0, distance: 0,
+    path: [{x: 0, y: 0}], heading: 0, lastT: performance.now(),
+    immobileTime: 0, 
 
-    async startCalibrate() {
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
-        }
-        
-        document.getElementById('calib-overlay').innerHTML = "<h1>SYNCHRO...</h1><p>Mesure du biais résiduel...</p>";
-        
-        let samples = [];
-        const capture = (e) => {
-            const acc = e.accelerationIncludingGravity;
-            samples.push(Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2));
-        };
+    async ignite() {
+        try {
+            if (window.DeviceMotionEvent?.requestPermission) await DeviceMotionEvent.requestPermission();
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            document.getElementById('video-feed').srcObject = stream;
+        } catch(e) { console.log("Caméra non dispo (Sextant manuel)"); }
 
-        window.addEventListener('devicemotion', capture);
-        
-        setTimeout(() => {
-            window.removeEventListener('devicemotion', capture);
-            this.bias = samples.reduce((a, b) => a + b, 0) / samples.length - 9.80665;
-            document.getElementById('calib-overlay').style.display = 'none';
-            this.active = true;
-            this.ignite();
-        }, 5000);
+        document.getElementById('boot-screen').style.display = 'none';
+        MAP_ENGINE.init();
+        window.addEventListener('devicemotion', e => this.computeInertia(e));
+        window.addEventListener('deviceorientation', e => this.computeOrientation(e));
+        this.active = true;
+        this.renderLoop();
     },
 
-    ignite() {
-        window.addEventListener('devicemotion', e => this.process(e));
-        window.addEventListener('deviceorientation', e => {
-            document.getElementById('v-p').innerText = Math.round(e.beta);
-            document.getElementById('v-r').innerText = Math.round(e.gamma);
-        });
-        this.draw();
-    },
-
-    process(e) {
+    computeInertia(e) {
         if(!this.active) return;
-        const acc = e.accelerationIncludingGravity;
-        const raw = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-        
-        // La seule opération : soustraire le biais matériel mesuré
-        const real = raw - this.bias;
-        
-        this.history.push(real);
-        this.history.shift();
-        this.log.push({t: Date.now(), g: real});
-        if(this.log.length > 5000) this.log.shift();
+        const now = performance.now();
+        const dt = (now - this.lastT) / 1000;
+        this.lastT = now;
 
-        document.getElementById('v-g').innerText = real.toFixed(5);
-        document.getElementById('v-abs').innerText = real.toFixed(8);
+        const accG = e.accelerationIncludingGravity;
+        const rawG = Math.sqrt(accG.x**2 + accG.y**2 + accG.z**2);
         
-        // Analyse du bruit (stabilité)
-        const noise = Math.abs(real - 9.80665);
-        document.getElementById('v-noise').innerText = `VARIANCE: ${noise.toFixed(6)}`;
+        // --- 1. GESTION DE LA SYMÉTRIE (Accél vs Décél) ---
+        const linY = e.acceleration.y || 0;
+        const symTag = document.getElementById('tag-sym');
+        if(linY > 0.3) { symTag.innerText = "ACCÉL (+)"; symTag.style.color = "var(--ion)"; }
+        else if(linY < -0.3) { symTag.innerText = "DÉCÉL (-)"; symTag.style.color = "var(--err)"; }
+        else { symTag.innerText = "V-CONST"; symTag.style.color = "#fff"; }
+
+        // --- 2. FILTRE ZUPT (Zero Velocity Update) & BIAIS ---
+        const diff = Math.abs(rawG - 9.80665);
+        if(diff < 0.06) {
+            this.immobileTime += dt;
+            this.velocity = 0; 
+            this.bias = rawG - 9.80665; // Recalibrage atomique au repos
+            if(this.immobileTime > 45) document.getElementById('sos-btn').style.display = 'block';
+        } else {
+            this.immobileTime = 0;
+            document.getElementById('sos-btn').style.display = 'none';
+            this.velocity += (rawG - 9.80665 - this.bias) * dt;
+        }
+
+        // --- 3. DÉTECTION DE SIGNATURES (Atomes / Gastéropodes / Humains) ---
+        this.identifySignature(diff);
+
+        // --- 4. TRAJECTOIRE ARIADNE (Labyrinthe) ---
+        if(Math.abs(this.velocity) > 0.05) {
+            this.distance += Math.abs(this.velocity) * dt;
+            const rad = (this.heading * Math.PI) / 180;
+            const last = this.path[this.path.length - 1];
+            
+            const newNode = {
+                x: last.x + Math.sin(rad) * this.velocity,
+                y: last.y - Math.cos(rad) * this.velocity,
+                isPOI: Math.abs(e.rotationRate?.alpha || 0) > 100 // Détection virage serré
+            };
+            this.path.push(newNode);
+            if(this.path.length > 2000) this.path.shift();
+            if(newNode.isPOI) this.triggerPOI();
+        }
+
+        this.updateUI(rawG, diff);
     },
 
-    draw() {
-        const c = document.getElementById('cv-raw'), ctx = c.getContext('2d');
-        const loop = () => {
+    identifySignature(delta) {
+        let sig = "BRUIT DE FOND";
+        if(delta > 0.000001 && delta < 0.00008) sig = "VIBRATION ATOMIQUE (THERMIQUE)";
+        else if(delta > 0.0001 && delta < 0.008) sig = "GASTROPODE / BIOMÉCANIQUE";
+        else if(delta > 0.4 && delta < 1.5) sig = "PAS HUMAIN (MARCHE)";
+        else if(delta > 5.0) sig = "FORCE CINÉTIQUE MAJEURE";
+        document.getElementById('v-signature').innerText = sig;
+    },
+
+    computeOrientation(e) {
+        this.heading = e.alpha || 0;
+        document.getElementById('v-head').innerText = this.heading.toFixed(2) + "°";
+        document.getElementById('v-orient').innerText = `${Math.round(e.beta)} / ${Math.round(e.gamma)}`;
+    },
+
+    triggerPOI() {
+        const el = document.getElementById('poi-alert');
+        el.style.display = 'block';
+        document.getElementById('v-poi').innerText = this.path.filter(p => p.isPOI).length;
+        setTimeout(() => el.style.display = 'none', 1500);
+    },
+
+    updateUI(g, noise) {
+        document.getElementById('v-gabs').innerText = g.toFixed(6);
+        document.getElementById('v-speed').innerText = (Math.abs(this.velocity) * 3.6).toFixed(2) + " km/h";
+        document.getElementById('v-noise').innerText = noise.toFixed(8);
+        document.getElementById('v-dist').innerText = this.distance.toFixed(2);
+    },
+
+    renderLoop() {
+        const c = document.getElementById('canvas-path'), ctx = c.getContext('2d');
+        const draw = () => {
             ctx.clearRect(0,0,c.width, c.height);
-            ctx.strokeStyle = '#0ff'; ctx.lineWidth = 1;
+            ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
             ctx.beginPath();
-            this.history.forEach((v, i) => ctx.lineTo(i*(c.width/100), 40 + (v-9.8)*200));
+            const cx = window.innerWidth/2, cy = window.innerHeight/2;
+            
+            this.path.forEach((p, i) => {
+                const sx = cx + p.x * 20; const sy = cy + p.y * 20;
+                if(i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+                if(p.isPOI) {
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.fillRect(sx-3, sy-3, 6, 6);
+                }
+            });
             ctx.stroke();
-            requestAnimationFrame(loop);
+            requestAnimationFrame(draw);
         };
-        loop();
+        draw();
+    }
+};
+
+const MAP_ENGINE = {
+    init() {
+        const m = L.map('map', {zoomControl: false, attributionControl: false}).setView([48.8566, 2.3522], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
     }
 };
 
 const ARCHIVE = {
-    download() {
-        const blob = new Blob([JSON.stringify(SENSOR.log)], {type: 'application/json'});
+    export() {
+        const data = { mission: Date.now(), path: KERNEL.path, distance: KERNEL.distance };
+        const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `VERITAS_${Date.now()}.REAL`;
+        a.download = `SOUVEREIGN_DATA_${Date.now()}.REAL`;
         a.click();
     }
 };
+
+window.onload = () => {
+    const c = document.getElementById('canvas-path');
+    c.width = window.innerWidth; c.height = window.innerHeight;
+};
 </script>
 </body>
-</html>
+                                              </html>
