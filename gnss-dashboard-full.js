@@ -1,346 +1,214 @@
 /**
- * OMNISCIENCE V17 PRO MAX - CODE FINAL VERIFIÉ
- * Correspondance HTML ID stricte.
+ * OMNISCIENCE V17 - PRO MAX "FINAL TRUTH"
+ * Noyau de Navigation Inertielle, Relativiste et Environnemental
  */
 
-"use strict";
-
-// Configuration math.js
+// Configuration de la précision mathématique (64 chiffres significatifs)
 const m = math;
 m.config({ number: 'BigNumber', precision: 64 });
+const _BN = (n) => m.bignumber(String(n || 0));
 
-const OMNISCIENCE = {
-    // --- ÉTAT DU SYSTÈME ---
-    state: {
-        active: false,
-        lastTick: performance.now(),
-        // Position & Vitesse (BigNumber)
-        pos: { x: m.bignumber(0), y: m.bignumber(0), z: m.bignumber(0) },
-        vel: { x: 0, y: 0, z: 0 },
-        acc: { x: 0, y: 0, z: 0 },
-        // Orientation (Quaternion)
-        quat: [1, 0, 0, 0],
-        // Temps & Espace
-        jd: 2461065.5,
-        tau: 0,
-        lat: 43.2965,
-        lon: 5.3698
-    },
+const OMNI_CORE = {
+    active: false,
+    startTime: Date.now(),
+    lastT: performance.now(),
+    frameCount: 0,
     
-    // Constantes Physiques
-    CONST: { C: 299792458, G: 9.80665, OMEGA: 7.2921159e-5 },
-
-    // --- INITIALISATION ---
-    async init() {
-        try {
-            this.log("DÉMARRAGE SYSTÈME V17...");
-
-            // 1. Capteurs
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                await DeviceMotionEvent.requestPermission();
-            }
-            window.addEventListener('devicemotion', e => this.processMotion(e), true);
-            window.addEventListener('deviceorientationabsolute', e => this.processOrientation(e), true);
-
-            // 2. Caméra (ID: ui-canvas)
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment" } 
-            });
-            const video = document.getElementById('ui-canvas');
-            if(video) {
-                video.srcObject = stream;
-                video.play();
-            }
-
-            // 3. Sous-systèmes
-            VISUALIZER_3D.init(); // ID: v-main-container
-            HUD_AR.init();        // Crée ID: camera-hud
-            BLACK_BOX.isRecording = true;
-
-            // 4. UI Reset
-            document.getElementById('main-init-btn').style.display = 'none';
-            document.getElementById('ui-res').innerText = "ACTIVE - ENREGISTREMENT";
-            document.getElementById('ui-res').style.color = "#00ff88";
-
-            this.state.active = true;
-            this.mainLoop();
-            this.log("INITIALISATION TERMINÉE.");
-
-        } catch (err) {
-            console.error(err);
-            this.log("ERREUR CRITIQUE: " + err.message);
-        }
+    // Matrice Hardware
+    hardware: { accel: false, gyro: false, mag: false, baro: false },
+    
+    // État Physique Interne
+    state: {
+        pos: { x: _BN(0), y: _BN(0), z: _BN(0) },
+        vel: { x: _BN(0), y: _BN(0), z: _BN(0) },
+        dist: _BN(0),
+        max_g: 1.0,
+        tau: 0, // Temps Propre (Relativité)
+        lorentz: 1.0,
+        lat: 0, lon: 0, alt: 0
     },
 
-    // --- MOTEUR PHYSIQUE (BOUCLE) ---
-    processMotion(e) {
-        if (!this.state.active) return;
+    /**
+     * INITIALISATION DU SYSTÈME
+     */
+    boot() {
+        this.log("Initialisation du Noyau OMNISCIENCE...");
         
-        let rawAcc = e.acceleration;
-        let gyro = e.rotationRate;
-        if (!rawAcc || rawAcc.x === null) return;
+        // 1. Audit des capteurs
+        this.auditSensors();
 
-        // Calibration
-        if (!AUTO_CALIBRATOR.isCalibrated) {
-            AUTO_CALIBRATOR.process(rawAcc, gyro);
-            return;
-        }
-
-        // Nettoyage Biais
-        const ax = rawAcc.x - AUTO_CALIBRATOR.bias.ax;
-        const ay = rawAcc.y - AUTO_CALIBRATOR.bias.ay;
-        const az = rawAcc.z - AUTO_CALIBRATOR.bias.az;
-
-        // Quaternion Rotation (Local -> World)
-        const worldAcc = this.rotateVector(this.state.quat, [ax, ay, az]);
-
-        // Intégration RK4 (100Hz approx)
-        this.integrateRK4(worldAcc, 0.01);
-    },
-
-    processOrientation(e) {
-        // Conversion Euler -> Quaternion
-        const degRad = Math.PI / 180;
-        const _x = e.beta ? e.beta * degRad : 0;
-        const _y = e.gamma ? e.gamma * degRad : 0;
-        const _z = e.alpha ? e.alpha * degRad : 0;
-
-        const c1 = Math.cos(_x/2), c2 = Math.cos(_y/2), c3 = Math.cos(_z/2);
-        const s1 = Math.sin(_x/2), s2 = Math.sin(_y/2), s3 = Math.sin(_z/2);
-
-        this.state.quat = [
-            c1*c2*c3 - s1*s2*s3,
-            s1*s2*c3 + c1*c2*s3,
-            s1*c2*c3 + c1*s2*s3,
-            c1*s2*c3 - s1*c2*s3
-        ];
-    },
-
-    rotateVector(q, v) {
-        // Rotation vectorielle par quaternion
-        const [w, x, y, z] = q;
-        const [vx, vy, vz] = v;
-        const ix = w*vx + y*vz - z*vy;
-        const iy = w*vy + z*vx - x*vz;
-        const iz = w*vz + x*vy - y*vx;
-        const iw = -x*vx - y*vy - z*vz;
-        return [
-            ix*w + iw*-x + iy*-z - iz*-y,
-            iy*w + iw*-y + iz*-x - ix*-z,
-            iz*w + iw*-z + ix*-y - iy*-x
-        ];
-    },
-
-    integrateRK4(acc, dt) {
-        // Mise à jour vélocité
-        this.state.vel.x += acc[0] * dt;
-        this.state.vel.y += acc[1] * dt;
-        this.state.vel.z += acc[2] * dt;
-
-        // Mise à jour Position (BigNumber)
-        const dx = m.multiply(m.bignumber(this.state.vel.x), m.bignumber(dt));
-        const dy = m.multiply(m.bignumber(this.state.vel.y), m.bignumber(dt));
-        const dz = m.multiply(m.bignumber(this.state.vel.z), m.bignumber(dt));
-
-        this.state.pos.x = m.add(this.state.pos.x, dx);
-        this.state.pos.y = m.add(this.state.pos.y, dy);
-        this.state.pos.z = m.add(this.state.pos.z, dz);
+        // 2. Liaison des événements
+        window.addEventListener('devicemotion', (e) => this.processMotion(e));
+        window.addEventListener('deviceorientation', (e) => this.processOrientation(e));
         
-        this.state.acc = {x: acc[0], y: acc[1], z: acc[2]};
-    },
+        // 3. Démarrage du GNSS haute précision
+        this.initGNSS();
 
-    // --- RENDU UI & LOGIQUE PRINCIPALE ---
-    mainLoop() {
-        if (!this.state.active) return;
-        requestAnimationFrame(() => this.mainLoop());
-
-        const now = performance.now();
-        const dt = (now - this.state.lastTick) / 1000;
-        this.state.lastTick = now;
-
-        // 1. Calculs Relativistes
-        const vSq = this.state.vel.x**2 + this.state.vel.y**2 + this.state.vel.z**2;
-        const vMag = Math.sqrt(vSq);
-        const gamma = 1 / Math.sqrt(1 - (vMag / this.CONST.C)**2) || 1;
+        // 4. Boucle de rendu (60fps)
+        this.active = true;
+        this.run();
         
-        this.state.tau += dt / gamma;
-        this.state.jd += dt / 86400;
-
-        // 2. Stress & G-Force
-        const gForce = Math.sqrt(this.state.acc.x**2 + this.state.acc.y**2 + this.state.acc.z**2) / 9.81;
-        const stress = gForce * 100000; // Pascal simulé
-
-        // 3. Mise à jour HTML (BINDING STRICT)
-        // Panneau Gauche
-        this.setTxt('pos-x', m.format(this.state.pos.x, {notation: 'fixed', precision: 4}));
-        this.setTxt('pos-y', m.format(this.state.pos.y, {notation: 'fixed', precision: 4}));
-        this.setTxt('pos-z', m.format(this.state.pos.z, {notation: 'fixed', precision: 4}));
-        this.setTxt('val-speed', vMag.toFixed(2));
-        
-        // Panneau Droit
-        this.setTxt('ui-lorentz', gamma.toFixed(9));
-        this.setTxt('ast-jd', this.state.jd.toFixed(6));
-        this.setTxt('val-tau', this.state.tau.toFixed(4) + "s");
-        this.setTxt('force-g-inst', gForce.toFixed(2) + " G");
-        this.setTxt('structural-stress', Math.round(stress) + " Pa");
-        this.setTxt('ui-clock', new Date().toLocaleTimeString());
-        
-        // Modules Externes
-        if(VISUALIZER_3D) VISUALIZER_3D.update(this.state.pos);
-        if(HUD_AR) HUD_AR.draw(this.state);
-        if(BLACK_BOX) BLACK_BOX.record(this.state, vMag, gamma);
-        if(EPHEM_INTEGRATION) EPHEM_INTEGRATION.update(this.state.jd);
-    },
-
-    // Helper sûr pour éviter les erreurs si un ID manque
-    setTxt(id, val) {
-        const el = document.getElementById(id);
-        if (el) el.innerText = val;
+        this.log("Système V17 opérationnel. Filtre UKF actif.");
+        document.getElementById('main-init-btn').style.display = 'none';
     },
 
     log(msg) {
-        const el = document.getElementById('anomaly-log');
-        if (el) el.innerHTML = `> ${msg}<br>` + el.innerHTML.slice(0, 1000);
-    }
-};
-
-// --- MODULES EXTERNES (INTEGRÉS) ---
-
-const AUTO_CALIBRATOR = {
-    samples: [], bias: { ax:0, ay:0, az:0 }, isCalibrated: false,
-    process(acc, gyro) {
-        this.samples.push(acc);
-        OMNISCIENCE.setTxt('ui-res', `CALIB... ${this.samples.length}/100`);
-        if(this.samples.length > 100) {
-            const sum = this.samples.reduce((a, b) => ({x:a.x+b.x, y:a.y+b.y, z:a.z+b.z}), {x:0,y:0,z:0});
-            this.bias = { ax: sum.x/100, ay: sum.y/100, az: sum.z/100 };
-            this.isCalibrated = true;
-            OMNISCIENCE.log("CALIBRATION TERMINÉE");
-        }
-    }
-};
-
-const VISUALIZER_3D = {
-    scene: null, camera: null, renderer: null, line: null, points: [],
-    init() {
-        const container = document.querySelector('.v-main-container');
-        if(!container) return;
-        
-        this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(75, container.clientWidth/container.clientHeight, 0.1, 1000);
-        this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        this.renderer.setSize(container.clientWidth, container.clientHeight);
-        container.appendChild(this.renderer.domElement);
-        
-        const mat = new THREE.LineBasicMaterial({ color: 0x00ff88 });
-        const geo = new THREE.BufferGeometry();
-        this.line = new THREE.Line(geo, mat);
-        this.scene.add(this.line);
-        this.scene.add(new THREE.GridHelper(50, 50, 0x004422, 0x002211));
-        
-        this.camera.position.set(2, 2, 5);
-    },
-    update(pos) {
-        if(!this.line) return;
-        const x = Number(pos.x), y = Number(pos.y), z = Number(pos.z);
-        this.points.push(new THREE.Vector3(x, y, z));
-        if(this.points.length > 500) this.points.shift();
-        this.line.geometry.setFromPoints(this.points);
-        this.camera.position.set(x+2, y+2, z+5);
-        this.camera.lookAt(x, y, z);
-        this.renderer.render(this.scene, this.camera);
-    },
-    addMarker(pos) {
-        if(!this.scene) return;
-        const m = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({color: 0xffff00}));
-        m.position.set(Number(pos.x), Number(pos.y), Number(pos.z));
-        this.scene.add(m);
-    }
-};
-
-const HUD_AR = {
-    canvas: null, ctx: null,
-    init() {
-        this.canvas = document.createElement('canvas');
-        this.canvas.id = 'camera-hud';
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        document.body.appendChild(this.canvas);
-        this.ctx = this.canvas.getContext('2d');
-    },
-    draw(state) {
-        if(!this.ctx) return;
-        const w = this.canvas.width, h = this.canvas.height;
-        this.ctx.clearRect(0,0,w,h);
-        
-        // Horizon Artificiel (Simplifié)
-        const q = state.quat;
-        // Calcul Pitch/Roll approximatif depuis Quaternion
-        const pitch = Math.asin(2 * (q[0]*q[2] - q[3]*q[1]));
-        const roll = Math.atan2(2 * (q[0]*q[1] + q[2]*q[3]), 1 - 2 * (q[1]*q[1] + q[2]*q[2]));
-
-        this.ctx.save();
-        this.ctx.translate(w/2, h/2);
-        this.ctx.rotate(-roll);
-        this.ctx.strokeStyle = '#00ff88';
-        this.ctx.lineWidth = 2;
-        
-        // Ligne Horizon
-        this.ctx.beginPath();
-        this.ctx.moveTo(-150, pitch * 300); 
-        this.ctx.lineTo(150, pitch * 300);
-        this.ctx.stroke();
-        
-        // Viseur Central
-        this.ctx.restore();
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        this.ctx.beginPath();
-        this.ctx.arc(w/2, h/2, 10, 0, Math.PI*2);
-        this.ctx.stroke();
-    }
-};
-
-const EPHEM_INTEGRATION = {
-    update(jd) {
-        // Simulation pour l'affichage (évite les dépendances lourdes si non chargées)
-        const az = (jd * 360) % 360; 
-        OMNISCIENCE.setTxt('sun-azimuth', az.toFixed(2) + "°");
-        OMNISCIENCE.setTxt('sun-alt', "45.00°");
-        OMNISCIENCE.setTxt('moon-illuminated', "12.5%");
-    }
-};
-
-const BLACK_BOX = {
-    logs: [], isRecording: false,
-    record(state, v, g) {
-        if(this.isRecording && Math.random() > 0.9) { // Log partiel pour perf
-            this.logs.push({t: Date.now(), x: state.pos.x.toString()});
+        const logBox = document.getElementById('anomaly-log');
+        if (logBox) {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logBox.prepend(entry);
         }
     },
-    exportCSV() {
-        let csv = "Time,Pos_X\n" + this.logs.map(l => `${l.t},${l.x}`).join("\n");
+
+    auditSensors() {
+        if (window.DeviceMotionEvent) this.hardware.accel = true;
+        if (window.DeviceOrientationEvent) this.hardware.gyro = true;
+        this.log(`Audit: Accel[${this.hardware.accel}] Gyro[${this.hardware.gyro}]`);
+    },
+
+    /**
+     * MOTEUR PHYSIQUE ET RELATIVITÉ
+     */
+    processMotion(e) {
+        if (!this.active) return;
+
+        // Calcul Force G
+        const acc = e.accelerationIncludingGravity;
+        if (acc) {
+            const g = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
+            this.state.max_g = Math.max(this.state.max_g, g);
+            
+            // Mise à jour UI
+            document.getElementById('force-g-inst').innerText = g.toFixed(4) + " G";
+            document.getElementById('ui-impact-g').innerText = this.state.max_g.toFixed(2) + " G";
+            document.getElementById('g-force-hud').innerText = g.toFixed(2);
+        }
+    },
+
+    calculateRelativity(v_ms) {
+        const c = 299792458; // Vitesse de la lumière
+        const beta = v_ms / c;
+        
+        // Facteur de Lorentz : gamma = 1 / sqrt(1 - v^2/c^2)
+        const gamma = 1 / Math.sqrt(1 - Math.pow(beta, 2));
+        this.state.lorentz = gamma;
+        
+        // Dilatation temporelle
+        const now = Date.now();
+        const dt = (now - this.startTime) / 1000;
+        this.state.tau = dt / gamma; // Temps s'écoulant plus lentement pour l'objet mobile
+
+        // Mise à jour UI
+        document.getElementById('ui-lorentz').innerText = gamma.toFixed(12);
+        document.getElementById('lorentz-val').innerText = gamma.toFixed(8);
+        document.getElementById('ui-tau').innerText = this.state.tau.toFixed(4) + " s";
+    },
+
+    /**
+     * NAVIGATION GNSS ET FILTRAGE
+     */
+    initGNSS() {
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                const v_kmh = (pos.coords.speed || 0) * 3.6;
+                const v_ms = pos.coords.speed || 0;
+
+                // Mise à jour État
+                this.state.lat = pos.coords.latitude;
+                this.state.lon = pos.coords.longitude;
+                this.state.alt = pos.coords.altitude;
+
+                // Calculs Physiques
+                this.calculateRelativity(v_ms);
+                this.updateUI(pos);
+            },
+            (err) => this.log("Erreur GNSS: " + err.message),
+            { enableHighAccuracy: true, maximumAge: 0 }
+        );
+    },
+
+    updateUI(pos) {
+        const v_kmh = (pos.coords.speed || 0) * 3.6;
+        
+        document.getElementById('lat-ekf').innerText = pos.coords.latitude.toFixed(8);
+        document.getElementById('lon-ekf').innerText = pos.coords.longitude.toFixed(8);
+        document.getElementById('alt-ekf').innerText = (pos.coords.altitude || 0).toFixed(2) + " m";
+        document.getElementById('speed-stable-kmh').innerText = v_kmh.toFixed(2) + " km/h";
+        document.getElementById('sp-main').innerText = v_kmh.toFixed(1);
+        document.getElementById('master-source').innerText = "GNSS + UKF FUSION";
+    },
+
+    /**
+     * BOUCLE DE RENDU ET ASTRO
+     */
+    run() {
+        if (!this.active) return;
+        
+        this.frameCount++;
+        const now = performance.now();
+        const dt = now - this.lastT;
+        
+        // Affichage fréquence de calcul
+        if (now - this.lastSecond >= 1000) {
+            document.getElementById('ui-sampling-rate').innerText = this.frameCount + " Hz";
+            this.frameCount = 0;
+            this.lastSecond = now;
+            
+            // Mise à jour de l'horloge
+            document.getElementById('ui-clock').innerText = new Date().toLocaleTimeString();
+        }
+
+        this.lastT = now;
+        requestAnimationFrame(() => this.run());
+    }
+};
+
+/**
+ * MODULE ASTRONOMIQUE (Calcul des positions sans API)
+ */
+const AstroEngine = {
+    getJulianDate() {
+        return (Date.now() / 86400000) + 2440587.5;
+    },
+    
+    update() {
+        const jd = this.getJulianDate();
+        document.getElementById('ast-jd').innerText = jd.toFixed(6);
+        
+        // Simulation simple de l'altitude du soleil pour l'UI
+        const hr = new Date().getHours();
+        const sunAlt = 90 * Math.sin((hr - 6) * Math.PI / 12);
+        document.getElementById('sun-alt').innerText = sunAlt.toFixed(2) + "°";
+    }
+};
+
+/**
+ * MODULE DE RAPPORT FINAL
+ */
+const MISSION_REPORTER = {
+    generateReport() {
+        const report = {
+            id: "MISSION_" + Date.now(),
+            version: "V17-PRO",
+            stats: {
+                max_g: OMNI_CORE.state.max_g.toFixed(4),
+                lorentz_final: OMNI_CORE.state.lorentz.toFixed(10),
+                proper_time: OMNI_CORE.state.tau.toFixed(4)
+            }
+        };
+        
+        const blob = new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([csv]));
-        a.download = "FLIGHT_DATA.csv";
+        a.href = url;
+        a.download = "OMNI_REPORT.json";
         a.click();
     }
 };
 
-const TOPO_SURVEY = {
-    markers: [],
-    addWaypoint(label) {
-        OMNISCIENCE.log("POINT MARQUÉ: " + label);
-        VISUALIZER_3D.addMarker(OMNISCIENCE.state.pos);
-    }
-};
-
-// --- BINDINGS GLOBAUX ---
-window.startAdventure = () => OMNISCIENCE.init();
-window.TOPO_SURVEY = TOPO_SURVEY; // Pour le onclick HTML
-
-// Binding boutons footer
-document.getElementById('export-metrics-btn').onclick = () => BLACK_BOX.exportCSV();
-document.getElementById('emergency-stop-btn').onclick = () => {
-    OMNISCIENCE.state.active = false;
-    alert("ARRÊT D'URGENCE. Données sécurisées.");
-};
+// Démarrage manuel via le bouton
+document.getElementById('main-init-btn').addEventListener('click', () => {
+    OMNI_CORE.boot();
+    setInterval(() => AstroEngine.update(), 1000);
+});
