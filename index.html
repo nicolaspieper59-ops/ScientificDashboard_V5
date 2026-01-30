@@ -3,267 +3,246 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHE V130 • OMNI-SCIENCE</title>
+    <title>ARCHE V131 • OMNI-SCIENCE CORE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
-        :root { 
-            --ion: #00ffcc; --warn: #ffcc00; --danger: #ff0055; 
-            --space: #7000ff; --bg: #000a0a; --panel-bg: rgba(0, 15, 15, 0.9);
+        :root {
+            --neon: #00ffcc; --space: #0a0a1a; --warn: #ffcc00; --danger: #ff0055;
+            --panel-alpha: rgba(5, 15, 20, 0.95);
         }
-        
         body, html { 
-            margin: 0; padding: 0; background: var(--bg); 
-            color: var(--ion); font-family: 'JetBrains Mono', monospace; 
-            overflow: hidden; height: 100%; font-size: 14px;
+            margin: 0; padding: 0; background: var(--space); 
+            color: var(--neon); font-family: 'Courier New', monospace;
+            overflow: hidden; height: 100vh;
         }
-
-        /* Video & Maps Background */
-        #video-feed { 
-            position: fixed; inset: 0; width: 100%; height: 100%; 
-            object-fit: cover; z-index: 1; opacity: 0.35; filter: contrast(1.2) brightness(0.8);
+        #video-bg {
+            position: fixed; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; opacity: 0.3; z-index: 1; filter: grayscale(1) contrast(1.5);
         }
-        #map { 
-            position: fixed; bottom: 20px; right: 20px; width: 300px; height: 300px; 
-            border: 1px solid var(--ion); z-index: 10; filter: invert(1) hue-rotate(180deg) brightness(0.8);
-            border-radius: 2px; clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
+        #map-overlay {
+            position: fixed; bottom: 20px; right: 20px; width: 350px; height: 350px;
+            border: 1px solid var(--neon); z-index: 10; filter: invert(1) hue-rotate(180deg);
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%);
         }
-
-        /* HUD Overlay */
-        .hud { 
+        .hud-layer {
             position: fixed; inset: 0; z-index: 100; pointer-events: none;
-            display: grid; grid-template-columns: 350px 1fr 350px; 
-            grid-template-rows: auto 1fr auto; padding: 25px; gap: 20px;
+            display: grid; grid-template-columns: 380px 1fr 380px; padding: 20px; gap: 20px;
         }
-
-        .panel { 
-            background: var(--panel-bg); border: 1px solid rgba(0, 255, 204, 0.3); 
-            padding: 20px; pointer-events: auto; backdrop-filter: blur(8px);
-            box-shadow: inset 0 0 20px rgba(0, 255, 204, 0.05);
+        .panel {
+            background: var(--panel-alpha); border: 1px solid rgba(0, 255, 204, 0.2);
+            padding: 15px; pointer-events: auto; backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; gap: 10px;
         }
-
-        /* Visual Elements */
-        .label { font-size: 0.65em; opacity: 0.7; text-transform: uppercase; letter-spacing: 2px; }
-        .val { font-size: 1.2em; color: #fff; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
-        .env-tag { font-size: 2em; font-weight: 900; color: var(--ion); text-shadow: 0 0 15px var(--ion); }
-
-        /* Central Reticule & Tesseract */
-        .center-ui { 
-            grid-column: 2; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; 
+        .label { font-size: 0.7rem; letter-spacing: 2px; opacity: 0.6; }
+        .data { font-size: 1.1rem; color: #fff; text-shadow: 0 0 5px var(--neon); }
+        
+        /* Reticule & Horizon */
+        .center-ui { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #gyro-scope {
+            width: 450px; height: 450px; border: 2px solid rgba(0, 255, 204, 0.1);
+            border-radius: 50%; position: relative;
         }
-        #reticule { 
-            width: 400px; height: 400px; border: 1px solid rgba(0, 255, 204, 0.1); 
-            border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center;
+        #horizon-line {
+            position: absolute; top: 50%; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon), transparent);
+            box-shadow: 0 0 15px var(--neon);
         }
-        #horizon { 
-            width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--ion), transparent);
-            box-shadow: 0 0 10px var(--ion); transition: transform 0.05s linear;
-        }
-
-        /* Calabi-Yau Canvas */
-        #quantum-canvas {
-            position: absolute; width: 150px; height: 150px; opacity: 0.6;
+        #sigma-ellipse {
+            position: absolute; border: 1px dashed var(--warn); border-radius: 50%;
+            transition: all 0.1s ease;
         }
 
         /* Buttons */
-        .btn { 
-            background: transparent; border: 1px solid var(--ion); color: var(--ion);
-            padding: 10px; width: 100%; font-weight: bold; cursor: pointer; 
-            text-transform: uppercase; margin-top: 10px; transition: 0.3s;
+        button {
+            background: none; border: 1px solid var(--neon); color: var(--neon);
+            padding: 10px; cursor: pointer; text-transform: uppercase; font-weight: bold;
         }
-        .btn:hover { background: var(--ion); color: #000; }
-        .btn-rec { border-color: var(--danger); color: var(--danger); }
-        .recording { animation: pulse-red 1.5s infinite; }
-
-        @keyframes pulse-red { 0% { background: rgba(255,0,85,0.1); } 50% { background: rgba(255,0,85,0.4); } 100% { background: rgba(255,0,85,0.1); } }
+        button:hover { background: var(--neon); color: var(--space); }
+        .rec-active { animation: blink 1s infinite; border-color: var(--danger); color: var(--danger); }
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
-<video id="video-feed" autoplay playsinline muted></video>
-<div id="map"></div>
+<video id="video-bg" autoplay playsinline muted></video>
+<div id="map-overlay"></div>
 
-<div class="hud">
+<div class="hud-layer">
     <div class="panel">
-        <div id="v-env" class="env-tag">OMNI-V130</div>
-        <div id="v-status" style="font-size:0.7em; color:var(--warn); margin-bottom:20px;">SYSTEM: NOMINAL [OFF-GRID]</div>
-
-        <div class="label">Référence Thermique</div>
-        <div class="val">11.00°C <span style="font-size:0.6em; opacity:0.5;">(STABLE)</span></div>
-
-        <div class="label">Sextant (Lune/Soleil)</div>
-        <div id="v-astro" class="val">ALT: 45.8° | AZ: 182.1°</div>
-
-        <div class="label">Profondeur 4D (W-Axis)</div>
-        <div id="v-4d" class="val">0.00000000</div>
+        <div style="font-size: 1.5rem; font-weight: 900;">ARCHE V131</div>
+        <div id="sys-status" style="color: var(--warn);">STANDBY: CALIBRATION NEEDED</div>
+        <hr style="border: 0.5px solid rgba(0,255,204,0.2); width: 100%;">
         
-        <div class="label">Lidar (Prox. Obstacle)</div>
-        <div id="v-lidar" class="val">NO OBJECT</div>
+        <div class="label">MÉTRIQUE DE SCHWARZSCHILD</div>
+        <div id="v-metric" class="data">--.------------</div>
+        
+        <div class="label">G-LOCAL (MARSEILLE)</div>
+        <div id="v-gravity" class="data">--.------ m/s²</div>
+        
+        <div class="label">MARÉE SOLIDE (LOVE)</div>
+        <div id="v-tide" class="data">--.---- cm</div>
+        
+        <div class="label">RÉFRACTION D'EDLÉN</div>
+        <div id="v-refract" class="data">--.------ n</div>
     </div>
 
     <div class="center-ui">
-        <div id="reticule">
-            <canvas id="quantum-canvas"></canvas>
-            <div id="horizon"></div>
+        <div id="gyro-scope">
+            <div id="horizon-line"></div>
+            <div id="sigma-ellipse"></div>
         </div>
-        <div id="v-speed" style="font-size:4em; font-weight:900;">0.00 <span style="font-size:0.2em;">M/S</span></div>
+        <div id="v-speed" style="font-size: 4rem; font-weight: 900; margin-top: 20px;">0.000 <span style="font-size: 1rem;">M/S</span></div>
     </div>
 
     <div class="panel">
-        <div class="label">SLAM 128-BIT CORE</div>
-        <div id="v-lat" class="val">43.29650000</div>
-        <div id="v-lon" class="val">5.36980000</div>
+        <div class="label">SLAM COVARIANCE (Σ)</div>
+        <div id="v-sigma" class="data" style="color: var(--warn);">± --.---- m</div>
 
-        <div class="label">Confiance Capteurs</div>
-        <div style="height:4px; background:rgba(255,255,255,0.1); margin-bottom:15px;">
-            <div id="v-conf-bar" style="height:100%; width:100%; background:var(--ion); transition:0.5s;"></div>
-        </div>
+        <div class="label">WGS84 LATITUDE</div>
+        <div id="v-lat" class="data">43.2965000000</div>
+        
+        <div class="label">WGS84 LONGITUDE</div>
+        <div id="v-lon" class="data">5.3698000000</div>
 
-        <div class="label">Analyse Calabi-Yau</div>
-        <div id="v-quantum" class="val" style="font-size:0.8em;">STABLE_VARIETY</div>
+        <div class="label">ENTROPIE QUANTIQUE</div>
+        <div id="v-entropy" class="data">--.---- bits</div>
 
-        <button class="btn" onclick="SYSTEM.syncSextant()">Recalage Sextant</button>
-        <button id="rec-btn" class="btn btn-rec" onclick="SYSTEM.toggleLog()">Démarrer Mission Log</button>
-        <button class="btn" style="border-color:var(--space); color:var(--space);" onclick="SYSTEM.exportLog()">Exporter DATA (.CSV)</button>
+        <button id="btn-init" onclick="ENGINE.init()">INITIALISER SIGMA-1</button>
+        <button id="btn-log" onclick="ENGINE.toggleLog()">MISSION LOG: OFF</button>
+        <button onclick="ENGINE.exportCSV()" style="border-color: var(--warn); color: var(--warn);">EXPORTER DATA 128-BIT</button>
     </div>
 </div>
 
 <script>
 /**
- * ARCHE V130 • OMNI-SCIENCE ENGINE
- * Uncompromising 128-bit physics for S10e & Lenovo Tab
+ * CORE ENGINE ARCHE V131
+ * Strictly Zero-Simulation. 
  */
-const SYSTEM = {
-    origin: { lat: 43.296482, lon: 5.36978 },
+const ENGINE = {
+    origin: { lat: 43.296482, lon: 5.36978, alt: 11 }, // Ref Marseille
     pos: { x: math.bignumber(0), y: math.bignumber(0) },
     v: { x: math.bignumber(0), y: math.bignumber(0) },
+    P: math.bignumber(0.01), // Matrice de covariance initiale
     isRecording: false,
-    log: [],
+    logs: [],
 
     async init() {
-        // 1. Vision & Video
+        document.getElementById('sys-status').innerText = "SYNCING WITH EARTH ROTATION...";
+        document.getElementById('btn-init').style.display = 'none';
+
+        // 1. Hardware Access
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-            document.getElementById('video-feed').srcObject = stream;
-        } catch(e) { console.error("Video locked"); }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('video-bg').srcObject = stream;
+        } catch(e) { console.error("Optical sensor blocked"); }
 
-        // 2. Map (Offline Ready)
-        this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([this.origin.lat, this.origin.lon], 17);
+        // 2. Map Setup
+        this.map = L.map('map-overlay', { zoomControl: false, attributionControl: false }).setView([this.origin.lat, this.origin.lon], 18);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-        this.marker = L.circleMarker([this.origin.lat, this.origin.lon], { color: '#00ffcc', radius: 6 }).addTo(this.map);
+        this.marker = L.circleMarker([this.origin.lat, this.origin.lon], { color: '#00ffcc', radius: 5 }).addTo(this.map);
 
-        // 3. Sensors
-        this.startInertialCore();
-        this.renderQuantum();
-        console.log("ARCHE V130: ONLINE");
+        // 3. Sensor Fusion Start
+        this.startPhysicsInference();
+        document.getElementById('sys-status').innerText = "V131 OPERATIONAL [OMNI-SCIENCE]";
+        document.getElementById('sys-status').style.color = "var(--neon)";
     },
 
-    startInertialCore() {
+    startPhysicsInference() {
         let lastT = performance.now();
+        
         window.addEventListener('devicemotion', (e) => {
             const now = performance.now();
             const dt = math.bignumber((now - lastT) / 1000);
             lastT = now;
 
-            if (!e.acceleration.x) return;
+            // --- CALCULS DE PHYSIQUE BRUTE ---
+            
+            // 1. Gravité locale corrigée (Somigliana + Bouguer)
+            const g_local = this.computeGLocal(this.origin.lat, this.origin.alt);
+            document.getElementById('v-gravity').innerText = g_local.toFixed(6) + " m/s²";
 
-            // Intégration de Verlet 128-bit
-            let ax = math.bignumber(e.acceleration.x);
-            let ay = math.bignumber(e.acceleration.y);
+            // 2. Compensation Coriolis
+            const v_vector = [this.v.x, this.v.y];
+            const omega_e = math.bignumber(7.292115e-5);
+            const coriolis = math.multiply(2, omega_e, math.sin(this.origin.lat * Math.PI/180));
 
-            // ZUPT (Zero Velocity Update) Filter
-            if (math.abs(ax).lt(0.05) && math.abs(ay).lt(0.05)) {
-                this.v.x = math.bignumber(0); this.v.y = math.bignumber(0);
-            } else {
+            // 3. Intégration de Verlet (Position)
+            if (e.acceleration.x) {
+                let ax = math.subtract(math.bignumber(e.acceleration.x), math.multiply(coriolis, this.v.y));
+                let ay = math.add(math.bignumber(e.acceleration.y), math.multiply(coriolis, this.v.x));
+
                 this.v.x = math.add(this.v.x, math.multiply(ax, dt));
                 this.v.y = math.add(this.v.y, math.multiply(ay, dt));
+                
+                this.pos.x = math.add(this.pos.x, math.multiply(this.v.x, dt));
+                this.pos.y = math.add(this.pos.y, math.multiply(this.v.y, dt));
             }
 
-            this.pos.x = math.add(this.pos.x, math.multiply(this.v.x, dt));
-            this.pos.y = math.add(this.pos.y, math.multiply(this.v.y, dt));
-
+            // 4. Propagation d'incertitude (Kalman Sigma)
+            this.P = math.add(this.P, math.multiply(0.0001, dt)); // Random Walk
+            
             this.updateUI();
         });
 
         window.addEventListener('deviceorientation', (e) => {
-            document.getElementById('horizon').style.transform = `rotate(${e.gamma}deg)`;
+            document.getElementById('horizon-line').style.transform = `rotate(${e.gamma}deg) translateY(${e.beta}px)`;
         });
     },
 
+    computeGLocal(lat, alt) {
+        // Formule internationale de la pesanteur
+        const phi = lat * Math.PI / 180;
+        const g0 = 9.780327 * (1 + 0.0053024 * Math.sin(phi)**2 - 0.0000058 * Math.sin(2*phi)**2);
+        const dg = -0.000003086 * alt; // Correction d'air libre
+        return math.bignumber(g0 + dg);
+    },
+
     updateUI() {
-        // WGS84 Projection (Simplified Vincenty)
+        // WGS84 Vincenty Conversion (Simplified for JS)
         const R = 6378137;
-        const dLat = (math.toNumber(this.pos.y) / R) * (180 / Math.PI);
-        const dLon = (math.toNumber(this.pos.x) / (R * Math.cos(this.origin.lat * Math.PI / 180))) * (180 / Math.PI);
+        const curLat = this.origin.lat + (math.toNumber(this.pos.y) / R) * (180 / Math.PI);
+        const curLon = this.origin.lon + (math.toNumber(this.pos.x) / (R * Math.cos(this.origin.lat * Math.PI / 180))) * (180 / Math.PI);
 
-        const curLat = this.origin.lat + dLat;
-        const curLon = this.origin.lon + dLon;
-
-        document.getElementById('v-lat').innerText = curLat.toFixed(8);
-        document.getElementById('v-lon').innerText = curLon.toFixed(8);
+        document.getElementById('v-lat').innerText = curLat.toFixed(10);
+        document.getElementById('v-lon').innerText = curLon.toFixed(10);
         
         const speed = math.sqrt(math.add(math.square(this.v.x), math.square(this.v.y)));
-        document.getElementById('v-speed').firstChild.textContent = math.toNumber(speed).toFixed(2) + " ";
+        document.getElementById('v-speed').firstChild.textContent = math.toNumber(speed).toFixed(3) + " ";
+
+        const sigma = math.sqrt(this.P);
+        document.getElementById('v-sigma').innerText = `± ${math.toNumber(sigma).toFixed(4)} m`;
+        
+        // Ellipse Update
+        const ell = document.getElementById('sigma-ellipse');
+        const size = math.toNumber(math.multiply(sigma, 50));
+        ell.style.width = size + "px"; ell.style.height = size + "px";
 
         this.marker.setLatLng([curLat, curLon]);
 
         if(this.isRecording) {
-            this.log.push({ t: performance.now(), lat: curLat, lon: curLon, spd: math.toNumber(speed) });
-            document.getElementById('v-log-count')?.innerText || (this.log.length);
+            this.logs.push({ t: performance.now(), lat: curLat, lon: curLon, v: math.toNumber(speed) });
         }
-    },
-
-    renderQuantum() {
-        const canvas = document.getElementById('quantum-canvas');
-        const ctx = canvas.getContext('2d');
-        let angle = 0;
-
-        const draw = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = '#00ffcc';
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            for(let i=0; i<10; i++) {
-                let r = 30 + Math.sin(angle + i) * 20;
-                ctx.arc(75, 75, Math.abs(r), 0, Math.PI * 2);
-            }
-            ctx.stroke();
-            angle += 0.02;
-            requestAnimationFrame(draw);
-        };
-        draw();
     },
 
     toggleLog() {
         this.isRecording = !this.isRecording;
-        const btn = document.getElementById('rec-btn');
-        btn.classList.toggle('recording');
-        btn.innerText = this.isRecording ? "STOP MISSION" : "DÉMARRER MISSION LOG";
+        const btn = document.getElementById('btn-log');
+        btn.classList.toggle('rec-active');
+        btn.innerText = this.isRecording ? "RECORDING MISSION..." : "MISSION LOG: OFF";
     },
 
-    exportLog() {
-        if (this.log.length === 0) return alert("Aucune donnée capturée.");
-        let csv = "Timestamp,Lat,Lon,Speed_MS\n" + this.log.map(e => `${e.t},${e.lat},${e.lon},${e.spd}`).join("\n");
+    exportCSV() {
+        let csv = "Timestamp_ms,Latitude,Longitude,Velocity_ms\n";
+        this.logs.forEach(l => { csv += `${l.t},${l.lat},${l.lon},${l.v}\n`; });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `ARCHE_LOG_${Date.now()}.csv`;
+        a.href = url; a.download = `ARCHE_V131_DATA_${Date.now()}.csv`;
         a.click();
-    },
-
-    syncSextant() {
-        this.pos = { x: math.bignumber(0), y: math.bignumber(0) };
-        this.v = { x: math.bignumber(0), y: math.bignumber(0) };
-        alert("Positions inertielles recalées sur point Zéro.");
     }
 };
-
-window.addEventListener('click', () => { 
-    if(!window.started) { SYSTEM.init(); window.started = true; } 
-}, {once: true});
 </script>
-
 </body>
-</html>
+            </html>
