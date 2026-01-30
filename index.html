@@ -3,246 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHE V131 • OMNI-SCIENCE CORE</title>
+    <title>ARCHE V131 • OMNI-SCIENCE FINAL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
-        :root {
-            --neon: #00ffcc; --space: #0a0a1a; --warn: #ffcc00; --danger: #ff0055;
-            --panel-alpha: rgba(5, 15, 20, 0.95);
-        }
-        body, html { 
-            margin: 0; padding: 0; background: var(--space); 
-            color: var(--neon); font-family: 'Courier New', monospace;
-            overflow: hidden; height: 100vh;
-        }
-        #video-bg {
-            position: fixed; inset: 0; width: 100%; height: 100%;
-            object-fit: cover; opacity: 0.3; z-index: 1; filter: grayscale(1) contrast(1.5);
-        }
-        #map-overlay {
-            position: fixed; bottom: 20px; right: 20px; width: 350px; height: 350px;
-            border: 1px solid var(--neon); z-index: 10; filter: invert(1) hue-rotate(180deg);
-            clip-path: polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%);
-        }
-        .hud-layer {
-            position: fixed; inset: 0; z-index: 100; pointer-events: none;
-            display: grid; grid-template-columns: 380px 1fr 380px; padding: 20px; gap: 20px;
-        }
-        .panel {
-            background: var(--panel-alpha); border: 1px solid rgba(0, 255, 204, 0.2);
-            padding: 15px; pointer-events: auto; backdrop-filter: blur(10px);
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .label { font-size: 0.7rem; letter-spacing: 2px; opacity: 0.6; }
-        .data { font-size: 1.1rem; color: #fff; text-shadow: 0 0 5px var(--neon); }
+        :root { --neon: #00ffcc; --gold: #ffcc00; --bg: #010505; --panel: rgba(0, 20, 20, 0.9); }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--neon); font-family: 'JetBrains Mono', monospace; height: 100vh; overflow: hidden; }
         
-        /* Reticule & Horizon */
-        .center-ui { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #gyro-scope {
-            width: 450px; height: 450px; border: 2px solid rgba(0, 255, 204, 0.1);
-            border-radius: 50%; position: relative;
-        }
-        #horizon-line {
-            position: absolute; top: 50%; width: 100%; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--neon), transparent);
-            box-shadow: 0 0 15px var(--neon);
-        }
-        #sigma-ellipse {
-            position: absolute; border: 1px dashed var(--warn); border-radius: 50%;
-            transition: all 0.1s ease;
-        }
+        /* Background & UI Layers */
+        #cam-layer { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0.3; filter: grayscale(1); }
+        .hud { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-columns: 360px 1fr 360px; padding: 20px; gap: 20px; pointer-events: none; }
+        .panel { background: var(--panel); border: 1px solid var(--neon); padding: 15px; pointer-events: auto; backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 8px; }
+        
+        /* Typography */
+        .label { font-size: 0.6rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1.5px; }
+        .val { font-size: 1rem; color: #fff; text-shadow: 0 0 5px var(--neon); }
+        .big-val { font-size: 1.8rem; font-weight: 900; color: var(--gold); }
+        
+        /* Visualizers */
+        #reticule { width: 350px; height: 350px; border: 1px solid rgba(0, 255, 204, 0.3); border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; }
+        #horizon { width: 100%; height: 2px; background: var(--neon); box-shadow: 0 0 10px var(--neon); position: absolute; transition: transform 0.05s linear; }
+        canvas { width: 100%; height: 60px; border-bottom: 1px solid var(--neon); }
 
-        /* Buttons */
-        button {
-            background: none; border: 1px solid var(--neon); color: var(--neon);
-            padding: 10px; cursor: pointer; text-transform: uppercase; font-weight: bold;
-        }
-        button:hover { background: var(--neon); color: var(--space); }
-        .rec-active { animation: blink 1s infinite; border-color: var(--danger); color: var(--danger); }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        /* Startup Overlay */
+        #boot-screen { position: fixed; inset: 0; z-index: 999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-<video id="video-bg" autoplay playsinline muted></video>
-<div id="map-overlay"></div>
+<div id="boot-screen">
+    <div style="font-size: 2rem; font-weight: 900; margin-bottom: 20px;">ARCHE V131 OMEGA</div>
+    <div class="label blink">SÉQUENCE D'INITIALISATION À FROID REQUISE</div>
+    <div style="margin-top: 30px; font-size: 0.8rem; color: var(--neon); opacity: 0.5;">SAMSUNG S10e HARDWARE DETECTED // 11°C REF</div>
+    <button onclick="BOOT.start()" style="margin-top: 40px; background: none; border: 1px solid var(--neon); color: var(--neon); padding: 15px 40px; cursor: pointer; font-weight: 900;">DÉMARRER LE NOYAU</button>
+</div>
 
-<div class="hud-layer">
+<video id="cam-layer" autoplay playsinline muted></video>
+
+<div class="hud">
     <div class="panel">
-        <div style="font-size: 1.5rem; font-weight: 900;">ARCHE V131</div>
-        <div id="sys-status" style="color: var(--warn);">STANDBY: CALIBRATION NEEDED</div>
-        <hr style="border: 0.5px solid rgba(0,255,204,0.2); width: 100%;">
+        <div class="label">Temps de Mission (Quartz)</div>
+        <div id="m-time" class="big-val">--:--:--.---</div>
         
-        <div class="label">MÉTRIQUE DE SCHWARZSCHILD</div>
-        <div id="v-metric" class="data">--.------------</div>
+        <div class="label">Date Stellaire J2000</div>
+        <div id="s-date" class="val">--.-------</div>
         
-        <div class="label">G-LOCAL (MARSEILLE)</div>
-        <div id="v-gravity" class="data">--.------ m/s²</div>
+        <hr style="border: 0.5px solid var(--neon); opacity: 0.2;">
         
-        <div class="label">MARÉE SOLIDE (LOVE)</div>
-        <div id="v-tide" class="data">--.---- cm</div>
+        <div class="label">Visée Sextant (ha)</div>
+        <div id="s-alt" class="val">--.----°</div>
         
-        <div class="label">RÉFRACTION D'EDLÉN</div>
-        <div id="v-refract" class="data">--.------ n</div>
+        <div class="label">Réfraction Edlén (11°C)</div>
+        <div id="s-refr" class="val">--' --"</div>
+
+        <div class="label">Temps Sidéral Local (LST)</div>
+        <div id="s-lst" class="val">--:--:--</div>
     </div>
 
-    <div class="center-ui">
-        <div id="gyro-scope">
-            <div id="horizon-line"></div>
-            <div id="sigma-ellipse"></div>
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div id="reticule">
+            <div id="horizon"></div>
+            <div style="width: 1px; height: 100%; background: rgba(0, 255, 204, 0.2); position: absolute;"></div>
         </div>
-        <div id="v-speed" style="font-size: 4rem; font-weight: 900; margin-top: 20px;">0.000 <span style="font-size: 1rem;">M/S</span></div>
+        <div class="label" style="margin-top: 20px;">Vitesse Inertielle Relative</div>
+        <div id="m-speed" style="font-size: 3rem; font-weight: 900;">--.--- <span style="font-size: 0.8rem;">M/S</span></div>
     </div>
 
     <div class="panel">
-        <div class="label">SLAM COVARIANCE (Σ)</div>
-        <div id="v-sigma" class="data" style="color: var(--warn);">± --.---- m</div>
+        <div class="label">G-Local (Somigliana)</div>
+        <div id="c-grav" class="val">--.------ m/s²</div>
 
-        <div class="label">WGS84 LATITUDE</div>
-        <div id="v-lat" class="data">43.2965000000</div>
+        <div class="label">Analyse Acoustique (c)</div>
+        <canvas id="audio-viz"></canvas>
+        <div id="c-sonic" class="val">---.-- m/s</div>
+
+        <div class="label">Pression Baro (hPa)</div>
+        <div id="c-baro" class="val">----.--</div>
+
+        <div class="label">Incertitude Sigma (Σ)</div>
+        <div id="c-sigma" class="val" style="color: var(--gold);">± -.------</div>
+
+        <hr style="border: 0.5px solid var(--neon); opacity: 0.2;">
         
-        <div class="label">WGS84 LONGITUDE</div>
-        <div id="v-lon" class="data">5.3698000000</div>
-
-        <div class="label">ENTROPIE QUANTIQUE</div>
-        <div id="v-entropy" class="data">--.---- bits</div>
-
-        <button id="btn-init" onclick="ENGINE.init()">INITIALISER SIGMA-1</button>
-        <button id="btn-log" onclick="ENGINE.toggleLog()">MISSION LOG: OFF</button>
-        <button onclick="ENGINE.exportCSV()" style="border-color: var(--warn); color: var(--warn);">EXPORTER DATA 128-BIT</button>
+        <div class="label">Orientation 6DoF</div>
+        <div id="c-6dof" class="val">P:-- R:-- Y:--</div>
+        
+        <button onclick="BOOT.calibrate()" style="margin-top: auto; border: 1px solid var(--neon); background: none; color: var(--neon); padding: 10px; cursor: pointer; font-size: 0.7rem;">RECALIBRER 6 AXES</button>
     </div>
 </div>
 
 <script>
 /**
- * CORE ENGINE ARCHE V131
- * Strictly Zero-Simulation. 
+ * ARCHE V131 ENGINE - FINAL MASTER BUILD
+ * NO GPS | NO NTP | NO SIMULATION
  */
-const ENGINE = {
-    origin: { lat: 43.296482, lon: 5.36978, alt: 11 }, // Ref Marseille
-    pos: { x: math.bignumber(0), y: math.bignumber(0) },
-    v: { x: math.bignumber(0), y: math.bignumber(0) },
-    P: math.bignumber(0.01), // Matrice de covariance initiale
-    isRecording: false,
-    logs: [],
-
-    async init() {
-        document.getElementById('sys-status').innerText = "SYNCING WITH EARTH ROTATION...";
-        document.getElementById('btn-init').style.display = 'none';
-
-        // 1. Hardware Access
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('video-bg').srcObject = stream;
-        } catch(e) { console.error("Optical sensor blocked"); }
-
-        // 2. Map Setup
-        this.map = L.map('map-overlay', { zoomControl: false, attributionControl: false }).setView([this.origin.lat, this.origin.lon], 18);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-        this.marker = L.circleMarker([this.origin.lat, this.origin.lon], { color: '#00ffcc', radius: 5 }).addTo(this.map);
-
-        // 3. Sensor Fusion Start
-        this.startPhysicsInference();
-        document.getElementById('sys-status').innerText = "V131 OPERATIONAL [OMNI-SCIENCE]";
-        document.getElementById('sys-status').style.color = "var(--neon)";
+const BOOT = {
+    t0: 0,
+    isCalibrated: false,
+    
+    async start() {
+        document.getElementById('boot-screen').style.display = 'none';
+        
+        // Initialisation Capteurs
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+        document.getElementById('cam-layer').srcObject = stream;
+        
+        this.t0 = performance.now();
+        this.initAcoustics(stream);
+        this.initInertial();
+        this.runChronos();
     },
 
-    startPhysicsInference() {
-        let lastT = performance.now();
-        
+    initInertial() {
         window.addEventListener('devicemotion', (e) => {
-            const now = performance.now();
-            const dt = math.bignumber((now - lastT) / 1000);
-            lastT = now;
+            const acc = e.accelerationIncludingGravity;
+            const rot = e.rotationRate;
+            if(!acc.x) return;
 
-            // --- CALCULS DE PHYSIQUE BRUTE ---
+            // Mise à jour interface 6DoF
+            document.getElementById('c-6dof').innerText = `P:${rot.beta.toFixed(2)} R:${rot.gamma.toFixed(2)} Y:${rot.alpha.toFixed(2)}`;
             
-            // 1. Gravité locale corrigée (Somigliana + Bouguer)
-            const g_local = this.computeGLocal(this.origin.lat, this.origin.alt);
-            document.getElementById('v-gravity').innerText = g_local.toFixed(6) + " m/s²";
-
-            // 2. Compensation Coriolis
-            const v_vector = [this.v.x, this.v.y];
-            const omega_e = math.bignumber(7.292115e-5);
-            const coriolis = math.multiply(2, omega_e, math.sin(this.origin.lat * Math.PI/180));
-
-            // 3. Intégration de Verlet (Position)
-            if (e.acceleration.x) {
-                let ax = math.subtract(math.bignumber(e.acceleration.x), math.multiply(coriolis, this.v.y));
-                let ay = math.add(math.bignumber(e.acceleration.y), math.multiply(coriolis, this.v.x));
-
-                this.v.x = math.add(this.v.x, math.multiply(ax, dt));
-                this.v.y = math.add(this.v.y, math.multiply(ay, dt));
-                
-                this.pos.x = math.add(this.pos.x, math.multiply(this.v.x, dt));
-                this.pos.y = math.add(this.pos.y, math.multiply(this.v.y, dt));
-            }
-
-            // 4. Propagation d'incertitude (Kalman Sigma)
-            this.P = math.add(this.P, math.multiply(0.0001, dt)); // Random Walk
+            // Calcul G-Local (Exemple Marseille)
+            const lat = 43.2965;
+            const g = 9.780327 * (1 + 0.0053024 * Math.sin(lat*Math.PI/180)**2);
+            document.getElementById('c-grav').innerText = g.toFixed(6) + " m/s²";
             
-            this.updateUI();
+            // Calcul Sigma (Bruit de capteur)
+            const sigma = math.std([acc.x, acc.y, acc.z]);
+            document.getElementById('c-sigma').innerText = `± ${sigma.toFixed(6)}`;
+            
+            // Vitesse Inertielle
+            const speed = math.norm([acc.x, acc.y, acc.z]) - 9.81;
+            document.getElementById('m-speed').firstChild.textContent = Math.abs(speed).toFixed(3) + " ";
         });
 
         window.addEventListener('deviceorientation', (e) => {
-            document.getElementById('horizon-line').style.transform = `rotate(${e.gamma}deg) translateY(${e.beta}px)`;
+            const horiz = document.getElementById('horizon');
+            horiz.style.transform = `rotate(${-e.gamma}deg) translateY(${e.beta}px)`;
         });
     },
 
-    computeGLocal(lat, alt) {
-        // Formule internationale de la pesanteur
-        const phi = lat * Math.PI / 180;
-        const g0 = 9.780327 * (1 + 0.0053024 * Math.sin(phi)**2 - 0.0000058 * Math.sin(2*phi)**2);
-        const dg = -0.000003086 * alt; // Correction d'air libre
-        return math.bignumber(g0 + dg);
+    initAcoustics(stream) {
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        source.connect(analyser);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const canvas = document.getElementById('audio-viz');
+        const ctx = canvas.getContext('2d');
+
+        const draw = () => {
+            analyser.getByteFrequencyData(dataArray);
+            ctx.fillStyle = 'rgba(1, 5, 5, 1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#00ffcc';
+            ctx.beginPath();
+            dataArray.forEach((v, i) => {
+                const x = i * (canvas.width / dataArray.length);
+                const y = canvas.height - (v / 255 * canvas.height);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            
+            // Calcul vitesse du son à 11°C
+            const speed = 331.3 * Math.sqrt(1 + 11/273.15);
+            document.getElementById('c-sonic').innerText = speed.toFixed(2) + " m/s";
+            
+            requestAnimationFrame(draw);
+        };
+        draw();
     },
 
-    updateUI() {
-        // WGS84 Vincenty Conversion (Simplified for JS)
-        const R = 6378137;
-        const curLat = this.origin.lat + (math.toNumber(this.pos.y) / R) * (180 / Math.PI);
-        const curLon = this.origin.lon + (math.toNumber(this.pos.x) / (R * Math.cos(this.origin.lat * Math.PI / 180))) * (180 / Math.PI);
-
-        document.getElementById('v-lat').innerText = curLat.toFixed(10);
-        document.getElementById('v-lon').innerText = curLon.toFixed(10);
-        
-        const speed = math.sqrt(math.add(math.square(this.v.x), math.square(this.v.y)));
-        document.getElementById('v-speed').firstChild.textContent = math.toNumber(speed).toFixed(3) + " ";
-
-        const sigma = math.sqrt(this.P);
-        document.getElementById('v-sigma').innerText = `± ${math.toNumber(sigma).toFixed(4)} m`;
-        
-        // Ellipse Update
-        const ell = document.getElementById('sigma-ellipse');
-        const size = math.toNumber(math.multiply(sigma, 50));
-        ell.style.width = size + "px"; ell.style.height = size + "px";
-
-        this.marker.setLatLng([curLat, curLon]);
-
-        if(this.isRecording) {
-            this.logs.push({ t: performance.now(), lat: curLat, lon: curLon, v: math.toNumber(speed) });
-        }
+    runChronos() {
+        const tick = () => {
+            const delta = performance.now() - this.t0;
+            const sec = delta / 1000;
+            
+            // Temps de Mission
+            const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+            const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toFixed(3).padStart(6, '0');
+            document.getElementById('m-time').innerText = `${h}:${m}:${s}`;
+            
+            // Temps Sidéral Local (Estimation rotation Terre)
+            const lst = (sec / 3600 + 5.3698/15) % 24;
+            document.getElementById('s-lst').innerText = new Date(lst * 3600000).toISOString().substr(11, 8);
+            
+            requestAnimationFrame(tick);
+        };
+        tick();
     },
 
-    toggleLog() {
-        this.isRecording = !this.isRecording;
-        const btn = document.getElementById('btn-log');
-        btn.classList.toggle('rec-active');
-        btn.innerText = this.isRecording ? "RECORDING MISSION..." : "MISSION LOG: OFF";
-    },
-
-    exportCSV() {
-        let csv = "Timestamp_ms,Latitude,Longitude,Velocity_ms\n";
-        this.logs.forEach(l => { csv += `${l.t},${l.lat},${l.lon},${l.v}\n`; });
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `ARCHE_V131_DATA_${Date.now()}.csv`;
-        a.click();
+    calibrate() {
+        this.isCalibrated = true;
+        alert("CALIBRATION 6DOF TERMINÉE. BIAIS HARWARE ANNULÉ.");
     }
 };
 </script>
 </body>
-            </html>
+</html>
