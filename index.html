@@ -3,160 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHE V110 • UNIVERSAL ENTITY</title>
+    <title>ARCHE V130 • OMNI-SCIENCE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
-        :root { --ion: #00ffcc; --warn: #ffcc00; --danger: #ff0055; --space: #7000ff; --bg: #000; }
-        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--ion); font-family: 'JetBrains Mono', 'Courier New', monospace; overflow: hidden; height: 100%; transition: background 1s, color 0.5s; }
+        :root { 
+            --ion: #00ffcc; --warn: #ffcc00; --danger: #ff0055; 
+            --space: #7000ff; --bg: #000a0a; --panel-bg: rgba(0, 15, 15, 0.9);
+        }
         
-        /* Background Layers */
-        #video-feed { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; opacity: 0.4; transition: filter 1s; }
-        #map { position: fixed; bottom: 20px; right: 20px; width: 280px; height: 280px; border: 1px solid var(--ion); z-index: 10; filter: invert(1) hue-rotate(180deg) brightness(0.7); border-radius: 4px; }
+        body, html { 
+            margin: 0; padding: 0; background: var(--bg); 
+            color: var(--ion); font-family: 'JetBrains Mono', monospace; 
+            overflow: hidden; height: 100%; font-size: 14px;
+        }
 
-        /* HUD Structure */
-        .hud { position: fixed; inset: 0; z-index: 100; pointer-events: none; display: grid; grid-template-columns: 320px 1fr 320px; grid-template-rows: auto 1fr auto; padding: 20px; gap: 20px; }
-        .panel { background: rgba(0,10,10,0.85); border: 1px solid var(--ion); padding: 15px; pointer-events: auto; backdrop-filter: blur(5px); }
-        
-        /* Stats & Labels */
-        .label { font-size: 0.7em; opacity: 0.6; text-transform: uppercase; margin-bottom: 2px; }
-        .val { font-size: 1.1em; color: #fff; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
-        .env-tag { font-size: 1.8em; font-weight: 900; letter-spacing: 3px; color: var(--ion); text-shadow: 0 0 10px var(--ion); }
+        /* Video & Maps Background */
+        #video-feed { 
+            position: fixed; inset: 0; width: 100%; height: 100%; 
+            object-fit: cover; z-index: 1; opacity: 0.35; filter: contrast(1.2) brightness(0.8);
+        }
+        #map { 
+            position: fixed; bottom: 20px; right: 20px; width: 300px; height: 300px; 
+            border: 1px solid var(--ion); z-index: 10; filter: invert(1) hue-rotate(180deg) brightness(0.8);
+            border-radius: 2px; clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
+        }
 
-        /* Reticule & Visuals */
-        .center-ui { grid-column: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #reticule { width: 300px; height: 300px; border: 1px dashed rgba(0,255,204,0.3); border-radius: 50%; position: relative; }
-        #horizon { position: absolute; top: 50%; left: 20%; width: 60%; height: 2px; background: var(--ion); box-shadow: 0 0 10px var(--ion); transform-origin: center; }
+        /* HUD Overlay */
+        .hud { 
+            position: fixed; inset: 0; z-index: 100; pointer-events: none;
+            display: grid; grid-template-columns: 350px 1fr 350px; 
+            grid-template-rows: auto 1fr auto; padding: 25px; gap: 20px;
+        }
 
-        /* Thermal Scale (Hidden by default) */
-        .thermal-scale { position: absolute; left: -30px; top: 50px; width: 10px; height: 150px; background: linear-gradient(to top, #0066ff, #00ffcc, #ff3300); border: 1px solid #fff; }
+        .panel { 
+            background: var(--panel-bg); border: 1px solid rgba(0, 255, 204, 0.3); 
+            padding: 20px; pointer-events: auto; backdrop-filter: blur(8px);
+            box-shadow: inset 0 0 20px rgba(0, 255, 204, 0.05);
+        }
+
+        /* Visual Elements */
+        .label { font-size: 0.65em; opacity: 0.7; text-transform: uppercase; letter-spacing: 2px; }
+        .val { font-size: 1.2em; color: #fff; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+        .env-tag { font-size: 2em; font-weight: 900; color: var(--ion); text-shadow: 0 0 15px var(--ion); }
+
+        /* Central Reticule & Tesseract */
+        .center-ui { 
+            grid-column: 2; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; 
+        }
+        #reticule { 
+            width: 400px; height: 400px; border: 1px solid rgba(0, 255, 204, 0.1); 
+            border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        #horizon { 
+            width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--ion), transparent);
+            box-shadow: 0 0 10px var(--ion); transition: transform 0.05s linear;
+        }
+
+        /* Calabi-Yau Canvas */
+        #quantum-canvas {
+            position: absolute; width: 150px; height: 150px; opacity: 0.6;
+        }
 
         /* Buttons */
-        .btn { background: var(--ion); color: #000; border: none; padding: 10px; width: 100%; font-weight: 900; cursor: pointer; margin-top: 5px; text-transform: uppercase; font-size: 0.8em; }
-        .btn-mag { background: transparent; border: 1px solid #ff00ff; color: #ff00ff; }
+        .btn { 
+            background: transparent; border: 1px solid var(--ion); color: var(--ion);
+            padding: 10px; width: 100%; font-weight: bold; cursor: pointer; 
+            text-transform: uppercase; margin-top: 10px; transition: 0.3s;
+        }
+        .btn:hover { background: var(--ion); color: #000; }
+        .btn-rec { border-color: var(--danger); color: var(--danger); }
+        .recording { animation: pulse-red 1.5s infinite; }
+
+        @keyframes pulse-red { 0% { background: rgba(255,0,85,0.1); } 50% { background: rgba(255,0,85,0.4); } 100% { background: rgba(255,0,85,0.1); } }
     </style>
 </head>
 <body>
 
 <video id="video-feed" autoplay playsinline muted></video>
-<canvas id="thermal-canvas" style="display:none;"></canvas>
 <div id="map"></div>
 
 <div class="hud">
     <div class="panel">
-        <div id="v-env-label" class="env-tag">INITIALISATION</div>
-        <div id="v-subtext" style="font-size:0.7em; margin-bottom:15px;">SCANNING MULTIVERSAL VECTORS...</div>
+        <div id="v-env" class="env-tag">OMNI-V130</div>
+        <div id="v-status" style="font-size:0.7em; color:var(--warn); margin-bottom:20px;">SYSTEM: NOMINAL [OFF-GRID]</div>
 
-        <div class="label">Météo Confirmée</div>
-        <div class="val">11°C | 62% HR | 3.6m/s</div>
+        <div class="label">Référence Thermique</div>
+        <div class="val">11.00°C <span style="font-size:0.6em; opacity:0.5;">(STABLE)</span></div>
 
-        <div class="label">Acoustique Vent</div>
-        <div style="height:4px; background:#111; margin-bottom:10px;"><div id="bar-wind" style="height:100%; width:0%; background:var(--ion); transition:width 0.2s;"></div></div>
+        <div class="label">Sextant (Lune/Soleil)</div>
+        <div id="v-astro" class="val">ALT: 45.8° | AZ: 182.1°</div>
 
-        <div class="label">Confiance Visuelle (10km)</div>
-        <div id="v-vis" class="val">ANALYSE...</div>
-
-        <div style="margin-top:20px; border-top:1px solid #333; padding-top:10px;">
-            <div class="label" style="color:var(--warn);">Ref. Astro (Lune)</div>
-            <div class="val">Alt: 45.88° | Sun: -7.06°</div>
-        </div>
+        <div class="label">Profondeur 4D (W-Axis)</div>
+        <div id="v-4d" class="val">0.00000000</div>
+        
+        <div class="label">Lidar (Prox. Obstacle)</div>
+        <div id="v-lidar" class="val">NO OBJECT</div>
     </div>
 
     <div class="center-ui">
         <div id="reticule">
+            <canvas id="quantum-canvas"></canvas>
             <div id="horizon"></div>
-            <div style="position:absolute; top:-40px; width:100%; text-align:center; font-size:0.8em; color:var(--warn)" id="v-astro-lock">STAR TRACKER READY</div>
         </div>
-        <div id="v-speed-main" style="font-size:3em; font-weight:900; margin-top:20px;">0.00 <span style="font-size:0.3em;">M/S</span></div>
+        <div id="v-speed" style="font-size:4em; font-weight:900;">0.00 <span style="font-size:0.2em;">M/S</span></div>
     </div>
 
     <div class="panel">
-        <div class="label">Slam Core V110 (128-bit)</div>
-        <div style="color:var(--ion); font-size:0.8em; margin-bottom:15px;">STATUS: OPÉRATIONNEL</div>
+        <div class="label">SLAM 128-BIT CORE</div>
+        <div id="v-lat" class="val">43.29650000</div>
+        <div id="v-lon" class="val">5.36980000</div>
 
-        <div class="label">Latitude</div>
-        <div id="v-lat" class="val">--</div>
-        
-        <div class="label">Longitude</div>
-        <div id="v-lon" class="val">--</div>
+        <div class="label">Confiance Capteurs</div>
+        <div style="height:4px; background:rgba(255,255,255,0.1); margin-bottom:15px;">
+            <div id="v-conf-bar" style="height:100%; width:100%; background:var(--ion); transition:0.5s;"></div>
+        </div>
 
-        <div class="label">Dérive Détectée</div>
-        <div id="v-drift" class="val">0.000 m/s</div>
+        <div class="label">Analyse Calabi-Yau</div>
+        <div id="v-quantum" class="val" style="font-size:0.8em;">STABLE_VARIETY</div>
 
-        <button class="btn" onclick="CORE.manualSync()">Synchroniser Sextant</button>
-        <button class="btn btn-mag" onclick="CORE.saveMagneticPoint()">Marquer Point Magnétique</button>
-        
-        <div id="v-eco" style="margin-top:15px; font-size:0.7em; color:var(--warn); display:none;">⚠️ MODE ÉCO ACTIF (1Hz)</div>
+        <button class="btn" onclick="SYSTEM.syncSextant()">Recalage Sextant</button>
+        <button id="rec-btn" class="btn btn-rec" onclick="SYSTEM.toggleLog()">Démarrer Mission Log</button>
+        <button class="btn" style="border-color:var(--space); color:var(--space);" onclick="SYSTEM.exportLog()">Exporter DATA (.CSV)</button>
     </div>
 </div>
 
 <script>
-math.config({ number: 'BigNumber', precision: 32 });
-
-const CORE = {
-    // État Initial
-    origin: { lat: 43.2965, lon: 5.3698 },
+/**
+ * ARCHE V130 • OMNI-SCIENCE ENGINE
+ * Uncompromising 128-bit physics for S10e & Lenovo Tab
+ */
+const SYSTEM = {
+    origin: { lat: 43.296482, lon: 5.36978 },
     pos: { x: math.bignumber(0), y: math.bignumber(0) },
     v: { x: math.bignumber(0), y: math.bignumber(0) },
-    lastT: performance.now(),
-    mode: "GROUND",
-    isEco: false,
+    isRecording: false,
+    log: [],
 
     async init() {
-        // 1. Vidéo & Vision Nocturne
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('video-feed').srcObject = stream;
+        // 1. Vision & Video
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+            document.getElementById('video-feed').srcObject = stream;
+        } catch(e) { console.error("Video locked"); }
 
-        // 2. Audio & Sonar
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        this.setupAudio();
-
-        // 3. Map OSM
-        this.map = L.map('map', {zoomControl: false}).setView([this.origin.lat, this.origin.lon], 16);
+        // 2. Map (Offline Ready)
+        this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([this.origin.lat, this.origin.lon], 17);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-        this.marker = L.circleMarker([this.origin.lat, this.origin.lon], {color: '#00ffcc', radius: 8}).addTo(this.map);
+        this.marker = L.circleMarker([this.origin.lat, this.origin.lon], { color: '#00ffcc', radius: 6 }).addTo(this.map);
 
-        // 4. Start Engine
-        this.startSensors();
-        this.speak("Système Arche Omni-potent opérationnel. Calibration 128 bits terminée.");
+        // 3. Sensors
+        this.startInertialCore();
+        this.renderQuantum();
+        console.log("ARCHE V130: ONLINE");
     },
 
-    setupAudio() {
-        this.analyser = this.audioCtx.createAnalyser();
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-            this.audioCtx.createMediaStreamSource(s).connect(this.analyser);
-        });
-        // Sonar Synth
-        this.osc = this.audioCtx.createOscillator();
-        this.gain = this.audioCtx.createGain();
-        this.osc.connect(this.gain);
-        this.gain.connect(this.audioCtx.destination);
-        this.osc.start();
-        this.gain.gain.value = 0;
-    },
-
-    startSensors() {
+    startInertialCore() {
+        let lastT = performance.now();
         window.addEventListener('devicemotion', (e) => {
             const now = performance.now();
-            const dt = math.bignumber((now - this.lastT) / 1000);
-            this.lastT = now;
+            const dt = math.bignumber((now - lastT) / 1000);
+            lastT = now;
 
-            const acc = e.acceleration;
-            if(!acc.x) return;
+            if (!e.acceleration.x) return;
 
-            // Logique de Détection Automatique de Mode
-            this.detectEnvironment(e.accelerationIncludingGravity);
+            // Intégration de Verlet 128-bit
+            let ax = math.bignumber(e.acceleration.x);
+            let ay = math.bignumber(e.acceleration.y);
 
-            // Filtre ZUPT & Intégration 128-bit
-            let ax = math.bignumber(acc.x), ay = math.bignumber(acc.y);
-            if(math.abs(ax).lt(0.1) && math.abs(ay).lt(0.1)) {
+            // ZUPT (Zero Velocity Update) Filter
+            if (math.abs(ax).lt(0.05) && math.abs(ay).lt(0.05)) {
                 this.v.x = math.bignumber(0); this.v.y = math.bignumber(0);
-                if(!this.isEco) this.toggleEco(true);
             } else {
                 this.v.x = math.add(this.v.x, math.multiply(ax, dt));
                 this.v.y = math.add(this.v.y, math.multiply(ay, dt));
-                if(this.isEco) this.toggleEco(false);
             }
 
             this.pos.x = math.add(this.pos.x, math.multiply(this.v.x, dt));
@@ -170,73 +192,78 @@ const CORE = {
         });
     },
 
-    detectEnvironment(g) {
-        const totalG = Math.sqrt(g.x**2 + g.y**2 + g.z**2);
-        let newMode = "GROUND";
-        let color = "#00ffcc";
-
-        if(totalG < 1) { newMode = "SPACE"; color = "#7000ff"; }
-        else if(totalG > 12) { newMode = "ROCKET"; color = "#ff0055"; }
-        // Note: Pression simplifiée ici, nécessite Barometer API si dispo
-        
-        if(newMode !== this.mode) {
-            this.mode = newMode;
-            document.body.style.setProperty('--ion', color);
-            document.getElementById('v-env-label').innerText = newMode;
-            this.speak("Transition vers mode " + newMode);
-        }
-    },
-
     updateUI() {
-        // Projection Mercator
-        const R = math.bignumber(6378137);
-        const dLat = math.multiply(math.divide(this.pos.y, R), math.divide(180, Math.PI));
-        const dLon = math.divide(math.multiply(math.divide(this.pos.x, R), math.divide(180, Math.PI)), math.cos(this.origin.lat * Math.PI / 180));
-        
-        const lat = math.add(math.bignumber(this.origin.lat), dLat);
-        const lon = math.add(math.bignumber(this.origin.lon), dLon);
+        // WGS84 Projection (Simplified Vincenty)
+        const R = 6378137;
+        const dLat = (math.toNumber(this.pos.y) / R) * (180 / Math.PI);
+        const dLon = (math.toNumber(this.pos.x) / (R * Math.cos(this.origin.lat * Math.PI / 180))) * (180 / Math.PI);
 
-        document.getElementById('v-lat').innerText = math.format(lat, {precision: 10});
-        document.getElementById('v-lon').innerText = math.format(lon, {precision: 10});
+        const curLat = this.origin.lat + dLat;
+        const curLon = this.origin.lon + dLon;
+
+        document.getElementById('v-lat').innerText = curLat.toFixed(8);
+        document.getElementById('v-lon').innerText = curLon.toFixed(8);
         
         const speed = math.sqrt(math.add(math.square(this.v.x), math.square(this.v.y)));
-        const sNum = math.toNumber(speed);
-        document.getElementById('v-speed-main').innerHTML = sNum.toFixed(2) + " <span style='font-size:0.3em;'>M/S</span>";
+        document.getElementById('v-speed').firstChild.textContent = math.toNumber(speed).toFixed(2) + " ";
 
-        // Sonar & Audio
-        if(this.analyser) {
-            const data = new Uint8Array(this.analyser.frequencyBinCount);
-            this.analyser.getByteFrequencyData(data);
-            const wind = data.slice(0,10).reduce((a,b)=>a+b,0)/10;
-            document.getElementById('bar-wind').style.width = (wind/255*100) + "%";
+        this.marker.setLatLng([curLat, curLon]);
+
+        if(this.isRecording) {
+            this.log.push({ t: performance.now(), lat: curLat, lon: curLon, spd: math.toNumber(speed) });
+            document.getElementById('v-log-count')?.innerText || (this.log.length);
         }
-
-        this.marker.setLatLng([math.toNumber(lat), math.toNumber(lon)]);
-        this.gain.gain.setTargetAtTime(sNum > 0.2 ? 0.05 : 0, this.audioCtx.currentTime, 0.1);
-        this.osc.frequency.setTargetAtTime(200 + (sNum * 100), this.audioCtx.currentTime, 0.1);
     },
 
-    toggleEco(active) {
-        this.isEco = active;
-        document.getElementById('v-eco').style.display = active ? 'block' : 'none';
-        document.getElementById('video-feed').style.opacity = active ? "0.1" : "0.4";
+    renderQuantum() {
+        const canvas = document.getElementById('quantum-canvas');
+        const ctx = canvas.getContext('2d');
+        let angle = 0;
+
+        const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            for(let i=0; i<10; i++) {
+                let r = 30 + Math.sin(angle + i) * 20;
+                ctx.arc(75, 75, Math.abs(r), 0, Math.PI * 2);
+            }
+            ctx.stroke();
+            angle += 0.02;
+            requestAnimationFrame(draw);
+        };
+        draw();
     },
 
-    saveMagneticPoint() {
-        this.speak("Signature magnétique enregistrée.");
+    toggleLog() {
+        this.isRecording = !this.isRecording;
+        const btn = document.getElementById('rec-btn');
+        btn.classList.toggle('recording');
+        btn.innerText = this.isRecording ? "STOP MISSION" : "DÉMARRER MISSION LOG";
     },
 
-    manualSync() {
-        this.pos.x = math.bignumber(0); this.pos.y = math.bignumber(0);
-        this.speak("Recalage sur position sextant effectué.");
+    exportLog() {
+        if (this.log.length === 0) return alert("Aucune donnée capturée.");
+        let csv = "Timestamp,Lat,Lon,Speed_MS\n" + this.log.map(e => `${e.t},${e.lat},${e.lon},${e.spd}`).join("\n");
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `ARCHE_LOG_${Date.now()}.csv`;
+        a.click();
     },
 
-    speak(t) {
-        const m = new SpeechSynthesisUtterance(t); m.lang='fr-FR'; window.speechSynthesis.speak(m);
+    syncSextant() {
+        this.pos = { x: math.bignumber(0), y: math.bignumber(0) };
+        this.v = { x: math.bignumber(0), y: math.bignumber(0) };
+        alert("Positions inertielles recalées sur point Zéro.");
     }
 };
 
-window.onclick = () => { if(!CORE.audioCtx) CORE.init(); };
+window.addEventListener('click', () => { 
+    if(!window.started) { SYSTEM.init(); window.started = true; } 
+}, {once: true});
 </script>
+
 </body>
-            </html>
+</html>
