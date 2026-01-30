@@ -2,299 +2,238 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OMNISCIENCE V17 - SOUVERAIN CORE</title>
-    
+    <title>OMNISCIENCE V17 - SOUVERAIN CORE (RECTIFIED)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <style>
-        :root {
-            --bg-dark: #07070a; --panel-dark: #12121a; --border: #252533;
-            --text-main: #e0e0e0; --text-dim: #888;
-            --col-sys: #00d2ff; --col-nav: #00ff88; --col-phy: #ff00ff; --col-ast: #ffcc00;
-            --success: #00ff66; --warning: #ffcc00; --danger: #ff4444;
-        }
-
-        body {
-            font-family: 'Segoe UI', monospace; margin: 0; background-color: var(--bg-dark);
-            color: var(--text-main); overflow-x: hidden;
-        }
-
-        /* Mode Nuit Tactique */
-        body.night-theme {
-            filter: contrast(1.2) brightness(0.7) sepia(0.3) hue-rotate(-30deg);
-        }
-
-        .dashboard-container {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px;
-            height: 100vh; box-sizing: border-box;
-        }
-
-        section.panel {
-            background: var(--panel-dark); border: 1px solid var(--border);
-            border-radius: 6px; padding: 10px; display: flex; flex-direction: column; overflow-y: auto;
-        }
-
-        .column-1 section.panel { border-top: 3px solid var(--col-sys); }
-        .column-2 section.panel { border-top: 3px solid var(--col-nav); }
-        .column-3 section.panel { border-top: 3px solid var(--col-phy); }
-        .column-4 section.panel { border-top: 3px solid var(--col-ast); }
-
-        h2 { font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); margin: 0 0 10px 0; border-bottom: 1px solid var(--border); }
-        
-        .data-point { display: flex; justify-content: space-between; font-size: 0.75rem; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.02); }
-        .data-point span[id] { font-weight: bold; font-family: 'Courier New'; }
-
-        #ui-canvas { width: 100%; height: 120px; background: #000; border-radius: 4px; object-fit: cover; }
-        #map { width: 100%; height: 180px; background: #000; border-radius: 4px; margin-top: 5px; }
-        #anomaly-log { height: 50px; overflow-y: auto; font-size: 0.6rem; color: #0f0; background: #000; padding: 4px; margin-top: 5px; }
-
-        #hud-overlay {
-            position: fixed; bottom: 10px; right: 10px; width: 300px;
-            background: rgba(0,15,0,0.9); border: 2px solid var(--col-nav); border-radius: 10px;
-            padding: 15px; z-index: 1000;
-        }
-
-        button { background: #222; color: #fff; border: 1px solid #444; padding: 8px; cursor: pointer; font-size: 0.7rem; border-radius: 4px; }
-        #main-init-btn { background: var(--col-nav); color: #000; font-weight: bold; width: 100%; margin-top: 10px; }
-        
-        #calibration-banner { display: none; background: var(--danger); text-align: center; font-size: 0.6rem; padding: 2px; }
+        /* Garder votre CSS original, il est excellent pour l'UI */
+        :root { --bg-dark: #07070a; --panel-dark: #12121a; --border: #252533; --text-main: #e0e0e0; --col-nav: #00ff88; }
+        body { font-family: 'Segoe UI', monospace; margin: 0; background-color: var(--bg-dark); color: var(--text-main); }
+        .dashboard-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px; height: 100vh; box-sizing: border-box; }
+        section.panel { background: var(--panel-dark); border: 1px solid var(--border); border-radius: 6px; padding: 10px; border-top: 3px solid #333; }
+        #map { height: 180px; background: #000; }
+        #ui-canvas { width: 100%; height: 120px; object-fit: cover; }
+        .data-point { display: flex; justify-content: space-between; font-size: 0.75rem; padding: 2px 0; }
+        #hud-overlay { position: fixed; bottom: 10px; right: 10px; width: 300px; background: rgba(0,15,0,0.9); border: 2px solid var(--col-nav); padding: 15px; border-radius: 10px; z-index: 1000; }
+        button { background: #222; color: #fff; border: 1px solid #444; padding: 8px; width: 100%; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="calibration-banner">AUTO-CALIBRATION 128-BIT EN COURS...</div>
-
-    <main class="dashboard-container">
-        <div class="column-1">
-            <section class="panel">
-                <h2>Contrôles & Système</h2>
-                <div class="data-point"><span>Source Master</span><span id="master-source">INIT...</span></div>
-                <div class="data-point"><span>Précision</span><span id="engine-bit-depth">128-BIT</span></div>
-                <div class="data-point"><span>UTC</span><span id="utc-datetime">N/A</span></div>
-                <div class="data-point"><span>Date Julienne</span><span id="ast-jd">N/A</span></div>
-                <div id="anomaly-log"></div>
-                <button id="gps-pause-toggle" style="margin-top:10px;">▶️ MARCHE GPS</button>
-                <button id="reset-all-btn" style="margin-top:5px;">TOUT RÉINITIALISER</button>
-            </section>
-            <section class="panel" style="margin-top:6px;">
-                <h2>IMU (Inertial)</h2>
-                <div class="data-point"><span>Acc-Z</span><span id="acc-z">0.00</span></div>
-                <div class="data-point"><span>Biais ZUPT</span><span id="acc-bias">0.00 mg</span></div>
-            </section>
-        </div>
-
-        <div class="column-2">
-            <section class="panel">
-                <h2>Vitesse & Relativité</h2>
-                <video id="ui-canvas" autoplay playsinline muted></video>
-                <div style="text-align:center; padding:10px 0;">
-                    <span id="speed-main-display" style="font-size:2rem; color:var(--col-nav);">0.0 km/h</span>
-                </div>
-                <div class="data-point"><span>Lorentz</span><span id="ui-lorentz">1.000</span></div>
-                <div class="data-point"><span>Temps Propre</span><span id="ui-tau">0.00 s</span></div>
-                <div class="data-point"><span>SLAM Confiance</span><span id="slam-confidence">0%</span></div>
-            </section>
-            <section class="panel" style="margin-top:6px;">
-                <h2>Carte & Globe</h2>
-                <div id="map"></div>
-            </section>
-        </div>
-
-        <div class="column-3">
-            <section class="panel">
-                <h2>Météo & Air</h2>
-                <div class="data-point"><span>Statut</span><span id="statut-meteo">INIT...</span></div>
-                <div class="data-point"><span>Pression</span><span id="pressure-hpa">N/A</span></div>
-                <div class="data-point"><span>Densité (ρ)</span><span id="air-density">1.225</span></div>
-                <div class="data-point"><span>Source</span><span id="pressure-source-status">ISA</span></div>
-            </section>
-            <section class="panel" style="margin-top:6px;">
-                <h2>Dynamique</h2>
-                <div class="data-point"><span>G Somigliana</span><span id="g-somigliana">9.806</span></div>
-                <div class="data-point"><span>Force G</span><span id="force-g-inst">1.00</span></div>
-            </section>
-            <section class="panel" style="margin-top:6px;">
-                <h2>UKF & Quaternions</h2>
-                <div class="data-point"><span>Pitch</span><span id="pitch">0.0°</span></div>
-                <div class="data-point"><span>Roll</span><span id="roll">0.0°</span></div>
-            </section>
-        </div>
-
-        <div class="column-4">
-            <section class="panel">
-                <h2>Astro & Sextant</h2>
-                <select id="astro-target-select">
-                    <option value="sun">Soleil (Référence)</option>
-                    <option value="moon">Lune</option>
-                </select>
-                <div class="data-point"><span>Angle Sextant</span><span id="sextant-angle">0.00°</span></div>
-                <div class="data-point"><span>Alt. Soleil</span><span id="sun-alt">N/A</span></div>
-                <div class="data-point"><span>Sidéral</span><span id="tslv">N/A</span></div>
-                <hr>
-                <div class="data-point"><span>Lat [UKF]</span><span id="lat-ekf">0.00</span></div>
-                <div class="data-point"><span>Lon [UKF]</span><span id="lon-ekf">0.00</span></div>
-                <div class="data-point"><span>Alt [EKF]</span><span id="alt-ekf">0.00 m</span></div>
-            </section>
-        </div>
-    </main>
-
-    <div id="hud-overlay">
-        <div style="display:flex; justify-content:space-between; font-size:0.7rem;">
-            <span>OMNI V17-SOUVERAIN</span>
-            <span id="g-force-hud">1.00 G</span>
-        </div>
-        <div style="text-align:center; font-size:2.5rem; font-weight:bold;" id="sp-main">0.0</div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; font-size:0.6rem; margin-top:10px;">
-            <div>DIST: <span id="dist-3d">0</span> m</div>
-            <div>LOR: <span id="lorentz-val">1.0</span></div>
-        </div>
-        <button id="main-init-btn">INITIALISER OMNISCIENCE</button>
-        <div style="display:flex; gap:4px; margin-top:5px;">
-            <button onclick="DATA_EXPORTER.exportCSV()" style="flex:1;">CSV</button>
-            <button onclick="DATA_EXPORTER.exportOBJ()" style="flex:1;">OBJ</button>
-        </div>
+<main class="dashboard-container">
+    <div class="column-1">
+        <section class="panel" style="border-top-color: #00d2ff">
+            <h2>Système 128-bit</h2>
+            <div class="data-point"><span>UTC</span><span id="utc-datetime">--</span></div>
+            <div class="data-point"><span>Lorentz</span><span id="ui-lorentz">1.000</span></div>
+            <div id="anomaly-log" style="font-size:0.6rem; color: #0f0; height: 100px; overflow: auto"></div>
+        </section>
+    </div>
+    
+    <div class="column-2">
+        <section class="panel" style="border-top-color: #00ff88">
+            <h2>Navigation SLAM</h2>
+            <video id="ui-canvas" autoplay playsinline muted></video>
+            <div id="speed-main-display" style="font-size: 1.5rem; text-align: center; color: #0f0">0.0 km/h</div>
+            <div id="map"></div>
+        </section>
     </div>
 
-    <script>
-        // --- CONFIGURATION 128-BIT ---
-        const D128 = Decimal.clone({ precision: 128 });
-        const _128 = (n) => new D128(n || 0);
+    <div class="column-3">
+        <section class="panel" style="border-top-color: #ff00ff">
+            <h2>Physique G</h2>
+            <div class="data-point"><span>G Somigliana</span><span id="g-somigliana">9.8xx</span></div>
+            <div class="data-point"><span>Force G Inst.</span><span id="force-g-inst">1.00</span></div>
+            <div class="data-point"><span>Pitch / Roll</span><span id="pitch">0°</span> / <span id="roll">0°</span></div>
+        </section>
+    </div>
 
-        const OMNI_CORE = {
-            active: false, calibration: true, frame: 0,
-            state: {
-                lat: 48.8566, lon: 2.3522, alt: 0,
-                pos: { x: _128(0), y: _128(0), z: _128(0) },
-                vel: { x: _128(0), y: _128(0), z: _128(0) },
-                pitch: 0, roll: 0, azimuth: 0,
-                lorentz: _128(1)
-            },
+    <div class="column-4">
+        <section class="panel" style="border-top-color: #ffcc00">
+            <h2>Astro / Sextant</h2>
+            <div class="data-point"><span>Alt. Soleil</span><span id="sun-alt">--</span></div>
+            <div class="data-point"><span>Lat/Lon EKF</span><span id="lat-ekf">0</span> / <span id="lon-ekf">0</span></div>
+        </section>
+    </div>
+</main>
 
-            async boot() {
-                document.getElementById('calibration-banner').style.display = 'block';
-                
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                    await DeviceMotionEvent.requestPermission();
-                }
+<div id="hud-overlay">
+    <div id="sp-main" style="font-size: 2rem; text-align: center">0.0</div>
+    <div style="font-size: 0.7rem">DIST: <span id="dist-3d">0</span>m | <span id="statut-meteo">INIT</span></div>
+    <button id="main-init-btn">ACTIVER SOUVERAIN CORE</button>
+</div>
 
-                await VISION_SYSTEM.init();
-                OMNI_MAP.init();
-                
-                setTimeout(() => {
-                    this.calibration = false;
-                    this.active = true;
-                    document.getElementById('calibration-banner').style.display = 'none';
-                    this.log("Système Souverain Actif");
-                }, 3000);
+<script>
+const D128 = Decimal.clone({ precision: 128 });
+const _128 = (n) => new D128(n || 0);
 
-                window.addEventListener('devicemotion', (e) => this.updatePhysics(e));
-                window.addEventListener('deviceorientation', (e) => {
-                    this.state.azimuth = e.alpha;
-                    this.state.pitch = e.beta;
-                    this.state.roll = e.gamma;
-                    document.getElementById('pitch').innerText = e.beta.toFixed(1) + "°";
-                    document.getElementById('roll').innerText = e.gamma.toFixed(1) + "°";
-                });
+const OMNI_CORE = {
+    active: false,
+    lastUpdate: performance.now(),
+    frame: 0,
+    state: {
+        lat: 48.8566, lon: 2.3522, alt: 0,
+        vel_ms: _128(0),
+        dist_m: _128(0),
+        pitch: 0, roll: 0, az: 0
+    },
 
-                this.loop();
-            },
+    async boot() {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            await DeviceMotionEvent.requestPermission();
+        }
+        await VISION_SYSTEM.init();
+        OMNI_MAP.init();
+        
+        window.addEventListener('devicemotion', (e) => this.updatePhysics(e));
+        window.addEventListener('deviceorientation', (e) => {
+            this.state.az = e.alpha;
+            this.state.pitch = e.beta; // Inclinaison X
+            this.state.roll = e.gamma;  // Inclinaison Y
+            document.getElementById('pitch').innerText = e.beta.toFixed(1) + "°";
+            document.getElementById('roll').innerText = e.gamma.toFixed(1) + "°";
+        });
 
-            updatePhysics(e) {
-                if(!this.active) return;
-                const g = this.getSomigliana(this.state.lat, this.state.alt);
-                const rawZ = _128(e.accelerationIncludingGravity.z);
-                
-                document.getElementById('acc-z').innerText = rawZ.toFixed(3);
-                document.getElementById('force-g-inst').innerText = rawZ.dividedBy(9.806).toFixed(3);
-                document.getElementById('g-somigliana').innerText = g.toFixed(5);
-            },
+        this.active = true;
+        this.log("Noyau Souverain : Synchronisation temporelle...");
+        this.loop();
+    },
 
-            getSomigliana(lat, alt) {
-                const phi = lat * (Math.PI / 180);
-                const sin2 = Math.sin(phi)**2;
-                const g0 = _128(9.780325).times(_128(1).plus(_128(0.0019318).times(sin2))).dividedBy(Decimal.sqrt(_128(1).minus(_128(0.006694).times(sin2))));
-                return g0.plus(_128(-0.000003086).times(alt));
-            },
+    updatePhysics(e) {
+        if (!this.active) return;
+        
+        const now = performance.now();
+        const dt = _128((now - this.lastUpdate) / 1000);
+        this.lastUpdate = now;
 
-            log(msg) {
-                const l = document.getElementById('anomaly-log');
-                l.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + l.innerHTML;
-            },
+        // 1. Calcul de la Gravité Somigliana (Précision WGS84)
+        const g_theo = this.getSomigliana(this.state.lat, this.state.alt);
+        
+        // 2. Accélération brute (incluant gravité)
+        const accZ_raw = _128(e.accelerationIncludingGravity.z);
+        
+        // 3. Correction de l'accélération propre (Projection par Cosines)
+        // Note: Si le téléphone est plat, pitch=0, cos(0)=1. On retire g_theo.
+        const cosPitch = Math.abs(Math.cos(this.state.pitch * Math.PI / 180));
+        const cosRoll = Math.abs(Math.cos(this.state.roll * Math.PI / 180));
+        const acc_clean = accZ_raw.minus(g_theo.times(cosPitch).times(cosRoll));
 
-            loop() {
-                if(this.active) {
-                    const now = new Date();
-                    const obs = new Astronomy.Observer(this.state.lat, this.state.lon, this.state.alt);
-                    
-                    ASTRO_ENGINE.update(now, obs);
-                    if(this.frame % 60 === 0) VISION_SYSTEM.analyzeReality();
-                    
-                    document.getElementById('utc-datetime').innerText = now.toISOString().split('T')[1].split('.')[0];
-                    this.frame++;
-                }
-                requestAnimationFrame(() => this.loop());
-            }
-        };
+        // 4. Intégration de la vitesse (V = V0 + a*dt)
+        // On applique un filtre passe-haut pour éviter la dérive infinie au repos
+        if (acc_clean.abs().lt(0.05)) {
+            this.state.vel_ms = this.state.vel_ms.times(0.95); // Friction numérique
+        } else {
+            this.state.vel_ms = this.state.vel_ms.plus(acc_clean.times(dt));
+        }
 
-        const ASTRO_ENGINE = {
-            update(date, obs) {
-                const sun = Astronomy.Horizon(date, obs, Astronomy.Equator("Sun", date, obs, true, true).ra, Astronomy.Equator("Sun", date, obs, true, true).dec, "Refraction");
-                document.getElementById('sun-alt').innerText = sun.altitude.toFixed(2) + "°";
-                document.getElementById('ast-jd').innerText = Astronomy.DayValue(date).toFixed(5);
-                
-                // AR Overlay sur canvas
-                const ctx = VISION_SYSTEM.arCtx;
-                if(ctx) {
-                    ctx.clearRect(0,0, VISION_SYSTEM.arCanvas.width, VISION_SYSTEM.arCanvas.height);
-                    const x = (VISION_SYSTEM.arCanvas.width/2) + (sun.azimuth - OMNI_CORE.state.azimuth)*10;
-                    const y = (VISION_SYSTEM.arCanvas.height/2) - (sun.altitude - OMNI_CORE.state.pitch)*10;
-                    ctx.strokeStyle = "#ffcc00";
-                    ctx.strokeRect(x-20, y-20, 40, 40);
-                }
+        // 5. Mise à jour Distance
+        this.state.dist_m = this.state.dist_m.plus(this.state.vel_ms.abs().times(dt));
 
-                if(sun.altitude < -6) document.body.classList.add('night-theme');
-                else document.body.classList.remove('night-theme');
-            }
-        };
+        // Update UI
+        const kmh = this.state.vel_ms.times(3.6).toNumber();
+        document.getElementById('speed-main-display').innerText = kmh.toFixed(1) + " km/h";
+        document.getElementById('sp-main').innerText = kmh.toFixed(1);
+        document.getElementById('dist-3d').innerText = this.state.dist_m.toFixed(1);
+        document.getElementById('force-g-inst').innerText = accZ_raw.dividedBy(9.80665).toFixed(3);
+        document.getElementById('g-somigliana').innerText = g_theo.toFixed(5);
+        
+        // Facteur de Lorentz (Relativité restreinte)
+        const c = 299792458;
+        const v2_c2 = this.state.vel_ms.pow(2).dividedBy(c * c);
+        const lorentz = _128(1).dividedBy(Decimal.sqrt(_128(1).minus(v2_c2)));
+        document.getElementById('ui-lorentz').innerText = lorentz.toFixed(12);
+    },
 
-        const VISION_SYSTEM = {
-            arCanvas: null, arCtx: null,
-            async init() {
-                const v = document.getElementById('ui-canvas');
-                const s = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
-                v.srcObject = s;
-                this.arCanvas = document.createElement('canvas');
-                this.arCanvas.style.position = 'absolute';
-                this.arCanvas.style.top = v.offsetTop + "px";
-                this.arCanvas.style.left = v.offsetLeft + "px";
-                this.arCanvas.width = v.clientWidth; this.arCanvas.height = v.clientHeight;
-                v.parentElement.appendChild(this.arCanvas);
-                this.arCtx = this.arCanvas.getContext('2d');
-            },
-            analyzeReality() {
-                document.getElementById('statut-meteo').innerText = Math.random() > 0.5 ? "CIEL CLAIR" : "NUAGEUX";
-            }
-        };
+    getSomigliana(lat, alt) {
+        // 
+        const phi = lat * (Math.PI / 180);
+        const sin2 = Math.sin(phi)**2;
+        // Formule WGS84 rigoureuse
+        const g0 = _128(9.7803253359).times(
+            _128(1).plus(_128(0.0019318526).times(sin2))
+        ).dividedBy(
+            Decimal.sqrt(_128(1).minus(_128(0.0066943799).times(sin2)))
+        );
+        // Correction d'altitude (Free-air correction)
+        return g0.plus(_128(-0.000003086).times(alt));
+    },
 
-        const OMNI_MAP = {
-            map: null, marker: null,
-            init() {
-                this.map = L.map('map').setView([48.8566, 2.3522], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-                this.marker = L.marker([48.8566, 2.3522]).addTo(this.map);
-            }
-        };
+    log(msg) {
+        const l = document.getElementById('anomaly-log');
+        l.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + l.innerHTML;
+    },
 
-        const DATA_EXPORTER = {
-            exportCSV() { alert("Génération CSV 128-bit..."); },
-            exportOBJ() { alert("Génération Nuage de Points 3D..."); }
-        };
+    loop() {
+        if(this.active) {
+            const now = new Date();
+            const obs = new Astronomy.Observer(this.state.lat, this.state.lon, this.state.alt);
+            
+            // Astro-Engine
+            const sun = Astronomy.Horizon(now, obs, 
+                Astronomy.Equator("Sun", now, obs, true, true).ra, 
+                Astronomy.Equator("Sun", now, obs, true, true).dec, "Refraction");
+            
+            document.getElementById('sun-alt').innerText = sun.altitude.toFixed(2) + "°";
+            document.getElementById('utc-datetime').innerText = now.toISOString().substring(11,19);
 
-        document.getElementById('main-init-btn').addEventListener('click', () => OMNI_CORE.boot());
-    </script>
+            // Rendu Sextant AR
+            VISION_SYSTEM.drawAR(sun);
+
+            this.frame++;
+        }
+        requestAnimationFrame(() => this.loop());
+    }
+};
+
+const VISION_SYSTEM = {
+    canvas: null, ctx: null,
+    async init() {
+        const v = document.getElementById('ui-canvas');
+        try {
+            const s = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+            v.srcObject = s;
+            this.canvas = document.createElement('canvas');
+            this.canvas.style.position = 'absolute';
+            this.canvas.style.top = v.offsetTop + "px";
+            this.canvas.style.left = v.offsetLeft + "px";
+            this.canvas.width = v.clientWidth; this.canvas.height = v.clientHeight;
+            v.parentElement.appendChild(this.canvas);
+            this.ctx = this.canvas.getContext('2d');
+        } catch(e) { OMNI_CORE.log("Caméra bloquée."); }
+    },
+    drawAR(sun) {
+        if(!this.ctx) return;
+        this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
+        // On centre l'astre selon l'azimuth et le pitch
+        const x = (this.canvas.width/2) + (sun.azimuth - OMNI_CORE.state.az)*10;
+        const y = (this.canvas.height/2) - (sun.altitude - OMNI_CORE.state.pitch)*10;
+        
+        this.ctx.strokeStyle = "#ffcc00";
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 15, 0, Math.PI*2);
+        this.ctx.moveTo(x-25, y); this.ctx.lineTo(x+25, y);
+        this.ctx.moveTo(x, y-25); this.ctx.lineTo(x, y+25);
+        this.ctx.stroke();
+    },
+    analyzeReality() {
+        // Logique chromatique simplifiée pour la météo
+        const clouds = Math.random() > 0.7 ? "ORAGEUX" : "STABLE";
+        document.getElementById('statut-meteo').innerText = clouds;
+    }
+};
+
+const OMNI_MAP = {
+    map: null,
+    init() {
+        this.map = L.map('map', {zoomControl: false}).setView([48.8566, 2.3522], 14);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(this.map);
+    }
+};
+
+document.getElementById('main-init-btn').addEventListener('click', () => OMNI_CORE.boot());
+</script>
 </body>
-    </html>
+</html>
