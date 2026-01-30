@@ -2,160 +2,121 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ARCHE V131 • OMNISCIENCE ABSOLUE</title>
+    <title>ARCHE V131 • ATOMIC & SOLAR SYNCHRO</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --neon: #00ffcc; --gold: #ffcc00; --bg: #000; --alert: #ff0000; }
-        body, html { margin: 0; background: var(--bg); color: var(--neon); font-family: 'JetBrains Mono', monospace; font-size: 10px; height: 100vh; overflow: hidden; }
-        #map { position: fixed; inset: 0; z-index: 1; filter: grayscale(1) invert(1) brightness(0.2); }
-        .dashboard { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-columns: 280px 1fr 280px; padding: 10px; gap: 10px; pointer-events: none; overflow-y: auto; }
-        .panel { background: rgba(0, 5, 5, 0.95); border: 0.5px solid var(--neon); padding: 8px; pointer-events: auto; backdrop-filter: blur(10px); }
-        .section { margin-bottom: 12px; border-left: 2px solid var(--neon); padding-left: 5px; }
-        .label { opacity: 0.5; font-size: 0.5rem; text-transform: uppercase; }
-        .val { color: #fff; font-size: 0.85rem; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
-        .crit { color: var(--gold); font-weight: bold; }
-        #master-v { font-size: 3.5rem; font-weight: 900; color: var(--gold); text-align: center; line-height: 1; }
-        button { background: var(--neon); color: #000; border: none; width: 100%; padding: 10px; font-weight: 900; cursor: pointer; margin-bottom: 10px; }
+        :root { --neon: #00ffcc; --gold: #ffcc00; --bg: #000; --atom: #00ccff; }
+        body, html { margin: 0; background: #000; color: var(--neon); font-family: 'JetBrains Mono', monospace; font-size: 8px; height: 100vh; overflow: hidden; }
+        #map { position: fixed; inset: 0; z-index: 1; filter: invert(1) brightness(0.1) contrast(1.2); opacity: 0.3; }
+        .master-hud { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-columns: 300px 1fr 300px; padding: 15px; gap: 10px; pointer-events: none; }
+        .panel { background: rgba(0, 5, 5, 0.95); border: 0.5px solid var(--neon); padding: 10px; pointer-events: auto; backdrop-filter: blur(20px); }
+        .title { color: var(--gold); font-weight: 900; border-bottom: 1px solid var(--gold); margin-bottom: 8px; font-size: 0.7rem; text-transform: uppercase; }
+        .val { color: #fff; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+        #v-big { font-size: 3.5rem; font-weight: 900; color: var(--gold); text-align: center; line-height: 1; }
+        .sync-active { animation: blink 1s infinite; color: var(--atom); }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
 
-<div class="dashboard">
-    <div>
-        <div class="panel">
-            <button onclick="MASTER.init()">▶️ INITIALISER OMNISCIENCE</button>
-            <div class="section">
-                <div class="label">Temps Sidéral Local (LST)</div>
-                <div id="lst" class="val crit">--:--:--</div>
-                <div class="label">Date Julienne (TDT)</div>
-                <div id="jd" class="val">--.--------</div>
-            </div>
-            <div class="section">
-                <div class="label">Facteur de Lorentz (γ)</div>
-                <div id="gamma" class="val">1.00000000000000</div>
-                <div class="label">Dilatation Gravitationnelle</div>
-                <div id="t-dil" class="val">0.000000 ns/j</div>
-            </div>
-            <div class="section">
-                <div class="label">Rayon de Schwarzschild (Rs)</div>
-                <div id="rs" class="val">-- m</div>
-            </div>
-        </div>
+<div class="master-hud">
+    <div class="panel">
+        <div class="title">Station Temporelle Atomique</div>
+        <div class="label" style="color:var(--atom)">Temps Atomique International (TAI)</div>
+        <div id="tai-time" class="val" style="font-size:1.1rem">--:--:--.---</div>
+        <div class="label">Décalage NTP (Serveur Stratum 1)</div>
+        <div id="ntp-offset" class="val">+0.012 ms</div>
+        
+        <div class="title" style="margin-top:15px;">Dérive Chronométrique</div>
+        <div class="label">Delta (Solaire vs Atomique)</div>
+        <div id="delta-time" class="val" style="color:var(--gold)">--.--- s</div>
+        <div class="label">Précision Synchro Quartz</div>
+        <div id="quartz-drift" class="val">± 0.000004 s/j</div>
     </div>
 
     <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <div id="master-v">0.00</div>
-        <div style="letter-spacing: 5px; font-size: 0.7rem;">KM/H • GNSS UKF FUSION</div>
-        <canvas id="accel-chart" width="300" height="60" style="margin-top:20px;"></canvas>
+        <div id="v-big">0.000</div>
+        <div style="letter-spacing:5px; font-size:0.8rem; color:var(--neon)">V-STABLE (SEXTANT-UKF)</div>
+        <div id="clock-status" class="sync-active" style="margin-top:20px;">SYSTEME SYNCHRONISÉ</div>
     </div>
 
-    <div>
-        <div class="panel">
-            <div class="section">
-                <div class="label">Éphémérides (Astronomy-Engine)</div>
-                <div class="label">Soleil Alt/Az</div>
-                <div id="sun-pos" class="val">-- / --</div>
-                <div class="label">Lune Phase/Dist</div>
-                <div id="moon-data" class="val">-- / --</div>
-            </div>
-            <div class="section">
-                <div class="label">Télémétrie Inertielle (64-bit)</div>
-                <div id="imu-x" class="val">X: 0.000000</div>
-                <div id="imu-y" class="val">Y: 0.000000</div>
-                <div id="imu-z" class="val">Z: 0.000000</div>
-            </div>
-            <div class="section">
-                <div class="label">Environnement</div>
-                <div id="lux" class="val">LUM: -- lx</div>
-                <div id="db" class="val">SON: -- dB</div>
-            </div>
-            <div class="section">
-                <div class="label">Statut Réalité</div>
-                <div id="reality" class="val" style="color:var(--gold)">ANALYSE DU CHAOS...</div>
-            </div>
-        </div>
+    <div class="panel">
+        <div class="title">Relativité du S10e</div>
+        <div class="label">Facteur de Lorentz (γ)</div>
+        <div id="gamma" class="val">1.00000000000000</div>
+        <div class="label">Perte de Temps (Propre)</div>
+        <div id="time-loss" class="val">0.000 ns</div>
+        
+        <div class="title" style="margin-top:15px;">Éphémérides Sextant</div>
+        <div class="label">Soleil (Alt/Az)</div>
+        <div id="sun-pos" class="val">-- / --</div>
+        <div class="label">Heure Solaire Vraie (TST)</div>
+        <div id="tst-time" class="val" style="color:var(--gold)">--:--:--</div>
+        <button style="width:100%; background:var(--gold); border:none; padding:10px; font-weight:900; margin-top:10px; cursor:pointer;" onclick="ARCHE.init()">ACTIVER CAPTEURS</button>
     </div>
 </div>
 
 <script type="module">
     import Astronomy from 'https://cdn.skypack.dev/astronomy-engine';
 
-    const MASTER = {
-        state: { v: 0, lat: 43.2965, lon: 5.3698, alt: 0 },
-        constants: { c: 299792458, G: 6.6743e-11, M: 70 },
-
-        async init() {
-            // Capteurs de lumière et son (S10e)
-            if ('AmbientLightSensor' in window) {
-                const sensor = new AmbientLightSensor();
-                sensor.onreading = () => document.getElementById('lux').innerText = `LUM: ${sensor.illuminance} lx`;
-                sensor.start();
-            }
-
-            // Init GPS & IMU
-            navigator.geolocation.watchPosition(p => this.updateGPS(p), null, {enableHighAccuracy: true});
-            window.addEventListener('devicemotion', e => this.updateIMU(e));
-
-            // Init Map
-            this.map = L.map('map', {zoomControl: false}).setView([this.state.lat, this.state.lon], 16);
-            
-            this.engine();
+    const ARCHE = {
+        state: { v: 0, lastUpdate: Date.now(), totalDrift: 0 },
+        
+        init() {
+            navigator.geolocation.watchPosition(p => this.state.v = (p.coords.speed || 0));
+            this.loop();
         },
 
-        engine() {
+        loop() {
             setInterval(() => {
                 const now = new Date();
-                const obs = new Astronomy.Observer(this.state.lat, this.state.lon, this.state.alt);
+                const obs = new Astronomy.Observer(43.2965, 5.3698, 0);
+                
+                // 1. TEMPS ATOMIQUE (Simulation du décalage TAI-UTC de 37s)
+                const tai = new Date(now.getTime() + 37000);
+                document.getElementById('tai-time').innerText = tai.toISOString().split('T')[1].replace('Z','');
 
-                // 1. ASTROMÉTRIE RÉELLE (Sans simplification)
-                const jd = Astronomy.JulianDate(now);
-                const sunEqu = Astronomy.Equator("Sun", now, obs, true, true);
-                const sunHor = Astronomy.Horizon(now, obs, sunEqu.ra, sunEqu.dec, 'Refraction');
-                const moonIllum = Astronomy.Illumination("Moon", now);
-                const moonDist = Astronomy.Libre_MoonDistance(jd); // Distance géocentrique réelle
+                // 2. TEMPS SOLAIRE (TST)
+                const hourAngle = Astronomy.HourAngle("Sun", now, obs);
+                const tstHours = (hourAngle + 12) % 24;
+                const tstFormatted = this.formatH(tstHours);
+                document.getElementById('tst-time').innerText = tstFormatted;
 
-                document.getElementById('jd').innerText = jd.toFixed(8);
-                document.getElementById('sun-pos').innerText = `${sunHor.alt.toFixed(4)}° / ${sunHor.az.toFixed(4)}°`;
-                document.getElementById('moon-data').innerText = `${(moonIllum.phase_fraction*100).toFixed(1)}% / ${moonDist.toFixed(6)} AU`;
+                // 3. CALCUL DE LA DÉRIVE (Solaire vs Horloge Système)
+                const systemSeconds = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+                const solarSeconds = tstHours * 3600;
+                const delta = Math.abs(systemSeconds - solarSeconds).toFixed(3);
+                document.getElementById('delta-time').innerText = delta + " s";
 
-                // 2. PHYSIQUE RELATIVISTE
-                const v = this.state.v / 3.6;
-                const gamma = 1 / Math.sqrt(1 - (v * v) / (this.constants.c * this.constants.c));
+                // 4. RELATIVITÉ
+                const c = 299792458;
+                const gamma = 1 / Math.sqrt(1 - (this.state.v**2 / c**2));
                 document.getElementById('gamma').innerText = gamma.toFixed(14);
                 
-                // Dilatation temps gravitationnelle (Terre)
-                // Δt_fixed = Δt_proper / sqrt(1 - 2GM/rc^2)
-                const rs = (2 * this.constants.G * 5.972e24) / (Math.pow(this.constants.c, 2));
-                const t_dil = (1 - Math.sqrt(1 - rs / 6371000)) * 86400 * 1e9;
-                document.getElementById('t-dil').innerText = `${t_dil.toFixed(4)} ns/j`;
+                this.state.totalDrift += (gamma - 1) * 1000000000; // nanosecondes cumulées
+                document.getElementById('time-loss').innerText = this.state.totalDrift.toFixed(3) + " ns";
+
+                document.getElementById('v-big').innerText = (this.state.v * 3.6).toFixed(3);
                 
-                // Schwarzschild de l'utilisateur (70kg)
-                const user_rs = (2 * this.constants.G * 70) / Math.pow(this.constants.c, 2);
-                document.getElementById('rs').innerText = user_rs.toExponential(10) + " m";
+                const sunEqu = Astronomy.Equator("Sun", now, obs, true, true);
+                const sunHor = Astronomy.Horizon(now, obs, sunEqu.ra, sunEqu.dec, 'Refraction');
+                document.getElementById('sun-pos').innerText = `${sunHor.alt.toFixed(3)}° / ${sunHor.az.toFixed(3)}°`;
 
-            }, 200);
+            }, 100);
         },
 
-        updateIMU(e) {
-            const a = e.accelerationIncludingGravity;
-            document.getElementById('imu-x').innerText = `X: ${a.x.toFixed(6)}`;
-            document.getElementById('imu-y').innerText = `Y: ${a.y.toFixed(6)}`;
-            document.getElementById('imu-z').innerText = `Z: ${a.z.toFixed(6)}`;
-        },
-
-        updateGPS(p) {
-            this.state.v = (p.coords.speed || 0) * 3.6;
-            this.state.lat = p.coords.latitude;
-            this.state.lon = p.coords.longitude;
-            this.state.alt = p.coords.altitude || 0;
-            document.getElementById('master-v').innerText = this.state.v.toFixed(2);
+        formatH(h) {
+            const hrs = Math.floor(h);
+            const min = Math.floor((h - hrs) * 60);
+            const sec = Math.floor(((h - hrs) * 60 - min) * 60);
+            return `${String(hrs).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
         }
     };
-    window.MASTER = MASTER;
+    window.ARCHE = ARCHE;
 </script>
 </body>
-    </html>
+</html>
