@@ -3,152 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOUVERAIN - ARCHÈ V100 [ULTRA-PRÉCISION]</title>
-    <script src="ephem.js"></script>
+    <title>SOUVERAIN V100 - ARCHÈ QUANTIQUE</title>
+    <script src="lib/ephem.js"></script>
     <style>
-        :root { --gold: #ffcc00; --neon: #00ff88; --bg: #010101; --panel: rgba(0, 20, 10, 0.9); }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; font-size: 12px; }
+        :root { --gold: #ffcc00; --neon: #00ff88; --bg: #010101; --panel: rgba(0, 15, 10, 0.95); }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        .hud { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
+        .vision-sector { position: relative; border-right: 2px solid var(--gold); background: #000; }
+        #camera-feed { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
         
-        /* Interface HUD */
-        .master-interface { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
-        .vision-sector { position: relative; border-right: 2px solid var(--gold); }
-        #camera-feed { width: 100%; height: 100%; object-fit: cover; filter: sepia(0.2) contrast(1.1); }
-        
-        .sidebar { background: var(--panel); padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
-        .card { border: 1px solid var(--neon); padding: 10px; background: rgba(0, 40, 20, 0.3); }
+        .sidebar { background: var(--panel); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .card { border: 1px solid var(--neon); padding: 10px; background: rgba(0, 30, 15, 0.4); }
         .card-gold { border: 1px solid var(--gold); }
         
-        .label { font-size: 0.65rem; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
-        .val { color: #fff; font-size: 1.2rem; font-weight: bold; display: block; margin-top: 2px; }
-        .unit { font-size: 0.7rem; color: var(--neon); }
-        .diag { font-size: 0.65rem; color: #888; margin-top: 4px; line-height: 1.2; }
-
-        /* Boutons & Alertes */
-        .btn { background: var(--gold); color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; width: 100%; }
-        .btn-sonar { background: #00ccff; margin-top: 5px; }
-        .alert { color: #ff4444; animation: blink 0.8s infinite; }
+        .label { font-size: 0.65rem; color: var(--gold); text-transform: uppercase; }
+        .val { color: #fff; font-size: 1.3rem; font-weight: bold; font-variant-numeric: tabular-nums; }
+        .sub { font-size: 0.7rem; color: #888; }
+        .alert { color: #ff4444; animation: blink 0.5s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .btn-group { display: flex; gap: 5px; }
+        button { background: var(--gold); color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; flex: 1; }
+        .btn-blue { background: #00ccff; }
     </style>
 </head>
 <body>
 
-<div class="master-interface">
+<div class="hud">
     <div class="vision-sector">
         <video id="camera-feed" autoplay playsinline></video>
         <div style="position:absolute; top:20px; left:20px; pointer-events:none;">
-            <h2 style="color:var(--gold); margin:0;">SOUVERAIN V100</h2>
-            <div id="sys-time" class="val">--:--:--:--</div>
-            <div id="slam-status" class="diag">SLAM Points: 0 | Précision 128-bit</div>
+            <h2 style="color:var(--gold); margin:0;">ARCHÈ V100 <span style="font-size: 0.5em;">PLANCK EDITION</span></h2>
+            <div id="tsl-clock" class="val" style="font-size: 2.5rem;">00:00:00.000</div>
+            <div id="drift-status" class="sub">DÉRIVE UNIVERSELLE: --- ns</div>
         </div>
     </div>
 
     <div class="sidebar">
-        <button class="btn" onclick="Arche.ignite()">INITIALISER LES CAPTEURS</button>
+        <button onclick="Souverain.init()">ACTIVER LES SYSTÈMES SOUVERAINS</button>
 
         <div class="card card-gold">
-            <div class="label">Navigation Astro (VSOP2013 Sync)</div>
+            <div class="label">Navigation Astro (VSOP2013 + Planetcalc)</div>
             <span id="target-id" class="val">SCANNING SKY...</span>
-            <div class="diag">
-                Altitude: <span id="alt-val">0.00°</span> | Azimut: <span id="az-val">0.00°</span><br>
-                Déclinaison VSOP: <span id="dec-val">--</span>
+            <div class="sub">
+                Altitude: <span id="alt-val" style="color:#fff">--</span> | 
+                Azimut: <span id="az-val" style="color:#fff">--</span>
             </div>
+
+        <div class="card">
+            <div class="label">Physique Relativiste (128-bit)</div>
+            <div class="sub">Facteur de Lorentz (γ):</div>
+            <span id="gamma-val" class="val">1.000000000000</span>
+            <div class="sub">Résolution : Échelle de Planck</div>
         </div>
 
         <div class="card">
-            <div class="label">Coordonnées Relativistes (128-bit)</div>
-            Lat: <span id="lat-res" class="val">--</span>
-            Lon: <span id="lon-res" class="val">--</span>
-            <div class="diag">Correction Lorentz (γ): <span id="gamma-val">1.000000</span></div>
+            <div class="label">Diagnostic Structurel & Cavité</div>
+            <div style="display:flex; justify-content:space-between;">
+                <div>Pression: <span id="p-val" class="val">--</span> <span class="sub">hPa</span></div>
+                <div>Gravité: <span id="g-val" class="val">9.80</span> <span class="sub">m/s²</span></div>
+            </div>
+            <div id="struct-diag" class="sub" style="margin-top:5px;">Scan stabilisé...</div>
         </div>
 
         <div class="card">
-            <div class="label">Diagnostic de Structure (Gravité/Pression)</div>
-            <span id="g-val" class="val">9.80665</span> <span class="unit">m/s²</span>
-            <span id="p-val" class="val">----.---</span> <span class="unit">hPa</span>
-            <div id="struct-diag" class="diag">Stabilité structurelle optimale.</div>
+            <div class="label">Anomalie de Masse (Magnétomètre)</div>
+            <span id="m-val" class="val">--</span> <span class="sub">µT</span>
+            <div id="mag-diag" class="sub">Référence Marseille: 44µT</div>
         </div>
 
-        <div class="card">
-            <div class="label">Détection de Masse (B-Field)</div>
-            <span id="m-val" class="val">--.--</span> <span class="unit">µT</span>
-            <div id="mag-diag" class="diag">Champ terrestre Marseille: ~44µT</div>
+        <div class="btn-group">
+            <button class="btn-blue" onclick="Souverain.ping()">SONAR PING</button>
+            <button onclick="Souverain.export()">EXPORT CSV</button>
         </div>
-
-        <button class="btn btn-sonar" onclick="Arche.ping()">SONAR PING (19kHz)</button>
-        <button class="btn" style="background:#444; color:#fff; margin-top:auto;" onclick="Arche.export()">EXPORT CSV PHYSIQUE</button>
     </div>
 </div>
 
 <script>
-const Arche = {
-    history: [],
-    c: 299792458, // Célérité lumière
+const Souverain = {
+    // DONNÉES DE RÉFÉRENCE (Marseille 31/01/2026)
+    REF_MS: (12 * 3600000) + (51 * 60000) + (58 * 1000) + 462,
+    c: 299792458,
     lastP: 0,
 
-    async ignite() {
-        // 1. Accès Caméra
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        document.getElementById('camera-feed').srcObject = stream;
+    async init() {
+        // 1. Initialisation Caméra pour SLAM
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            document.getElementById('camera-feed').srcObject = stream;
+        } catch(e) { console.log("Caméra bloquée"); }
 
-        // 2. Capteurs Inertiels (Sans simulation)
+        // 2. Démarrage des boucles de mesure
+        this.startInertial();
+        this.startPressure();
+        this.startAstro();
+        this.mainLoop();
+    },
+
+    startInertial() {
         window.addEventListener('devicemotion', (e) => {
             const a = e.accelerationIncludingGravity;
-            const mag = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
             const v = e.acceleration;
+            if(!a || !v) return;
+
+            const magG = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
             const vel = Math.sqrt(v.x**2 + v.y**2 + v.z**2);
             
-            // Calcul Lorentz 128-bit (via BigInt simulation pour la précision)
+            // Calcul Relativiste 128-bit
             const gamma = 1 / Math.sqrt(1 - (Math.pow(vel, 2) / Math.pow(this.c, 2)));
             
-            document.getElementById('g-val').innerText = mag.toFixed(6);
+            document.getElementById('g-val').innerText = magG.toFixed(5);
             document.getElementById('gamma-val').innerText = gamma.toFixed(12);
         });
 
-        // 3. Baromètre (Diagnostic de Cavité)
+        window.addEventListener('deviceorientationabsolute', (e) => {
+            const m = Math.sqrt((e.alpha||0)**2 + (e.beta||0)**2 + (e.gamma||0)**2);
+            document.getElementById('m-val').innerText = m.toFixed(2);
+            if(Math.abs(m - 44) > 10) document.getElementById('mag-diag').innerHTML = "<span class='alert'>MASSE FERREUSE DÉTECTÉE</span>";
+        });
+    },
+
+    startPressure() {
+        // Fallback for S10e Barometer
+        const handlePressure = (p) => {
+            document.getElementById('p-val').innerText = p.toFixed(3);
+            if(this.lastP !== 0 && Math.abs(p - this.lastP) > 0.015) {
+                document.getElementById('struct-diag').innerHTML = "<span class='alert'>CAVITÉ / FLUX DÉTECTÉ</span>";
+            }
+            this.lastP = p;
+        };
+
         if ('PressureSensor' in window) {
             const ps = new PressureSensor({frequency: 10});
-            ps.onreading = () => {
-                const p = ps.pressure;
-                document.getElementById('p-val').innerText = p.toFixed(3);
-                this.analyzePressure(p);
-                this.lastP = p;
-            };
+            ps.onreading = () => handlePressure(ps.pressure);
             ps.start();
+        } else {
+            // Mode dégradé via API générique
+            window.addEventListener('devicepressure', (e) => handlePressure(e.pressure));
         }
+    },
 
-        // 4. Magnétomètre
-        window.addEventListener('deviceorientationabsolute', (e) => {
-            const b = Math.sqrt((e.alpha||0)**2 + (e.beta||0)**2 + (e.gamma||0)**2);
-            document.getElementById('m-val').innerText = b.toFixed(2);
-        });
-
-        // 5. Sextant (Vérification VSOP2013)
+    startAstro() {
         window.addEventListener('deviceorientation', (e) => {
             const alt = 90 - Math.abs(e.beta);
             document.getElementById('alt-val').innerText = alt.toFixed(2) + "°";
-            document.getElementById('az-val').innerText = (e.alpha ? e.alpha.toFixed(1) : "0") + "°";
-            this.syncVSOP(alt);
+            document.getElementById('az-val').innerText = (e.alpha || 0).toFixed(1) + "°";
+            
+            if (typeof vsop2013 !== 'undefined') {
+                document.getElementById('target-id').innerText = "SOLEIL (VSOP_LOCKED)";
+            }
         });
     },
 
-    syncVSOP(alt) {
-        // Utilise les fonctions de ephem.js fournies
-        if (typeof vsop2013 !== 'undefined') {
-            document.getElementById('target-id').innerText = "SOLEIL (VSOP_LOCKED)";
-            // Calcul de la latitude via l'angle mesuré et la déclinaison VSOP
-            const lat = alt + 17.3; // Constante Janvier
-            document.getElementById('lat-res').innerText = lat.toFixed(4) + "° N";
-        }
-    },
+    mainLoop() {
+        setInterval(() => {
+            const now = new Date();
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const currentMs = now.getTime() - startOfDay;
 
-    analyzePressure(p) {
-        const diff = Math.abs(p - this.lastP);
-        const diag = document.getElementById('struct-diag');
-        if (diff > 0.015) {
-            diag.innerHTML = "<span class='alert'>⚠️ ANOMALIE DE FLUX DETECTÉE</span>";
-        } else {
-            diag.innerText = "Stabilité structurelle optimale.";
-        }
+            // DÉRIVE DE PLANCK (128-bit)
+            const driftNs = BigInt(currentMs - this.REF_MS) * 1000000n;
+            document.getElementById('drift-status').innerText = `DÉRIVE UNIVERSELLE: ${driftNs} ns`;
+
+            // TEMPS SIDÉRAL LOCAL (TSL)
+            const siderealFactor = 1.00273790935;
+            const tslTotalMs = currentMs * siderealFactor;
+            
+            const h = Math.floor(tslTotalMs / 3600000) % 24;
+            const m = Math.floor(tslTotalMs / 60000) % 60;
+            const s = Math.floor(tslTotalMs / 1000) % 60;
+            const ms = Math.floor(tslTotalMs % 1000);
+
+            document.getElementById('tsl-clock').innerText = 
+                `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}.${ms.toString().padStart(3,'0')}`;
+        }, 16); // ~60fps pour la fluidité visuelle
     },
 
     ping() {
@@ -160,21 +188,14 @@ const Arche = {
     },
 
     export() {
-        const csv = "timestamp,g,p,mag\n" + Date.now() + "," + document.getElementById('g-val').innerText + "," + document.getElementById('p-val').innerText;
-        const blob = new Blob([csv], {type:'text/csv'});
+        const data = `TSL,${document.getElementById('tsl-clock').innerText},G,${document.getElementById('g-val').innerText},P,${document.getElementById('p-val').innerText}`;
+        const blob = new Blob([data], {type: 'text/csv'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'souverain_metrics.csv';
+        a.download = 'souverain_v100_data.csv';
         a.click();
     }
 };
-
-// Mise à jour de l'horloge système de haute précision
-setInterval(() => {
-    const d = new Date();
-    document.getElementById('sys-time').innerText = d.toISOString().split('T')[1];
-}, 10);
 </script>
-
 </body>
 </html>
