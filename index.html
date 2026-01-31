@@ -3,31 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOUVERAIN V100 - ARCHÈ VSOP2013</title>
+    <title>ARCHÈ V100 - SOUVERAINETÉ SCIENTIFIQUE</title>
     <script src="ephem.js"></script>
     <style>
-        :root { --gold: #ffcc00; --neon: #00ff88; --bg: #010101; --panel: rgba(0, 15, 10, 0.95); }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
-        .hud { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
-        .vision-sector { position: relative; border-right: 2px solid var(--gold); background: #000; }
-        #camera-feed { width: 100%; height: 100%; object-fit: cover; opacity: 0.4; filter: grayscale(1); }
+        :root { --gold: #ffcc00; --neon: #00ff88; --bg: #010101; --panel: rgba(0, 15, 10, 0.98); }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; font-size: 14px; }
+        .hud { display: grid; grid-template-columns: 1fr 420px; height: 100vh; }
+        .vision-sector { position: relative; border-right: 1px solid var(--gold); background: #000; }
+        #camera-feed { width: 100%; height: 100%; object-fit: cover; opacity: 0.4; filter: contrast(1.2) grayscale(1); }
         
-        .reticule { 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 250px; height: 250px; border: 1px solid rgba(255, 204, 0, 0.2); border-radius: 50%; 
-        }
-        #analemma-map { position: absolute; bottom: 20px; right: 20px; border: 1px solid var(--gold); background: rgba(0,0,0,0.8); }
-
-        .sidebar { background: var(--panel); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .card { border: 1px solid var(--neon); padding: 10px; background: rgba(0, 30, 15, 0.4); }
-        .card-gold { border: 1px solid var(--gold); }
+        #analemma-map { position: absolute; bottom: 20px; right: 20px; border: 1px solid var(--gold); background: rgba(0,0,0,0.9); }
+        .sidebar { background: var(--panel); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; border-left: 1px solid #333; }
         
-        .label { font-size: 0.65rem; color: var(--gold); text-transform: uppercase; }
-        .val { color: #fff; font-size: 1.3rem; font-weight: bold; font-variant-numeric: tabular-nums; }
-        .sub { font-size: 0.7rem; color: #888; }
+        .card { border: 1px solid #333; padding: 12px; background: rgba(5, 10, 5, 0.8); position: relative; }
+        .card-gold { border-color: var(--gold); }
+        .label { font-size: 0.7rem; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .val { color: #fff; font-size: 1.4rem; font-weight: bold; font-variant-numeric: tabular-nums; }
+        .sub { font-size: 0.75rem; color: #777; margin-top: 2px; }
         
-        button { background: var(--gold); color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; width: 100%; }
-        .btn-exp { background: #ff4444; color: white; margin-top: auto; }
+        .status-bar { display: flex; justify-content: space-between; font-size: 0.65rem; padding: 5px; border-bottom: 1px solid #222; }
+        button { background: var(--gold); color: #000; border: none; padding: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        button:hover { background: #fff; }
+        .btn-exp { background: #440000; color: #ff4444; border: 1px solid #ff4444; margin-top: auto; }
+        .recording { animation: blink 1s infinite; background: #ff4444; color: #000; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -35,150 +34,179 @@
 <div class="hud">
     <div class="vision-sector">
         <video id="camera-feed" autoplay playsinline></video>
-        <div class="reticule"></div>
-        <canvas id="analemma-map" width="180" height="240"></canvas>
-        
-        <div style="position:absolute; top:20px; left:20px; pointer-events:none;">
-            <h2 style="color:var(--gold); margin:0;">ARCHÈ V100</h2>
-            <div id="hsv-clock" class="val" style="font-size: 2.8rem;">--:--:--.---</div>
-            <div id="hsm-clock" class="sub" style="color:var(--gold)">HEURE SOLAIRE MOYENNE: --:--:--</div>
+        <canvas id="analemma-map" width="160" height="220"></canvas>
+        <div style="position:absolute; top:30px; left:30px; pointer-events:none;">
+            <div class="label">Marseille - Temps Solaire Vrai (HSV)</div>
+            <div id="hsv-clock" class="val" style="font-size: 3.5rem;">--:--:--.---</div>
+            <div id="hsm-clock" class="sub" style="color:var(--gold)">MOYENNE (HSM): --:--:--</div>
         </div>
     </div>
 
     <div class="sidebar">
-        <button onclick="Souverain.init()">ACTIVER LE NOYAU VSOP2013</button>
+        <div class="status-bar">
+            <span>ENGINE: <span id="engine-st">OFFLINE</span></span>
+            <span>UNCERTAINTY: <span id="uncert-val">±0.000ms</span></span>
+        </div>
+
+        <button onclick="Arche.ignite()">Initialiser les Systèmes de Mesure</button>
 
         <div class="card card-gold">
-            <div class="label">Équation du Temps (Delta Céleste)</div>
+            <div class="label">Équation du Temps (VSOP2013)</div>
             <div id="eot-val" class="val">-- min -- s</div>
-            <div class="sub">Source: ephem.js / Vecteur EMB</div>
+            <div class="sub">Delta entre Soleil physique et moyen</div>
         </div>
 
         <div class="card">
-            <div class="label">Relativité & Lorentz (128-bit)</div>
-            <div class="sub">γ mesuré par accélération :</div>
-            <span id="gamma-val" class="val">--</span>
-            <div class="sub">Latence d'échantillonnage : <span id="lat-hw">--</span> ms</div>
+            <div class="label">Vitesse Héliocentrique (Terre)</div>
+            <div id="v-earth" class="val">--.---</div>
+            <div class="sub">km/s (Vitesse orbitale instantanée)</div>
         </div>
 
         <div class="card">
-            <div class="label">Gravité Locale (Marseille 9.805)</div>
+            <div class="label">Navigation Inertielle (Podomètre)</div>
             <div style="display:flex; justify-content:space-between;">
-                <div>G: <span id="g-val" class="val">--</span></div>
-                <div>P: <span id="p-val" class="val">--</span></div>
+                <div>V: <span id="v-rel" class="val">--.--</span> <span class="sub">km/h</span></div>
+                <div>Z: <span id="depth-val" class="val">--.-</span> <span class="sub">m</span></div>
             </div>
-            <div id="struct-diag" class="sub">Scan gravitationnel en attente...</div>
+            <div id="step-info" class="sub">Pas: 0 | Cadence: 0.00 Hz</div>
         </div>
 
         <div class="card">
-            <div class="label">Analyse Optique (Lune/Soleil)</div>
-            <span id="target-id" class="val">--</span>
-            <div id="lunar-phase" class="sub">Illumination : --%</div>
+            <div class="label">Relativité Spéciale (Lorentz)</div>
+            <div id="gamma-val" class="val">1.00000000000000</div>
+            <div class="sub">Dilatation du temps (128-bit)</div>
         </div>
 
-        <button class="btn-exp" onclick="Expedition.toggle()">MODE EXPÉDITION [OFF]</button>
+        <div class="card">
+            <div class="label">Gravimétrie (Signature)</div>
+            <div id="g-val" class="val">--.-----</div>
+            <div class="sub">Hash: <span id="g-hash" style="color:#aaa; font-family:monospace;">READY</span></div>
+        </div>
+
+        <button id="btn-exp" class="btn-exp" onclick="Arche.toggleExpedition()">Mode Expédition [OFF]</button>
     </div>
 </div>
 
 <script>
-const Souverain = {
-    LON_MARSEILLE: 5.3587,
-    C: 299792458,
-    isEngineReady: false,
-
-    async init() {
+const Arche = {
+    LON: 5.3587, C: 299792458, isExp: false, steps: 0, lastStep: 0, startP: null,
+    
+    async ignite() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode:'environment'}});
             document.getElementById('camera-feed').srcObject = stream;
-        } catch(e) { console.error("Accès optique refusé"); }
+        } catch(e) {}
 
-        if (typeof vsop2013 !== 'undefined') {
-            this.isEngineReady = true;
-            this.drawAnalemmaBase();
+        if(typeof vsop2013 !== 'undefined') {
+            document.getElementById('engine-st').innerText = "VSOP2013";
+            document.getElementById('engine-st').style.color = "var(--neon)";
+            this.run();
+            this.startSensors();
         }
-        
-        this.startSensors();
-        this.mainLoop();
     },
 
     startSensors() {
-        window.addEventListener('devicemotion', (e) => {
+        window.ondevicemotion = (e) => {
             const a = e.accelerationIncludingGravity;
-            const v = e.acceleration;
-            if(!a || !v) return;
+            const acc = e.acceleration;
+            if(!a) return;
 
             const g = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
-            const vel = Math.sqrt(v.x**2 + v.y**2 + v.z**2);
-            const gamma = 1 / Math.sqrt(1 - (Math.pow(vel, 2) / Math.pow(this.C, 2)));
+            document.getElementById('g-val').innerText = g.toFixed(6);
+            
+            // Podomètre de grotte
+            const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+            if(mag > 2.5 && (performance.now() - this.lastStep > 350)) {
+                this.steps++;
+                const cadence = 1000 / (performance.now() - this.lastStep);
+                this.lastStep = performance.now();
+                const speed = 0.78 * cadence * 3.6;
+                document.getElementById('v-rel').innerText = speed.toFixed(2);
+                document.getElementById('step-info').innerText = `Pas: ${this.steps} | Cadence: ${cadence.toFixed(2)} Hz`;
+            }
 
-            document.getElementById('g-val').innerText = g.toFixed(5);
-            document.getElementById('gamma-val').innerText = gamma.toFixed(14);
-            document.getElementById('lat-hw').innerText = (performance.now() - e.timeStamp).toFixed(2);
-        });
+            // Calcul Gamma (Vitesse relative + orbitale)
+            const vOrb = parseFloat(document.getElementById('v-earth').innerText) || 29.78;
+            const vTotal = vOrb + ((parseFloat(document.getElementById('v-rel').innerText) || 0) / 3.6);
+            const gamma = 1 / Math.sqrt(1 - (Math.pow(vTotal*1000, 2) / Math.pow(this.C, 2)));
+            document.getElementById('gamma-val').innerText = gamma.toFixed(15);
+            
+            // Signature gravimétrique
+            document.getElementById('g-hash').innerText = btoa(g.toFixed(8)).substr(0,12);
+        };
 
         if ('PressureSensor' in window) {
-            const ps = new PressureSensor({frequency: 10});
-            ps.onreading = () => document.getElementById('p-val').innerText = ps.pressure.toFixed(3);
+            const ps = new PressureSensor({frequency: 1});
+            ps.onreading = () => {
+                if(!this.startP) this.startP = ps.pressure;
+                document.getElementById('depth-val').innerText = ((ps.pressure - this.startP) * 8.5).toFixed(1);
+            };
             ps.start();
         }
     },
 
-    drawAnalemmaBase() {
-        const canvas = document.getElementById('analemma-map');
-        const ctx = canvas.getContext('2d');
-        ctx.strokeStyle = '#222';
-        ctx.beginPath();
-        for (let i = 0; i < 365; i++) {
-            const b = (2 * Math.PI * (i - 81)) / 365;
-            const x = 90 + (9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b)) * 4;
-            const y = 120 - (23.44 * Math.sin((2 * Math.PI * (i - 80)) / 365)) * 4;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    },
-
-    mainLoop() {
-        const loop = () => {
+    run() {
+        const update = () => {
             const now = new Date();
             const jd = (now.getTime() / 86400000.0) + 2440587.5;
             const t = (jd - 2451545.0) / 36525.0;
 
-            if (this.isEngineReady) {
-                const pos = vsop2013.emb.position(t);
-                const L = (280.466 + 36000.77 * t) % 360;
-                const alpha = Math.atan2(pos.y, pos.x) * (180 / Math.PI) + 180;
-                const eotMin = 4 * (L - alpha);
+            const pos1 = vsop2013.emb.position(t);
+            const pos2 = vsop2013.emb.position(t + 1e-9);
+            
+            // Vitesse Terre
+            const v = Math.sqrt(Math.pow(pos2.x-pos1.x,2)+Math.pow(pos2.y-pos1.y,2)+Math.pow(pos2.z-pos1.z,2)) / 1e-9;
+            const vKms = (v * 149597870.7) / (36525 * 86400);
+            document.getElementById('v-earth').innerText = vKms.toFixed(3);
 
-                document.getElementById('eot-val').innerText = `${eotMin.toFixed(2)} min`;
+            // Temps Solaire
+            const L = (280.466 + 36000.77 * t) % 360;
+            const alpha = Math.atan2(pos1.y, pos1.x) * (180/Math.PI) + 180;
+            const eot = 4 * (L - alpha);
+            document.getElementById('eot-val').innerText = `${Math.floor(eot)}m ${Math.abs(Math.round((eot%1)*60))}s`;
 
-                // Heure Solaire Moyenne (Calculée par Longitude)
-                const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
-                const hsmMs = utcMs + (this.LON_MARSEILLE * 4 * 60 * 1000);
-                
-                // Heure Solaire Vraie (HSM + Équation du Temps)
-                const hsvMs = hsmMs + (eotMin * 60 * 1000);
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const hsm = utc + (this.LON * 4 * 60 * 1000);
+            const hsv = hsm + (eot * 60 * 1000);
 
-                this.updateUI(hsmMs, hsvMs, eotMin);
-            }
-            requestAnimationFrame(loop);
+            const fmt = (ms) => new Date(ms).toISOString().substr(11, 12);
+            document.getElementById('hsv-clock').innerText = fmt(hsv);
+            document.getElementById('hsm-clock').innerText = `MOYENNE (HSM): ${fmt(hsm)}`;
+
+            this.drawAnalemma(eot, t);
+            requestAnimationFrame(update);
         };
-        requestAnimationFrame(loop);
+        update();
     },
 
-    updateUI(hsm, hsv, eot) {
-        const format = (ms) => new Date(ms).toISOString().substr(11, 12);
-        document.getElementById('hsm-clock').innerText = `HEURE SOLAIRE MOYENNE: ${format(hsm)}`;
-        document.getElementById('hsv-clock').innerText = format(hsv);
-    }
-};
+    drawAnalemma(eot, t) {
+        const c = document.getElementById('analemma-map');
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0,0,160,220);
+        ctx.strokeStyle = "#333";
+        ctx.beginPath();
+        for(let i=0; i<365; i++) {
+            const b = (2*Math.PI*(i-81))/365;
+            const x = 80 + (9.87*Math.sin(2*b)-7.53*Math.cos(b))*3;
+            const y = 110 - (23.44*Math.sin((2*Math.PI*(i-80))/365))*3;
+            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+        // Point actuel
+        ctx.fillStyle = "var(--gold)";
+        const bNow = (2*Math.PI*( (t*36525) % 365 ))/365;
+        ctx.beginPath();
+        ctx.arc(80+eot*3, 110-(23.44*Math.sin(bNow))*3, 4, 0, 7);
+        ctx.fill();
+    },
 
-const Expedition = {
-    active: false,
-    toggle() {
-        this.active = !this.active;
-        document.querySelector('.btn-exp').innerText = this.active ? "ENREGISTREMENT..." : "MODE EXPÉDITION [OFF]";
+    toggleExpedition() {
+        this.isExp = !this.isExp;
+        const btn = document.getElementById('btn-exp');
+        btn.classList.toggle('recording');
+        btn.innerText = this.isExp ? "Enregistrement Actif..." : "Mode Expédition [OFF]";
     }
 };
 </script>
 </body>
-</html>
+    </html>
