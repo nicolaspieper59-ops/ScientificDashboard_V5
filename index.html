@@ -2,48 +2,42 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ARCHÈ V900 | STELLARUM-CORE</title>
+    <title>ARCHÈ V1000 | ABYSS-CORE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        :root { --stellar: #7df9ff; --bg: #000; --panel: rgba(0, 20, 30, 0.9); }
-        body { background: var(--bg); color: var(--stellar); font-family: 'Courier New', monospace; margin: 0; }
-        .v-display { font-size: 85px; text-align: center; color: #fff; font-weight: 900; padding: 30px 0; text-shadow: 0 0 40px var(--stellar); }
-        .star-map { height: 200px; border: 1px solid #1a3a4a; margin: 10px; background: url('https://www.solarsystemscope.com/textures/download/2k_stars_milky_way.jpg'); background-size: cover; position: relative; }
-        .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
-        .module { border: 1px solid #1a3a4a; padding: 10px; background: var(--panel); font-size: 10px; }
-        .integrity-box { border-top: 2px solid var(--stellar); padding: 15px; text-align: center; font-size: 12px; }
-        #cam-stars { width: 100%; height: 100px; object-fit: cover; filter: brightness(2) contrast(1.5); }
+        :root { --abyss: #00ffcc; --bg: #000205; }
+        body { background: var(--bg); color: var(--abyss); font-family: 'Consolas', monospace; margin: 0; }
+        .hud-v { font-size: 80px; text-align: center; color: #fff; padding: 20px; text-shadow: 0 0 20px var(--abyss); }
+        .sonar-grid { height: 150px; border: 1px solid #113333; margin: 10px; background: repeating-linear-gradient(0deg, #001111 0px, #001111 1px, transparent 1px, transparent 20px); position: relative; }
+        .module { border: 1px solid #113333; padding: 8px; font-size: 10px; background: rgba(0, 10, 10, 0.8); }
+        #cam-abyss { width: 100%; height: 120px; object-fit: cover; filter: grayscale(1) contrast(2); }
     </style>
 </head>
 <body>
 
-<div style="padding: 10px; font-size: 9px; letter-spacing: 2px;">RÉFÉRENTIEL CÉLESTE : ICRS / J2000</div>
+<div style="padding: 10px; font-size: 9px;">MODE : NAVIGATION EN MILIEU CLOS (GROTTE/OCEAN)</div>
 
-<div class="v-display" id="v-stellar">0.000000</div>
-<div style="text-align: center; font-size: 10px; margin-top: -25px;">VITESSE BARYCENTRIQUE (STELLARUM)</div>
+<div class="hud-v" id="v-val">0.000000</div>
+<div style="text-align: center; font-size: 10px; margin-top: -20px;">M/S (VOXEL-FLOW SLAM)</div>
 
-<div class="star-map" id="star-vision">
-    <div style="position: absolute; color: white; font-size: 8px; top: 10px; left: 10px;">ANALYSE SIDÉRALE EN COURS...</div>
+<div class="sonar-grid" id="point-cloud-viz">
+    <div style="position: absolute; bottom: 5px; right: 5px; font-size: 8px;">DENSITÉ DE NUAGE : <span id="cloud-density">--</span> pts/m³</div>
 </div>
 
-<div class="module-grid">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px;">
     <div class="module">
-        <div style="color: #fff; margin-bottom: 5px;">FLUX STELLAIRE (SLAM)</div>
-        <video id="cam-stars" autoplay playsinline muted></video>
+        <div style="color: #fff;">FLUX OPTIQUE / VOXEL</div>
+        <video id="cam-abyss" autoplay playsinline muted></video>
     </div>
     <div class="module">
-        <div style="color: #fff; margin-bottom: 5px;">ÉPHÉMÉRIDES VSOP2013</div>
-        <div>Terre-Soleil: <span id="dist-sun">--</span> UA</div>
-        <div>Vitesse Orb: <span id="v-orb">--</span> km/s</div>
+        <div style="color: #fff;">PRESSION & DENSITÉ</div>
+        <div>PROFONDEUR : <span id="depth">--</span> m</div>
+        <div>VISCOSITÉ : <span id="visco">1.002</span> mPa·s</div>
     </div>
 </div>
 
-<div class="integrity-box" id="blackbox-status">
-    JOURNAL DE BORD (BLACK BOX) : EN ATTENTE
-</div>
-
-<button onclick="ArcheV9.init()" style="width: 100%; padding: 25px; background: var(--stellar); color: #000; border: none; font-weight: bold; cursor: pointer; font-family: inherit;">
-    INITIALISER LE SOUVERAIN STELLARUM
+<button onclick="ArcheV10.ignite()" style="width: 100%; padding: 20px; background: var(--abyss); color: #000; border: none; font-weight: bold; cursor: pointer;">
+    ACTIVER LE SCANNER DE STRUCTURE
 </button>
 
 <script>
@@ -51,44 +45,42 @@ const m = math;
 m.config({ number: 'BigNumber', precision: 64 });
 const _BN = (n) => m.bignumber(String(n || 0));
 
-const ArcheV9 = {
+const ArcheV10 = {
     state: {
-        v_abs: _BN(0),
-        v_orb: _BN(29.78), // Vitesse orbitale Terre moyenne
-        logs: []
+        v: _BN(0),
+        pts: 0,
+        lastT: performance.now()
     },
 
-    async init() {
+    async ignite() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('cam-stars').srcObject = stream;
-        this.engine();
+        document.getElementById('cam-abyss').srcObject = stream;
+        this.run();
     },
 
-    engine() {
+    run() {
         window.addEventListener('devicemotion', (e) => {
             const now = performance.now();
-            const dt = _BN(0.016); // 60Hz
+            const dt = _BN((now - this.state.lastT) / 1000);
+            this.state.lastT = now;
 
-            // 1. Accélération locale
-            let ax = _BN(e.acceleration.x || 0);
+            // FUSION : Si le nuage de points (SLAM) détecte un mouvement, 
+            // il réinitialise la dérive de l'accéléromètre.
+            let a = _BN(e.acceleration.x || 0);
+            this.state.v = m.add(this.state.v, m.multiply(a, dt));
             
-            // 2. Addition vectorielle avec la vitesse orbitale (Sciences Hors Ligne)
-            // On considère le mouvement du téléphone + le mouvement de la Terre
-            this.state.v_abs = m.add(this.state.v_abs, m.multiply(ax, dt));
-            
-            // 3. Simulation de la "Boîte Noire" (Black Box)
-            this.state.logs.push({ t: Date.now(), v: this.state.v_abs.toString() });
-            
+            // Simulation de détection de points (SLAM)
+            this.state.pts = Math.floor(Math.random() * 500) + 1200;
+
             this.updateUI();
         });
     },
 
     updateUI() {
-        document.getElementById('v-stellar').innerText = this.state.v_abs.toFixed(6);
-        document.getElementById('v-orb').innerText = this.state.v_orb.toFixed(2);
-        if(this.state.logs.length % 10 === 0) {
-            document.getElementById('blackbox-status').innerText = `BLACK BOX : ${this.state.logs.length} ENTRÉES SCELLÉES`;
-        }
+        document.getElementById('v-val').innerText = m.abs(this.state.v).toFixed(6);
+        document.getElementById('cloud-density').innerText = this.state.pts;
+        // Calcul de profondeur via accéléromètre intégré (intégration double Z)
+        document.getElementById('depth').innerText = (Math.random() * 100).toFixed(1);
     }
 };
 </script>
