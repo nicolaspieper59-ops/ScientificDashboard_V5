@@ -27,12 +27,35 @@ const ArcheV100 = {
         for(let i = 10; i > 0; i--) {
             document.getElementById('btn-init').innerText = `CALIBRATION : ${i}s`;
             // Capture du bruit blanc réel pour le Self-Healing
-            samples.push(Math.random() * 0.0005); // À remplacer par sensorData
-            await new Promise(r => setTimeout(r, 1000));
-        }
+            // REMPLACEMENT DU BLOC "SIMULATION" PAR L'ÉCOUTE RÉELLE
+async initSequence() {
+    const btn = document.getElementById('btn-init');
+    btn.disabled = true;
+    let samples = [];
+    
+    // On écoute le capteur réel pour la calibration
+    const calibrationHandler = (e) => {
+        // On capture la magnitude de l'accélération (sans gravité)
+        const rawNoise = Math.sqrt(e.acceleration.x**2 + e.acceleration.y**2 + e.acceleration.z**2);
+        samples.push(rawNoise);
+    };
 
-        this.state.sigma = math.std(samples);
-        document.getElementById('noise-sigma').innerText = this.state.sigma.toFixed(8);
+    window.addEventListener('devicemotion', calibrationHandler);
+    
+    for(let i = 10; i > 0; i--) {
+        document.getElementById('btn-init').innerText = `CALIBRATION : ${i}s (NE PAS BOUGER)`;
+        await new Promise(r => setTimeout(r, 1000));
+    }
+
+    // On arrête l'écoute de calibration
+    window.removeEventListener('devicemotion', calibrationHandler);
+
+    // Calcul statistique réel
+    this.state.sigma = math.std(samples);
+    document.getElementById('noise-sigma').innerText = this.state.sigma.toFixed(8);
+    
+    // ... suite du code (Audit de rigueur)
+        }
         
         // Audit de rigueur : Si bruit trop élevé, on refuse le 10/10
         if(math.smaller(this.state.sigma, _BN('0.001'))) {
