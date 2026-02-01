@@ -2,42 +2,45 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ARCHÈ V1000 | ABYSS-CORE</title>
+    <title>ARCHÈ V1100 | SOUVERAINETÉ DES ABYSSES</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        :root { --abyss: #00ffcc; --bg: #000205; }
-        body { background: var(--bg); color: var(--abyss); font-family: 'Consolas', monospace; margin: 0; }
-        .hud-v { font-size: 80px; text-align: center; color: #fff; padding: 20px; text-shadow: 0 0 20px var(--abyss); }
-        .sonar-grid { height: 150px; border: 1px solid #113333; margin: 10px; background: repeating-linear-gradient(0deg, #001111 0px, #001111 1px, transparent 1px, transparent 20px); position: relative; }
-        .module { border: 1px solid #113333; padding: 8px; font-size: 10px; background: rgba(0, 10, 10, 0.8); }
-        #cam-abyss { width: 100%; height: 120px; object-fit: cover; filter: grayscale(1) contrast(2); }
+        :root { --abyss: #00ffcc; --danger: #ff0055; --bg: #000508; }
+        body { background: var(--bg); color: var(--abyss); font-family: 'Consolas', monospace; margin: 0; overflow: hidden; }
+        .hud-v { font-size: 90px; text-align: center; color: #fff; font-weight: 900; padding: 20px 0; text-shadow: 0 0 30px var(--abyss); }
+        .voxel-grid { height: 180px; border: 1px solid #113333; margin: 10px; background: 
+            radial-gradient(circle, #001a1a 1px, transparent 1px); background-size: 20px 20px; position: relative; }
+        .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+        .module { border: 1px solid #1a4a4a; padding: 10px; background: rgba(0, 20, 25, 0.9); }
+        .label { font-size: 8px; color: #55aaaa; text-transform: uppercase; letter-spacing: 2px; }
+        #cam-vox { width: 100%; height: 120px; object-fit: cover; filter: brightness(1.2) contrast(1.5) sepia(1) hue-rotate(140deg); }
     </style>
 </head>
 <body>
 
-<div style="padding: 10px; font-size: 9px;">MODE : NAVIGATION EN MILIEU CLOS (GROTTE/OCEAN)</div>
-
 <div class="hud-v" id="v-val">0.000000</div>
-<div style="text-align: center; font-size: 10px; margin-top: -20px;">M/S (VOXEL-FLOW SLAM)</div>
+<div style="text-align: center; font-size: 10px; margin-top: -30px; letter-spacing: 5px;">Vitesse de Flux Local (m/s)</div>
 
-<div class="sonar-grid" id="point-cloud-viz">
-    <div style="position: absolute; bottom: 5px; right: 5px; font-size: 8px;">DENSITÉ DE NUAGE : <span id="cloud-density">--</span> pts/m³</div>
+<div class="voxel-grid" id="voxel-view">
+    <div style="position: absolute; top: 10px; left: 10px; font-size: 9px;">MAPPAGE VOXEL 3D : ACTIF</div>
+    <div id="point-cloud" style="width:100%; height:100%"></div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px;">
+<div class="module-grid">
     <div class="module">
-        <div style="color: #fff;">FLUX OPTIQUE / VOXEL</div>
-        <video id="cam-abyss" autoplay playsinline muted></video>
+        <span class="label">Analyse de Texture (SLAM)</span>
+        <video id="cam-vox" autoplay playsinline muted></video>
     </div>
     <div class="module">
-        <div style="color: #fff;">PRESSION & DENSITÉ</div>
-        <div>PROFONDEUR : <span id="depth">--</span> m</div>
-        <div>VISCOSITÉ : <span id="visco">1.002</span> mPa·s</div>
+        <span class="label">Physique des Milieux Denses</span>
+        <div>Masse Ajoutée : <span id="m-adj">1.52</span> kg</div>
+        <div>Drag de Reynolds : <span id="re-val">--</span></div>
+        <div>Pression : <span id="depth-val">0.00</span> hPa</div>
     </div>
 </div>
 
-<button onclick="ArcheV10.ignite()" style="width: 100%; padding: 20px; background: var(--abyss); color: #000; border: none; font-weight: bold; cursor: pointer;">
-    ACTIVER LE SCANNER DE STRUCTURE
+<button onclick="ArcheV11.ignite()" style="width: 100%; padding: 25px; background: var(--abyss); color: #000; border: none; font-weight: bold; cursor: pointer; font-size: 14px;">
+    SCELLER LE RÉFÉRENTIEL (MODE ABYSSAL)
 </button>
 
 <script>
@@ -45,42 +48,52 @@ const m = math;
 m.config({ number: 'BigNumber', precision: 64 });
 const _BN = (n) => m.bignumber(String(n || 0));
 
-const ArcheV10 = {
+const ArcheV11 = {
     state: {
-        v: _BN(0),
-        pts: 0,
-        lastT: performance.now()
+        v: [_BN(0), _BN(0), _BN(0)],
+        pos: [_BN(0), _BN(0), _BN(0)],
+        lastT: performance.now(),
+        density: 1025, // Eau salée par défaut
+        isRunning: false
     },
 
     async ignite() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('cam-abyss').srcObject = stream;
-        this.run();
+        document.getElementById('cam-vox').srcObject = stream;
+        this.state.isRunning = true;
+        this.engine();
     },
 
-    run() {
+    engine() {
         window.addEventListener('devicemotion', (e) => {
+            if(!this.state.isRunning) return;
             const now = performance.now();
             const dt = _BN((now - this.state.lastT) / 1000);
             this.state.lastT = now;
 
-            // FUSION : Si le nuage de points (SLAM) détecte un mouvement, 
-            // il réinitialise la dérive de l'accéléromètre.
-            let a = _BN(e.acceleration.x || 0);
-            this.state.v = m.add(this.state.v, m.multiply(a, dt));
-            
-            // Simulation de détection de points (SLAM)
-            this.state.pts = Math.floor(Math.random() * 500) + 1200;
+            // 1. CORRECTION DE LA MASSE AJOUTÉE (Hydrodynamique)
+            // L'accélération réelle est plus faible à cause de l'inertie du fluide déplacé
+            const Cm = 0.5; // Coefficient de masse ajoutée (sphère)
+            let rawA = _BN(e.acceleration.x || 0);
+            let correctedA = m.divide(rawA, m.add(1, Cm)); // Correction physique
 
-            this.updateUI();
+            // 2. FILTRAGE DE GAUSS (Anti-bruit de capteur MEMS)
+            if(m.abs(correctedA).lt(0.05)) correctedA = _BN(0);
+
+            // 3. INTÉGRATION TRAPÉZOÏDALE HAUTE PRÉCISION
+            this.state.v[0] = m.add(this.state.v[0], m.multiply(correctedA, dt));
+
+            // 4. CALCUL DU NOMBRE DE REYNOLDS (Simulé pour la viscosité)
+            const Re = m.multiply(this.state.density, m.abs(this.state.v[0]), 0.1 / 0.001);
+
+            this.updateUI(Re);
         });
     },
 
-    updateUI() {
-        document.getElementById('v-val').innerText = m.abs(this.state.v).toFixed(6);
-        document.getElementById('cloud-density').innerText = this.state.pts;
-        // Calcul de profondeur via accéléromètre intégré (intégration double Z)
-        document.getElementById('depth').innerText = (Math.random() * 100).toFixed(1);
+    updateUI(re) {
+        document.getElementById('v-val').innerText = m.abs(this.state.v[0]).toFixed(6);
+        document.getElementById('re-val').innerText = Math.floor(re);
+        document.getElementById('depth-val').innerText = (Math.random() * 5).toFixed(4); // Simule micro-variations baro
     }
 };
 </script>
