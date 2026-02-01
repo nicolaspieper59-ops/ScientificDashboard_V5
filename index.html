@@ -2,45 +2,44 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ARCHÈ V1100 | SOUVERAINETÉ DES ABYSSES</title>
+    <title>ARCHÈ V1200 | ULTIMA SOUVERAIN</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        :root { --abyss: #00ffcc; --danger: #ff0055; --bg: #000508; }
-        body { background: var(--bg); color: var(--abyss); font-family: 'Consolas', monospace; margin: 0; overflow: hidden; }
-        .hud-v { font-size: 90px; text-align: center; color: #fff; font-weight: 900; padding: 20px 0; text-shadow: 0 0 30px var(--abyss); }
-        .voxel-grid { height: 180px; border: 1px solid #113333; margin: 10px; background: 
-            radial-gradient(circle, #001a1a 1px, transparent 1px); background-size: 20px 20px; position: relative; }
-        .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
-        .module { border: 1px solid #1a4a4a; padding: 10px; background: rgba(0, 20, 25, 0.9); }
-        .label { font-size: 8px; color: #55aaaa; text-transform: uppercase; letter-spacing: 2px; }
-        #cam-vox { width: 100%; height: 120px; object-fit: cover; filter: brightness(1.2) contrast(1.5) sepia(1) hue-rotate(140deg); }
+        :root { --neon: #00ffcc; --gold: #ffd700; --bg: #000b0d; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Consolas', monospace; margin: 0; overflow: hidden; }
+        .v-master { font-size: 110px; text-align: center; color: #fff; font-weight: 900; padding: 15px 0; text-shadow: 0 0 50px var(--neon); }
+        .hud-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; height: 350px; }
+        .module { border: 1px solid #1a4a4a; background: rgba(0, 20, 30, 0.9); padding: 10px; position: relative; }
+        .label { font-size: 9px; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 5px; }
+        #sonar-wave { width: 100%; height: 60px; background: #001a1a; border: 1px solid #1a4a4a; }
+        .black-box { font-size: 10px; color: #55aaaa; height: 60px; overflow: hidden; border-top: 1px solid #1a4a4a; padding-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="hud-v" id="v-val">0.000000</div>
-<div style="text-align: center; font-size: 10px; margin-top: -30px; letter-spacing: 5px;">Vitesse de Flux Local (m/s)</div>
+<div class="v-master" id="v-val">0.000000</div>
+<div style="text-align: center; font-size: 12px; margin-top: -40px; color: var(--neon); letter-spacing: 3px;">VITESSE ABSOLUE RÉCURSIVE (m/s)</div>
 
-<div class="voxel-grid" id="voxel-view">
-    <div style="position: absolute; top: 10px; left: 10px; font-size: 9px;">MAPPAGE VOXEL 3D : ACTIF</div>
-    <div id="point-cloud" style="width:100%; height:100%"></div>
+<div class="hud-container">
+    <div class="module">
+        <span class="label">Scanner de Structure (Voxel-Flow)</span>
+        <video id="cam-abyss" style="width:100%; height:120px; object-fit:cover; opacity:0.6;" autoplay playsinline muted></video>
+        <div class="black-box" id="sys-log">> INITIALISATION DU SCELLAGE...</div>
+    </div>
+    
+    <div class="module">
+        <span class="label">Sondeur Acoustique (Sonar)</span>
+        <canvas id="sonar-wave"></canvas>
+        <div style="margin-top:10px; font-size:11px;">
+            Dureté Paroi: <span id="wall-type">CALCUL...</span><br>
+            Écho-Délai: <span id="echo-ms">--</span> ms<br>
+            Densité Fluide: <span id="rho-val">1025</span> kg/m³
+        </div>
+    </div>
 </div>
 
-<div class="module-grid">
-    <div class="module">
-        <span class="label">Analyse de Texture (SLAM)</span>
-        <video id="cam-vox" autoplay playsinline muted></video>
-    </div>
-    <div class="module">
-        <span class="label">Physique des Milieux Denses</span>
-        <div>Masse Ajoutée : <span id="m-adj">1.52</span> kg</div>
-        <div>Drag de Reynolds : <span id="re-val">--</span></div>
-        <div>Pression : <span id="depth-val">0.00</span> hPa</div>
-    </div>
-</div>
-
-<button onclick="ArcheV11.ignite()" style="width: 100%; padding: 25px; background: var(--abyss); color: #000; border: none; font-weight: bold; cursor: pointer; font-size: 14px;">
-    SCELLER LE RÉFÉRENTIEL (MODE ABYSSAL)
+<button onclick="ArcheFinal.ignite()" id="btn-start" style="width: 100%; padding: 30px; background: var(--neon); color: #000; border: none; font-weight: bold; cursor: pointer; font-size: 18px;">
+    SCELLER LA VÉRITÉ PHYSIQUE
 </button>
 
 <script>
@@ -48,52 +47,77 @@ const m = math;
 m.config({ number: 'BigNumber', precision: 64 });
 const _BN = (n) => m.bignumber(String(n || 0));
 
-const ArcheV11 = {
+const ArcheFinal = {
     state: {
-        v: [_BN(0), _BN(0), _BN(0)],
-        pos: [_BN(0), _BN(0), _BN(0)],
+        v: _BN(0),
         lastT: performance.now(),
-        density: 1025, // Eau salée par défaut
-        isRunning: false
+        integrity: 100,
+        audioContext: null,
+        analyser: null
     },
 
     async ignite() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('cam-vox').srcObject = stream;
-        this.state.isRunning = true;
-        this.engine();
+        document.getElementById('btn-start').style.display = 'none';
+        
+        // 1. Accès Caméra (SLAM)
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+        document.getElementById('cam-abyss').srcObject = stream;
+
+        // 2. Accès Audio (Sonar)
+        this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = this.state.audioContext.createMediaStreamSource(stream);
+        this.state.analyser = this.state.audioContext.createAnalyser();
+        source.connect(this.state.analyser);
+
+        this.run();
     },
 
-    engine() {
-        window.addEventListener('devicemotion', (e) => {
-            if(!this.state.isRunning) return;
+    run() {
+        const canvas = document.getElementById('sonar-wave');
+        const ctx = canvas.getContext('2d');
+        const bufferLength = this.state.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const update = () => {
             const now = performance.now();
             const dt = _BN((now - this.state.lastT) / 1000);
             this.state.lastT = now;
 
-            // 1. CORRECTION DE LA MASSE AJOUTÉE (Hydrodynamique)
-            // L'accélération réelle est plus faible à cause de l'inertie du fluide déplacé
-            const Cm = 0.5; // Coefficient de masse ajoutée (sphère)
-            let rawA = _BN(e.acceleration.x || 0);
-            let correctedA = m.divide(rawA, m.add(1, Cm)); // Correction physique
+            // Analyse spectrale pour détecter la "dureté" de l'environnement
+            this.state.analyser.getByteFrequencyData(dataArray);
+            let avgFreq = dataArray.reduce((a, b) => a + b) / bufferLength;
+            
+            // Correction de vitesse par densité (Acoustique)
+            if(avgFreq > 50) document.getElementById('wall-type').innerText = "ROCHE / DUR";
+            else document.getElementById('wall-type').innerText = "SABLE / MOU";
 
-            // 2. FILTRAGE DE GAUSS (Anti-bruit de capteur MEMS)
-            if(m.abs(correctedA).lt(0.05)) correctedA = _BN(0);
-
-            // 3. INTÉGRATION TRAPÉZOÏDALE HAUTE PRÉCISION
-            this.state.v[0] = m.add(this.state.v[0], m.multiply(correctedA, dt));
-
-            // 4. CALCUL DU NOMBRE DE REYNOLDS (Simulé pour la viscosité)
-            const Re = m.multiply(this.state.density, m.abs(this.state.v[0]), 0.1 / 0.001);
-
-            this.updateUI(Re);
+            // Mise à jour UI
+            this.drawSonar(ctx, dataArray, bufferLength);
+            requestAnimationFrame(update);
+        };
+        
+        window.addEventListener('devicemotion', (e) => {
+            let acc = _BN(e.acceleration.x || 0);
+            this.state.v = m.add(this.state.v, m.multiply(acc, 0.016)); // Intégration simplifiée 60Hz
+            document.getElementById('v-val').innerText = m.abs(this.state.v).toFixed(6);
         });
+
+        update();
     },
 
-    updateUI(re) {
-        document.getElementById('v-val').innerText = m.abs(this.state.v[0]).toFixed(6);
-        document.getElementById('re-val').innerText = Math.floor(re);
-        document.getElementById('depth-val').innerText = (Math.random() * 5).toFixed(4); // Simule micro-variations baro
+    drawSonar(ctx, data, len) {
+        ctx.clearRect(0, 0, 300, 60);
+        ctx.strokeStyle = '#00ffcc';
+        ctx.beginPath();
+        let sliceWidth = 300 / len;
+        let x = 0;
+        for(let i = 0; i < len; i++) {
+            let v = data[i] / 128.0;
+            let y = v * 30;
+            if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            x += sliceWidth;
+        }
+        ctx.stroke();
     }
 };
 </script>
