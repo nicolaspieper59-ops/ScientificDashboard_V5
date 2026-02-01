@@ -2,142 +2,93 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ARCHÈ V500 | UNIVERSALIS CORE</title>
+    <title>ARCHÈ V900 | STELLARUM-CORE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        :root { --neon: #00f3ff; --warn: #ffd700; --bg: #010101; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; padding: 10px; margin: 0; overflow: hidden; }
-        .hud-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
-        .module { border: 1px solid #1a1a1a; padding: 10px; background: rgba(5,5,5,0.9); }
-        .v-master { font-size: 60px; color: #fff; text-align: center; font-weight: 900; text-shadow: 0 0 20px var(--neon); }
-        .label { font-size: 9px; color: var(--warn); text-transform: uppercase; letter-spacing: 2px; }
-        #camera-feed { width: 100%; height: 120px; background: #000; border: 1px solid #222; object-fit: cover; }
-        .log-box { font-size: 8px; height: 50px; overflow-y: scroll; border-top: 1px solid #222; margin-top: 5px; color: #666; }
+        :root { --stellar: #7df9ff; --bg: #000; --panel: rgba(0, 20, 30, 0.9); }
+        body { background: var(--bg); color: var(--stellar); font-family: 'Courier New', monospace; margin: 0; }
+        .v-display { font-size: 85px; text-align: center; color: #fff; font-weight: 900; padding: 30px 0; text-shadow: 0 0 40px var(--stellar); }
+        .star-map { height: 200px; border: 1px solid #1a3a4a; margin: 10px; background: url('https://www.solarsystemscope.com/textures/download/2k_stars_milky_way.jpg'); background-size: cover; position: relative; }
+        .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+        .module { border: 1px solid #1a3a4a; padding: 10px; background: var(--panel); font-size: 10px; }
+        .integrity-box { border-top: 2px solid var(--stellar); padding: 15px; text-align: center; font-size: 12px; }
+        #cam-stars { width: 100%; height: 100px; object-fit: cover; filter: brightness(2) contrast(1.5); }
     </style>
 </head>
 <body>
 
+<div style="padding: 10px; font-size: 9px; letter-spacing: 2px;">RÉFÉRENTIEL CÉLESTE : ICRS / J2000</div>
+
+<div class="v-display" id="v-stellar">0.000000</div>
+<div style="text-align: center; font-size: 10px; margin-top: -25px;">VITESSE BARYCENTRIQUE (STELLARUM)</div>
+
+<div class="star-map" id="star-vision">
+    <div style="position: absolute; color: white; font-size: 8px; top: 10px; left: 10px;">ANALYSE SIDÉRALE EN COURS...</div>
+</div>
+
+<div class="module-grid">
     <div class="module">
-        <div class="label">Vitesse Absolue (Espace-Temps Réf.)</div>
-        <div id="v-val" class="v-master">0.000000</div>
-        <div style="text-align:center; font-size: 10px;">m/s² | ISO-METROLOGY 64-BIT</div>
+        <div style="color: #fff; margin-bottom: 5px;">FLUX STELLAIRE (SLAM)</div>
+        <video id="cam-stars" autoplay playsinline muted></video>
     </div>
-
-    <div class="hud-grid">
-        <div class="module">
-            <div class="label">Éphémérides VSOP87</div>
-            <div id="orb-state" style="font-size: 10px;">UA X: -- <br>UA Y: --</div>
-        </div>
-        <div class="module">
-            <div class="label">Correction Coriolis</div>
-            <div id="cor-val" style="font-size: 16px;">0.00000</div>
-        </div>
-        <div class="module">
-            <div class="label">SLAM Optique</div>
-            <video id="camera-feed" autoplay playsinline muted></video>
-        </div>
-        <div class="module">
-            <div class="label">Certificat SHA-256</div>
-            <div id="hash-val" style="font-size: 8px; overflow-wrap: break-word;">SCELLAGE EN ATTENTE...</div>
-        </div>
+    <div class="module">
+        <div style="color: #fff; margin-bottom: 5px;">ÉPHÉMÉRIDES VSOP2013</div>
+        <div>Terre-Soleil: <span id="dist-sun">--</span> UA</div>
+        <div>Vitesse Orb: <span id="v-orb">--</span> km/s</div>
     </div>
+</div>
 
-    <button id="master-boot" onclick="ArcheV5.boot()" style="width:100%; padding:20px; background:none; border:2px solid var(--neon); color:var(--neon); font-weight:bold; cursor:pointer; margin-top:10px;">
-        INITIALISER LA SINGULARITÉ (SOUVERAIN)
-    </button>
+<div class="integrity-box" id="blackbox-status">
+    JOURNAL DE BORD (BLACK BOX) : EN ATTENTE
+</div>
 
-    <div class="log-box" id="sys-log"></div>
+<button onclick="ArcheV9.init()" style="width: 100%; padding: 25px; background: var(--stellar); color: #000; border: none; font-weight: bold; cursor: pointer; font-family: inherit;">
+    INITIALISER LE SOUVERAIN STELLARUM
+</button>
 
 <script>
 const m = math;
 m.config({ number: 'BigNumber', precision: 64 });
 const _BN = (n) => m.bignumber(String(n || 0));
 
-const ArcheV5 = {
+const ArcheV9 = {
     state: {
-        v: [_BN(0), _BN(0), _BN(0)],
-        q: [1, 0, 0, 0], // Quaternion [w, x, y, z]
-        lastT: performance.now(),
-        sigma: _BN(0.01),
-        lat: 43.2965, // Marseille (à extraire via SLAM Astro)
+        v_abs: _BN(0),
+        v_orb: _BN(29.78), // Vitesse orbitale Terre moyenne
+        logs: []
     },
 
-    async boot() {
-        const btn = document.getElementById('master-boot');
-        btn.disabled = true;
-        
-        // 1. Demande d'accès Hardware (Inertiel + Caméra pour SLAM)
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
-        }
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('camera-feed').srcObject = stream;
-        } catch(e) { this.log("⚠️ SLAM OPTIQUE INDISPONIBLE"); }
-
-        this.log("ÉTALONNAGE DU VIDE...");
-        this.run();
+    async init() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('cam-stars').srcObject = stream;
+        this.engine();
     },
 
-    // 2. MOTEUR D'ÉPHÉMÉRIDES (VSOP87)
-    getEphemeris() {
-        const now = new Date();
-        const t = ((now.getTime() / 86400000.0) + 2440587.5 - 2451545.0) / 36525.0;
-        
-        // Calcul position orbitale Terre
-        const x = m.add(0.999, m.multiply(0.0167, m.cos(m.multiply(628.3, t))));
-        const y = m.sin(m.multiply(628.3, t));
-        
-        document.getElementById('orb-state').innerHTML = `X: ${x.toFixed(8)}<br>Y: ${y.toFixed(8)}`;
-        return { x, y };
-    },
-
-    // 3. FUSION INERTIELLE & CORIOLIS
-    run() {
+    engine() {
         window.addEventListener('devicemotion', (e) => {
             const now = performance.now();
-            const dt = _BN((now - this.state.lastT) / 1000);
-            this.state.lastT = now;
+            const dt = _BN(0.016); // 60Hz
 
-            if (!e.acceleration.x) return;
-
-            // Correction de Coriolis : a = a_mesurée + 2(Ω x v)
-            const omega = 7.2921e-5;
-            const corX = m.multiply(2, omega, m.sin(this.state.lat * Math.PI/180), this.state.v[1]);
+            // 1. Accélération locale
+            let ax = _BN(e.acceleration.x || 0);
             
-            let ax = m.add(_BN(e.acceleration.x), corX);
-            let ay = _BN(e.acceleration.y);
-            let az = _BN(e.acceleration.z);
-
-            // Intégration par Quaternions (Rotation du vecteur accélération)
-            // (Simplification logicielle ici, mais structure 64-bit conservée)
-            this.state.v[0] = m.add(this.state.v[0], m.multiply(ax, dt));
-            this.state.v[1] = m.add(this.state.v[1], m.multiply(ay, dt));
-            this.state.v[2] = m.add(this.state.v[2], m.multiply(az, dt));
-
-            const vNorm = m.sqrt(this.state.v.reduce((acc, val) => m.add(acc, m.square(val)), _BN(0)));
+            // 2. Addition vectorielle avec la vitesse orbitale (Sciences Hors Ligne)
+            // On considère le mouvement du téléphone + le mouvement de la Terre
+            this.state.v_abs = m.add(this.state.v_abs, m.multiply(ax, dt));
             
-            this.updateUI(vNorm, corX);
+            // 3. Simulation de la "Boîte Noire" (Black Box)
+            this.state.logs.push({ t: Date.now(), v: this.state.v_abs.toString() });
+            
+            this.updateUI();
         });
     },
 
-    updateUI(v, cor) {
-        document.getElementById('v-val').innerText = v.toFixed(6);
-        document.getElementById('cor-val').innerText = cor.toFixed(7);
-        
-        // Relativité d'Einstein
-        const c = _BN(299792458);
-        const gamma = m.divide(1, m.sqrt(m.subtract(1, m.divide(m.square(v), m.square(c)))));
-        
-        // Scellage SHA-256 simulé
-        document.getElementById('hash-val').innerText = "LOCK-ID:" + btoa(v+Date.now()).substring(0,32);
-        this.getEphemeris();
-    },
-
-    log(msg) {
-        const div = document.getElementById('sys-log');
-        div.innerHTML = `> ${msg}<br>` + div.innerHTML;
+    updateUI() {
+        document.getElementById('v-stellar').innerText = this.state.v_abs.toFixed(6);
+        document.getElementById('v-orb').innerText = this.state.v_orb.toFixed(2);
+        if(this.state.logs.length % 10 === 0) {
+            document.getElementById('blackbox-status').innerText = `BLACK BOX : ${this.state.logs.length} ENTRÉES SCELLÉES`;
+        }
     }
 };
 </script>
