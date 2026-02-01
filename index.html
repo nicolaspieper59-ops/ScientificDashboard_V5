@@ -3,390 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHÈ V100 | SOUVERAINETÉ MÉTROLOGIQUE</title>
-    
+    <title>ARCHÈ V100 | SOUVERAINETÉ ABSOLUE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ephemjs@1.1.0/dist/ephem.min.js"></script>
-
     <style>
-        :root {
-            --matrix-black: #050505;
-            --neon-green: #00ff41;
-            --alert-red: #ff3333;
-            --science-blue: #00f3ff;
-            --space-gold: #ffd700;
-        }
-
-        body {
-            background-color: var(--matrix-black);
-            color: var(--neon-green);
-            font-family: 'Courier New', monospace;
-            margin: 0;
-            padding: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        /* HUD LAYOUT */
-        header {
-            border-bottom: 2px solid var(--neon-green);
-            padding-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.7rem;
-        }
-
-        #main-display {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-
-        .velocity-container {
-            font-size: 12vw;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-            line-height: 1;
-        }
-
-        .unit { font-size: 1rem; color: #888; margin-top: -10px; display: block; }
-
-        /* GRID DATA */
-        .data-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-
-        .module {
-            background: rgba(20, 20, 30, 0.8);
-            border: 1px solid #333;
-            padding: 8px;
-            font-size: 0.7rem;
-        }
-
-        .module h4 { margin: 0 0 5px 0; color: #aaa; font-size: 0.6rem; text-transform: uppercase; }
-        .val { font-size: 0.9rem; font-weight: bold; }
-        .success { color: var(--neon-green); }
-        .warning { color: var(--space-gold); }
-        .danger { color: var(--alert-red); }
-        .blue { color: var(--science-blue); }
-
-        /* CONTROLS */
-        #controls { margin-top: auto; }
-        
-        button {
-            width: 100%;
-            padding: 15px;
-            background: #111;
-            border: 1px solid var(--neon-green);
-            color: var(--neon-green);
-            font-family: inherit;
-            font-weight: bold;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        button:disabled { border-color: #444; color: #444; cursor: not-allowed; }
-        button:active { background: var(--neon-green); color: black; }
-
-        #hash-display {
-            font-size: 0.5rem;
-            color: #444;
-            word-break: break-all;
-            margin-top: 5px;
-            text-align: center;
-        }
+        :root { --green: #00ff41; --blue: #00f3ff; --gold: #ffd700; --bg: #050505; }
+        body { background: var(--bg); color: var(--green); font-family: 'Courier New', monospace; margin: 0; padding: 15px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { border-bottom: 1px solid var(--green); display: flex; justify-content: space-between; font-size: 0.8rem; padding-bottom: 5px; }
+        #v-screen { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #disp-v { font-size: 15vw; font-weight: bold; color: white; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .mod { background: #111; border: 1px solid #333; padding: 10px; font-size: 0.7rem; }
+        .mod span { display: block; color: #888; font-size: 0.6rem; }
+        button { width: 100%; padding: 15px; background: none; border: 1px solid var(--green); color: var(--green); font-weight: bold; cursor: pointer; margin-bottom: 5px; }
+        button:disabled { color: #444; border-color: #444; }
+        #log-area { font-size: 0.5rem; color: #444; text-align: center; }
     </style>
 </head>
 <body>
 
-    <header>
-        <span>ARCHÈ V100 // S10e CORE</span>
-        <span id="system-clock">--:--:--</span>
-    </header>
+<header><span>ARCHÈ V100 // S10e CORE</span><span id="clock">--:--:--</span></header>
 
-    <div id="main-display">
-        <div class="velocity-container" id="disp-v">0.000</div>
-        <span class="unit">VITESSE ABSOLUE (m/s)</span>
-        <div id="status-msg" style="margin-top:20px; font-size:0.8rem; color:var(--space-gold);">EN ATTENTE CALIBRATION</div>
-    </div>
+<div id="v-screen">
+    <div id="disp-v">0.000000</div>
+    <div style="font-size: 0.8rem; color: #555;">VITESSE VECTORIELLE (m/s)</div>
+</div>
 
-    <div class="data-grid">
-        <div class="module">
-            <h4>RÉFÉRENTIEL</h4>
-            <div id="phys-mode" class="val blue">NEWTON</div>
-        </div>
-        <div class="module">
-            <h4>GAMMA (LORENTZ)</h4>
-            <div id="val-gamma" class="val">1.00000000</div>
-        </div>
-        <div class="module">
-            <h4>AUDIT THERMIQUE</h4>
-            <div id="val-temp" class="val">25.0°C <span style="font-size:0.6em">[ESTIM]</span></div>
-        </div>
-        <div class="module">
-            <h4>BRUIT Σ (128-bit)</h4>
-            <div id="val-sigma" class="val">--</div>
-        </div>
-        <div class="module">
-            <h4>SEXTANT (SOLAIRE)</h4>
-            <div id="val-astro" class="val">--</div>
-        </div>
-        <div class="module">
-            <h4>OSM LOCK</h4>
-            <div id="val-osm" class="val">OFF GRID</div>
-        </div>
-    </div>
+<div class="grid">
+    <div class="mod"><span>PHYSIQUE</span><div id="ui-mode">INIT...</div></div>
+    <div class="mod"><span>LORENTZ (γ)</span><div id="ui-gamma">1.00000000</div></div>
+    <div class="mod"><span>BRUIT Σ (ZUPT)</span><div id="ui-sigma">--</div></div>
+    <div class="mod"><span>TEMP CPU</span><div id="ui-temp">--</div></div>
+</div>
 
-    <div id="controls">
-        <button id="btn-action" onclick="ArcheCore.startSequence()">INITIALISER LE SYSTÈME (10s)</button>
-        <div id="hash-display">SHA256: WAITING_FOR_SEAL</div>
-    </div>
+<button id="btn-main" onclick="ArcheCore.start()">INITIALISER LE SYSTÈME (10s)</button>
+<button id="btn-csv" onclick="ArcheCore.exportCSV()" disabled>EXPORTER DONNÉES (.CSV)</button>
+<div id="log-area">SÉCURITÉ : SHA256_PENDING</div>
 
-    <script>
-        /**
-         * ------------------------------------------------------------------
-         * ARCHÈ V100 - NOYAU SOUVERAIN (JavaScript Final)
-         * ------------------------------------------------------------------
-         * 1. Précision Mathématique : 128-bit (BigNumber)
-         * 2. Physique : Newton & Einstein (Lorentz)
-         * 3. Astronomie : Ephem.js (Pas de GPS)
-         * 4. Intégrité : SHA-256 Double Salt
-         * ------------------------------------------------------------------
-         */
+<script>
+math.config({ number: 'BigNumber', precision: 38 });
+const _BN = (n) => math.bignumber(String(n || 0));
+const C = _BN('299792458');
 
-        // --- CONFIGURATION HAUTE PRÉCISION ---
-        math.config({ number: 'BigNumber', precision: 38 }); // 128-bit equiv
-        const _BN = (n) => math.bignumber(String(n || 0));
-        const C_LIGHT = _BN('299792458'); // Vitesse lumière exacte
+const ArcheCore = {
+    state: {
+        v: { x: _BN(0), y: _BN(0), z: _BN(0) },
+        bias: { x: _BN(0), y: _BN(0), z: _BN(0) },
+        sigma: _BN(0),
+        temp: 30.0,
+        logs: [],
+        isCalibrated: false
+    },
 
-        // --- MOTEUR PRINCIPAL ---
-        const ArcheCore = {
-            state: {
-                velocity: _BN(0),
-                position: { x: _BN(0), y: _BN(0), z: _BN(0) },
-                gamma: _BN(1),
-                temp: 30.0, // Température base S10e
-                sigma: _BN(0),
-                mode: 'NEWTON',
-                isCalibrated: false,
-                isRecording: false,
-                calibrationBuffer: []
-            },
-
-            // --- 1. SÉQUENCE D'INITIALISATION "SANS TRICHE" ---
-            async startSequence() {
-                const btn = document.getElementById('btn-action');
-                const status = document.getElementById('status-msg');
-                
-                // Demande de permission pour les capteurs (iOS 13+ / Android Chrome)
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                    try { await DeviceMotionEvent.requestPermission(); } catch (e) { console.error(e); }
-                }
-
-                btn.disabled = true;
-                this.state.calibrationBuffer = [];
-                
-                // Écouteur RÉEL pour la calibration (ZUPT)
-                window.addEventListener('devicemotion', this.calibrationHandler);
-
-                // Compte à rebours 10s
-                for(let i=10; i>0; i--) {
-                    btn.innerText = `CALIBRATION : ${i}s (NE PAS BOUGER)`;
-                    status.innerText = "ACQUISITION DU BRUIT DE FOND CAPTEUR...";
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-
-                // Fin calibration
-                window.removeEventListener('devicemotion', this.calibrationHandler);
-                this.finalizeCalibration();
-            },
-
-            // Capture brute pour calcul statistique du bruit
-            calibrationHandler(event) {
-                // On prend l'accélération linéaire (sans gravité)
-                const acc = event.acceleration;
-                if(acc && acc.x != null) {
-                    const magnitude = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-                    ArcheCore.state.calibrationBuffer.push(magnitude);
-                }
-            },
-
-            finalizeCalibration() {
-                const buffer = this.state.calibrationBuffer;
-                if(buffer.length === 0) {
-                    alert("ERREUR : Aucun capteur détecté. Vérifiez HTTPS/Permissions.");
-                    location.reload();
-                    return;
-                }
-
-                // Calcul écart-type (Sigma) avec Math.js
-                this.state.sigma = math.std(buffer);
-                document.getElementById('val-sigma').innerText = this.state.sigma.toFixed(8);
-
-                // AUDIT DE RIGUEUR (Seuil de tolérance)
-                const threshold = 0.15; // Ajustable selon sensibilité S10e
-                if (this.state.sigma > threshold) {
-                    document.getElementById('status-msg').innerText = "ÉCHEC : APPAREIL INSTABLE OU BRUYANT";
-                    document.getElementById('status-msg').style.color = "var(--alert-red)";
-                    document.getElementById('btn-action').innerText = "RÉESSAYER (POSER À PLAT)";
-                    document.getElementById('btn-action').disabled = false;
-                } else {
-                    this.state.isCalibrated = true;
-                    this.launchEngine();
-                }
-            },
-
-            // --- 2. DÉMARRAGE DU MOTEUR PHYSIQUE ---
-            launchEngine() {
-                document.getElementById('status-msg').innerText = "SYSTÈME SOUVERAIN ACTIF";
-                document.getElementById('status-msg').style.color = "var(--neon-green)";
-                document.getElementById('btn-action').innerText = "SCELLER L'EXPÉDITION (SNAPSHOT)";
-                document.getElementById('btn-action').disabled = false;
-                
-                // Remplacement de l'action du bouton pour le scellage
-                document.getElementById('btn-action').onclick = () => this.generateSeal();
-
-                // Démarrage de la boucle de mesure continue
-                window.addEventListener('devicemotion', (e) => this.processPhysics(e));
-                
-                // Démarrage Sextant Astro (mise à jour toutes les 5s)
-                setInterval(() => this.updateAstro(), 5000);
-            },
-
-            // --- 3. BOUCLE DE TRAITEMENT PHYSIQUE (PROPORTIONNELLE) ---
-            processPhysics(event) {
-                const dt = _BN(event.interval / 1000); // Delta temps en secondes
-                const accRaw = event.acceleration; 
-                const accG = event.accelerationIncludingGravity;
-
-                if(!accRaw.x) return;
-
-                // A. SÉLECTEUR DE RÉFÉRENTIEL (Newton vs Einstein)
-                const gNorm = Math.sqrt(accG.x**2 + accG.y**2 + accG.z**2);
-                
-                // Si G < 1.0 m/s² => Micro-gravité (Espace/Chute libre)
-                if (gNorm < 1.0) {
-                    this.state.mode = 'EINSTEIN';
-                    document.getElementById('phys-mode').innerText = "EINSTEIN (µG)";
-                    document.getElementById('phys-mode').className = "val blue";
-                } else {
-                    this.state.mode = 'NEWTON';
-                    document.getElementById('phys-mode').innerText = "NEWTON (1G)";
-                    document.getElementById('phys-mode').className = "val success";
-                }
-
-                // B. AUDIT THERMIQUE & CORRECTION
-                // Simulation chauffe processeur (+0.05°C par seconde d'activité intense)
-                this.state.temp += 0.001; 
-                document.getElementById('val-temp').innerHTML = this.state.temp.toFixed(2) + "°C";
-                
-                // C. INTÉGRATION 128-BIT
-                // On retire le biais thermique (Drift fictif de 0.0001 m/s² par degré > 35)
-                let thermalBias = 0;
-                if(this.state.temp > 35) thermalBias = (this.state.temp - 35) * 0.0001;
-                
-                const ax = _BN(accRaw.x - thermalBias);
-                const ay = _BN(accRaw.y - thermalBias);
-                const az = _BN(accRaw.z - thermalBias);
-
-                // Vecteur accélération instantané
-                const a_inst = math.norm([ax, ay, az]);
-
-                // v = v + a * dt
-                const dv = math.multiply(a_inst, dt);
-                this.state.velocity = math.add(this.state.velocity, dv);
-
-                // D. FACTEUR DE LORENTZ (RELATIVITÉ)
-                // gamma = 1 / sqrt(1 - v²/c²)
-                const v2 = math.pow(this.state.velocity, 2);
-                const c2 = math.pow(C_LIGHT, 2);
-                const ratio = math.divide(v2, c2);
-                
-                // Protection contre division par zéro (v < c)
-                if (math.smaller(ratio, 1)) {
-                    const denom = math.sqrt(math.subtract(_BN(1), ratio));
-                    this.state.gamma = math.divide(_BN(1), denom);
-                }
-
-                // E. MAP MATCHING OSM (Simulation Vecteur)
-                // Si l'accélération latérale est nulle mais verticale forte => Toboggan/Rail
-                if (math.abs(ax) < 0.5 && math.abs(ay) > 2) {
-                    document.getElementById('val-osm').innerText = "RAIL LOCKED";
-                    document.getElementById('val-osm').style.color = "var(--neon-green)";
-                } else {
-                    document.getElementById('val-osm').innerText = "FREE ROAM";
-                    document.getElementById('val-osm').style.color = "#888";
-                }
-
-                this.updateUI();
-            },
-
-            // --- 4. SEXTANT ASTRONOMIQUE (Ephem.js) ---
-            updateAstro() {
-                // Utilisation de coordonnées génériques ou dernière connue (Marseille par défaut)
-                // Dans une version avancée, on utiliserait le dernier fix connu.
-                const obs = new ephem.Observer(43.2965, 5.3698, 0); 
-                const sun = new ephem.Sun();
-                sun.compute(obs);
-                
-                // Affichage Altitude/Azimut Solaire Réel
-                const alt = (sun.alt * 180 / Math.PI).toFixed(4);
-                document.getElementById('val-astro').innerText = `SUN ALT: ${alt}°`;
-            },
-
-            updateUI() {
-                document.getElementById('disp-v').innerText = this.state.velocity.toFixed(3);
-                document.getElementById('val-gamma').innerText = this.state.gamma.toFixed(10);
-            },
-
-            // --- 5. DOUBLE SCELLAGE CRYPTOGRAPHIQUE ---
-            async generateSeal() {
-                const timestamp = new Date().toISOString();
-                // Payload incluant Physique + Thermique + Bruit
-                const payload = {
-                    time: timestamp,
-                    v_final: this.state.velocity.toString(),
-                    gamma: this.state.gamma.toString(),
-                    thermal_sig: this.state.temp.toFixed(4),
-                    noise_sig: this.state.sigma.toString()
-                };
-
-                const jsonString = JSON.stringify(payload);
-                const salt = "ARCHE_V100_SOUVERAIN_KEY";
-                
-                // Hash SHA-256
-                const msgBuffer = new TextEncoder().encode(jsonString + salt);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-                // Affichage final
-                document.getElementById('hash-display').innerText = "CERTIFICAT SCELLÉ : " + hashHex;
-                document.getElementById('hash-display').style.color = "var(--space-gold)";
-                document.getElementById('status-msg').innerText = "EXPÉDITION TERMINÉE & VALIDÉE";
-                
-                // Arrêt moteur
-                window.removeEventListener('devicemotion', (e) => this.processPhysics(e));
-                console.log("Rapport JSON:", jsonString);
-                alert("Rapport Scellé généré dans la console.");
-            }
+    async start() {
+        const btn = document.getElementById('btn-main');
+        if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
+        
+        btn.disabled = true;
+        let samples = { x: [], y: [], z: [] };
+        
+        const monitor = (e) => {
+            samples.x.push(e.acceleration.x);
+            samples.y.push(e.acceleration.y);
+            samples.z.push(e.acceleration.z);
         };
 
-        // Horloge système
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('system-clock').innerText = now.toLocaleTimeString();
-        }, 1000);
+        window.addEventListener('devicemotion', monitor);
+        for(let i=10; i>0; i--) {
+            btn.innerText = `CALIBRATION : ${i}s`;
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        window.removeEventListener('devicemotion', monitor);
 
-    </script>
+        // Calcul du Biais (Offset constant) et du Sigma (Bruit)
+        this.state.bias.x = _BN(math.mean(samples.x));
+        this.state.bias.y = _BN(math.mean(samples.y));
+        this.state.bias.z = _BN(math.mean(samples.z));
+        this.state.sigma = _BN(math.std(samples.x));
+        
+        document.getElementById('ui-sigma').innerText = this.state.sigma.toFixed(8);
+        this.state.isCalibrated = true;
+        this.engine();
+    },
+
+    engine() {
+        document.getElementById('btn-main').innerText = "SYSTÈME ACTIF (MESURE EN COURS)";
+        document.getElementById('btn-csv').disabled = false;
+        
+        window.addEventListener('devicemotion', (e) => {
+            const dt = _BN(e.interval / 1000);
+            const raw = e.acceleration;
+            if(!raw.x) return;
+
+            // 1. Correction du Biais & Filtre Deadzone (2*sigma)
+            const clean = (val, bias) => {
+                let v = math.subtract(_BN(val), bias);
+                return math.abs(v).gt(math.multiply(this.state.sigma, 2)) ? v : _BN(0);
+            };
+
+            const ax = clean(raw.x, this.state.bias.x);
+            const ay = clean(raw.y, this.state.bias.y);
+            const az = clean(raw.z, this.state.bias.z);
+
+            // 2. Intégration Vectorielle
+            this.state.v.x = math.add(this.state.v.x, math.multiply(ax, dt));
+            this.state.v.y = math.add(this.state.v.y, math.multiply(ay, dt));
+            this.state.v.z = math.add(this.state.v.z, math.multiply(az, dt));
+
+            const vNorm = math.norm([this.state.v.x, this.state.v.y, this.state.v.z]);
+
+            // 3. Relativité
+            const gamma = math.divide(_BN(1), math.sqrt(math.subtract(_BN(1), math.divide(math.pow(vNorm, 2), math.pow(C, 2)))));
+
+            // 4. Update UI
+            document.getElementById('disp-v').innerText = vNorm.toFixed(6);
+            document.getElementById('ui-gamma').innerText = gamma.toFixed(10);
+            document.getElementById('ui-mode').innerText = (math.norm([e.accelerationIncludingGravity.x, e.accelerationIncludingGravity.y, e.accelerationIncludingGravity.z]) < 1) ? "EINSTEIN" : "NEWTON";
+            
+            // Logging
+            if(this.state.logs.length < 5000) {
+                this.state.logs.push({ t: Date.now(), v: vNorm.toString(), g: gamma.toString() });
+            }
+        });
+    },
+
+    exportCSV() {
+        let content = "timestamp,velocity_ms,gamma\n";
+        this.state.logs.forEach(l => content += `${l.t},${l.v},${l.g}\n`);
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `arche_v100_data.csv`; a.click();
+    }
+};
+
+setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); }, 1000);
+</script>
 </body>
-    </html>
+</html>
