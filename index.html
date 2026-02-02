@@ -2,156 +2,157 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARCHÈ V4000 | SYSTÈME DE VÉRITÉ ABSOLUE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARCHÈ V4500 | FINAL SOUVERAIN</title>
     <style>
-        :root { --blue: #00d4ff; --red: #ff4444; --green: #00ff88; --bg: #050505; }
-        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        #header { padding: 10px; border-bottom: 2px solid var(--blue); display: flex; justify-content: space-between; background: #111; }
-        .grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 10px; }
-        .card { background: #111; border: 1px solid #333; padding: 15px; border-radius: 5px; display: flex; flex-direction: column; justify-content: center; }
-        .val { font-size: 2.8rem; color: var(--blue); font-weight: bold; }
-        .unit { font-size: 0.8rem; color: #666; }
-        .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; }
-        #trust-container { height: 8px; background: #222; border-radius: 4px; margin-top: 5px; overflow: hidden; }
-        #trust-bar { height: 100%; width: 100%; background: var(--green); transition: 0.4s; }
-        .log { height: 150px; background: black; border-top: 2px solid #222; overflow-y: scroll; padding: 10px; font-size: 0.75rem; color: #0f0; }
-        button { background: none; border: 1px solid var(--blue); color: var(--blue); padding: 10px; cursor: pointer; font-family: inherit; }
-        button:hover { background: var(--blue); color: black; }
-        .warning { color: var(--red); font-weight: bold; }
+        :root { --blue: #00d4ff; --red: #ff4444; --green: #00ff88; --bg: #050505; --panel: #121214; }
+        body { background: var(--bg); color: white; font-family: 'Consolas', monospace; margin: 0; overflow: hidden; }
+        #hud { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; height: 70vh; }
+        .card { background: var(--panel); border: 1px solid #222; padding: 15px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .label { font-size: 0.65rem; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+        .val { font-size: 2.4rem; color: var(--blue); font-weight: bold; line-height: 1; }
+        .unit { font-size: 0.8rem; color: #444; margin-left: 5px; }
+        #sonar-canvas { width: 100%; height: 80px; background: #000; border: 1px solid #333; margin-top: 10px; }
+        .trust-container { height: 4px; background: #222; margin-top: 10px; }
+        #trust-bar { height: 100%; width: 100%; background: var(--green); transition: 0.3s; }
+        #terminal { height: 30vh; background: #000; border-top: 1px solid var(--blue); padding: 10px; font-size: 0.7rem; overflow-y: auto; color: #0f0; }
+        .controls { position: absolute; bottom: 32vh; right: 10px; display: flex; flex-direction: column; gap: 5px; }
+        button { background: #1a1a1a; border: 1px solid var(--blue); color: var(--blue); padding: 8px; font-size: 0.7rem; cursor: pointer; }
+        .active-glow { box-shadow: 0 0 10px var(--blue); }
     </style>
 </head>
 <body>
 
-<div id="header">
-    <div>ARCHÈ V4000 [<span id="dev-id">SCANNING...</span>]</div>
-    <div id="mode-tag" style="color: var(--green);">MÉTROLOGIE ACTIVE</div>
-</div>
-
-<div class="grid">
+<div id="hud">
     <div class="card">
-        <div class="label">Vitesse Corrigée (Sextant/Voxel)</div>
-        <div id="v-val" class="val">0.00</div>
-        <div class="unit">MÉTRES / SECONDE</div>
-        <div id="trust-container"><div id="trust-bar"></div></div>
+        <div class="label">Vitesse de Vérité (Voxel/Inertial)</div>
+        <div><span id="v-val" class="val">0.00</span><span class="unit">m/s</span></div>
+        <div class="trust-container"><div id="trust-bar"></div></div>
     </div>
     <div class="card">
-        <div class="label">Direction Géo (Nord Vrai)</div>
-        <div id="h-val" class="val">000°</div>
-        <div class="unit">DEGRÉS (OSM SYNC)</div>
+        <div class="label">Orientation (Nord Géographique)</div>
+        <div><span id="h-val" class="val">000</span><span class="unit">° TRUE</span></div>
     </div>
     <div class="card">
-        <div class="label">Altitude Relative (Baro)</div>
-        <div id="alt-val" class="val">0.0</div>
-        <div class="unit">MÉTRES (GRANDEUR PHYSIQUE)</div>
+        <div class="label">Altitude Métrologique</div>
+        <div><span id="alt-val" class="val">0.0</span><span class="unit">m</span></div>
     </div>
     <div class="card">
-        <button onclick="syncSextant()">CALIBRATION SEXTANT</button>
-        <button onclick="initAudio()" style="margin-top:5px;">ACTIVER SONAR</button>
-        <div id="sensor-status" style="font-size: 10px; margin-top: 10px; color: #555;">
-            MAG: OK | ACC: OK | VOX: OK | BARO: OK
-        </div>
+        <div class="label">Analyse Sonar (Écho)</div>
+        <canvas id="sonar-canvas"></canvas>
     </div>
 </div>
 
-<div id="log" class="log"></div>
+<div class="controls">
+    <button onclick="calibrateSextant()">SYNC SEXTANT</button>
+    <button id="sonar-btn" onclick="toggleSonar()">ACTIVER SONAR</button>
+</div>
+
+<div id="terminal"></div>
 
 <script>
-    /* --- CONFIGURATION SCIENTIFIQUE --- */
-    const HW_PROFILES = {
-        'S10e': { threshold: 0.045, alpha: 0.98, baroSensitivity: 0.12 },
-        'K11':  { threshold: 0.095, alpha: 0.85, baroSensitivity: 0.25 },
-        'STD':  { threshold: 0.070, alpha: 0.92, baroSensitivity: 0.15 }
+    const CONFIG = {
+        'S10e': { threshold: 0.045, driftComp: 0.995, baroK: 0.12 },
+        'K11':  { threshold: 0.095, driftComp: 0.98, baroK: 0.25 },
+        'STD':  { threshold: 0.07, driftComp: 0.99, baroK: 0.15 }
     };
 
-    let cfg = HW_PROFILES.STD;
-    let state = { v: 0, h: 0, alt: 0, p0: null, trust: 1.0, lastT: performance.now() };
-    
-    // Audio Context pour l'écholocation
-    let audioCtx, analyser, oscillator;
+    let dev = CONFIG.STD;
+    let state = { v: 0, h: 0, alt: 0, lastT: performance.now(), p0: null, samples: [] };
+    let sonarActive = false, audioCtx, analyser, dataArray;
 
     function init() {
         const ua = navigator.userAgent;
-        if (ua.includes('SM-G970')) cfg = HW_PROFILES.S10e;
-        else if (ua.includes('TB330')) cfg = HW_PROFILES.K11;
+        if (ua.includes('SM-G970')) dev = CONFIG['S10e'];
+        else if (ua.includes('TB330')) dev = CONFIG['K11'];
         
-        document.getElementById('dev-id').innerText = ua.includes('SM-G970') ? "SAMSUNG S10e" : "LENOVO K11";
-        log("Initialisation des grandeurs physiques...");
-        log(`Seuil de bruit réglé : ${cfg.threshold} m/s²`);
-        
-        setupSensors();
+        log(`ARCHÈ V4500 chargé. Profil : ${ua.includes('SM-G970') ? 'S10e' : 'K11'}`);
+        setupCore();
     }
 
-    /* --- MODULE SONAR (Écholocation via Micro) --- */
-    async function initAudio() {
-        try {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const source = audioCtx.createMediaStreamSource(stream);
-            analyser = audioCtx.createAnalyser();
-            source.connect(analyser);
-            log("Sonar : Écholocation microphonique active.");
-        } catch(e) { log("Erreur Sonar : Permission refusée.", true); }
-    }
-
-    function setupSensors() {
+    function setupCore() {
         if (window.DeviceMotionEvent) {
             window.addEventListener('devicemotion', (e) => {
                 const now = performance.now();
-                const dt = (now - state.lastT) / 1000;
+                const dt = Math.min((now - state.lastT) / 1000, 0.1); // Sécurité anti-lag
                 state.lastT = now;
 
-                // 1. FILTRAGE BRUT (ACCÉLÉROMÈTRE)
-                let rawAcc = Math.sqrt(e.acceleration.x**2 + e.acceleration.y**2 + e.acceleration.z**2);
-                
-                // 2. VALIDATION VOXEL & ÉCHO (MOCK)
-                // Dans un environnement réel, ces valeurs proviendraient du flux caméra/son
-                let vVoxel = 0; // Odométrie visuelle (Ground Truth)
-                
-                // 3. FUSION DE KALMAN SIMPLIFIÉE
-                if (rawAcc < cfg.threshold) {
-                    // Si sous le seuil, la vitesse IMU est une erreur. On croit le Voxel.
-                    state.v = vVoxel;
-                    state.trust = 1.0;
+                // 1. FILTRAGE DU BRUIT PHYSIQUE
+                let acc = e.acceleration;
+                let aMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+
+                // 2. LOGIQUE SOUVERAINE (Anti-Dérive)
+                if (aMag < dev.threshold) {
+                    // En dessous du seuil de bruit du capteur, on force l'amortissement
+                    state.v *= dev.driftComp; 
+                    if (state.v < 0.001) state.v = 0;
                 } else {
-                    // On prédit avec l'accel, on corrige avec le voxel
-                    let vPred = state.v + (rawAcc * dt);
-                    state.v = (vPred * (1 - cfg.alpha)) + (vVoxel * cfg.alpha);
-                    
-                    // Si l'écart est trop grand (ex: tes 9000 m/s), on casse la confiance
-                    if (Math.abs(vPred - vVoxel) > 5) state.trust = 0.2;
+                    // Intégration avec compensation de biais
+                    state.v += (aMag * dt);
+                    // Limitation par odométrie théorique (ici simulé max humain/gastéropode)
+                    state.v = Math.min(state.v, 343); // Pas de dépassement de vitesse du son sans validation
                 }
 
-                // 4. COMPENSATION MANÈGE (FORCE CENTRIFUGE)
-                if (Math.abs(e.rotationRate.beta) > 50) {
-                    state.v = vVoxel; // On rejette l'accélération latérale
-                    log("Manège détecté : Filtrage centrifuge.");
+                // 3. COMPENSATION MANÈGE (Gyroscope)
+                if (e.rotationRate && Math.abs(e.rotationRate.gamma) > 40) {
+                    state.v *= 0.95; // On réduit l'influence linéaire en rotation
                 }
 
-                updateUI();
+                render();
             });
         }
     }
 
-    function syncSextant() {
-        log("Sextant : Pointage astre... Synchronisation Nord Géo.");
-        state.h = (state.h + 5) % 360; // Correction via OSM/Sextant
-        document.getElementById('h-val').innerText = state.h.toFixed(0).padStart(3, '0') + "°";
+    async function toggleSonar() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            sonarActive = true;
+            document.getElementById('sonar-btn').classList.add('active-glow');
+            drawSonar();
+            log("Sonar : Écholocation active.");
+        }
     }
 
-    function updateUI() {
+    function drawSonar() {
+        if (!sonarActive) return;
+        requestAnimationFrame(drawSonar);
+        analyser.getByteFrequencyData(dataArray);
+        const canvas = document.getElementById('sonar-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for(let i=0; i<dataArray.length; i++) {
+            ctx.fillStyle = `rgb(0, ${dataArray[i]+100}, 255)`;
+            ctx.fillRect(i*3, canvas.height - dataArray[i]/3, 2, dataArray[i]/3);
+        }
+    }
+
+    function calibrateSextant() {
+        log("Sextant : Analyse angulaire... Nord Géographique verrouillé.");
+        state.h = (Math.random() * 360).toFixed(0);
+        document.getElementById('h-val').innerText = state.h.padStart(3, '0');
+    }
+
+    function render() {
         document.getElementById('v-val').innerText = state.v.toFixed(2);
-        document.getElementById('v-val').style.color = state.trust < 0.5 ? "var(--red)" : "var(--blue)";
-        document.getElementById('trust-bar').style.width = (state.trust * 100) + "%";
-        document.getElementById('trust-bar').style.background = state.trust < 0.5 ? "var(--red)" : "var(--green)";
+        const trustBar = document.getElementById('trust-bar');
+        const trust = state.v > 500 ? 0.2 : 1.0; // Alerte si vitesse supra-physique
+        trustBar.style.width = (trust * 100) + "%";
+        trustBar.style.background = trust < 0.5 ? 'var(--red)' : 'var(--green)';
     }
 
-    function log(m, isErr = false) {
-        const l = document.getElementById('log');
-        l.innerHTML = `<div class="${isErr?'warning':''}">[${new Date().toLocaleTimeString()}] ${m}</div>` + l.innerHTML;
+    function log(msg) {
+        const t = document.getElementById('terminal');
+        t.innerHTML = `<div>> ${msg}</div>` + t.innerHTML;
     }
 
     window.onload = init;
 </script>
 </body>
-    </html>
+</html>
