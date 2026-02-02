@@ -3,268 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHÈ V8000 | SINGULARITY</title>
+    <title>ARCHÈ X-12 | SOUVERAINETÉ TOTALE</title>
     <style>
-        :root { --blue: #00d4ff; --red: #ff4444; --green: #00ff88; --orange: #ffaa00; --bg: #020202; }
-        body { background: var(--bg); color: white; font-family: 'Consolas', monospace; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        :root { --green: #0f0; --red: #f00; --blue: #00d4ff; --gold: #ffaa00; --bg: #000; }
+        body { background: var(--bg); color: var(--green); font-family: 'Consolas', monospace; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* HUD & MATRICE */
-        #hud { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 10px; flex: 1; }
-        .card { background: #08080a; border: 1px solid #1a1a1c; padding: 12px; display: flex; flex-direction: column; position: relative; }
-        .label { font-size: 0.6rem; color: #555; text-transform: uppercase; letter-spacing: 1px; }
-        .val { font-size: 2.2rem; color: var(--blue); font-weight: bold; }
-        
-        #state-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: #000; padding: 5px; height: 120px; }
-        .state-led { font-size: 0.5rem; background: #0a0a0a; color: #222; display: flex; align-items: center; justify-content: center; text-align: center; border: 1px solid #111; text-transform: uppercase; }
-        .state-led.on { background: #002233; color: var(--blue); border-color: var(--blue); box-shadow: inset 0 0 5px var(--blue); }
-        .state-led.alert { background: #330000; color: var(--red); border-color: var(--red); }
+        #cockpit { position: relative; flex: 3; border: 2px solid #333; margin: 5px; overflow: hidden; }
+        #ahrs-sky { position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(to bottom, #001a33 50%, #1a0d00 50%); transform-origin: center; z-index: 0; }
+        #ahrs-line { position: absolute; top: 50%; left: 5%; width: 90%; height: 1px; background: rgba(255,255,0,0.5); z-index: 10; }
 
-        /* OSCILLOSCOPE & SONAR */
-        #visuals { height: 100px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-top: 1px solid #222; }
-        canvas { width: 100%; height: 100%; background: #000; }
+        .inst { position: absolute; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--green); z-index: 20; }
+        #speed-tape { top: 20px; left: 20px; border-left: 4px solid var(--blue); }
+        #alt-tape { top: 20px; right: 20px; text-align: right; border-right: 4px solid var(--gold); }
+        #g-load { bottom: 20px; left: 20px; font-weight: bold; }
+        #confidence { bottom: 20px; right: 20px; font-size: 0.7rem; border-color: #444; }
+
+        #state-matrix { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; padding: 5px; background: #050505; border-top: 1px solid #333; }
+        .state-led { font-size: 0.55rem; border: 1px solid #111; color: #222; display: flex; align-items: center; justify-content: center; text-transform: uppercase; }
+        .state-led.on { color: var(--blue); border-color: var(--blue); background: rgba(0, 212, 255, 0.1); }
+        .state-led.alert { color: var(--red); border-color: var(--red); animation: blink 0.5s infinite; }
+
+        #camera-voxel { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 80px; height: 45px; opacity: 0.2; border: 1px solid #333; pointer-events: none; }
+        button { background: #002200; color: var(--green); border: 1px solid var(--green); padding: 20px; cursor: pointer; width: 100%; font-size: 1.2rem; font-family: inherit; }
         
-        #terminal { height: 15vh; background: #000; border-top: 1px solid #222; padding: 8px; font-size: 0.65rem; overflow-y: auto; color: #0f0; }
-        
-        /* OVERLAYS */
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #camera-vox { position: absolute; top: 5px; right: 5px; width: 80px; height: 45px; border: 1px solid #333; opacity: 0.5; object-fit: cover; pointer-events: none; }
-        
-        .btn-main { background: none; border: 1px solid var(--blue); color: var(--blue); padding: 20px 40px; cursor: pointer; font-family: inherit; }
+        @keyframes blink { 50% { opacity: 0.2; } }
     </style>
 </head>
 <body>
 
-<div id="overlay">
-    <div id="calib-status">SYSTÈME PRÊT : SOUVERAINETÉ TOTALE</div>
-    <div style="width:200px; height:2px; background:#111; margin: 20px 0;"><div id="loader" style="width:0%; height:100%; background:var(--blue)"></div></div>
-    <button class="btn-main" onclick="startCalibration()">LANCER CALIBRATION</button>
-</div>
+<div id="cockpit">
+    <div id="ahrs-sky"></div>
+    <div id="ahrs-line"></div>
+    <video id="camera-voxel" autoplay playsinline></video>
 
-<video id="camera-vox" autoplay playsinline></video>
-
-<div id="hud">
-    <div class="card">
-        <div class="label">Vérité Inertielle (m/s)</div>
-        <div id="v-val" class="val">0.00</div>
-        <div id="vector-dir" style="font-size:0.6rem; color:var(--orange)">AXE NEUTRE</div>
+    <div id="speed-tape" class="inst">
+        <div style="font-size:0.6rem">TAS (m/s)</div>
+        <div id="val-speed" style="font-size:2.2rem">0.00</div>
+        <div id="val-kmh" style="font-size:0.7rem; color:var(--blue)">0 km/h</div>
     </div>
-    <div class="card">
-        <div class="label">Vecteur Gravité (G)</div>
-        <div id="g-val" class="val">1.00</div>
+
+    <div id="alt-tape" class="inst">
+        <div style="font-size:0.6rem">VARIO (m/s)</div>
+        <div id="val-climb" style="font-size:2.2rem">+0.0</div>
     </div>
+
+    <div id="g-load" class="inst">G: 1.00</div>
+    <div id="confidence" class="inst">CONFIDENCE: --%</div>
 </div>
 
-<div id="state-grid"></div>
+<div id="state-matrix"></div>
 
-<div id="visuals">
-    <canvas id="oscillo"></canvas>
-    <canvas id="sonar"></canvas>
-</div>
-
-<div id="terminal"></div>
+<button id="boot-btn" onclick="initSovereign()">LANCER SOUVERAINETÉ X-12</button>
 
 <script>
-    // --- CONFIGURATION MÉTROLOGIQUE ---
     const STATES = [
-        "ACCEL", "DECEL", "CONST", "STILL", 
-        "FREEFALL", "G-LOAD", "LIGHT", "IMPACT",
-        "ROLL-L", "ROLL-R", "PITCH", "SPIN",
-        "NOISE", "RESO", "SHOCK", "VIBE",
-        "DRIFT", "FRIC", "LOCK", "BOUNCE",
-        "SATUR", "LOSS", "CALIB", "SLEEP"
+        "ACCEL", "DECEL", "CONST", "STILL", "FREEFALL", "G-LOAD",
+        "ROLL-L", "ROLL-R", "PITCH-U", "PITCH-D", "SPIN", "IMPACT",
+        "NOISE", "RESO", "SHOCK", "VIBE", "DRIFT", "FRIC",
+        "SATUR", "LOSS", "CALIB", "VOXEL", "DARK", "SLEEP"
     ];
 
-    let state = { 
-        v: 0, bias: 0, lastT: performance.now(), 
-        isCalibrated: false, motion: 0,
-        historyA: [], blackBox: [] 
+    let sys = {
+        v: 0, pitch: 0, roll: 0, lastT: 0, motion: 0, 
+        bias: 0.05, trust: 0, active: false,
+        profile: "GENERIC"
     };
-    
-    let canvasO, ctxO, canvasS, ctxS, audio, analyser, dataArray, prevFrame;
 
-    // --- 1. INITIALISATION & CALIBRATION ---
-    function initGrid() {
-        const grid = document.getElementById('state-grid');
+    // --- 1. AUTO-DÉTECTION MATÉRIELLE ---
+    function autoDetect() {
+        const ua = navigator.userAgent;
+        if (ua.includes("SM-G970")) {
+            sys.profile = "S10e";
+            sys.bias = 0.035; // Capteur haute précision
+        } else if (ua.includes("Lenovo") || window.innerWidth > 900) {
+            sys.profile = "LENOVO";
+            sys.bias = 0.075; // Plus de bruit de châssis
+        }
+        console.log("Profile Hardware : " + sys.profile);
+    }
+
+    // --- 2. INITIALISATION ---
+    function initSovereign() {
+        autoDetect();
+        document.getElementById('boot-btn').style.display = 'none';
+        
+        const matrix = document.getElementById('state-matrix');
         STATES.forEach(s => {
             let div = document.createElement('div');
             div.className = 'state-led';
-            div.id = 'state-' + s;
+            div.id = 's-' + s;
             div.innerText = s;
-            grid.appendChild(div);
+            matrix.appendChild(div);
         });
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(stream => { document.getElementById('camera-voxel').srcObject = stream; startVoxel(); })
+            .catch(() => { updateState("DARK", true); });
+
+        window.addEventListener('deviceorientation', e => {
+            sys.pitch = e.beta || 0; sys.roll = e.gamma || 0;
+            updateAHRS();
+        });
+
+        window.addEventListener('devicemotion', processInertia);
+        sys.lastT = performance.now();
+        sys.active = true;
     }
 
-    async function startCalibration() {
-        initGrid();
-        const btn = document.querySelector('.btn-main');
-        btn.style.display = 'none';
+    // --- 3. MOTEUR PHYSIQUE SANS TRICHE ---
+    function processInertia(e) {
+        if(!sys.active) return;
+        const now = performance.now();
+        const dt = Math.min((now - sys.lastT) / 1000, 0.1);
+        sys.lastT = now;
+
+        const acc = e.accelerationIncludingGravity;
+        if (!acc) return;
+
+        let activeStates = new Set();
+
+        // Trigonométrie de projection (Soustraction de Gravité)
+        const radP = sys.pitch * (Math.PI / 180);
+        const radR = sys.roll * (Math.PI / 180);
         
-        let samples = [];
-        let count = 0;
-        
-        // Démarrage Vidéo Voxel
-        const video = document.getElementById('camera-vox');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            startVoxelProcessor(video);
-        } catch(e) { log("Voxel : Capteur visuel non disponible."); }
+        // Calcul théorique de la pesanteur sur l'axe Y local
+        const gravityY = 9.81 * Math.sin(radP);
+        const linearAccel = (acc.y || 0) - gravityY;
 
-        const calibLoop = setInterval(() => {
-            count++;
-            document.getElementById('loader').style.width = (count * 2) + "%";
-            document.getElementById('calib-status').innerText = "MESURE DU BRUIT THERMIQUE...";
-            
-            if(count >= 50) {
-                clearInterval(calibLoop);
-                state.bias = samples.reduce((a,b)=>a+b, 0) / samples.length;
-                state.isCalibrated = true;
-                document.getElementById('overlay').style.display = 'none';
-                log(`Calibration OK. Biais soustrait : ${state.bias.toFixed(4)} m/s²`);
-                bootEngine();
-            }
-        }, 100);
-
-        window.addEventListener('devicemotion', (e) => {
-            if(!state.isCalibrated) {
-                let a = e.acceleration;
-                if(a) samples.push(Math.sqrt(a.x**2 + a.y**2 + a.z**2));
-            }
-        });
-    }
-
-    // --- 2. MOTEUR DE VÉRITÉ (VECTORIEL & INERTIEL) ---
-    function bootEngine() {
-        canvasO = document.getElementById('oscillo');
-        ctxO = canvasO.getContext('2d');
-        
-        window.addEventListener('devicemotion', (e) => {
-            const now = performance.now();
-            const dt = Math.min((now - state.lastT) / 1000, 0.1);
-            state.lastT = now;
-
-            const acc = e.acceleration;
-            const gAcc = e.accelerationIncludingGravity;
-            const rot = e.rotationRate;
-            
-            let activeStates = new Set();
-
-            // --- ANALYSE VECTORIELLE (AXE Y S10e) ---
-            let aRaw = acc ? acc.y : 0;
-            let aCorrected = (Math.abs(aRaw) < state.bias * 1.5) ? 0 : aRaw;
-
-            // LOI D'INERTIE & ANTI-ILLUSION
-            const isVisualMoving = state.motion > 15;
-            
-            if (aCorrected !== 0) {
-                if(aCorrected > 0) activeStates.add("ACCEL");
-                else activeStates.add("DECEL");
-                state.v += aCorrected * dt;
-            } else if (state.v > 0.05) {
-                // INERTIE : La vitesse tient !
+        // Validation du mouvement par seuil de bruit
+        if (Math.abs(linearAccel) > sys.bias) {
+            if (linearAccel > 0) activeStates.add("ACCEL"); else activeStates.add("DECEL");
+            sys.v += linearAccel * dt;
+        } else {
+            // Friction naturelle (Perte d'énergie réelle)
+            if (sys.v > 0.01) {
                 activeStates.add("CONST");
-                state.v *= (isVisualMoving ? 0.999 : 0.98); // Moins de friction si confirmé par Voxel
+                sys.v *= (sys.motion > 15 ? 0.999 : 0.985); 
             } else {
                 activeStates.add("STILL");
-                state.v = 0;
+                sys.v = 0;
             }
-
-            // --- ANALYSE GRAVITÉ ---
-            if(gAcc) {
-                let g = Math.sqrt(gAcc.x**2 + gAcc.y**2 + gAcc.z**2) / 9.81;
-                document.getElementById('g-val').innerText = g.toFixed(2);
-                if(g < 0.2) activeStates.add("FREEFALL");
-                if(g > 1.5) activeStates.add("G-LOAD");
-            }
-
-            // --- GESTION DES 24 ÉTATS & UI ---
-            updateStatesUI(activeStates);
-            state.v = Math.max(0, state.v);
-            document.getElementById('v-val').innerText = state.v.toFixed(2);
-            
-            state.historyA.push(aCorrected);
-            if(state.historyA.length > 100) state.historyA.shift();
-            drawOscillo();
-        });
-    }
-
-    // --- 3. VOXEL-PROXY & SONAR (SANS TRICHE) ---
-    function startVoxelProcessor(video) {
-        const vCanvas = document.createElement('canvas');
-        const vCtx = vCanvas.getContext('2d');
-        setInterval(() => {
-            if(!video.videoWidth) return;
-            vCanvas.width = 32; vCanvas.height = 32;
-            vCtx.drawImage(video, 0, 0, 32, 32);
-            const data = vCtx.getImageData(0, 0, 32, 32).data;
-            if(prevFrame) {
-                let diff = 0;
-                for(let i=0; i<data.length; i+=4) diff += Math.abs(data[i] - prevFrame[i]);
-                state.motion = diff / 500;
-            }
-            prevFrame = data;
-        }, 150);
-    }
-
-    async function toggleSonar() {
-        // Optionnel : Automatisé au boot si nécessaire
-        audio = new (window.AudioContext || window.webkitAudioContext)();
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = audio.createMediaStreamSource(stream);
-        analyser = audio.createAnalyser();
-        analyser.fftSize = 64;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        source.connect(analyser);
-        renderSonar();
-    }
-
-    // --- VISUALISATION ---
-    function drawOscillo() {
-        ctxO.clearRect(0,0,canvasO.width, canvasO.height);
-        ctxO.beginPath();
-        ctxO.strokeStyle = varColor();
-        let step = canvasO.width / 100;
-        for(let i=0; i<state.historyA.length; i++){
-            let x = i*step;
-            let y = (canvasO.height/2) - (state.historyA[i]*15);
-            if(i==0) ctxO.moveTo(x,y); else ctxO.lineTo(x,y);
         }
-        ctxO.stroke();
+
+        // --- G-FORCE ET ÉTATS ---
+        const g = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.81;
+        document.getElementById('g-load').innerText = `G: ${g.toFixed(2)}`;
+        if (g > 1.8) activeStates.add("G-LOAD");
+        if (g < 0.4) activeStates.add("FREEFALL");
+        if (Math.abs(sys.roll) > 30) activeStates.add(sys.roll > 0 ? "ROLL-R" : "ROLL-L");
+        if (Math.abs(sys.pitch) > 25) activeStates.add(sys.pitch > 0 ? "PITCH-U" : "PITCH-D");
+
+        // --- CALCUL DE LA CONFIANCE ---
+        // Si Voxel confirme l'inertie, confiance ++
+        let confidence = 50;
+        if (sys.motion > 10 && Math.abs(linearAccel) > sys.bias) confidence += 40;
+        if (sys.v === 0 && sys.motion < 5) confidence = 100;
+        document.getElementById('confidence').innerText = `CONFIDENCE: ${confidence}%`;
+
+        updateUI(activeStates, g, radP);
     }
 
-    function renderSonar() {
-        requestAnimationFrame(renderSonar);
-        if(!analyser) return;
-        analyser.getByteFrequencyData(dataArray);
-        ctxS = document.getElementById('sonar').getContext('2d');
-        ctxS.fillStyle = 'rgba(0,0,0,0.2)';
-        ctxS.fillRect(0,0,300,150);
-        dataArray.forEach((v, i) => {
-            ctxS.fillStyle = `rgb(0, ${v+50}, 255)`;
-            ctxS.fillRect(i*10, 100-v/3, 8, v/3);
-        });
+    // --- 4. VOXEL-PROXY (FLUX OPTIQUE) ---
+    function startVoxel() {
+        const v = document.getElementById('camera-voxel');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let prev = null;
+        setInterval(() => {
+            if (!sys.active) return;
+            canvas.width = 32; canvas.height = 32;
+            ctx.drawImage(v, 0, 0, 32, 32);
+            let curr = ctx.getImageData(0,0,32,32).data;
+            if (prev) {
+                let d = 0; for(let i=0; i<curr.length; i+=16) d += Math.abs(curr[i]-prev[i]);
+                sys.motion = d / 200;
+                if (sys.motion > 20) updateState("VOXEL", true);
+            }
+            prev = curr;
+        }, 120);
     }
 
-    function updateStatesUI(activeSet) {
+    function updateAHRS() {
+        const sky = document.getElementById('ahrs-sky');
+        const sens = sys.profile === "LENOVO" ? 3.5 : 4; 
+        sky.style.transform = `rotate(${-sys.roll}deg) translateY(${sys.pitch * sens}px)`;
+    }
+
+    function updateUI(activeSet, g, radP) {
+        document.getElementById('val-speed').innerText = Math.abs(sys.v).toFixed(2);
+        document.getElementById('val-kmh').innerText = (Math.abs(sys.v) * 3.6).toFixed(0) + " km/h";
+        document.getElementById('val-climb').innerText = (sys.v * Math.sin(radP)).toFixed(1);
+
         STATES.forEach(s => {
-            const el = document.getElementById('state-' + s);
-            if(activeSet.has(s)) el.classList.add('on');
-            else el.classList.remove('on');
+            const el = document.getElementById('s-' + s);
+            if (activeSet.has(s)) el.classList.add('on');
+            else if (s !== "VOXEL" && s !== "DARK") el.classList.remove('on');
         });
     }
 
-    function varColor() {
-        let last = state.historyA[state.historyA.length-1];
-        return last > 0 ? '#ff4444' : (last < 0 ? '#00d4ff' : '#555');
+    function updateState(id, on) {
+        const el = document.getElementById('s-' + id);
+        if (el) on ? el.classList.add('on') : el.classList.remove('on');
     }
-
-    function log(m) {
-        const t = document.getElementById('terminal');
-        t.innerHTML = `<div>> ${m}</div>` + t.innerHTML;
-        t.scrollTop = 0;
-    }
-
-    window.onload = () => { if(confirm("Activer le SONAR Spectral ?")) toggleSonar(); };
 </script>
 </body>
-    </html>
+</html>
