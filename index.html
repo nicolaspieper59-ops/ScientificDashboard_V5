@@ -4,27 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ARCHÈ X-13 | TOTAL FUSION</title>
-    <script src="ephem.js"></script>
-    <style>
-        :root { --green: #0f0; --cyan: #00f2ff; --warn: #ffae00; --red: #ff3333; --bg: #000; }
-        body { background: var(--bg); color: var(--green); font-family: 'Consolas', monospace; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        
-        #hud-top { display: flex; justify-content: space-between; padding: 10px; background: #050505; border-bottom: 1px solid #333; font-size: 0.7rem; }
-        #main-display { position: relative; flex: 1; overflow: hidden; }
-        
-        .gauge { position: absolute; padding: 10px; border: 1px solid var(--green); background: rgba(0,0,0,0.8); z-index: 10; border-radius: 2px; }
-        #alt-baro { top: 20px; right: 20px; text-align: right; border-right: 5px solid var(--cyan); }
-        #astro-box { bottom: 20px; left: 20px; border-color: var(--cyan); color: var(--cyan); max-width: 250px; }
-        #audio-vis { bottom: 20px; right: 20px; width: 150px; height: 40px; border-color: #444; }
+    <script src="lib/ephem.js"></script>
 
-        /* Matrice 24 états compacte */
-        #matrix { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
-        .dot { width: 8px; height: 8px; background: #111; border: 1px solid #222; border-radius: 50%; }
-        .dot.active { background: var(--cyan); box-shadow: 0 0 5px var(--cyan); }
-
-        canvas#spectrogram { width: 100%; height: 100%; opacity: 0.5; }
-        #weather-log { position: absolute; top: 100px; left: 20px; font-size: 0.6rem; color: var(--warn); }
-    </style>
 </head>
 <body>
 
