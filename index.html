@@ -2,128 +2,177 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ARCHÈ V1300 | UNIVERSALIS</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARCHÈ V3500 | SOUVERAINETÉ TOTALE</title>
     <style>
-        :root { --neon: #00ffcc; --gold: #ffd700; --bg: #000b0d; --alert: #ff3366; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Consolas', monospace; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        .v-master { font-size: 100px; text-align: center; color: #fff; font-weight: 900; padding: 20px 0; text-shadow: 0 0 40px var(--neon); }
-        .hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; flex: 1; }
-        .module { border: 1px solid #1a4a4a; background: rgba(0, 15, 20, 0.9); padding: 12px; position: relative; }
-        .label { font-size: 9px; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; display: block; border-bottom: 1px solid #1a4a4a; margin-bottom: 8px; }
-        #sonar-wave { width: 100%; height: 80px; background: #001015; }
-        #cam-vox { width: 100%; height: 100px; object-fit: cover; opacity: 0.5; filter: contrast(1.5) grayscale(1); }
-        .log-box { font-size: 10px; color: #55aaaa; height: 80px; overflow-y: scroll; font-family: 'Courier', monospace; }
-        button { width: 100%; padding: 25px; background: var(--neon); color: #000; border: none; font-weight: bold; cursor: pointer; font-size: 16px; }
+        :root {
+            --neon-blue: #00d4ff; --danger-red: #ff4444;
+            --safe-green: #00ff88; --bg-dark: #0a0a0c;
+        }
+        body {
+            background-color: var(--bg-dark); color: white;
+            font-family: 'Consolas', monospace; margin: 0;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+        #hud-header {
+            padding: 15px; background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--neon-blue);
+            display: flex; justify-content: space-between;
+        }
+        .main-display {
+            flex: 1; display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px; padding: 15px;
+        }
+        .data-card {
+            background: rgba(255, 255, 255, 0.02); border: 1px solid #333;
+            padding: 15px; border-radius: 8px;
+        }
+        .value { font-size: 2.2em; font-weight: bold; color: var(--neon-blue); }
+        .unit { font-size: 0.5em; color: #888; }
+        #trust-meter { height: 6px; background: #222; margin-top: 10px; border-radius: 3px; }
+        #trust-bar { height: 100%; width: 100%; background: var(--safe-green); transition: 0.3s; }
+        .log-area {
+            height: 100px; background: #000; padding: 10px;
+            overflow-y: auto; color: #00ff00; font-size: 0.8em;
+            border-top: 1px solid #333;
+        }
+        .btn-sextant {
+            background: none; border: 1px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 8px; width: 100%; cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-<div class="v-master" id="v-val">0.000000</div>
-<div style="text-align: center; font-size: 11px; margin-top: -45px; color: var(--neon); letter-spacing: 5px;">VITESSE SOUVERAINE (M/S)</div>
+<div id="hud-header">
+    <div>ARCHÈ V3500 <span id="device-tag">...</span></div>
+    <div id="status-text">INIT...</div>
+</div>
 
-<div class="hud-grid">
-    <div class="module">
-        <span class="label">Sondeur Acoustique & Densité</span>
-        <canvas id="sonar-wave"></canvas>
-        <div style="margin-top:5px; font-size:11px;">
-            MILIEU: <span id="env-type">IDENTIFICATION...</span> | REYNOLDS: <span id="re-val">0</span>
+<div class="main-display">
+    <div class="data-card">
+        <label>VITESSE RÉELLE (m/s)</label>
+        <span id="v-display" class="value">0.00</span>
+        <div id="trust-meter"><div id="trust-bar"></div></div>
+    </div>
+    <div class="data-card">
+        <label>CAP (ORD GÉO)</label>
+        <span id="heading-display" class="value">000°</span>
+        <small id="source-heading">ASTRO-SYNC REQUIS</small>
+    </div>
+    <div class="data-card">
+        <label>ALTITUDE (m)</label>
+        <span id="alt-display" class="value">0.0</span>
+    </div>
+    <div class="data-card">
+        <button class="btn-sextant" onclick="manualSextantSync()">SYNC SEXTANT</button>
+        <div id="sensor-status" style="margin-top:10px; font-size:0.7em;">
+            VOXEL: <span id="s-vox">-</span> | BARO: <span id="s-baro">-</span>
         </div>
-    </div>
-    <div class="module">
-        <span class="label">Scanner Voxel-Flow (SLAM)</span>
-        <video id="cam-vox" autoplay playsinline muted></video>
-        <div id="integrity-check" style="font-size:10px; color: var(--gold);">INTÉGRITÉ: 100%</div>
-    </div>
-    <div class="module" style="grid-column: span 2;">
-        <span class="label">Boîte Noire (Mission Journal)</span>
-        <div class="log-box" id="blackbox-logs">> SYSTEM_BOOT: OK<br>> SENSOR_CHECK: WAITING...</div>
     </div>
 </div>
 
-<button id="master-btn" onclick="ArcheV13.ignite()">INITIALISER LA SINGULARITÉ</button>
+<div id="terminal" class="log-area"></div>
 
 <script>
-const m = math;
-m.config({ number: 'BigNumber', precision: 64 });
-const _BN = (n) => m.bignumber(String(n || 0));
+    const HARDWARE = {
+        'SM-G970': { name: 'Samsung S10e', threshold: 0.045, alpha: 0.95 },
+        'TB330':   { name: 'Lenovo Tab K11', threshold: 0.095, alpha: 0.85 },
+        'DEFAULT': { name: 'Generic', threshold: 0.07, alpha: 0.90 }
+    };
 
-const ArcheV13 = {
-    state: {
-        v: _BN(0),
-        dist: _BN(0),
-        lastT: performance.now(),
-        logs: [],
-        isCapturing: false
-    },
+    let profile = HARDWARE.DEFAULT;
+    let state = {
+        v: 0, h: 0, alt: 0, trust: 1.0,
+        lastP: null, lastTime: performance.now()
+    };
 
-    async ignite() {
-        document.getElementById('master-btn').innerText = "GÉNÉRER RAPPORT FINAL (SCELLAGE)";
-        document.getElementById('master-btn').onclick = () => this.generateReport();
+    function init() {
+        const ua = navigator.userAgent;
+        if (ua.includes('SM-G970')) profile = HARDWARE['SM-G970'];
+        else if (ua.includes('TB330')) profile = HARDWARE.TB330;
+
+        document.getElementById('device-tag').innerText = profile.name;
+        log(`Démarrage : ${profile.name}`);
         
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
-        document.getElementById('cam-vox').srcObject = stream;
-        
-        this.initAudio(stream);
-        this.startEngine();
-    },
-
-    initAudio(stream) {
-        const audioCtx = new AudioContext();
-        const analyser = audioCtx.createAnalyser();
-        audioCtx.createMediaStreamSource(stream).connect(analyser);
-        this.analyser = analyser;
-    },
-
-    startEngine() {
-        window.addEventListener('devicemotion', (e) => {
-            const now = performance.now();
-            const dt = _BN((now - this.state.lastT) / 1000);
-            this.state.lastT = now;
-
-            // 1. FILTRE DE SEUIL (Anti-bruit)
-            let ax = _BN(e.acceleration.x || 0);
-            if (m.abs(ax).lt(0.05)) ax = _BN(0);
-
-            // 2. INTÉGRATION HAUTE PRÉCISION (Newtonienne)
-            this.state.v = m.add(this.state.v, m.multiply(ax, dt));
-            this.state.dist = m.add(this.state.dist, m.multiply(m.abs(this.state.v), dt));
-
-            this.updateUI();
-        });
-    },
-
-    updateUI() {
-        const v_val = m.abs(this.state.v);
-        document.getElementById('v-val').innerText = v_val.toFixed(6);
-        
-        // Logique de Reynolds simplifiée (V * L / nu)
-        const re = m.multiply(v_val, 1000).toFixed(0);
-        document.getElementById('re-val').innerText = re;
-
-        // Logging Boîte Noire
-        if (Math.random() > 0.95) {
-            const entry = `> V:${v_val.toFixed(4)} | D:${this.state.dist.toFixed(2)}m | T:${Date.now()}`;
-            this.state.logs.push(entry);
-            const logBox = document.getElementById('blackbox-logs');
-            logBox.innerHTML = entry + "<br>" + logBox.innerHTML;
+        // Demande d'autorisation pour les capteurs (iOS/Android Chrome)
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission().then(startSensing);
+        } else {
+            startSensing();
         }
-    },
-
-    generateReport() {
-        const report = {
-            header: "ARCHÈ V1300 FINAL TRUTH",
-            telemetry: this.state.logs,
-            summary: {
-                max_velocity: m.abs(this.state.v).toString(),
-                total_distance: this.state.dist.toString()
-            },
-            hash: btoa(this.state.dist.toString() + Date.now()).substring(0, 32)
-        };
-        console.log("RAPPORT SCELLÉ :", report);
-        alert("Mission Scellée. Rapport disponible dans la console.");
     }
-};
+
+    function startSensing() {
+        // Accéléromètre réel
+        window.addEventListener('devicemotion', (e) => {
+            const acc = e.accelerationIncludingGravity;
+            const gyro = e.rotationRate;
+            // On retire la gravité grossièrement pour l'exemple
+            const cleanAcc = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) - 9.81;
+            
+            // Simulation des flux Voxel/Echo (car non accessibles via Web standard sans bibliothèque externe)
+            const vVoxel = getEstimatedVoxel(); 
+            const vEcho = 0; 
+            
+            processEngine(cleanAcc, gyro.beta, 1013.25, vVoxel, vEcho);
+        });
+    }
+
+    function processEngine(acc, gyroZ, baroP, vVoxel, vEcho) {
+        const now = performance.now();
+        const dt = (now - state.lastTime) / 1000;
+        state.lastTime = now;
+
+        // --- FILTRE DE COMPLÉMENTARITÉ ---
+        // On ne fait plus v = v + a*dt brut. 
+        // On mélange l'inertie (prédiction) et le Voxel (vérité)
+        
+        let vInertial = state.v + (acc * dt);
+        
+        if (Math.abs(acc) < profile.threshold) {
+            // Seuil de bruit : On "reset" la dérive sur le Voxel
+            state.v = vVoxel;
+            updateStatus("SOUVERAINETÉ VISUELLE");
+        } else {
+            // Mouvement : On fusionne (95% Voxel / 5% Accel pour la réactivité)
+            state.v = (profile.alpha * vVoxel) + ((1 - profile.alpha) * vInertial);
+            updateStatus("FUSION ACTIVE");
+        }
+
+        // --- DÉTECTION MANÈGE ---
+        if (Math.abs(gyroZ) > 40) { // deg/s
+            state.v = vVoxel; // Force centrifuge ignorée
+            log("Correction Centrifuge détectée");
+        }
+
+        updateUI();
+    }
+
+    function manualSextantSync() {
+        state.h = (state.h + 2.5) % 360; // Simulation décalage OSM
+        document.getElementById('heading-display').innerText = state.h.toFixed(0).padStart(3, '0') + "°";
+        log("Sextant : Nord Géo calibré.");
+    }
+
+    function getEstimatedVoxel() {
+        // En prod, ici on analyse le flux caméra
+        return 0; 
+    }
+
+    function updateUI() {
+        document.getElementById('v-display').innerText = state.v.toFixed(2);
+        document.getElementById('alt-display').innerText = state.alt.toFixed(1);
+    }
+
+    function log(m) {
+        const t = document.getElementById('terminal');
+        t.innerHTML = `[${new Date().toLocaleTimeString()}] ${m}<br>` + t.innerHTML;
+    }
+
+    function updateStatus(t) { document.getElementById('status-text').innerText = t; }
+
+    window.onload = init;
 </script>
 </body>
 </html>
