@@ -3,199 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHÈ V6000 | SINGULARITY</title>
+    <title>ARCHÈ V6500 | TRUE-ZERO CALIBRATION</title>
     <style>
-        :root { --blue: #00d4ff; --red: #ff4444; --green: #00ff88; --orange: #ffaa00; --bg: #020202; }
-        body { background: var(--bg); color: white; font-family: 'Consolas', 'Courier New', monospace; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        
-        /* HUD - Interface de Commande */
+        :root { --blue: #00d4ff; --red: #ff4444; --green: #00ff88; --bg: #020202; }
+        body { background: var(--bg); color: white; font-family: 'Consolas', monospace; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         #hud { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 10px; }
-        .card { background: #08080a; border: 1px solid #1a1a1c; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
-        .label { font-size: 0.6rem; color: #444; text-transform: uppercase; letter-spacing: 1px; }
-        .val { font-size: 2.2rem; color: var(--blue); font-weight: bold; text-shadow: 0 0 10px rgba(0, 212, 255, 0.3); }
+        .card { background: #08080a; border: 1px solid #1a1a1c; padding: 12px; position: relative; }
+        .label { font-size: 0.6rem; color: #444; text-transform: uppercase; }
+        .val { font-size: 2.2rem; color: var(--blue); font-weight: bold; }
+        #terminal { height: 25vh; background: #000; border-top: 1px solid var(--blue); padding: 10px; font-size: 0.7rem; overflow-y: auto; color: #0f0; }
         
-        /* Visualiseurs */
-        #camera-vox { width: 100%; height: 60px; object-fit: cover; opacity: 0.4; border: 1px solid #222; margin: 5px 0; }
-        #sonar-canvas { width: 100%; height: 50px; background: #000; }
-        .status-bar { height: 4px; background: #111; margin-top: 4px; position: relative; }
-        .fill { height: 100%; transition: 0.2s; width: 0%; }
-        
-        /* Alertes et Logs */
-        #terminal { height: 25vh; background: #000; border-top: 1px solid #222; padding: 10px; font-size: 0.7rem; overflow-y: auto; color: #0f0; line-height: 1.4; }
-        .alert-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; background: rgba(255,0,0,0.1); font-weight: bold; font-size: 0.7rem; color: var(--red); pointer-events: none; }
-
-        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 5px; background: #000; }
-        button { background: #111; border: 1px solid #333; color: #888; padding: 12px 5px; font-size: 0.6rem; cursor: pointer; }
-        button.active { border-color: var(--blue); color: var(--blue); }
+        /* Overlay de Calibration */
+        #calib-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .loader { width: 200px; height: 2px; background: #222; margin-top: 20px; position: relative; }
+        #loader-fill { height: 100%; width: 0%; background: var(--blue); transition: width 0.1s; }
+        button { background: none; border: 1px solid var(--blue); color: var(--blue); padding: 15px 30px; cursor: pointer; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div id="hud">
-    <div class="card" id="card-v">
-        <div class="label">Vitesse de Vérité</div>
-        <div><span id="v-val" class="val">0.00</span><span style="font-size:0.8rem"> m/s</span></div>
-        <div class="status-bar"><div id="v-bar" class="fill" style="background:var(--blue)"></div></div>
-        <div class="alert-overlay" id="illusion-alert">ILLUSION OPTIQUE</div>
-    </div>
-
-    <div class="card">
-        <div class="label">Navigation Orbitale (G)</div>
-        <div id="g-val" class="val">1.00</div>
-        <div class="status-bar"><div id="g-bar" class="fill" style="background:var(--orange)"></div></div>
-        <div class="alert-overlay" id="0g-alert">ZERO GRAVITY MODE</div>
-    </div>
-
-    <div class="card">
-        <div class="label">Voxel-Proxy Analysis</div>
-        <video id="camera-vox" autoplay playsinline></video>
-        <div id="motion-txt" style="font-size:0.6rem; color:var(--blue)">MOTION: 0%</div>
-    </div>
-
-    <div class="card">
-        <div class="label">Sonar Spectral (Écho)</div>
-        <canvas id="sonar-canvas"></canvas>
-        <div id="sonar-txt" style="font-size:0.6rem; color:var(--green)">FREQ: 0Hz</div>
-    </div>
+<div id="calib-overlay">
+    <div id="calib-msg">SYSTÈME PRÊT<br><small>Posez l'appareil sur une surface stable</small></div>
+    <div class="loader"><div id="loader-fill"></div></div>
+    <br>
+    <button id="start-btn" onclick="startCalibration()">Lancer Calibration</button>
 </div>
 
-<div class="btn-grid">
-    <button id="btn-boot" onclick="boot()">BOOT</button>
-    <button onclick="syncSextant()">SEXTANT</button>
-    <button onclick="toggleSonar()">SONAR</button>
-    <button onclick="exportCSV()">EXPORT</button>
+<div id="hud">
+    <div class="card">
+        <div class="label">Vitesse de Vérité</div>
+        <div id="v-val" class="val">0.00</div>
+        <div style="font-size:0.6rem; color:#444">BIAIS ANNULÉ: <span id="bias-val">0.000</span></div>
+    </div>
+    <div class="card">
+        <div class="label">État du Voxel</div>
+        <div id="motion-txt" class="val" style="font-size:1.2rem">SCANNING...</div>
+    </div>
 </div>
 
 <div id="terminal"></div>
 
 <script>
-    let state = { v: 0, g: 1, motion: 0, sonar: 0, lastT: performance.now(), logs: [] };
-    let audio, analyser, dataArray, prevFrame;
+    let state = { v: 0, lastT: performance.now(), bias: 0, isCalibrated: false };
+    let calibSamples = [];
 
-    // --- 1. BOOT & PERMISSIONS ---
-    async function boot() {
-        log("Initialisation ARCHÈ V6000...");
-        document.getElementById('btn-boot').classList.add('active');
+    // 1. PHASE DE CALIBRATION (RÉALISME SCIENTIFIQUE)
+    function startCalibration() {
+        document.getElementById('start-btn').style.display = 'none';
+        document.getElementById('calib-msg').innerHTML = "CALIBRATION EN COURS...<br>NE PAS TOUCHER";
         
-        // Vidéo Voxel
-        const video = document.getElementById('camera-vox');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            startVoxelProcessor(video);
-        } catch(e) { log("Voxel : Accès caméra restreint."); }
-
-        // Capteurs Inertiels (S10e / Tab K11)
-        if (window.DeviceMotionEvent) {
-            window.addEventListener('devicemotion', processInertia);
-        }
-    }
-
-    // --- 2. MOTEUR DE VÉRITÉ (ANTI-ILLUSION) ---
-    function processInertia(e) {
-        const now = performance.now();
-        const dt = Math.min((now - state.lastT) / 1000, 0.1);
-        state.lastT = now;
-
-        // Calcul Gravité G (Détection Chute Libre / Manège)
-        const accG = e.accelerationIncludingGravity;
-        if(accG) {
-            state.g = Math.sqrt(accG.x**2 + accG.y**2 + accG.z**2) / 9.81;
-            document.getElementById('0g-alert').style.display = state.g < 0.2 ? 'flex' : 'none';
-        }
-
-        // Accélération Linéaire (Physique pure)
-        const acc = e.acceleration;
-        const aMag = acc ? Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) : 0;
-
-        // LOGIQUE SOUVERAINE : Comparaison Voxel vs IMU
-        const isVisualMoving = state.motion > 12;
-        const isPhysicalMoving = aMag > 0.08;
-
-        if (isVisualMoving && !isPhysicalMoving) {
-            // Illusion (Image bouge mais pas le corps)
-            state.v *= 0.85; 
-            document.getElementById('illusion-alert').style.display = 'flex';
-        } else {
-            state.v += (aMag * dt);
-            document.getElementById('illusion-alert').style.display = 'none';
-        }
-
-        // Filtre de bruit S10e
-        if (aMag < 0.045) state.v *= 0.96;
-        if (state.v < 0.01) state.v = 0;
-
-        updateUI();
-    }
-
-    // --- 3. VOXEL PROCESSOR ---
-    function startVoxelProcessor(video) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        setInterval(() => {
-            if (!video.videoWidth) return;
-            canvas.width = 32; canvas.height = 32;
-            ctx.drawImage(video, 0, 0, 32, 32);
-            const frame = ctx.getImageData(0, 0, 32, 32).data;
-            if (prevFrame) {
-                let diff = 0;
-                for(let i=0; i<frame.length; i+=4) diff += Math.abs(frame[i] - prevFrame[i]);
-                state.motion = diff / 600;
+        let count = 0;
+        const calibInterval = setInterval(() => {
+            count++;
+            document.getElementById('loader-fill').style.width = (count / 50 * 100) + "%";
+            
+            if (count >= 50) {
+                clearInterval(calibInterval);
+                finalizeCalibration();
             }
-            prevFrame = frame;
-        }, 120);
+        }, 100);
+
+        window.addEventListener('devicemotion', captureBias);
     }
 
-    // --- 4. SONAR SPECTRAL ---
-    async function toggleSonar() {
-        if (!audio) {
-            audio = new (window.AudioContext || window.webkitAudioContext)();
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const source = audio.createMediaStreamSource(stream);
-            analyser = audio.createAnalyser();
-            analyser.fftSize = 128;
-            source.connect(analyser);
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            renderSonar();
-            log("Sonar : Écholocation active.");
+    function captureBias(e) {
+        if (state.isCalibrated) return;
+        let a = e.acceleration;
+        if (a) {
+            let mag = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
+            calibSamples.push(mag);
         }
     }
 
-    function renderSonar() {
-        requestAnimationFrame(renderSonar);
-        analyser.getByteFrequencyData(dataArray);
-        const canvas = document.getElementById('sonar-canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const bWidth = canvas.width / dataArray.length;
-        for(let i=0; i<dataArray.length; i++) {
-            ctx.fillStyle = `rgb(0, ${dataArray[i]+100}, 255)`;
-            ctx.fillRect(i*bWidth, canvas.height - dataArray[i]/4, bWidth-1, dataArray[i]/4);
-        }
+    function finalizeCalibration() {
+        // Calcul du bruit moyen du S10e (Le Biais)
+        const sum = calibSamples.reduce((a, b) => a + b, 0);
+        state.bias = sum / calibSamples.length;
+        state.isCalibrated = true;
+        
+        document.getElementById('calib-overlay').style.display = 'none';
+        document.getElementById('bias-val').innerText = state.bias.toFixed(4);
+        log("Calibration terminée. Biais résiduel soustrait.");
+        startEngine();
     }
 
-    // --- INTERFACE & EXPORT ---
+    // 2. MOTEUR DE VÉRITÉ SOUVERAIN
+    function startEngine() {
+        window.addEventListener('devicemotion', (e) => {
+            const now = performance.now();
+            const dt = (now - state.lastT) / 1000;
+            state.lastT = now;
+
+            let acc = e.acceleration;
+            if (!acc) return;
+
+            // ON SOUSTRAIT LE BIAIS RÉEL MESURÉ
+            let rawMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+            let aCorrected = rawMag - state.bias;
+
+            // FILTRE DE VÉRITÉ
+            if (aCorrected < 0.02) { // Seuil après soustraction du biais
+                state.v *= 0.95; 
+            } else {
+                state.v += (aCorrected * dt);
+            }
+
+            if (state.v < 0.01) state.v = 0;
+            updateUI();
+        });
+    }
+
     function updateUI() {
         document.getElementById('v-val').innerText = state.v.toFixed(2);
-        document.getElementById('v-bar').style.width = Math.min(state.v * 10, 100) + "%";
-        document.getElementById('g-val').innerText = state.g.toFixed(2);
-        document.getElementById('g-bar').style.width = Math.min(state.g * 50, 100) + "%";
-        document.getElementById('motion-txt').innerText = `MOTION: ${state.motion.toFixed(0)}%`;
-        
-        if (Math.random() > 0.98) state.logs.push([Date.now(), state.v.toFixed(3), state.g.toFixed(2)]);
-    }
-
-    function syncSextant() {
-        log(`Sextant : Nord Géo calibré. Position relative OK.`);
-    }
-
-    function exportCSV() {
-        const csv = "Timestamp,Velocity,G_Force\n" + state.logs.map(l => l.join(",")).join("\n");
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'mission_log.csv';
-        a.click();
     }
 
     function log(m) {
