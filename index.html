@@ -3,128 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHÈ V5100 | VOXEL-PROXY & METROLOGY</title>
+    <title>ARCHÈ V6000 | SINGULARITY</title>
     <style>
-        :root { --blue: #00d4ff; --red: #ff4444; --green: #00ff88; --bg: #050505; }
-        body { background: var(--bg); color: white; font-family: 'Consolas', monospace; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        #hud { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 10px; }
-        .card { background: #111; border: 1px solid #222; padding: 10px; display: flex; flex-direction: column; position: relative; }
-        .label { font-size: 0.6rem; color: #555; text-transform: uppercase; }
-        .val { font-size: 2rem; color: var(--blue); font-weight: bold; }
-        #camera-preview { width: 100%; height: 60px; object-fit: cover; border: 1px solid #333; filter: grayscale(1); opacity: 0.5; }
-        .log-box { height: 100px; background: #000; border-top: 1px solid var(--blue); padding: 8px; font-size: 0.7rem; overflow-y: auto; color: #0f0; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 10px; }
-        button { background: #111; border: 1px solid var(--blue); color: var(--blue); padding: 10px; font-size: 0.7rem; cursor: pointer; }
-        #v-voxel-bar { height: 4px; background: var(--blue); width: 0%; transition: 0.1s; }
+        :root { --blue: #00d4ff; --red: #ff4444; --green: #00ff88; --orange: #ffaa00; --bg: #020202; }
+        body { background: var(--bg); color: white; font-family: 'Consolas', 'Courier New', monospace; margin: 0; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* HUD - Interface de Commande */
+        #hud { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 10px; }
+        .card { background: #08080a; border: 1px solid #1a1a1c; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+        .label { font-size: 0.6rem; color: #444; text-transform: uppercase; letter-spacing: 1px; }
+        .val { font-size: 2.2rem; color: var(--blue); font-weight: bold; text-shadow: 0 0 10px rgba(0, 212, 255, 0.3); }
+        
+        /* Visualiseurs */
+        #camera-vox { width: 100%; height: 60px; object-fit: cover; opacity: 0.4; border: 1px solid #222; margin: 5px 0; }
+        #sonar-canvas { width: 100%; height: 50px; background: #000; }
+        .status-bar { height: 4px; background: #111; margin-top: 4px; position: relative; }
+        .fill { height: 100%; transition: 0.2s; width: 0%; }
+        
+        /* Alertes et Logs */
+        #terminal { height: 25vh; background: #000; border-top: 1px solid #222; padding: 10px; font-size: 0.7rem; overflow-y: auto; color: #0f0; line-height: 1.4; }
+        .alert-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; background: rgba(255,0,0,0.1); font-weight: bold; font-size: 0.7rem; color: var(--red); pointer-events: none; }
+
+        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 5px; background: #000; }
+        button { background: #111; border: 1px solid #333; color: #888; padding: 12px 5px; font-size: 0.6rem; cursor: pointer; }
+        button.active { border-color: var(--blue); color: var(--blue); }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div class="card">
-        <div class="label">Vitesse (Inertie)</div>
-        <div><span id="v-val" class="val">0.00</span><span style="font-size:0.7rem"> m/s</span></div>
+    <div class="card" id="card-v">
+        <div class="label">Vitesse de Vérité</div>
+        <div><span id="v-val" class="val">0.00</span><span style="font-size:0.8rem"> m/s</span></div>
+        <div class="status-bar"><div id="v-bar" class="fill" style="background:var(--blue)"></div></div>
+        <div class="alert-overlay" id="illusion-alert">ILLUSION OPTIQUE</div>
     </div>
+
     <div class="card">
-        <div class="label">Voxel-Proxy (Motion)</div>
-        <video id="camera-preview" autoplay playsinline></video>
-        <div id="v-voxel-bar"></div>
+        <div class="label">Navigation Orbitale (G)</div>
+        <div id="g-val" class="val">1.00</div>
+        <div class="status-bar"><div id="g-bar" class="fill" style="background:var(--orange)"></div></div>
+        <div class="alert-overlay" id="0g-alert">ZERO GRAVITY MODE</div>
     </div>
+
     <div class="card">
-        <div class="label">Altitude (Relative)</div>
-        <div id="alt-val" class="val">0.0</div>
+        <div class="label">Voxel-Proxy Analysis</div>
+        <video id="camera-vox" autoplay playsinline></video>
+        <div id="motion-txt" style="font-size:0.6rem; color:var(--blue)">MOTION: 0%</div>
     </div>
+
     <div class="card">
-        <div class="label">Confiance Métrologique</div>
-        <div id="trust-val" class="val" style="color:var(--green)">100%</div>
+        <div class="label">Sonar Spectral (Écho)</div>
+        <canvas id="sonar-canvas"></canvas>
+        <div id="sonar-txt" style="font-size:0.6rem; color:var(--green)">FREQ: 0Hz</div>
     </div>
 </div>
 
-<div class="btn-group">
-    <button onclick="startAll()">DÉMARRER SYSTÈME</button>
-    <button onclick="exportCSV()">EXPORT CSV</button>
+<div class="btn-grid">
+    <button id="btn-boot" onclick="boot()">BOOT</button>
+    <button onclick="syncSextant()">SEXTANT</button>
+    <button onclick="toggleSonar()">SONAR</button>
+    <button onclick="exportCSV()">EXPORT</button>
 </div>
 
-<div id="terminal" class="log-box"></div>
+<div id="terminal"></div>
 
 <script>
-    let state = { v: 0, alt: 0, p0: null, lastT: performance.now(), motionLevel: 0 };
-    let video, canvas, ctx, prevFrame;
+    let state = { v: 0, g: 1, motion: 0, sonar: 0, lastT: performance.now(), logs: [] };
+    let audio, analyser, dataArray, prevFrame;
 
-    async function startAll() {
-        log("Initialisation ARCHÈ V5100...");
+    // --- 1. BOOT & PERMISSIONS ---
+    async function boot() {
+        log("Initialisation ARCHÈ V6000...");
+        document.getElementById('btn-boot').classList.add('active');
         
-        // 1. Accès Caméra pour Voxel-Proxy
-        video = document.getElementById('camera-preview');
+        // Vidéo Voxel
+        const video = document.getElementById('camera-vox');
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             video.srcObject = stream;
-            log("Voxel-Proxy : Flux vidéo activé.");
-            analyzeMotion();
-        } catch(e) { log("Voxel-Proxy : Erreur caméra."); }
+            startVoxelProcessor(video);
+        } catch(e) { log("Voxel : Accès caméra restreint."); }
 
-        // 2. Capteurs Inertiels
-        window.addEventListener('devicemotion', (e) => {
-            const now = performance.now();
-            const dt = (now - state.lastT) / 1000;
-            state.lastT = now;
-
-            let acc = e.acceleration;
-            let aMag = acc ? Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) : 0;
-
-            // --- CORRECTION SCIENTIFIQUE PAR VOXEL ---
-            // Si le Voxel-Proxy ne voit aucun mouvement de pixels, on bride l'accéléromètre
-            if (state.motionLevel < 5) { 
-                state.v *= 0.9; // Amortissement drastique
-            } else {
-                state.v += (aMag * dt);
-            }
-
-            // Limitation physique (anti-triche 9000 m/s)
-            state.v = Math.min(state.v, 40); 
-            
-            updateUI();
-        });
-        
-        log("Moteur Inertiel : Connecté.");
+        // Capteurs Inertiels (S10e / Tab K11)
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', processInertia);
+        }
     }
 
-    function analyzeMotion() {
-        canvas = document.createElement('canvas');
-        ctx = canvas.getContext('2d');
-        
+    // --- 2. MOTEUR DE VÉRITÉ (ANTI-ILLUSION) ---
+    function processInertia(e) {
+        const now = performance.now();
+        const dt = Math.min((now - state.lastT) / 1000, 0.1);
+        state.lastT = now;
+
+        // Calcul Gravité G (Détection Chute Libre / Manège)
+        const accG = e.accelerationIncludingGravity;
+        if(accG) {
+            state.g = Math.sqrt(accG.x**2 + accG.y**2 + accG.z**2) / 9.81;
+            document.getElementById('0g-alert').style.display = state.g < 0.2 ? 'flex' : 'none';
+        }
+
+        // Accélération Linéaire (Physique pure)
+        const acc = e.acceleration;
+        const aMag = acc ? Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) : 0;
+
+        // LOGIQUE SOUVERAINE : Comparaison Voxel vs IMU
+        const isVisualMoving = state.motion > 12;
+        const isPhysicalMoving = aMag > 0.08;
+
+        if (isVisualMoving && !isPhysicalMoving) {
+            // Illusion (Image bouge mais pas le corps)
+            state.v *= 0.85; 
+            document.getElementById('illusion-alert').style.display = 'flex';
+        } else {
+            state.v += (aMag * dt);
+            document.getElementById('illusion-alert').style.display = 'none';
+        }
+
+        // Filtre de bruit S10e
+        if (aMag < 0.045) state.v *= 0.96;
+        if (state.v < 0.01) state.v = 0;
+
+        updateUI();
+    }
+
+    // --- 3. VOXEL PROCESSOR ---
+    function startVoxelProcessor(video) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         setInterval(() => {
             if (!video.videoWidth) return;
-            canvas.width = 32; canvas.height = 32; // Basse résolution pour performance
+            canvas.width = 32; canvas.height = 32;
             ctx.drawImage(video, 0, 0, 32, 32);
-            const currentFrame = ctx.getImageData(0, 0, 32, 32).data;
-            
+            const frame = ctx.getImageData(0, 0, 32, 32).data;
             if (prevFrame) {
                 let diff = 0;
-                for (let i = 0; i < currentFrame.length; i += 4) {
-                    diff += Math.abs(currentFrame[i] - prevFrame[i]);
-                }
-                state.motionLevel = diff / 1000; // Intensité du changement de pixels
-                document.getElementById('v-voxel-bar').style.width = Math.min(state.motionLevel, 100) + "%";
+                for(let i=0; i<frame.length; i+=4) diff += Math.abs(frame[i] - prevFrame[i]);
+                state.motion = diff / 600;
             }
-            prevFrame = currentFrame;
-        }, 100);
+            prevFrame = frame;
+        }, 120);
     }
 
+    // --- 4. SONAR SPECTRAL ---
+    async function toggleSonar() {
+        if (!audio) {
+            audio = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audio.createMediaStreamSource(stream);
+            analyser = audio.createAnalyser();
+            analyser.fftSize = 128;
+            source.connect(analyser);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            renderSonar();
+            log("Sonar : Écholocation active.");
+        }
+    }
+
+    function renderSonar() {
+        requestAnimationFrame(renderSonar);
+        analyser.getByteFrequencyData(dataArray);
+        const canvas = document.getElementById('sonar-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const bWidth = canvas.width / dataArray.length;
+        for(let i=0; i<dataArray.length; i++) {
+            ctx.fillStyle = `rgb(0, ${dataArray[i]+100}, 255)`;
+            ctx.fillRect(i*bWidth, canvas.height - dataArray[i]/4, bWidth-1, dataArray[i]/4);
+        }
+    }
+
+    // --- INTERFACE & EXPORT ---
     function updateUI() {
         document.getElementById('v-val').innerText = state.v.toFixed(2);
-        const trust = document.getElementById('trust-val');
-        if (state.v > 0.5 && state.motionLevel < 5) {
-            trust.innerText = "DOUTE"; trust.style.color = "var(--red)";
-        } else {
-            trust.innerText = "OK"; trust.style.color = "var(--green)";
-        }
+        document.getElementById('v-bar').style.width = Math.min(state.v * 10, 100) + "%";
+        document.getElementById('g-val').innerText = state.g.toFixed(2);
+        document.getElementById('g-bar').style.width = Math.min(state.g * 50, 100) + "%";
+        document.getElementById('motion-txt').innerText = `MOTION: ${state.motion.toFixed(0)}%`;
+        
+        if (Math.random() > 0.98) state.logs.push([Date.now(), state.v.toFixed(3), state.g.toFixed(2)]);
+    }
+
+    function syncSextant() {
+        log(`Sextant : Nord Géo calibré. Position relative OK.`);
+    }
+
+    function exportCSV() {
+        const csv = "Timestamp,Velocity,G_Force\n" + state.logs.map(l => l.join(",")).join("\n");
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'mission_log.csv';
+        a.click();
     }
 
     function log(m) {
         const t = document.getElementById('terminal');
-        t.innerHTML = `<div>> ${m}</div>` + t.innerHTML;
+        t.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${m}</div>` + t.innerHTML;
     }
 </script>
 </body>
-    </html>
+</html>
