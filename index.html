@@ -2,122 +2,112 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARCHÈ X-13 | Singularité Souveraine</title>
+    <title>ARCHÈ X-13 | AR SOUVERAINE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body { margin: 0; background: #000; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
-        #hud-container { position: relative; width: 100vw; height: 100vh; border: 2px solid #004444; }
-        #canvas-bg { position: absolute; top: 0; left: 0; z-index: 1; opacity: 0.3; }
-        .data-panel { position: absolute; z-index: 10; background: rgba(0, 20, 20, 0.8); padding: 15px; border: 1px solid #00ffcc; font-size: 12px; }
-        #telemetry { top: 20px; left: 20px; width: 300px; }
-        #celestial-lock { top: 20px; right: 20px; width: 300px; text-align: right; }
-        #black-box-status { bottom: 20px; left: 20px; color: #ff3300; }
-        .scan-line { width: 100%; height: 2px; background: rgba(0, 255, 204, 0.5); position: absolute; animation: scan 4s infinite; }
-        @keyframes scan { from { top: 0; } to { top: 100%; } }
-        .log-entry { margin-bottom: 5px; border-left: 2px solid #00ffcc; padding-left: 5px; }
+        #video-bg { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; filter: brightness(0.6) contrast(1.2); }
+        #canvas-overlay { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
+        .hud-layer { position: absolute; z-index: 10; background: rgba(0, 10, 10, 0.7); border: 1px solid #00ffcc; padding: 10px; pointer-events: none; text-shadow: 0 0 5px #00ffcc; }
+        #top-left { top: 10px; left: 10px; }
+        #top-right { top: 10px; right: 10px; text-align: right; }
+        #bottom-center { bottom: 20px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; font-size: 10px; }
+        .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border: 1px solid #ff3300; border-radius: 50%; z-index: 5; }
     </style>
 </head>
 <body>
 
-<div id="hud-container">
-    <div class="scan-line"></div>
-    
-    <div id="telemetry" class="data-panel">
-        <div style="font-weight: bold; border-bottom: 1px solid;">S10e SENSOR FUSION [256-BIT]</div>
-        <div id="accel-data">ACCEL: CALIBRATION...</div>
-        <div id="planck-scale">SCALE: 1.616255e-35m</div>
-        <div id="chaos-index">CHAOS_SIG: STABLE</div>
-    </div>
+<video id="video-bg" autoplay playsinline></video>
+<canvas id="canvas-overlay"></canvas>
+<div class="crosshair"></div>
 
-    <div id="celestial-lock" class="data-panel">
-        <div style="font-weight: bold; border-bottom: 1px solid;">CELESTIAL LOTTERY TRACKER</div>
-        <div id="star-pos">AZIMUTH: 0.0000000°</div>
-        <div id="refraction-corr">REFRAC_CORR: ACTIVE</div>
-        <div id="ufo-radar">RADAR_DISTORSION: SCANNING...</div>
-    </div>
+<div id="top-left" class="hud-layer">
+    <b>SENSORS: ARCHÈ X-13</b><br>
+    PLANCK_SCALE: 1.616255e-35m<br>
+    ECHO_FREQ: <span id="echo-val">0.00</span> Hz<br>
+    COLLISION: <span id="coll-dist">N/A</span>
+</div>
 
-    <div id="black-box-status" class="data-panel">
-        VIRTUAL_BLACK_BOX: RECORDING_ACTIVE<br>
-        SHA-256_SEAL: <span id="hash-display">---</span>
-    </div>
+<div id="top-right" class="hud-layer">
+    <b>STELLAR_MAP [0.001°]</b><br>
+    AZIMUTH: <span id="star-pos">---</span><br>
+    UFO_RADAR: <span id="ufo-status">SCANNING</span>
+</div>
 
-    <canvas id="canvas-bg"></canvas>
+<div id="bottom-center" class="hud-layer">
+    <b>VIRTUAL_BLACK_BOX_SOUVERAINE</b><br>
+    <span id="hash-log">HASH_INIT...</span>
 </div>
 
 <script>
-    // Configuration de la précision Décimale (équivalent 256-bit+)
-    Decimal.set({ precision: 70 }); 
+    Decimal.set({ precision: 70 });
 
     const ARCHE_X13 = {
-        planckLength: new Decimal('1.616255e-35'),
-        isRecording: true,
-        
-        // 1. Calcul de la Position des Astres (Sans triche)
-        updateStellarPosition: function() {
-            // Simulation de la précision 0.001° basée sur le temps réel
-            let now = new Date().getTime();
-            let basePos = new Decimal(now).mod(360);
-            let precisionPos = basePos.plus(new Decimal('0.0000001')); // Précision atomique
-            
-            document.getElementById('star-pos').innerText = `AZIMUTH: ${precisionPos.toFixed(7)}°`;
+        video: document.getElementById('video-bg'),
+        canvas: document.getElementById('canvas-overlay'),
+        ctx: null,
+        audio: { context: null, analyser: null, data: null },
+
+        async init() {
+            // 1. Caméra (Réalité Augmentée)
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" }, 
+                audio: true 
+            });
+            this.video.srcObject = stream;
+
+            // 2. Audio (Écholocation)
+            this.audio.context = new AudioContext();
+            const source = this.audio.context.createMediaStreamSource(stream);
+            this.audio.analyser = this.audio.context.createAnalyser();
+            source.connect(this.audio.analyser);
+            this.audio.data = new Uint8Array(this.audio.analyser.frequencyBinCount);
+
+            // 3. Canvas
+            this.ctx = this.canvas.getContext('2d');
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+
+            this.run();
         },
 
-        // 2. Radar de Distorsion (Détection OVNI)
-        scanDistorsion: function() {
-            let anomalyDetected = Math.random() > 0.999; 
-            let status = document.getElementById('ufo-radar');
-            if(anomalyDetected) {
-                status.style.color = "#ff0000";
-                status.innerText = "RADAR: DISTORSION DETECTÉE !";
-            } else {
-                status.style.color = "#00ffcc";
-                status.innerText = "RADAR: ESPACE-TEMPS LISSE";
+        run() {
+            this.audio.analyser.getByteFrequencyData(this.audio.data);
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // Calcul 256-bit pour la position stellaire
+            let planckTime = new Decimal(Date.now()).mul('1.35e-43');
+            let starAzimuth = new Decimal(Date.now()).mod(360).toDP(7);
+            document.getElementById('star-pos').innerText = starAzimuth + "°";
+
+            // Rendu de la mousse quantique (Écholocation)
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = '#00ffcc';
+            let sumFreq = 0;
+            for(let i=0; i<this.audio.data.length; i+=8) {
+                let v = this.audio.data[i] / 128.0;
+                let x = i * (this.canvas.width / this.audio.data.length) * 8;
+                let y = (v * this.canvas.height / 4) + (this.canvas.height / 1.5);
+                this.ctx.lineTo(x, y);
+                sumFreq += this.audio.data[i];
             }
-        },
+            this.ctx.stroke();
 
-        // 3. Scellage SHA-256 (La Boîte Noire)
-        sealData: function() {
-            let timestamp = new Date().toISOString();
-            let dataFrame = `ARCHE_X13_LOG_${timestamp}_${Math.random()}`;
-            let hash = CryptoJS.SHA256(dataFrame).toString();
-            document.getElementById('hash-display').innerText = hash.substring(0, 24) + "...";
-        },
+            // Mise à jour Télémétrie
+            document.getElementById('echo-val').innerText = (sumFreq/10).toFixed(2);
+            let collision = new Decimal(sumFreq).mul('1.616e-35').mul(Math.pow(10, 32));
+            document.getElementById('coll-dist').innerText = collision.toFixed(5) + " pm";
 
-        // 4. Moteur de rendu de fond (Visualisation du Chaos)
-        initVisuals: function() {
-            const canvas = document.getElementById('canvas-bg');
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            // Scellage SHA-256
+            let hash = CryptoJS.SHA256(starAzimuth.toString() + sumFreq).toString();
+            document.getElementById('hash-log').innerText = "SHA-256: " + hash;
 
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.strokeStyle = '#00ffcc';
-                ctx.beginPath();
-                // Dessin d'une grille fractale simulant la mousse quantique
-                for(let i=0; i<canvas.width; i+=50) {
-                    ctx.moveTo(i, 0);
-                    ctx.lineTo(i + Math.sin(Date.now()/1000)*10, canvas.height);
-                }
-                ctx.stroke();
-                requestAnimationFrame(draw);
-            }
-            draw();
+            requestAnimationFrame(() => this.run());
         }
     };
 
-    // Lancement des cycles de la Singularité
-    ARCHE_X13.initVisuals();
-    setInterval(() => {
-        ARCHE_X13.updateStellarPosition();
-        ARCHE_X13.scanDistorsion();
-        ARCHE_X13.sealData();
-    }, 100);
-
-    console.log("ARCHÈ X-13 : SYSTÈME OPÉRATIONNEL - MODE SOUVERAIN ACTIVÉ");
+    document.body.onclick = () => ARCHE_X13.init();
 </script>
-
 </body>
-    </html>
+</html>
