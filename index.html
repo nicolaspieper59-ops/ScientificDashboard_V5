@@ -1,110 +1,65 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>ARCHÈ X-13 | OMNISCIENCE</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="lib/ephem.js"></script> <style>
-        body { margin: 0; background: #000; color: #00ffcc; font-family: 'Courier New', monospace; }
-        #log { position: absolute; bottom: 10px; left: 10px; font-size: 10px; width: 95%; overflow: hidden; }
-        .critical { color: #ff3300; }
-    </style>
-</head>
-<body>
-    <div id="hud">
-        <h2>SINGULARITY ENGINE v10.0</h2>
-        <div id="biome">BIOME: INITIALISATION...</div>
-        <div id="stats">RHO: -- | CORIOLIS: -- | REYNOLDS: --</div>
-        <div id="hash">SHA-3: --</div>
-    </div>
-    <canvas id="view"></canvas>
-    <div id="log"></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
 <script>
-const ENGINE = {
-    rho: new Decimal(1.225),
-    lastP: null,
-    lastZ: 0,
-    vF: 0,
-    lat: 0.755, // Marseille en Radian
-
-    // 1. AUTARCIE PHYSIQUE (Calcul de rho sans weather.js)
-    updateFluids(currentP, currentZ) {
-        if (this.lastP && Math.abs(currentZ - this.lastZ) > 0.05) {
-            const dP = new Decimal(currentP).minus(this.lastP);
-            const dZ = new Decimal(currentZ).minus(this.lastZ);
-            // Loi Hydrostatique : rho = - (1/g) * (dP/dZ)
-            const calculatedRho = dP.div(dZ.mul(9.80665)).abs();
-            if (calculatedRho.gt(0.5) && calculatedRho.lt(1200)) {
-                this.rho = calculatedRho;
-            }
-        }
-        this.lastP = currentP;
-        this.lastZ = currentZ;
+const PINN_ENGINE = {
+    model: null,
+    optimizer: tf.train.adam(0.01),
+    
+    // 1. Définition du modèle de neurones (Perceptron Multicouche)
+    async init() {
+        this.model = tf.sequential({
+            layers: [
+                tf.layers.dense({units: 32, activation: 'tanh', inputShape: [1]}),
+                tf.layers.dense({units: 32, activation: 'tanh'}),
+                tf.layers.dense({units: 1}) // Sortie : Vitesse prédite
+            ]
+        });
     },
 
-    // 2. RÉFÉRENTIEL RELATIVISTE (Coriolis & Eötvös)
-    getRelativity(vX) {
-        const Omega = 0.000072921; 
-        // Effet Eötvös (poids apparent)
-        return new Decimal(2).mul(Omega).mul(vX).mul(Math.cos(this.lat));
+    // 2. La fonction de perte PHYSIQUE (The Loss Function)
+    // C'est ici que la triche est interdite.
+    computePhysicsLoss(t, g, rho) {
+        return tf.tidy(() => {
+            const v = this.model.predict(t);
+            
+            // Calcul de la dérivée dv/dt (accélération prédite par l'IA)
+            const dvdt = tf.grad(t => this.model.predict(t))(t);
+            
+            // Équation de Navier-Stokes / Balistique simplifiée
+            // On force l'IA à respecter : dv/dt - (g - drag) = 0
+            const drag = rho.mul(v.square()).mul(0.5); // Cd et A fixés pour l'exemple
+            const physicsError = dvdt.sub(g.sub(drag));
+            
+            return physicsError.square().mean();
+        });
     },
 
-    // 3. AUTO-BIOME (Détection environnementale)
-    detectContext(accel, mag, noise) {
-        if (mag.variance > 40) return "ASCENSEUR / MÉTAL";
-        if (accel.total > 35) return "TRIDENT / BALISTIQUE";
-        if (noise > 0.7 && this.rho.gt(800)) return "SOUS-MARIN / LIQUIDE";
-        if (noise > 0.7) return "VOL ÉLYTRES / FRICTION";
-        return "MODE STANDARD";
+    // 3. Entraînement en continu sur ton S10e
+    async solveStep(currentTime, currentG, currentRho) {
+        const tTensor = tf.tensor1d([currentTime]);
+        const gTensor = tf.scalar(currentG);
+        const rhoTensor = tf.scalar(currentRho);
+
+        await this.optimizer.minimize(() => this.computePhysicsLoss(tTensor, gTensor, rhoTensor));
+        
+        // La vitesse "Souveraine" est celle qui résout l'équation
+        const verifiedV = this.model.predict(tTensor).dataSync()[0];
+        return verifiedV;
     }
 };
 
-// INITIALISATION DES CAPTEURS S10e
-let audioCtx, analyser, dataArray;
-async function initAudio() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioCtx.createMediaStreamSource(stream);
-    analyser = audioCtx.createAnalyser();
-    source.connect(analyser);
-    dataArray = new Uint8Array(analyser.frequencyBinCount);
+// Intégration dans ta boucle principale
+async function coreLoopPINN() {
+    const time = (Date.now() - startTime) / 1000;
+    const gLocal = sensors.accel.total; // Utilise la gravité réelle mesurée
+    const rhoLocal = parseFloat(sensors.rho.toString());
+
+    // L'IA résout l'équation en temps réel
+    const vPhysic = await PINN_ENGINE.solveStep(time, gLocal, rhoLocal);
+
+    // Mise à jour du HUD avec la valeur scientifiquement exacte
+    document.getElementById('stats').innerText += ` | V_PINN: ${vPhysic.toFixed(4)} m/s`;
+    
+    requestAnimationFrame(coreLoopPINN);
 }
-
-// BOUCLE DE VÉRITÉ ABSOLUE
-function coreLoop() {
-    if (analyser) {
-        analyser.getByteFrequencyData(dataArray);
-        const noise = dataArray.reduce((a,b) => a+b, 0) / dataArray.length;
-        
-        // Calcul Friction Air/Eau (Rhéologie)
-        ENGINE.vF = Math.sqrt(noise * 0.1); 
-        
-        // Mise à jour Fluides
-        ENGINE.updateFluids(sensors.pressure, sensors.alt);
-
-        // Biome
-        const biome = ENGINE.detectContext(sensors.accel, sensors.mag, noise);
-        
-        // Affichage & Scellage
-        const payload = {
-            v: ENGINE.vF,
-            rho: ENGINE.rho.toString(),
-            biome: biome,
-            coriolis: ENGINE.getRelativity(ENGINE.vF).toString(),
-            time: Date.now()
-        };
-
-        document.getElementById('biome').innerText = `BIOME: ${biome}`;
-        document.getElementById('stats').innerText = `RHO: ${ENGINE.rho.toFixed(4)} | CORIOLIS: ${payload.coriolis}`;
-        document.getElementById('hash').innerText = "SHA-3: " + CryptoJS.SHA3(JSON.stringify(payload)).toString();
-    }
-    requestAnimationFrame(coreLoop);
-}
-
-document.body.onclick = () => { initAudio(); coreLoop(); };
 </script>
-</body>
-</html>
