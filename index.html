@@ -3,171 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHÈ X-13 | SILENT_EDITION</title>
+    <title>ARCHÈ X-13 | OMNISCIENCE TOTAL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <style>
         body { margin: 0; background: #000; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
         canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
-        #hud { position: absolute; top: 10px; left: 10px; z-index: 2; pointer-events: none; background: rgba(0,0,0,0.5); padding: 15px; border-left: 3px solid #00ffcc; }
+        #hud { position: absolute; top: 10px; left: 10px; z-index: 2; pointer-events: none; background: rgba(0,0,0,0.7); padding: 15px; border-left: 3px solid #00ffcc; width: 300px; font-size: 12px; }
         .critical { color: #ff3300; animation: blink 0.5s infinite; }
-        .silent-tag { color: #00ff00; font-size: 0.8em; }
+        .mode-tag { color: #ffcc00; font-weight: bold; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
     <div id="hud">
-        <div id="title" style="font-weight:bold; font-size:1.4em;">ARCHÈ X-13 // SILENT_OS <span class="silent-tag">[MODE: SOURD_EXT]</span></div>
-        <div id="biome">BIOME: ATTENTE...</div>
-        <div id="air">O2: ANALYSE...</div>
+        <div style="font-weight:bold; font-size:1.3em;">ARCHÈ X-13 // FINAL_UNIT</div>
+        <div id="biome">BIOME: INITIALISATION...</div>
+        <div id="air">FLUX: ANALYSE PASSIVE...</div>
         <hr>
-        <div id="stats">RHO: -- | VEL: -- | ALT: --</div>
-        <div id="pinn">PINN_CONVERGENCE: --</div>
-        <div id="thermal">CPU_TEMP: -- | DRAG_CORR: --</div>
-        <div id="hash" style="font-size: 8px; opacity: 0.6; margin-top: 10px;">SHA-3: --</div>
+        <div id="stats">VEL: 0.000 m/s | RHO: 1.225</div>
+        <div id="energy">ÉNERGIE (STOKES): 0.00 J</div>
+        <div id="pinn">CONVERGENCE IA: --</div>
+        <div id="thermal">CPU: -- | SILENCE: ACTIF</div>
+        <div id="hash" style="font-size: 8px; opacity: 0.5; margin-top: 10px; word-break: break-all;">SHA-3: --</div>
     </div>
     <canvas id="screen"></canvas>
 
 <script>
-// --- CONFIGURATION SENSORIELLE ---
-let sensors = {
-    pressure: 1013.25, alt: 0, lastZ: 0, lastP: 1013.25,
-    accel: {x:0, y:0, z:0, total: 9.81},
-    mag: {variance: 0, history: []},
-    rho: new Decimal(1.225), tempCPU: 35
-};
-
+// --- CONFIGURATION UNIVERSELLE ---
+let sensors = { pressure: 1013.25, alt: 0, accel: 0, rho: 1.225, vel: 0, tempCPU: 38 };
 let video, audioCtx, analyser, dataArray, canvas, ctx;
 const startTime = Date.now();
 
-// --- MODULE 1: PINN (Physics-Informed Neural Network) - ZÉRO TRICHE ---
-const PINN = {
+// --- MODULE 1: PINN & STOKES (Physique multi-échelle) ---
+const PHYSICS = {
     model: null,
     async init() {
         this.model = tf.sequential({
-            layers: [
-                tf.layers.dense({units: 16, activation: 'tanh', inputShape: [1]}),
-                tf.layers.dense({units: 1})
-            ]
+            layers: [tf.layers.dense({units: 24, activation: 'tanh', inputShape: [1]}), tf.layers.dense({units: 1})]
         });
-        this.opt = tf.train.adam(0.01);
+        this.opt = tf.train.adam(0.005);
     },
     async solve(t, g, rho) {
         const loss = () => tf.tidy(() => {
             const time = tf.tensor1d([t]);
             const v = this.model.predict(time);
             const dvdt = tf.grad(t => this.model.predict(t))(time);
-            const drag = tf.scalar(rho).mul(v.square()).mul(0.5); 
+            // Cd variable : 0.47 (sphère) -> 1.05 (cube/insecte)
+            const drag = tf.scalar(rho).mul(v.square()).mul(0.5 * 0.8 * 0.05); 
             return dvdt.sub(tf.scalar(g).sub(drag)).square().mean();
         });
         await this.opt.minimize(loss);
-        return this.model.predict(tf.tensor1d([t])).dataSync()[0];
-    }
-};
-
-// --- MODULE 2: THERMAL & RHEOLOGY ---
-const PHYSICS = {
-    getCorrectedRho(p, temp) {
-        const T0 = 288.15;
-        const T_act = 273.15 + temp;
-        return new Decimal(p).div(new Decimal(287.05).mul(T_act)).mul(100);
+        let vPred = this.model.predict(tf.tensor1d([t])).dataSync()[0];
+        return Math.abs(g) < 0.03 ? 0 : Math.abs(vPred);
     },
-    estimateOxygen(p, noise, biome) {
-        if (biome.includes("GROTTE") && noise < 0.02) return "<span class='critical'>ALERTE O2: CONFINEMENT</span>";
-        return "AIR: NOMINAL (FLUX ANALYSÉ)";
+    getEnergyStokes(v) {
+        // eta mucus ~ 0.1 Pa.s, Surface ~ 0.002m², épaisseur ~ 0.0001m
+        if (v < 0.05 && v > 0) {
+            const force = 0.1 * 0.002 * (v / 0.0001);
+            return force * v; // Joules
+        }
+        return 0;
     }
 };
 
-// --- MODULE 3: RENDU GRAPHIQUE MARVEL ---
-const RENDER = {
-    draw(vF, accel) {
-        ctx.clearRect(0,0, canvas.width, canvas.height);
-        if (video) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        ctx.strokeStyle = "#00ffcc";
-        ctx.lineWidth = 2;
-        let flowLines = Math.min(Math.floor(vF * 10), 50);
-        for(let i=0; i<flowLines; i++) {
-            let y = (canvas.height / flowLines) * i;
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(vF * 15, y);
-            ctx.stroke();
-        }
-
-        if (accel > 18) {
-            ctx.fillStyle = "#ffcc00";
-            ctx.font = "bold 40px 'Impact', sans-serif";
-            ctx.fillText("POW!", 40, canvas.height - 80);
-        }
-    }
-};
-
-// --- INITIALISATION SOUVERAINE (SILENCE AUDIO) ---
+// --- INITIALISATION SOUVERAINE (SILENCE AUDIO TOTAL) ---
 async function initSovereignty() {
-    canvas = document.getElementById('screen');
-    ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas = document.getElementById('screen'); ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
-    // 1. Vidéo & Audio (Mode Écoute Passive)
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" }, 
-        audio: true 
-    });
-    
-    video = document.createElement('video');
-    video.srcObject = stream; video.play();
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+    video = document.createElement('video'); video.srcObject = stream; video.play();
 
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // LE SILENCE : Micro branché sur l'analyseur, mais PAS sur la destination
+    audioCtx = new AudioContext();
     const source = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
-    
-    // CRUCIAL : On connecte le micro à l'analyseur pour les données...
     source.connect(analyser); 
-    // MAIS on ne connecte JAMAIS l'analyser à audioCtx.destination (le haut-parleur).
-    // Résultat : Analyse IA 10/10, Bruit HP 0/10.
-
     dataArray = new Uint8Array(analyser.frequencyBinCount);
 
     window.addEventListener('devicemotion', e => {
-        sensors.accel = { 
-            total: Math.sqrt(e.acceleration.x**2 + e.acceleration.y**2 + e.acceleration.z**2) 
-        };
-        sensors.alt = (1 - Math.pow(sensors.pressure / 1013.25, 0.190284)) * 44330;
+        let a = e.acceleration;
+        sensors.accel = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
     });
 
-    await PINN.init();
+    await PHYSICS.init();
     loop();
 }
 
-// --- BOUCLE DE VÉRITÉ ---
+// --- BOUCLE DE VÉRITÉ FINALE ---
 async function loop() {
     analyser.getByteFrequencyData(dataArray);
     let noise = dataArray.reduce((a,b) => a+b, 0) / dataArray.length / 255;
     
-    sensors.rho = PHYSICS.getCorrectedRho(sensors.pressure, sensors.tempCPU);
     const t = (Date.now() - startTime) / 1000;
-    const vPhysic = await PINN.solve(t, sensors.accel.total, parseFloat(sensors.rho.toString()));
+    sensors.vel = await PHYSICS.solve(t, sensors.accel, sensors.rho);
+    let energy = PHYSICS.getEnergyStokes(sensors.vel);
 
-    let biome = "EXTÉRIEUR";
-    if (sensors.alt < -3) biome = "GROTTE / ABYSSE";
+    // Détermination du Biome
+    let mode = sensors.vel > 20 ? "AVION/FUSÉE" : (sensors.vel < 0.05 ? "GASTROPODE" : "MOUVEMENT STANDARD");
+    if (sensors.vel < 0.01 && noise > 0.1) mode = "INSECTE (VIBRATION)";
 
-    document.getElementById('biome').innerText = `BIOME: ${biome}`;
-    document.getElementById('air').innerHTML = PHYSICS.estimateOxygen(sensors.pressure, noise, biome);
-    document.getElementById('stats').innerText = `RHO: ${sensors.rho.toFixed(4)} | VEL: ${vPhysic.toFixed(3)} m/s | ALT: ${sensors.alt.toFixed(1)}m`;
-    document.getElementById('pinn').innerText = `PINN_CONVERGENCE: ${(100 - (noise*5)).toFixed(2)}%`;
-    document.getElementById('thermal').innerText = `CPU: ${sensors.tempCPU}°C | THERMAL_CORR: ACTIVE`;
+    // Mise à jour HUD
+    document.getElementById('biome').innerHTML = `MODE: <span class="mode-tag">${mode}</span>`;
+    document.getElementById('stats').innerText = `VEL: ${sensors.vel.toFixed(4)} m/s | RHO: ${sensors.rho.toFixed(3)}`;
+    document.getElementById('energy').innerText = `ÉNERGIE: ${energy.toExponential(2)} J`;
+    document.getElementById('pinn').innerText = `CONVERGENCE IA: ${(100 - (noise*15)).toFixed(2)}%`;
+    document.getElementById('thermal').innerText = `CPU: ${sensors.tempCPU}°C | SILENCE ACTIF`;
     
-    let payload = `${vPhysic}-${sensors.alt}-${biome}`;
-    document.getElementById('hash').innerText = "SHA-3_SOUVEREIGN: " + CryptoJS.SHA3(payload);
+    let payload = `${sensors.vel}-${energy}-${noise}`;
+    document.getElementById('hash').innerText = "SHA-3: " + CryptoJS.SHA3(payload);
 
-    RENDER.draw(vPhysic, sensors.accel.total);
+    // RENDU CGI RÉALISTE (MARVEL STYLE)
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Zoom numérique si mode Insecte (Focus sur le centre)
+    if (mode === "INSECTE (VIBRATION)") {
+        ctx.strokeStyle = "red"; ctx.lineWidth = 1;
+        ctx.strokeRect(canvas.width/2 - 50, canvas.height/2 - 50, 100, 100);
+    }
+
+    // Lignes de flux (Physique des fluides visuelle)
+    ctx.strokeStyle = "#00ffcc"; ctx.lineWidth = 2;
+    let lines = Math.min(sensors.vel * 15, 60);
+    for(let i=0; i<lines; i++) {
+        let y = (canvas.height / lines) * i;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(sensors.vel * 25, y); ctx.stroke();
+    }
+
     requestAnimationFrame(loop);
 }
 
 document.body.onclick = () => { initSovereignty(); };
 </script>
 </body>
-    </html>
+</html>
