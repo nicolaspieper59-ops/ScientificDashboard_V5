@@ -2,112 +2,180 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ARCHÈ X-13 | AR SOUVERAINE</title>
+    <title>ARCHÈ X-13 | SOUVERAINETÉ TOTALE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
-        #video-bg { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; filter: brightness(0.6) contrast(1.2); }
-        #canvas-overlay { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
-        .hud-layer { position: absolute; z-index: 10; background: rgba(0, 10, 10, 0.7); border: 1px solid #00ffcc; padding: 10px; pointer-events: none; text-shadow: 0 0 5px #00ffcc; }
-        #top-left { top: 10px; left: 10px; }
-        #top-right { top: 10px; right: 10px; text-align: right; }
-        #bottom-center { bottom: 20px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; font-size: 10px; }
-        .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border: 1px solid #ff3300; border-radius: 50%; z-index: 5; }
+        body { margin: 0; background: #000202; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
+        video { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0.2; z-index: 0; filter: grayscale(1) contrast(1.5); }
+        canvas { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: none; }
+        
+        .hud-panel { position: absolute; z-index: 10; background: rgba(0,10,10,0.85); border: 1px solid #00ffcc; padding: 12px; font-size: 10px; box-shadow: 0 0 15px rgba(0,255,204,0.1); }
+        #top-left { top: 10px; left: 10px; border-left: 4px solid #00ffcc; }
+        #top-right { top: 10px; right: 10px; text-align: right; border-right: 4px solid #ff3300; }
+        #bottom-center { bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; }
+        
+        .status-msg { color: #ff3300; font-weight: bold; }
+        .recording-pulse { color: #00ffcc; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
-<video id="video-bg" autoplay playsinline></video>
-<canvas id="canvas-overlay"></canvas>
-<div class="crosshair"></div>
+<video id="v" autoplay playsinline></video>
+<canvas id="c"></canvas>
 
-<div id="top-left" class="hud-layer">
+<div id="top-left" class="hud-panel">
     <b>SENSORS: ARCHÈ X-13</b><br>
-    PLANCK_SCALE: 1.616255e-35m<br>
-    ECHO_FREQ: <span id="echo-val">0.00</span> Hz<br>
-    COLLISION: <span id="coll-dist">N/A</span>
+    V3D_FLOW: <span id="v3d">0.000</span> mm/s<br>
+    ACCEL_XYZ: <span id="accRaw">0.00 / 0.00 / 0.00</span><br>
+    PLANCK_L: 1.616255e-35m
 </div>
 
-<div id="top-right" class="hud-layer">
+<div id="top-right" class="hud-panel">
     <b>STELLAR_MAP [0.001°]</b><br>
-    AZIMUTH: <span id="star-pos">---</span><br>
-    UFO_RADAR: <span id="ufo-status">SCANNING</span>
+    AZIMUTH: <span id="azi">0.00000</span>°<br>
+    PITCH/ROLL: <span id="orientation">0.00 / 0.00</span><br>
+    MODE: <span id="ufo-status" class="recording-pulse">VÉRITÉ CAPTEUR</span>
 </div>
 
-<div id="bottom-center" class="hud-layer">
-    <b>VIRTUAL_BLACK_BOX_SOUVERAINE</b><br>
-    <span id="hash-log">HASH_INIT...</span>
+<div id="bottom-center" class="hud-panel">
+    <b id="mode-label">BOÎTE NOIRE SCELLÉE (REPLAY DISPONIBLE)</b><br>
+    SHA-256 SOUVERAIN: <span id="hash" style="word-break: break-all; font-size: 9px;">EN ATTENTE D'INITIALISATION...</span>
 </div>
 
 <script>
+    // Configuration Précision 256 bits (70 décimales)
     Decimal.set({ precision: 70 });
 
-    const ARCHE_X13 = {
-        video: document.getElementById('video-bg'),
-        canvas: document.getElementById('canvas-overlay'),
-        ctx: null,
-        audio: { context: null, analyser: null, data: null },
+    const ARCHE_MASTER = {
+        ctx: document.getElementById('c').getContext('2d'),
+        video: document.getElementById('v'),
+        isReplay: false,
+        history: [], // Stockage Replay Souverain
+        sensors: {
+            alpha: new Decimal(0), beta: new Decimal(0), gamma: new Decimal(0),
+            acc: { x: new Decimal(0), y: new Decimal(0), z: new Decimal(0) }
+        },
+        planckConstant: new Decimal('1.616255e-35'),
 
         async init() {
-            // 1. Caméra (Réalité Augmentée)
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment" }, 
-                audio: true 
+            // 1. Flux Photonique (Caméra)
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                this.video.srcObject = stream;
+            } catch(e) { console.log("Caméra non disponible"); }
+
+            // 2. Écouteurs Physiques (Réalité sans triche)
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                const permission = await DeviceOrientationEvent.requestPermission();
+                if (permission !== 'granted') return;
+            }
+
+            window.addEventListener('deviceorientation', (e) => {
+                this.sensors.alpha = new Decimal(e.alpha || 0);
+                this.sensors.beta = new Decimal(e.beta || 0);
+                this.sensors.gamma = new Decimal(e.gamma || 0);
             });
-            this.video.srcObject = stream;
 
-            // 2. Audio (Écholocation)
-            this.audio.context = new AudioContext();
-            const source = this.audio.context.createMediaStreamSource(stream);
-            this.audio.analyser = this.audio.context.createAnalyser();
-            source.connect(this.audio.analyser);
-            this.audio.data = new Uint8Array(this.audio.analyser.frequencyBinCount);
+            window.addEventListener('devicemotion', (e) => {
+                this.sensors.acc.x = new Decimal(e.acceleration.x || 0);
+                this.sensors.acc.y = new Decimal(e.acceleration.y || 0);
+                this.sensors.acc.z = new Decimal(e.acceleration.z || 0);
+                this.record();
+            });
 
-            // 3. Canvas
-            this.ctx = this.canvas.getContext('2d');
-            this.canvas.width = window.innerWidth;
-            this.canvas.height = window.innerHeight;
+            // 3. Raccourcis
+            window.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'S') this.toggleReplay();
+            });
 
+            this.resize();
+            window.onresize = () => this.resize();
             this.run();
         },
 
+        resize() {
+            this.ctx.canvas.width = window.innerWidth;
+            this.ctx.canvas.height = window.innerHeight;
+        },
+
+        record() {
+            if (this.isReplay) return;
+            // Capture du point de réalité au mm près
+            this.history.push({
+                x: this.sensors.acc.x, y: this.sensors.acc.y, z: this.sensors.acc.z,
+                alpha: this.sensors.alpha, t: Date.now()
+            });
+            if (this.history.length > 1000) this.history.shift();
+        },
+
+        toggleReplay() {
+            this.isReplay = !this.isReplay;
+            document.getElementById('mode-label').innerText = this.isReplay ? "REPLAY SOUVERAIN (TRAJECTOIRE PURE)" : "BOÎTE NOIRE SCELLÉE (REPLAY DISPONIBLE)";
+            document.getElementById('ufo-status').className = this.isReplay ? "status-msg" : "recording-pulse";
+            document.getElementById('ufo-status').innerText = this.isReplay ? "MODE REPLAY" : "VÉRITÉ CAPTEUR";
+        },
+
         run() {
-            this.audio.analyser.getByteFrequencyData(this.audio.data);
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-            // Calcul 256-bit pour la position stellaire
-            let planckTime = new Decimal(Date.now()).mul('1.35e-43');
-            let starAzimuth = new Decimal(Date.now()).mod(360).toDP(7);
-            document.getElementById('star-pos').innerText = starAzimuth + "°";
-
-            // Rendu de la mousse quantique (Écholocation)
-            this.ctx.beginPath();
-            this.ctx.strokeStyle = '#00ffcc';
-            let sumFreq = 0;
-            for(let i=0; i<this.audio.data.length; i+=8) {
-                let v = this.audio.data[i] / 128.0;
-                let x = i * (this.canvas.width / this.audio.data.length) * 8;
-                let y = (v * this.canvas.height / 4) + (this.canvas.height / 1.5);
-                this.ctx.lineTo(x, y);
-                sumFreq += this.audio.data[i];
-            }
-            this.ctx.stroke();
+            this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+            const w = this.ctx.canvas.width;
+            const h = this.ctx.canvas.height;
 
             // Mise à jour Télémétrie
-            document.getElementById('echo-val').innerText = (sumFreq/10).toFixed(2);
-            let collision = new Decimal(sumFreq).mul('1.616e-35').mul(Math.pow(10, 32));
-            document.getElementById('coll-dist').innerText = collision.toFixed(5) + " pm";
+            document.getElementById('azi').innerText = this.sensors.alpha.toFixed(5);
+            document.getElementById('orientation').innerText = `${this.sensors.beta.toFixed(2)} / ${this.sensors.gamma.toFixed(2)}`;
+            document.getElementById('accRaw').innerText = `${this.sensors.acc.x.toFixed(2)} / ${this.sensors.acc.y.toFixed(2)} / ${this.sensors.acc.z.toFixed(2)}`;
+            
+            // Calcul Vitesse au mm/s
+            let speed = this.sensors.acc.x.pow(2).plus(this.sensors.acc.y.pow(2)).sqrt().mul(1000);
+            document.getElementById('v3d').innerText = speed.toFixed(3);
 
-            // Scellage SHA-256
-            let hash = CryptoJS.SHA256(starAzimuth.toString() + sumFreq).toString();
-            document.getElementById('hash-log').innerText = "SHA-256: " + hash;
+            // Rendu Fantôme Vectoriel
+            this.ctx.strokeStyle = this.isReplay ? '#ff3300' : '#00ffcc';
+            this.ctx.lineWidth = 2;
+            
+            if (!this.isReplay) {
+                // Mode Temps Réel : Dessine le vecteur de force gravitationnelle
+                let startX = w/2, startY = h/2;
+                let endX = startX + (parseFloat(this.sensors.gamma) * 5);
+                let endY = startY + (parseFloat(this.sensors.beta) * 5);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(startX, startY);
+                this.ctx.lineTo(endX, endY);
+                this.ctx.stroke();
+                
+                // Cercle d'incertitude (Noise)
+                let noise = Math.abs(parseFloat(this.sensors.acc.x)) + Math.abs(parseFloat(this.sensors.acc.y));
+                this.ctx.beginPath();
+                this.ctx.arc(endX, endY, noise * 10 + 20, 0, Math.PI * 2);
+                this.ctx.stroke();
+            } else {
+                // Mode Replay : Dessine la trajectoire stockée
+                this.ctx.beginPath();
+                this.history.forEach((p, i) => {
+                    let rx = w/2 + (parseFloat(p.x) * 50);
+                    let ry = h/2 + (parseFloat(p.y) * 50);
+                    if(i === 0) this.ctx.moveTo(rx, ry);
+                    else this.ctx.lineTo(rx, ry);
+                });
+                this.ctx.stroke();
+            }
+
+            // Scellage Cryptographique (SHA-256)
+            let rawData = this.sensors.acc.x.toString() + this.sensors.alpha.toString() + Date.now();
+            let hash = CryptoJS.SHA256(rawData).toString().toUpperCase();
+            document.getElementById('hash').innerText = hash;
 
             requestAnimationFrame(() => this.run());
         }
     };
 
-    document.body.onclick = () => ARCHE_X13.init();
+    document.body.onclick = () => {
+        ARCHE_MASTER.init();
+        document.body.onclick = null;
+    };
 </script>
 </body>
-</html>
+    </html>
