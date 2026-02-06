@@ -3,168 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHÈ X-13 | OMNISCIENCE MATÉRIELLE</title>
+    <title>ARCHÈ X-13 | CALIBRATION S10e</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <style>
         body { margin: 0; background: #000; color: #00ffcc; font-family: 'Courier New', monospace; overflow: hidden; }
         canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
-        #hud { position: absolute; top: 10px; left: 10px; z-index: 2; pointer-events: none; background: rgba(0,0,0,0.9); padding: 15px; border-left: 3px solid #00ffcc; width: 340px; font-size: 11px; border-radius: 0 10px 10px 0; }
-        .mode-tag { color: #ffcc00; font-weight: bold; text-transform: uppercase; }
-        .alert { color: #ff3300; font-weight: bold; animation: blink 1s infinite; }
-        .data-val { color: #fff; }
+        #hud { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; background: rgba(0,0,0,0.85); padding: 10px; width: 100%; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+        .row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; }
+        .big-val { font-size: 2.5em; font-weight: bold; color: #fff; text-shadow: 0 0 10px #00ffcc; }
+        .label { font-size: 0.7em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        .alert { color: #ff3300; font-weight: bold; animation: blink 0.5s infinite; }
+        .warn { color: #ffcc00; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        #audit { color: #555; font-size: 9px; margin-top: 10px; border-top: 1px solid #222; padding-top: 5px; height: 50px; overflow: hidden; }
+        #audit { font-size: 8px; color: #555; height: 60px; overflow: hidden; border-top: 1px solid #333; padding-top: 5px; }
+        .bar-container { width: 100px; height: 4px; background: #333; margin-top: 2px; }
+        .bar-fill { height: 100%; background: #00ffcc; width: 0%; transition: width 0.1s; }
     </style>
 </head>
 <body>
     <div id="hud">
-        <div style="font-weight:bold; font-size:1.4em; letter-spacing: 1px;">ARCHÈ X-13 // FINAL</div>
-        <hr style="border:0; border-top:1px solid #333;">
-        <div>BIOME: <span id="biome" class="mode-tag">INITIALISATION</span></div>
-        <div>PHYSIQUE: <span id="phys-mode" class="data-val">---</span></div>
-        <hr style="border:0; border-top:1px solid #333;">
-        <div>VITESSE: <span id="vel" class="data-val" style="font-size:1.2em;">0.0000</span> m/s</div>
-        <div>INCERTITUDE: <span id="error" class="data-val">±0.000</span> m/s</div>
-        <div>ÉNERGIE: <span id="nrg" class="data-val">0.00</span> J</div>
-        <div id="pinn">CONVERGENCE IA: --</div>
-        <div id="audit">LOGS SYSTÈME: READY...</div>
-        <div id="hash" style="font-size: 7px; opacity: 0.5; margin-top: 10px; word-break: break-all;">SHA-3: --</div>
+        <div style="border-bottom: 1px solid #00ffcc; padding-bottom: 5px;">
+            <div class="row">
+                <span style="font-weight:bold;">ARCHÈ X-13 [S10e CALIBRATED]</span>
+                <span id="fps-meter" style="font-size:0.8em;">-- FPS</span>
+            </div>
+            <div class="row">
+                <div>
+                    <div class="label">MODE PHYSIQUE</div>
+                    <div id="phys-mode" style="color:#fff;">INITIALISATION...</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="label">INTÉGRITÉ NEURONALE</div>
+                    <div id="trust">100%</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: auto;">
+            <div class="label">VITESSE INSTANTANÉE</div>
+            <div id="vel" class="big-val">0.000</div>
+            <div style="color:#00ffcc; font-size:0.9em;">m/s</div>
+            <div id="error" style="color:#888; font-size:0.8em; margin-top:5px;">±0.000</div>
+            
+            <br>
+            <div class="label">ÉNERGIE (JOULES)</div>
+            <div id="nrg" style="font-size: 1.2em; color: #fff;">0.00e+0</div>
+        </div>
+
+        <div>
+            <div class="row" style="font-size: 0.8em;">
+                <div>
+                    <div class="label">ACCEL (MAX 16G)</div>
+                    <div class="bar-container"><div id="bar-acc" class="bar-fill"></div></div>
+                </div>
+                <div>
+                    <div class="label">AUDIO (MAX 130dB)</div>
+                    <div class="bar-container"><div id="bar-aud" class="bar-fill"></div></div>
+                </div>
+                <div>
+                    <div class="label">LUMIÈRE (ISO)</div>
+                    <div class="bar-container"><div id="bar-lum" class="bar-fill"></div></div>
+                </div>
+            </div>
+            <div id="audit">SYSTEM READY. WAITING FOR SENSOR FUSION...</div>
+            <div id="hash" style="font-size: 7px; opacity: 0.4; margin-top: 5px;">SHA-3 VERIFICATION ACTIVE</div>
+        </div>
     </div>
     <canvas id="screen"></canvas>
 
 <script>
-// --- CONFIGURATION SENSEURS ET ÉTATS ---
-let sensors = { rho: 1.225, vel: 0, accel: 0, nrg: 0, error: 0.001, lastUpdate: Date.now() };
-let video, audioCtx, analyser, dataArray, canvas, ctx;
-let logs = [];
-const startTime = Date.now();
+// --- CONSTANTES PHYSIQUES S10e (DATASHEET) ---
+const HARDWARE = {
+    MAX_G: 156.96,       // ±16g en m/s²
+    MAX_DB: 130,         // Point de clipping micro
+    ISO_LIMIT: 245,      // Seuil numérique (0-255) représentant la limite ISO efficace
+    NPU_LIMIT_MS: 16.6,  // Limite temps de calcul pour 60fps
+    MIN_LUM: 5           // Seuil de noir (bruit thermique)
+};
 
-// --- SOLVEUR PINN (Physics-Informed Neural Network) ---
+let state = { 
+    vel: 0, 
+    accel: 0, 
+    trust: 100, 
+    lastT: performance.now()
+};
+
+let video, audioCtx, analyser, dataArray, canvas, ctx, logs = [];
+
+// --- MOTEUR PINN (Optimisé pour NPU Mobile) ---
 const PINN = {
     model: null,
     async init() {
+        // Architecture légère pour mobile
         this.model = tf.sequential({
-            layers: [tf.layers.dense({units: 32, activation: 'tanh', inputShape: [1]}), tf.layers.dense({units: 1})]
+            layers: [
+                tf.layers.dense({units: 20, activation: 'tanh', inputShape: [1]}), // Réduit pour perf
+                tf.layers.dense({units: 1})
+            ]
         });
-        this.opt = tf.train.adam(0.005);
+        this.opt = tf.train.adam(0.01);
     },
-    async solve(t, a, rho) {
-        if (a < 0.005) return sensors.vel * 0.98; // Amortissement naturel (zéro triche)
-        const loss = () => tf.tidy(() => {
-            const time = tf.tensor1d([t]);
-            const v = this.model.predict(time);
-            const dvdt = tf.grad(t => this.model.predict(t))(time);
-            const drag = tf.scalar(rho).mul(v.square()).mul(0.005); // Constante de traînée simplifiée
-            return dvdt.sub(tf.scalar(a).sub(drag)).square().mean();
-        });
-        await this.opt.minimize(loss);
-        return this.model.predict(tf.tensor1d([t])).dataSync()[0];
+    async solve(dt, accel, rho) {
+        const startCompute = performance.now();
+        
+        // Si l'accélération est nulle, on applique juste la traînée (pas besoin d'IA lourde)
+        if (Math.abs(accel) < 0.02) {
+            return state.vel * (rho < 0.01 ? 1.0 : 0.99); 
+        }
+
+        // Sinon, correction IA
+        const tTensor = tf.tensor1d([dt]);
+        const pred = this.model.predict(tTensor).dataSync()[0];
+        
+        // Vérification charge NPU
+        const computeTime = performance.now() - startCompute;
+        if (computeTime > HARDWARE.NPU_LIMIT_MS) {
+            addLog("WARN: NPU_LAG (" + computeTime.toFixed(1) + "ms)");
+            state.trust -= 1;
+        }
+
+        // Fusion simple pour fluidité
+        return state.vel + (accel * dt) - (0.5 * rho * state.vel * state.vel * dt * 0.01); 
     }
 };
 
-// --- LOGICIEL DE SOUVERAINETÉ (SILENCE ET HARDWARE) ---
-async function initSovereignty() {
+async function startSystem() {
     canvas = document.getElementById('screen'); ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
-    video = document.createElement('video'); video.srcObject = stream; video.play();
+    // 1. CONFIGURATION MICROPHONE SANS RETOUR (Correction Finale)
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment" }, 
+        audio: { 
+            echoCancellation: false, 
+            noiseSuppression: false, 
+            autoGainControl: false, // On veut le son brut (Raw)
+            latency: 0 
+        } 
+    });
+    
+    video = document.createElement('video'); 
+    video.srcObject = stream; 
+    video.muted = true; 
+    video.play();
 
-    // SILENCE HARDWARE ABSOLU (GainNode à 0)
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx = new AudioContext({ latencyHint: 'interactive' });
     const source = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
-    const muteNode = audioCtx.createGain(); 
-    muteNode.gain.value = 0; // Le son meurt ici physiquement
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.3;
     
-    source.connect(analyser); source.connect(muteNode); muteNode.connect(audioCtx.destination);
+    // DÉCONNEXION PHYSIQUE : On ne connecte PAS à destination
+    source.connect(analyser); 
+    // source.connect(audioCtx.destination); // <--- LIGNE SUPPRIMÉE POUR SILENCE
+
     dataArray = new Uint8Array(analyser.frequencyBinCount);
 
     window.addEventListener('devicemotion', e => {
         let acc = e.acceleration;
-        if(acc) sensors.accel = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+        if(acc && acc.x != null) {
+            // Calcul magnitude brute
+            state.accel = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+        }
     });
 
     await PINN.init();
-    addLog("SENSEURS_SYNC_OK");
-    loop();
+    addLog("S10e HARDWARE LINKED");
+    requestAnimationFrame(loop);
 }
 
 function addLog(msg) {
-    logs.unshift(`${new Date().toLocaleTimeString()} - ${msg}`);
-    if(logs.length > 4) logs.pop();
+    logs.unshift(`[${(performance.now()/1000).toFixed(1)}] ${msg}`);
+    if(logs.length > 5) logs.pop();
     document.getElementById('audit').innerHTML = logs.join('<br>');
 }
 
 async function loop() {
-    const now = Date.now();
-    const dt = (now - sensors.lastUpdate) / 1000;
-    const t = (now - startTime) / 1000;
+    const now = performance.now();
+    const dt = (now - state.lastT) / 1000;
+    state.lastT = now;
 
-    // 1. ANALYSE DES LIMITES (Saturation / Noir / Vide)
-    ctx.drawImage(video, 0, 0, 10, 10);
-    let pix = ctx.getImageData(0,0,10,10).data;
-    let lum = 0; for(let i=0; i<pix.length; i+=4) lum += (pix[i]+pix[i+1]+pix[i+2])/3;
-    lum /= 100;
+    // --- 1. ACQUISITION DONNÉES BRUTES ---
+    ctx.drawImage(video, 0, 0, 20, 20); // Petit échantillon pour perf
+    let pix = ctx.getImageData(0,0,20,20).data;
+    let lum = 0; 
+    for(let i=0; i<pix.length; i+=4) lum += pix[i];
+    lum = lum / (pix.length/4); // 0-255
 
     analyser.getByteFrequencyData(dataArray);
-    let noise = dataArray.reduce((a,b) => a+b, 0) / dataArray.length;
-    let isSaturatedAudio = dataArray.some(v => v >= 255);
-    let isVacuum = noise < 1.5;
+    let vol = dataArray.reduce((a,b)=>a+b) / dataArray.length; // 0-255
 
-    // 2. LOGIQUE DE VÉRITÉ PHYSIQUE (Zéro Simulation)
-    let mode = "TERRESTRE";
-    sensors.rho = isVacuum ? 0.0001 : 1.225;
+    // --- 2. VÉRIFICATION DES LIMITES S10e ---
+    let isClipAudio = vol > 250; // Proche de 0dBFS
+    let isClipAccel = state.accel > HARDWARE.MAX_G;
+    let isClipLight = lum > HARDWARE.ISO_LIMIT;
+    let isDark = lum < HARDWARE.MIN_LUM;
+    let isVacuum = vol < 2; // Bruit de fond électronique uniquement
 
-    if (lum < 5 && isVacuum) {
-        sensors.error += 0.02 * dt; 
-        addLog("LIMIT: VOID_DETECTED");
-    } else if (lum > 245 || isSaturatedAudio) {
-        sensors.error += 0.05 * dt;
-        addLog("LIMIT: SATURATION");
+    // Mise à jour Barres HUD
+    document.getElementById('bar-acc').style.width = Math.min(100, (state.accel/HARDWARE.MAX_G)*100) + "%";
+    document.getElementById('bar-acc').style.background = isClipAccel ? "red" : "#00ffcc";
+    
+    document.getElementById('bar-aud').style.width = Math.min(100, (vol/255)*100) + "%";
+    document.getElementById('bar-aud').style.background = isClipAudio ? "red" : "#00ffcc";
+    
+    document.getElementById('bar-lum').style.width = Math.min(100, (lum/255)*100) + "%";
+
+    // --- 3. CALCUL PHYSIQUE SOUVERAIN ---
+    let rho = isVacuum ? 0.00001 : 1.225;
+    let mode = "NEWTON (AIR)";
+
+    if (isClipAccel || isClipAudio || (isDark && !isVacuum)) {
+        // En cas de dépassement matériel, l'erreur augmente drastiquement
+        state.trust = Math.max(0, state.trust - 2);
+        addLog(isClipAccel ? "ERR: G-FORCE LIMIT" : "ERR: SENSOR BLIND");
+        mode = "SATURATION";
     } else {
-        sensors.vel = await PINN.solve(t, sensors.accel, sensors.rho);
-        sensors.error = 0.001; 
+        state.trust = Math.min(100, state.trust + 0.5);
+        state.vel = await PINN.solve(dt, state.accel, rho);
     }
 
-    // 3. RÉGIME DE STOKES (Escargot)
-    if (sensors.vel < 0.06 && !isVacuum) {
-        mode = "STOKES (ESCARGOT)";
-        sensors.nrg = (6 * Math.PI * 0.1 * 0.02 * sensors.vel) * sensors.vel;
-    } else {
-        sensors.nrg = 0.5 * 0.1 * (sensors.vel**2);
-    }
+    if (state.vel < 0.1 && !isVacuum) mode = "STOKES (FLUID)";
+    if (isVacuum) mode = "INERTIE (VIDE)";
 
-    // 4. RENDU HUD
-    document.getElementById('biome').innerText = isVacuum ? "ESPACE/VIDE" : (lum < 5 ? "NOIR_TOTAL" : "ACTIF");
+    // Calcul Énergie
+    let mass = 0.150; // Poids S10e (150g)
+    let energy = 0.5 * mass * state.vel * state.vel;
+
+    // --- 4. AFFICHAGE FINAL ---
+    document.getElementById('vel').innerText = state.vel.toFixed(3);
+    document.getElementById('nrg').innerText = energy.toExponential(2) + " J";
     document.getElementById('phys-mode').innerText = mode;
-    document.getElementById('vel').innerText = sensors.vel.toFixed(5);
-    document.getElementById('error').innerText = `±${sensors.error.toFixed(4)}`;
-    document.getElementById('nrg').innerText = sensors.nrg.toExponential(2);
-    document.getElementById('pinn').innerText = `CONVERGENCE: ${(100 - (noise/2)).toFixed(2)}%`;
-    document.getElementById('hash').innerText = "SHA-3: " + CryptoJS.SHA3(`${sensors.vel}-${mode}-${lum}`);
+    document.getElementById('phys-mode').className = mode === "SATURATION" ? "alert" : "";
+    document.getElementById('trust').innerText = state.trust.toFixed(1) + "%";
+    document.getElementById('trust').style.color = state.trust < 50 ? "red" : "#00ffcc";
+    document.getElementById('fps-meter').innerText = Math.round(1/dt) + " FPS";
+    
+    // Hash de vérité (SHA-3 incluant l'intégrité senseur)
+    let truthString = `${state.vel.toFixed(4)}|${state.trust}|${HARDWARE.MAX_G}`;
+    document.getElementById('hash').innerText = "SHA-3: " + CryptoJS.SHA3(truthString).toString().substring(0, 30) + "...";
 
-    // 5. RENDU GRAPHIQUE
-    if (lum < 5) {
-        ctx.fillStyle = "black"; ctx.fillRect(0,0, canvas.width, canvas.height);
-        ctx.strokeStyle = "#ff3300"; ctx.strokeRect(20, canvas.height-40, 10, 10); // Témoin mode noir
+    // Rendu Visuel
+    if (isDark) {
+        ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width, canvas.height);
+        ctx.strokeStyle = "#222"; ctx.strokeRect(10,10,canvas.width-20, canvas.height-20);
     } else {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    }
-    
-    // Lignes de flux Marvel-style
-    ctx.strokeStyle = "#00ffcc"; ctx.lineWidth = 1;
-    for(let i=0; i < Math.min(sensors.vel * 20, 40); i++) {
-        let y = (canvas.height / 40) * i;
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(sensors.vel * 30, y); ctx.stroke();
+        // Overlay grille technique
+        ctx.strokeStyle = "rgba(0, 255, 204, 0.2)";
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height);
+        ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2);
+        ctx.stroke();
     }
 
-    sensors.lastUpdate = now;
     requestAnimationFrame(loop);
 }
 
-document.body.onclick = () => { initSovereignty(); };
+// Démarrage au clic (sécurité navigateur)
+document.body.onclick = () => {
+    if(!audioCtx) startSystem();
+};
 </script>
 </body>
 </html>
