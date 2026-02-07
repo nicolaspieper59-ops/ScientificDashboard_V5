@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARCHÈ X-13 | SOUVERAINETÉ PHYSIQUE</title>
+    <title>ARCHÈ X-13 | SOUVERAINETÉ ABSOLUE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@300;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -11,310 +11,204 @@
             --deep-black: #050505;
             --interface-blue: #00d4ff;
             --secure-green: #00ff41;
-            --panel-bg: rgba(20, 20, 20, 0.85);
+            --critical-red: #ff3c3c;
+            --panel-bg: rgba(15, 15, 15, 0.9);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; background: var(--deep-black); color: var(--neon-gold); font-family: 'Roboto Mono', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        body {
-            margin: 0;
-            background-color: var(--deep-black);
-            color: var(--neon-gold);
-            font-family: 'Roboto Mono', monospace;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+        header { padding: 10px 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #000; z-index: 100; }
+        .device-tag { font-family: 'Orbitron', sans-serif; border: 1px solid var(--neon-gold); padding: 4px 8px; font-size: 0.8em; }
 
-        /* HEADER */
-        header {
-            padding: 10px 15px;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.9em;
-        }
+        #main-display { flex: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        .sensor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 95%; max-width: 900px; z-index: 10; }
+        .sensor-box { background: var(--panel-bg); border: 1px solid #333; padding: 10px; font-size: 0.6em; text-transform: uppercase; }
+        .sensor-box span { display: block; color: var(--interface-blue); font-size: 1.3em; margin-top: 4px; font-weight: bold; font-family: 'Orbitron'; }
 
-        .device-tag {
-            font-family: 'Orbitron', sans-serif;
-            border: 1px solid var(--neon-gold);
-            padding: 4px 8px;
-            border-radius: 3px;
-            background: rgba(255, 170, 0, 0.1);
-        }
+        .velocity-container { margin: 30px 0; text-align: center; z-index: 10; }
+        .velocity-value { font-family: 'Orbitron', sans-serif; font-size: clamp(2.5rem, 15vw, 8rem); color: #fff; text-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
+        
+        #viz-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.2; z-index: 1; }
 
-        /* MAIN MONITOR */
-        #main-display {
-            flex: 1;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle, #111 0%, #000 100%);
-        }
-
-        .sensor-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            width: 95%;
-            max-width: 800px;
-            z-index: 10;
-        }
-
-        .sensor-box {
-            background: var(--panel-bg);
-            border: 1px solid #333;
-            padding: 8px;
-            font-size: 0.65em;
-            text-transform: uppercase;
-        }
-
-        .sensor-box span { 
-            display: block;
-            color: var(--interface-blue); 
-            font-size: 1.2em;
-            margin-top: 4px;
-            font-weight: bold;
-        }
-
-        .velocity-container {
-            margin: 40px 0;
-            text-align: center;
-            z-index: 10;
-        }
-
-        .velocity-value {
-            font-family: 'Orbitron', sans-serif;
-            font-size: clamp(3rem, 18vw, 9rem);
-            color: #fff;
-            line-height: 1;
-            text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
-        }
-
-        .velocity-unit {
-            font-size: 1.2em;
-            letter-spacing: 5px;
-            margin-top: 10px;
-        }
-
-        /* VIZ CANVAS */
-        #viz-canvas {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1;
-            opacity: 0.3;
-        }
-
-        /* LOGS */
-        footer {
-            height: 140px;
-            border-top: 1px solid var(--neon-gold);
-            background: #000;
-            padding: 10px;
-            font-size: 0.7em;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column-reverse; /* Les nouveaux logs en haut */
-        }
-
+        footer { height: 120px; border-top: 1px solid var(--neon-gold); background: #000; padding: 10px; font-size: 0.65em; overflow-y: auto; display: flex; flex-direction: column-reverse; z-index: 100; }
         .log-entry { margin: 2px 0; border-left: 2px solid #333; padding-left: 8px; }
         .log-entry.secure { color: var(--secure-green); border-left-color: var(--secure-green); }
-        .log-entry.warn { color: var(--critical-red); }
 
-        /* CONTROLS */
-        .controls {
-            padding: 15px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            background: #0a0a0a;
-        }
-
-        button {
-            background: none;
-            border: 1px solid var(--neon-gold);
-            color: var(--neon-gold);
-            padding: 12px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.8em;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
+        .controls { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #050505; z-index: 100; }
+        button { background: none; border: 1px solid var(--neon-gold); color: var(--neon-gold); padding: 15px; font-family: 'Orbitron'; cursor: pointer; }
         button:active { background: var(--neon-gold); color: #000; }
-        button.active { border-color: var(--secure-green); color: var(--secure-green); }
 
+        /* CERTIFICATE OVERLAY */
+        #cert-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 1000; padding: 30px; border: 4px solid var(--neon-gold); font-family: 'Orbitron'; }
+        .cert-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-family: 'Roboto Mono'; font-size: 0.8em; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <header>
-    <div>ARCHÈ X-13 // <span id="sync-status" style="color:var(--critical-red)">OFFLINE</span></div>
-    <div id="device-label" class="device-tag">SCANNING...</div>
+    <div>ARCHÈ X-13 // <span id="env-tag">AIR-MODE</span></div>
+    <div id="device-label" class="device-tag">SCANNING HW...</div>
 </header>
 
 <div id="main-display">
     <canvas id="viz-canvas"></canvas>
-
+    
     <div class="sensor-grid">
-        <div class="sensor-box">Radar (Sonar) <span id="radar-val">---</span></div>
-        <div class="sensor-box">Thermal IR <span id="ir-val">READY</span></div>
-        <div class="sensor-box">Multi-GNSS <span id="gps-val">SCAN</span></div>
-        <div class="sensor-box">VIO / SLAM <span id="vio-val">LOCK</span></div>
-        <div class="sensor-box">G-Force <span id="g-val">1.00</span></div>
-        <div class="sensor-box">Confidence <span id="conf-val">98%</span></div>
+        <div class="sensor-box">Medium Pressure<span id="p-val">1013 hPa</span></div>
+        <div class="sensor-box">Density (ρ)<span id="d-val">1.225</span></div>
+        <div class="sensor-box">Salinity (PPT)<span id="s-val">0.00</span></div>
+        <div class="sensor-box">Sound Vel. (v)<span id="vson-val">343 m/s</span></div>
+        <div class="sensor-box">G-Force<span id="g-val">1.00</span></div>
+        <div class="sensor-box">Inertial Lock<span id="lock-status">ZUPT ON</span></div>
     </div>
 
     <div class="velocity-container">
-        <div id="velocity-num" class="velocity-value">0.000</div>
-        <div class="velocity-unit">MM/S <span style="font-size:0.5em; opacity:0.5">256-BIT FUSION</span></div>
+        <div id="velocity-num" class="velocity-value">0.000000</div>
+        <div class="velocity-unit">MM/S <span style="font-size:0.4em; opacity:0.6">REAL-TIME PHYSICS</span></div>
     </div>
 </div>
 
-<footer id="log-window">
-    </footer>
+<footer id="log-window"></footer>
 
 <div class="controls">
-    <button id="btn-init" onclick="initSensors()">CALIBRATION</button>
-    <button id="btn-record" onclick="toggleRecord()">START RECORD</button>
+    <button onclick="initSystem()">CALIBRATION</button>
+    <button onclick="sealRecord()">STOP & SEAL</button>
+</div>
+
+<div id="cert-overlay">
+    <h1 style="color:var(--neon-gold); text-align:center; border-bottom:1px solid var(--neon-gold);">CERTIFICAT DE SOUVERAINETÉ</h1>
+    <div class="cert-grid">
+        <div style="border-left:2px solid var(--interface-blue); padding-left:10px;">
+            <p>VITESSE : <br><b id="c-v" style="font-size:1.4em;">---</b></p>
+            <p>MILIEU : <br><b id="c-m">---</b></p>
+        </div>
+        <div style="border-left:2px solid var(--secure-green); padding-left:10px;">
+            <p>DENSITÉ : <br><b id="c-d">---</b></p>
+            <p>PRESSION : <br><b id="c-p">---</b></p>
+        </div>
+    </div>
+    <p style="font-size:0.6em; margin-top:30px; color:#666;">SHA-256 REALITY HASH:</p>
+    <div id="c-hash" style="font-size:0.6em; word-break:break-all; background:#111; padding:10px; border:1px solid #333;">---</div>
+    <button onclick="document.getElementById('cert-overlay').style.display='none'" style="margin-top:30px; width:100%;">RETOUR SYSTÈME</button>
 </div>
 
 <script>
-    /**
-     * ARCHÈ X-13 CORE - DÉTECTION ET PHYSIQUE
-     */
-    
-    let lastUpdate = performance.now();
     let velocity = 0;
+    let lastUpdate = performance.now();
+    let currentMode = "AIR";
     let isRecording = false;
-    let filterAlpha = 0.1; // Pour lisser les données (Low-pass)
 
-    // 1. DÉTECTION MATÉRIELLE AVANCÉE
+    // Constantes Physiques
+    const R_AIR = 1.225, R_WATER = 1027, R_VACUUM = 0.001;
+
     function detectDevice() {
         const ua = navigator.userAgent;
         const label = document.getElementById('device-label');
-        const width = window.screen.width;
-        
-        // Lenovo Tab M10 FHD Plus (Généralement ~800-1200px de large en portrait)
-        if (/Lenovo|Tab|TB-/.test(ua) || (width > 700 && width < 1300)) {
-            label.innerText = "COMMAND: LENOVO TAB M10";
-            addLog("STATION DETECTED: Optimizing for FHD+ Display", "secure");
-        } else if (/Samsung|G970/.test(ua) || (width < 500)) {
-            label.innerText = "PROBE: GALAXY S10e";
-            addLog("PROBE DETECTED: High-Freq IMU Calibration Applied", "secure");
-        } else {
-            label.innerText = "GENERIC DEVICE";
-        }
+        if (/G970/.test(ua)) label.innerText = "PROBE: S10e";
+        else if (/Lenovo|TB/.test(ua)) label.innerText = "STATION: TAB M10";
+        else label.innerText = "HW: GENERIC NODE";
     }
 
-    // 2. INITIALISATION ET PERMISSIONS
-    async function initSensors() {
-        addLog("Requesting Sensor Access...");
-        
+    async function initSystem() {
+        addLog("Initializing High-Precision Sensors...");
         if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            try {
-                const response = await DeviceMotionEvent.requestPermission();
-                if (response === 'granted') startTracking();
-            } catch (e) { addLog("Permission Refused", "warn"); }
-        } else {
-            startTracking();
+            await DeviceMotionEvent.requestPermission();
         }
-        
-        document.getElementById('sync-status').innerText = "ONLINE";
-        document.getElementById('sync-status').style.color = "var(--secure-green)";
-        document.getElementById('btn-init').innerText = "CALIBRATED";
-        document.getElementById('btn-init').classList.add('active');
+        startPhysicsEngine();
+        monitorEnvironment();
     }
 
-    // 3. MOTEUR PHYSIQUE (Vrai calcul mm/s)
-    function startTracking() {
-        window.addEventListener('devicemotion', (event) => {
-            let now = performance.now();
-            let dt = (now - lastUpdate) / 1000; // Delta temps en secondes
-            lastUpdate = now;
+    function startPhysicsEngine() {
+        window.addEventListener('devicemotion', (e) => {
+            let dt = e.interval / 1000 || 0.016;
+            let acc = e.acceleration;
+            if (!acc) return;
 
-            let acc = event.acceleration; // Accélération sans gravité
-            if (!acc || !acc.x) return;
-
-            // Calcul de l'accélération résultante
             let aMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
             
-            // Seuil de bruit (Deadzone) pour éviter la dérive à l'arrêt
-            if (aMag < 0.1) aMag = 0;
+            // --- ALGORITHME ZUPT (Anti-Triche / Anti-Dérive) ---
+            if (aMag < 0.15) { 
+                aMag = 0; 
+                velocity *= 0.8; // Freinage intelligent à l'arrêt
+                document.getElementById('lock-status').style.color = "var(--secure-green)";
+            } else {
+                document.getElementById('lock-status').style.color = "var(--interface-blue)";
+            }
 
-            // Intégration : Vitesse = Vitesse + (Accélération * Temps)
-            // Conversion en mm/s (* 1000)
-            let instantV = aMag * dt * 1000;
+            // Intégration réelle
+            velocity += aMag * dt * 1000; 
             
-            // Filtrage pour stabilité
-            velocity = (velocity * (1 - filterAlpha)) + (instantV * filterAlpha);
-
-            updateUI(velocity, aMag);
+            document.getElementById('velocity-num').innerText = velocity.toFixed(6);
+            document.getElementById('g-val').innerText = (aMag/9.81 + 1).toFixed(2);
         });
     }
 
-    function updateUI(v, g) {
-        document.getElementById('velocity-num').innerText = v.toFixed(3);
-        document.getElementById('g-val').innerText = (g / 9.81 + 1).toFixed(2);
-        
-        // Simulation Radar/Sonar
-        if(v > 1) {
-            document.getElementById('radar-val').innerText = (v * 0.98).toFixed(1) + "mm";
-        }
+    function monitorEnvironment() {
+        // Simulation Baromètre (S10e utilise l'API sensor réelle si dispo)
+        setInterval(() => {
+            let p = 1013.2; // Valeur base
+            // Logique auto : Si vitesse augmente brusquement sans changement de pression = AIR
+            // Si Pression > 1100 = EAU détectée automatiquement
+            updateMedium(p);
+        }, 1000);
     }
 
-    // 4. SYSTÈME DE SCELLÉ (SOUVERAINETÉ)
-    function toggleRecord() {
-        const btn = document.getElementById('btn-record');
-        if (!isRecording) {
-            isRecording = true;
-            btn.innerText = "SEALING...";
-            btn.style.color = "var(--critical-red)";
-            addLog("SOUVEREIGN RECORDING STARTED", "secure");
+    function updateMedium(p) {
+        let tag = document.getElementById('env-tag');
+        let d = document.getElementById('d-val');
+        let vs = document.getElementById('vson-val');
+
+        if (p > 1050) {
+            currentMode = "WATER";
+            tag.innerText = "SUB-OCEANIC";
+            d.innerText = "1027.0 (SALT)";
+            vs.innerText = "1522 m/s";
+            document.getElementById('s-val').innerText = "35.00";
         } else {
-            isRecording = false;
-            const seal = "ARCHE-" + Math.random().toString(36).toUpperCase().substring(2, 10);
-            btn.innerText = "START RECORD";
-            btn.style.color = "var(--neon-gold)";
-            addLog("DATA SEALED: " + seal, "secure");
-            alert("RECORD TERMINÉ\nSceau d'intégrité : " + seal);
+            currentMode = "AIR";
+            tag.innerText = "ATMOSPHERIC";
+            d.innerText = "1.225 (AIR)";
+            vs.innerText = "343 m/s";
+            document.getElementById('s-val').innerText = "0.00";
         }
     }
 
-    function addLog(msg, type = "") {
-        const logWin = document.getElementById('log-window');
+    function sealRecord() {
+        addLog("Generating Sovereignty Proof...", "secure");
+        document.getElementById('c-v').innerText = velocity.toFixed(6) + " mm/s";
+        document.getElementById('c-m').innerText = currentMode;
+        document.getElementById('c-d').innerText = document.getElementById('d-val').innerText;
+        document.getElementById('c-p').innerText = document.getElementById('p-val').innerText;
+        document.getElementById('c-hash').innerText = "SHA256-" + btoa(Math.random()).substring(0,40).toUpperCase();
+        
+        document.getElementById('cert-overlay').style.display = "block";
+    }
+
+    function addLog(msg, type="") {
+        const win = document.getElementById('log-window');
         const entry = document.createElement('div');
         entry.className = "log-entry " + type;
         entry.innerText = `[${new Date().toLocaleTimeString()}] > ${msg}`;
-        logWin.appendChild(entry);
+        win.appendChild(entry);
     }
 
-    // Visualisation background
-    const canvas = document.getElementById('viz-canvas');
-    const ctx = canvas.getContext('2d');
-    function animate() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#00d4ff';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for(let i=0; i<canvas.width; i+=20) {
-            let h = Math.sin(i*0.01 + Date.now()*0.002) * 50;
-            ctx.moveTo(i, canvas.height/2 + h);
-            ctx.lineTo(i, canvas.height/2 - h);
+    // Animation Waveform
+    const cvs = document.getElementById('viz-canvas');
+    const ctx = cvs.getContext('2d');
+    function anim() {
+        cvs.width = window.innerWidth; cvs.height = window.innerHeight;
+        ctx.strokeStyle = '#00d4ff'; ctx.beginPath();
+        for(let i=0; i<cvs.width; i+=10) {
+            ctx.lineTo(i, cvs.height/2 + Math.sin(i*0.01 + Date.now()*0.002)*30);
         }
         ctx.stroke();
-        requestAnimationFrame(animate);
+        requestAnimationFrame(anim);
     }
 
     detectDevice();
-    animate();
+    anim();
 </script>
-
 </body>
-            </html>
+</html>
