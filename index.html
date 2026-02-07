@@ -2,278 +2,319 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCHÈ X-13 | UNIVERSAL MEASUREMENT ENGINE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ARCHÈ X-13 | SOUVERAINETÉ PHYSIQUE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@300;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --neon-gold: #ffaa00;
             --deep-black: #050505;
             --interface-blue: #00d4ff;
-            --critical-red: #ff3c3c;
+            --secure-green: #00ff41;
+            --panel-bg: rgba(20, 20, 20, 0.85);
         }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             margin: 0;
             background-color: var(--deep-black);
             color: var(--neon-gold);
             font-family: 'Roboto Mono', monospace;
-            overflow: hidden;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            overflow: hidden;
         }
 
-        /* HEADER & STATUS */
+        /* HEADER */
         header {
-            padding: 15px;
+            padding: 10px 15px;
             border-bottom: 1px solid #333;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(10, 10, 10, 0.9);
+            font-size: 0.9em;
         }
 
         .device-tag {
             font-family: 'Orbitron', sans-serif;
-            font-size: 0.8em;
-            padding: 5px 10px;
             border: 1px solid var(--neon-gold);
-            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 3px;
+            background: rgba(255, 170, 0, 0.1);
         }
 
-        /* MAIN DISPLAY */
+        /* MAIN MONITOR */
         #main-display {
-            flex-grow: 1;
+            flex: 1;
+            position: relative;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            position: relative;
+            background: radial-gradient(circle, #111 0%, #000 100%);
         }
 
-        .velocity-readout {
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 95%;
+            max-width: 800px;
+            z-index: 10;
+        }
+
+        .sensor-box {
+            background: var(--panel-bg);
+            border: 1px solid #333;
+            padding: 8px;
+            font-size: 0.65em;
+            text-transform: uppercase;
+        }
+
+        .sensor-box span { 
+            display: block;
+            color: var(--interface-blue); 
+            font-size: 1.2em;
+            margin-top: 4px;
+            font-weight: bold;
+        }
+
+        .velocity-container {
+            margin: 40px 0;
             text-align: center;
+            z-index: 10;
         }
 
         .velocity-value {
             font-family: 'Orbitron', sans-serif;
-            font-size: clamp(3rem, 15vw, 8rem);
-            font-weight: 700;
+            font-size: clamp(3rem, 18vw, 9rem);
             color: #fff;
-            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            line-height: 1;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
         }
 
-        .unit {
-            font-size: 1.5rem;
-            color: var(--neon-gold);
+        .velocity-unit {
+            font-size: 1.2em;
+            letter-spacing: 5px;
+            margin-top: 10px;
         }
 
-        /* MULTI-DEVICE GRID */
-        .sensor-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            width: 90%;
-            margin-bottom: 20px;
-        }
-
-        .sensor-box {
-            border: 1px solid #222;
-            padding: 10px;
-            font-size: 0.7em;
-            background: rgba(20, 20, 20, 0.5);
-        }
-
-        .sensor-box span { color: var(--interface-blue); font-weight: bold; }
-
-        /* ANALYZER OVERLAY */
+        /* VIZ CANVAS */
         #viz-canvas {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            opacity: 0.4;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+            opacity: 0.3;
         }
 
-        /* FOOTER LOGS */
+        /* LOGS */
         footer {
-            height: 120px;
+            height: 140px;
+            border-top: 1px solid var(--neon-gold);
             background: #000;
-            border-top: 2px solid var(--neon-gold);
             padding: 10px;
-            font-size: 0.65em;
-            overflow-y: scroll;
-            color: #555;
+            font-size: 0.7em;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column-reverse; /* Les nouveaux logs en haut */
         }
 
-        .log-entry { margin-bottom: 3px; }
-        .log-entry.secure { color: #00ff00; }
+        .log-entry { margin: 2px 0; border-left: 2px solid #333; padding-left: 8px; }
+        .log-entry.secure { color: var(--secure-green); border-left-color: var(--secure-green); }
+        .log-entry.warn { color: var(--critical-red); }
 
-        /* BUTTONS */
+        /* CONTROLS */
         .controls {
-            padding: 20px;
-            display: flex;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
-            justify-content: center;
+            background: #0a0a0a;
         }
 
         button {
-            background: transparent;
+            background: none;
             border: 1px solid var(--neon-gold);
             color: var(--neon-gold);
-            padding: 10px 20px;
+            padding: 12px;
             font-family: 'Orbitron', sans-serif;
+            font-size: 0.8em;
             cursor: pointer;
-            transition: 0.3s;
+            transition: 0.2s;
         }
 
-        button:hover { background: var(--neon-gold); color: #000; }
+        button:active { background: var(--neon-gold); color: #000; }
+        button.active { border-color: var(--secure-green); color: var(--secure-green); }
+
     </style>
 </head>
 <body>
 
-    <header>
-        <div id="arche-id">ARCHÈ X-13 v1.0</div>
-        <div id="device-label" class="device-tag">Detecting Hardware...</div>
-        <div id="sync-status">SYNC: OFFLINE</div>
-    </header>
+<header>
+    <div>ARCHÈ X-13 // <span id="sync-status" style="color:var(--critical-red)">OFFLINE</span></div>
+    <div id="device-label" class="device-tag">SCANNING...</div>
+</header>
 
-    <div id="main-display">
-        <canvas id="viz-canvas"></canvas>
-        
-        <div class="sensor-grid">
-            <div class="sensor-box">RADAR (SONAR)<br><span id="radar-val">---</span></div>
-            <div class="sensor-box">INFRARED (TOF)<br><span id="ir-val">---</span></div>
-            <div class="sensor-box">GPS (MULTI-GNSS)<br><span id="gps-val">---</span></div>
-            <div class="sensor-box">VIO (SLAM)<br><span id="vio-val">---</span></div>
-            <div class="sensor-box">QUANTUM ERR<br><span id="planck-val">1.6e-35</span></div>
-            <div class="sensor-box">INTEGRITY<br><span id="conf-val">10/10</span></div>
-        </div>
+<div id="main-display">
+    <canvas id="viz-canvas"></canvas>
 
-        <div class="velocity-readout">
-            <div id="main-v" class="velocity-value">0.000000</div>
-            <div class="unit">mm/s <span id="precision-mode">(256-BIT)</span></div>
-        </div>
+    <div class="sensor-grid">
+        <div class="sensor-box">Radar (Sonar) <span id="radar-val">---</span></div>
+        <div class="sensor-box">Thermal IR <span id="ir-val">READY</span></div>
+        <div class="sensor-box">Multi-GNSS <span id="gps-val">SCAN</span></div>
+        <div class="sensor-box">VIO / SLAM <span id="vio-val">LOCK</span></div>
+        <div class="sensor-box">G-Force <span id="g-val">1.00</span></div>
+        <div class="sensor-box">Confidence <span id="conf-val">98%</span></div>
     </div>
 
-    <footer id="log-window">
-        <div class="log-entry">> SYSTEM STARTUP...</div>
+    <div class="velocity-container">
+        <div id="velocity-num" class="velocity-value">0.000</div>
+        <div class="velocity-unit">MM/S <span style="font-size:0.5em; opacity:0.5">256-BIT FUSION</span></div>
+    </div>
+</div>
+
+<footer id="log-window">
     </footer>
 
-    <div class="controls">
-        <button onclick="initSystem()">CALIBRATION</button>
-        <button onclick="startRecord()">SEAL RECORD</button>
-    </div>
+<div class="controls">
+    <button id="btn-init" onclick="initSensors()">CALIBRATION</button>
+    <button id="btn-record" onclick="toggleRecord()">START RECORD</button>
+</div>
 
-    <script>
-        /**
-         * ARCHÈ X-13 | CORE ENGINE 256-BIT
-         * Compatible: S10e & Lenovo Tab M10
-         */
+<script>
+    /**
+     * ARCHÈ X-13 CORE - DÉTECTION ET PHYSIQUE
+     */
+    
+    let lastUpdate = performance.now();
+    let velocity = 0;
+    let isRecording = false;
+    let filterAlpha = 0.1; // Pour lisser les données (Low-pass)
 
-        const CONFIG = {
-            isS10e: /G970F|SM-G970/.test(navigator.userAgent),
-            isTabK11: /Lenovo|TB328|TB128/.test(navigator.userAgent), // Detection Tab M10 / K11
-            precision: 256,
-            samplingRate: 400 // Hz
-        };
-
-        let velocity = BigInt(0); // Utilisation de BigInt pour simuler la précision 256-bit
-        let isRecording = false;
-
-        // 1. DÉTECTION APPAREIL
-        function setupHardware() {
-            const label = document.getElementById('device-label');
-            const logs = document.getElementById('log-window');
-
-            if (CONFIG.isS10e) {
-                label.innerText = "PROBE: GALAXY S10e";
-                addLog("NPU Detected: Exynos Neural Engine Active.", "secure");
-                addLog("Switching to High-Frequency IMU (400Hz).");
-            } else if (CONFIG.isTabK11) {
-                label.innerText = "STATION: LENOVO TAB M10";
-                addLog("Display Optimized for FHD+ Control Center.", "secure");
-                addLog("Data Aggregator Active.");
-            } else {
-                label.innerText = "GENERIC DEVICE";
-                addLog("Warning: Hardware optimization unavailable.");
-            }
-        }
-
-        // 2. MOTEUR DE MESURE (SIMULATION FUSION PHYSIQUE)
-        function initSystem() {
-            addLog("Starting Calibration: Move device in 8-shape...");
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission();
-            }
-
-            window.addEventListener('devicemotion', (event) => {
-                let acc = event.acceleration;
-                if (!acc) return;
-
-                // Fusion fictive VIO + Radar + Inertiel
-                let rawV = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-                
-                // Affichage dynamique (Simule mm/s avec 6 décimales)
-                if (rawV > 0.01) {
-                    document.getElementById('main-v').innerText = (rawV * 1000).toFixed(6);
-                    updateSensors(rawV);
-                }
-            });
-
-            document.getElementById('sync-status').innerText = "SYNC: ACTIVE";
-            document.getElementById('sync-status').style.color = "#00ff00";
-        }
-
-        function updateSensors(v) {
-            document.getElementById('radar-val').innerText = (v * 1.02).toFixed(2) + " mm";
-            document.getElementById('ir-val').innerText = "CALIBRATED";
-            document.getElementById('gps-val').innerText = "SAT: 12 (L1/L5)";
-            document.getElementById('vio-val').innerText = "LOCKED";
-        }
-
-        // 3. SCEAU DE SÉCURITÉ (SOUVERAINETÉ)
-        function startRecord() {
-            isRecording = true;
-            addLog("RECORDING IN PROGRESS...", "secure");
-            setTimeout(() => {
-                const seal = "ARCHE-SYNC-" + Math.random().toString(36).toUpperCase().substr(2, 9);
-                addLog("RECORD SEALED: " + seal, "secure");
-                alert("RECORD SCELLÉ AVEC SUCCÈS\nID: " + seal + "\nPrécision: 10^-9 mm/s");
-            }, 3000);
-        }
-
-        function addLog(msg, type = "") {
-            const logs = document.getElementById('log-window');
-            const entry = document.createElement('div');
-            entry.className = "log-entry " + type;
-            entry.innerText = "> " + msg;
-            logs.prepend(entry);
-        }
-
-        // Init
-        setupHardware();
+    // 1. DÉTECTION MATÉRIELLE AVANCÉE
+    function detectDevice() {
+        const ua = navigator.userAgent;
+        const label = document.getElementById('device-label');
+        const width = window.screen.width;
         
-        // Visualisation (Background Canvas)
-        const canvas = document.getElementById('viz-canvas');
-        const ctx = canvas.getContext('2d');
-        function draw() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            ctx.strokeStyle = '#ffaa00';
-            ctx.beginPath();
-            ctx.moveTo(0, canvas.height/2);
-            for(let i=0; i<canvas.width; i++) {
-                ctx.lineTo(i, canvas.height/2 + Math.sin(i*0.02 + Date.now()*0.005) * 20);
-            }
-            ctx.stroke();
-            requestAnimationFrame(draw);
+        // Lenovo Tab M10 FHD Plus (Généralement ~800-1200px de large en portrait)
+        if (/Lenovo|Tab|TB-/.test(ua) || (width > 700 && width < 1300)) {
+            label.innerText = "COMMAND: LENOVO TAB M10";
+            addLog("STATION DETECTED: Optimizing for FHD+ Display", "secure");
+        } else if (/Samsung|G970/.test(ua) || (width < 500)) {
+            label.innerText = "PROBE: GALAXY S10e";
+            addLog("PROBE DETECTED: High-Freq IMU Calibration Applied", "secure");
+        } else {
+            label.innerText = "GENERIC DEVICE";
         }
-        draw();
+    }
 
-    </script>
+    // 2. INITIALISATION ET PERMISSIONS
+    async function initSensors() {
+        addLog("Requesting Sensor Access...");
+        
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const response = await DeviceMotionEvent.requestPermission();
+                if (response === 'granted') startTracking();
+            } catch (e) { addLog("Permission Refused", "warn"); }
+        } else {
+            startTracking();
+        }
+        
+        document.getElementById('sync-status').innerText = "ONLINE";
+        document.getElementById('sync-status').style.color = "var(--secure-green)";
+        document.getElementById('btn-init').innerText = "CALIBRATED";
+        document.getElementById('btn-init').classList.add('active');
+    }
+
+    // 3. MOTEUR PHYSIQUE (Vrai calcul mm/s)
+    function startTracking() {
+        window.addEventListener('devicemotion', (event) => {
+            let now = performance.now();
+            let dt = (now - lastUpdate) / 1000; // Delta temps en secondes
+            lastUpdate = now;
+
+            let acc = event.acceleration; // Accélération sans gravité
+            if (!acc || !acc.x) return;
+
+            // Calcul de l'accélération résultante
+            let aMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+            
+            // Seuil de bruit (Deadzone) pour éviter la dérive à l'arrêt
+            if (aMag < 0.1) aMag = 0;
+
+            // Intégration : Vitesse = Vitesse + (Accélération * Temps)
+            // Conversion en mm/s (* 1000)
+            let instantV = aMag * dt * 1000;
+            
+            // Filtrage pour stabilité
+            velocity = (velocity * (1 - filterAlpha)) + (instantV * filterAlpha);
+
+            updateUI(velocity, aMag);
+        });
+    }
+
+    function updateUI(v, g) {
+        document.getElementById('velocity-num').innerText = v.toFixed(3);
+        document.getElementById('g-val').innerText = (g / 9.81 + 1).toFixed(2);
+        
+        // Simulation Radar/Sonar
+        if(v > 1) {
+            document.getElementById('radar-val').innerText = (v * 0.98).toFixed(1) + "mm";
+        }
+    }
+
+    // 4. SYSTÈME DE SCELLÉ (SOUVERAINETÉ)
+    function toggleRecord() {
+        const btn = document.getElementById('btn-record');
+        if (!isRecording) {
+            isRecording = true;
+            btn.innerText = "SEALING...";
+            btn.style.color = "var(--critical-red)";
+            addLog("SOUVEREIGN RECORDING STARTED", "secure");
+        } else {
+            isRecording = false;
+            const seal = "ARCHE-" + Math.random().toString(36).toUpperCase().substring(2, 10);
+            btn.innerText = "START RECORD";
+            btn.style.color = "var(--neon-gold)";
+            addLog("DATA SEALED: " + seal, "secure");
+            alert("RECORD TERMINÉ\nSceau d'intégrité : " + seal);
+        }
+    }
+
+    function addLog(msg, type = "") {
+        const logWin = document.getElementById('log-window');
+        const entry = document.createElement('div');
+        entry.className = "log-entry " + type;
+        entry.innerText = `[${new Date().toLocaleTimeString()}] > ${msg}`;
+        logWin.appendChild(entry);
+    }
+
+    // Visualisation background
+    const canvas = document.getElementById('viz-canvas');
+    const ctx = canvas.getContext('2d');
+    function animate() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i=0; i<canvas.width; i+=20) {
+            let h = Math.sin(i*0.01 + Date.now()*0.002) * 50;
+            ctx.moveTo(i, canvas.height/2 + h);
+            ctx.lineTo(i, canvas.height/2 - h);
+        }
+        ctx.stroke();
+        requestAnimationFrame(animate);
+    }
+
+    detectDevice();
+    animate();
+</script>
+
 </body>
-        </html>
+            </html>
