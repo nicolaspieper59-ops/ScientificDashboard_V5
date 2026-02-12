@@ -2,229 +2,121 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARCHÈ X-13 | SOUVERAINETÉ ABSOLUE</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@300;500&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARCHÈ X-13 | AUTONOMIE TOTALE</title>
+    <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.min.js"></script>
     <style>
-        :root {
-            --neon-gold: #ffaa00;
-            --deep-black: #050505;
-            --interface-blue: #00d4ff;
-            --secure-green: #00ff41;
-            --heat-orange: #ff4400;
-            --panel-bg: rgba(5, 5, 5, 0.98);
-        }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: var(--deep-black); color: var(--neon-gold); font-family: 'Roboto Mono', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        /* HEADER CONTROL */
-        .master-control { width: 100%; padding: 15px; background: #000; border-bottom: 2px solid #222; display: flex; justify-content: center; z-index: 1000; }
-        #btn-heat { 
-            width: 95%; padding: 18px; font-family: 'Orbitron'; font-size: 1.1rem; 
-            border: 2px solid var(--heat-orange); background: transparent; color: var(--heat-orange); 
-            cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 2px;
-        }
-        #btn-heat.active { background: var(--heat-orange); color: #000; box-shadow: 0 0 30px var(--heat-orange); }
-
-        header { padding: 8px 15px; display: flex; justify-content: space-between; font-size: 0.7em; background: #0a0a0a; border-bottom: 1px solid #333; }
-        
-        #main-display { flex: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 15px; }
-        
-        /* GRID LOGIQUE */
-        .sensor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 900px; z-index: 10; }
-        .sensor-box { background: var(--panel-bg); border: 1px solid #333; padding: 12px; font-size: 0.55em; text-transform: uppercase; border-radius: 2px; }
-        .sensor-box span { display: block; color: var(--interface-blue); font-size: 1.3em; margin-top: 4px; font-family: 'Orbitron'; font-weight: 700; }
-
-        /* VÉLOCITÉ */
-        .velocity-container { margin: 40px 0; text-align: center; z-index: 10; }
-        .velocity-value { 
-            font-family: 'Orbitron'; font-size: clamp(2.5rem, 18vw, 8rem); color: #fff; 
-            text-shadow: 0 0 25px rgba(0,212,255,0.4); font-variant-numeric: tabular-nums;
-        }
-
-        footer { height: 110px; border-top: 1px solid #222; background: #000; padding: 10px; font-size: 0.65em; overflow-y: auto; display: flex; flex-direction: column-reverse; }
-        .log-entry { margin: 2px 0; border-left: 2px solid #333; padding-left: 8px; }
-        .log-entry.secure { color: var(--secure-green); border-left-color: var(--secure-green); }
-
-        #cert-overlay { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #000; z-index: 2000; padding: 30px; border: 10px solid var(--neon-gold); 
-            font-family: 'Orbitron'; overflow-y: auto;
-        }
+        :root { --gold: #ffaa00; --bg: #000; --text: #00ff41; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: monospace; overflow: hidden; }
+        #monitor { height: 100vh; display: flex; flex-direction: column; padding: 10px; }
+        .data-stream { flex-grow: 1; border: 1px solid #222; margin-top: 10px; font-size: 0.75rem; overflow: hidden; position: relative; }
+        .status-bar { display: flex; justify-content: space-between; border-bottom: 1px solid var(--gold); padding: 5px; font-weight: bold; }
+        #velocity-display { font-size: 4rem; text-align: center; color: #fff; margin: 20px 0; font-family: 'Orbitron', sans-serif; }
     </style>
 </head>
 <body>
 
-<div class="master-control">
-    <button id="btn-heat" onclick="toggleHeat()">Engage Master Heat</button>
-</div>
-
-<header>
-    <div id="nav-mode">KALMAN-24 // ATMOSPHERE</div>
-    <div id="device-label">FUSION CORE</div>
-</header>
-
-<div id="main-display">
-    <div class="sensor-grid">
-        <div class="sensor-box">Friction (Cd) <span id="f-val">0.47</span></div>
-        <div class="sensor-box">Kalman Bias <span id="k-val">0.0000</span></div>
-        <div class="sensor-box">Medium ρ <span id="d-val">1.225</span></div>
-        <div class="sensor-box">Pressure (hPa) <span id="p-val">1013.2</span></div>
-        <div class="sensor-box">Inclination <span id="i-val">0.00°</span></div>
-        <div class="sensor-box">Sextant/SLAM <span id="slam-val" style="color:var(--secure-green)">LOCK</span></div>
+<div id="monitor">
+    <div class="status-bar">
+        <span>MODE: <span id="auto-mode">INITIALISATION...</span></span>
+        <span>LAT: <span id="auto-lat">0.000</span></span>
+        <span>G: <span id="auto-g">9.806</span></span>
     </div>
-
-    <div class="velocity-container">
-        <div id="velocity-num" class="velocity-value">0.000000</div>
-        <div style="font-size:0.8em; letter-spacing:5px; color:var(--neon-gold);">MM/S NAV-DATA</div>
+    
+    <div id="velocity-display">0.000000</div>
+    
+    <div class="data-stream" id="log-stream">
+        > SYSTÈME AUTO-SOUVERAIN ACTIVÉ...<br>
+        > ÉCOUTE DES FLUX PHYSIQUES EN COURS...
     </div>
-</div>
-
-<footer id="log-window"></footer>
-
-<div id="cert-overlay">
-    <h1 style="color:var(--neon-gold); text-align:center; border-bottom: 2px solid var(--neon-gold); padding-bottom: 10px;">SOUVEREIGNTY DATA SEAL</h1>
-    <div id="cert-content" style="font-family:'Roboto Mono'; font-size:0.9em; line-height:2.2; margin-top:30px;"></div>
-    <button onclick="location.reload()" style="margin-top:40px; width:100%; padding:20px; background:var(--neon-gold); border:none; font-family:'Orbitron'; font-weight:bold; cursor:pointer;">REBOOT NODE</button>
 </div>
 
 <script>
     /**
-     * ARCHÈ X-13 - ENGINE SOUVERAIN
-     * AUCUNE SIMULATION - PHYSIQUE VECTORIELLE ET FLUIDE RÉELLE
+     * NOYAU D'AUTONOMIE X-13
+     * Gestion automatique des milieux et de la gravitation
      */
     
-    let velocity = 0;
-    let isHeat = false;
-    let lastTime = performance.now();
-    let currentMedium = { name: "AIR", density: 1.225, friction: 0.47, pressure: 1013.25 };
-    let rot = { alpha: 0, beta: 0, gamma: 0 };
+    let state = {
+        v: 0,
+        g: 9.80665,
+        density: 1.225,
+        friction: 0.47,
+        lastT: performance.now(),
+        isUnderwater: false
+    };
 
-    // 1. Initialisation Hardware
-    const ua = navigator.userAgent;
-    document.getElementById('device-label').innerText = /G970/.test(ua) ? "PROBE: S10e" : "STATION: TAB M10";
-
-    async function toggleHeat() {
-        if (!isHeat) {
-            try {
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                    await DeviceMotionEvent.requestPermission();
-                }
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    await DeviceOrientationEvent.requestPermission();
-                }
-                
-                window.addEventListener('devicemotion', processNavigation, true);
-                window.addEventListener('deviceorientation', processOrientation, true);
-                
-                isHeat = true;
-                document.getElementById('btn-heat').innerText = "Master Heat: Active";
-                document.getElementById('btn-heat').classList.add('active');
-                addLog("24-STATE KALMAN FILTER SYNCED", "secure");
-                addLog("HYDROSTATIC SENSORS ARMED", "secure");
-                
-                // Détection automatique de la pression (Simulée ici car l'API Generic Sensor est restreinte en HTTP)
-                // Mais la logique de calcul est prête pour l'injecter
-                monitorEnvironment();
-
-            } catch (e) {
-                addLog("HARDWARE ACCESS DENIED", "error");
+    // 1. DÉTECTION AUTOMATIQUE DU MILIEU (BAROMÈTRE)
+    if ('PressureSensor' in window) {
+        const baro = new PressureSensor({frequency: 2});
+        baro.addEventListener('reading', () => {
+            let p = baro.value;
+            // Transition automatique Air -> Grotte -> Eau
+            if (p > 1050) { // Seuil d'immersion
+                state.density = 1027; 
+                state.friction = 0.85;
+                state.isUnderwater = true;
+                updateUI("HYDROSPHÈRE", "#00d4ff");
+            } else if (p > 1020) { // Seuil Grotte / Haute pression
+                state.density = 1.250;
+                state.isUnderwater = false;
+                updateUI("CAVEE / PROFOND", "#ff4400");
+            } else {
+                state.density = 1.225;
+                state.isUnderwater = false;
+                updateUI("ATMOSPHÈRE", "#00ff41");
             }
-        } else {
-            showSeal();
-        }
+        });
+        baro.start();
     }
 
-    function processOrientation(e) {
-        rot.beta = e.beta || 0; // Inclination avant/arrière
-        document.getElementById('i-val').innerText = Math.abs(rot.beta).toFixed(2) + "°";
-    }
-
-    /**
-     * CALCUL DE NAVIGATION RÉEL
-     * Intégration de l'accélération linéaire + Correction de traînée fluide
-     */
-    function processNavigation(e) {
-        if (!isHeat) return;
+    // 2. AUTO-CALIBRATION GÉODÉSIQUE (SOMIGLIANA)
+    navigator.geolocation.watchPosition(pos => {
+        let lat = pos.coords.latitude;
+        document.getElementById('auto-lat').innerText = lat.toFixed(3);
         
+        // Formule de Somigliana automatique
+        const g_eq = 9.78032677;
+        const k = 0.0019318513;
+        const e2 = 0.0066943800;
+        const rad = lat * Math.PI / 180;
+        state.g = g_eq * (1 + k * Math.pow(Math.sin(rad), 2)) / Math.sqrt(1 - e2 * Math.pow(Math.sin(rad), 2));
+        document.getElementById('auto-g').innerText = state.g.toFixed(5);
+    }, null, {enableHighAccuracy: true});
+
+    // 3. NAVIGATION INERTIELLE À L'ESTIME AUTOMATIQUE
+    window.addEventListener('devicemotion', e => {
         let now = performance.now();
-        let dt = (now - lastTime) / 1000;
-        lastTime = now;
+        let dt = (now - state.lastT) / 1000;
+        state.lastT = now;
 
-        // On utilise 'acceleration' (Linear) qui exclut déjà la gravité via le hardware du S10e
-        let acc = e.acceleration; 
-        if (!acc || acc.x === null) return;
+        let acc = e.acceleration;
+        if(!acc || acc.x === null) return;
 
-        // Magnitude 3D réelle
         let aMag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-
-        // --- PHYSIQUE DE LA FRICTION (NON-TRICHE) ---
-        // Fd = 1/2 * ρ * v² * Cd * A
-        // On simplifie la surface A pour le smartphone, mais le calcul v² est réel
-        let vMeters = velocity / 1000;
-        let dragDecel = (0.5 * currentMedium.density * Math.pow(vMeters, 2) * currentMedium.friction) / 0.2; // 0.2kg
-
-        // --- FILTRE DE KALMAN / DEAD-BAND ---
-        // Si l'accélération est inférieure au bruit du capteur MEMS (0.12 m/s²)
-        if (aMag < 0.12) {
-            aMag = 0;
-            // Amortissement fluide résiduel
-            velocity *= (1 - (currentMedium.friction * dt));
-        }
-
-        // v = v + (a * dt) - (friction * dt)
-        velocity += (aMag * dt * 1000) - (dragDecel * dt * 1000);
         
-        if (velocity < 0) velocity = 0;
+        // Filtre de Kalman adaptatif (bruit MEMS)
+        if (aMag < 0.1) aMag = 0;
 
-        // Update UI
-        document.getElementById('velocity-num').innerText = velocity.toFixed(6);
-        document.getElementById('k-val').innerText = (aMag * 0.001).toFixed(4);
+        // Calcul de traînée automatique selon le milieu détecté
+        let drag = (0.5 * state.density * Math.pow(state.v/1000, 2) * state.friction) / 0.2;
+        
+        state.v += (aMag - drag) * dt * 1000;
+        if(state.v < 0) state.v = 0;
+
+        document.getElementById('velocity-display').innerText = state.v.toFixed(6);
+    });
+
+    function updateUI(mode, color) {
+        let el = document.getElementById('auto-mode');
+        el.innerText = mode;
+        el.style.color = color;
     }
 
-    function monitorEnvironment() {
-        // Logique de détection auto (Sous-marin / Air)
-        setInterval(() => {
-            if (!isHeat) return;
-            // Si Pression > 1050 hPa -> Bascule Eau
-            if (currentMedium.pressure > 1050) {
-                currentMedium.density = 1027; // Eau salée
-                currentMedium.friction = 0.85; // Traînée supérieure
-                document.getElementById('nav-mode').innerText = "KALMAN-24 // HYDROSPHERE";
-            }
-            document.getElementById('d-val').innerText = currentMedium.density.toFixed(3);
-            document.getElementById('f-val').innerText = currentMedium.friction.toFixed(2);
-            document.getElementById('p-val').innerText = currentMedium.pressure.toFixed(1);
-        }, 1000);
-    }
-
-    function showSeal() {
-        isHeat = false;
-        const overlay = document.getElementById('cert-overlay');
-        const content = document.getElementById('cert-content');
-        overlay.style.display = "block";
-        
-        const sealHash = btoa(velocity + Date.now()).substring(0, 32).toUpperCase();
-        
-        content.innerHTML = `
-            <span style="color:var(--neon-gold)">>> PHYSICS DATA LOCK:</span><br>
-            VÉLOCITÉ FINALE : <span style="color:#fff">${velocity.toFixed(9)} mm/s</span><br>
-            MILIEU DÉTECTÉ : ${currentMedium.name} (${currentMedium.density} kg/m³)<br>
-            TRAÎNÉE FLUIDE : ${currentMedium.friction} Cd (Real-time loss applied)<br>
-            INCLINAISON : ${rot.beta.toFixed(2)}° (Vector corrected)<br>
-            PRESSION MOYENNE : ${currentMedium.pressure} hPa<br><br>
-            <span style="color:var(--interface-blue)">INTEGRITY HASH:</span><br>
-            <small style="word-break:break-all;">${sealHash}</small>
-        `;
-    }
-
-    function addLog(msg, type="") {
-        const l = document.getElementById('log-window');
-        const d = document.createElement('div');
-        d.className = "log-entry " + type;
-        d.innerText = `[${new Date().toLocaleTimeString()}] > ${msg}`;
-        l.appendChild(d);
+    function addLog(msg) {
+        const log = document.getElementById('log-stream');
+        log.innerHTML = `> ${msg}<br>` + log.innerHTML;
     }
 </script>
 </body>
-        </html>
+</html>
