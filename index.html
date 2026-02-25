@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GNSS SpaceTime Dashboard • UKF 21 | SINGULARITÉ 2026</title>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="leaflet.css" />
     <link rel="stylesheet" href="fontawesome.min.css" />
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
           
 <style> 
-/* Ton CSS reste strictement inchangé comme demandé */
 :root {
     --bg-dark: #07070a; --panel-dark: #12121a; --border: #252533;
     --text-main: #e0e0e0; --text-dim: #888;
@@ -104,17 +104,17 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
         <div class="column-1">
             <section class="panel">
                 <h2><i class="fas fa-cog"></i> Contrôles & Système (Singulet)</h2>
-                <div class="data-point"><span>Source Master</span><span id="master-source">WEB-QUANTUM 2026</span></div>
+                <div class="data-point"><span>Source Master</span><span id="master-source">BARYCENTRE J2000</span></div>
                 <div class="data-point"><span>Sampling Rate</span><span id="ui-sampling-rate">2048 Hz</span></div>
                 <div class="data-point"><span>Heure UTC (TT)</span><span id="utc-datetime">SYNC...</span></div>
                 <div class="data-point"><span>Horloge Interne</span><span id="ui-clock">00:00:00</span></div>
                 <div class="data-point"><span>Précision (c)</span><span id="clock-accuracy-1">±1.2e-15s</span></div>
-                <div class="data-point"><span>Date Julienne</span><span id="ast-jd">246...</span></div>
+                <div class="data-point"><span>Date Julienne (VSOP)</span><span id="ast-jd">246...</span></div>
                 
                 <div class="data-point"><span>Flux de l'Infini</span><span id="elapsed-time">0.00 s</span></div>
-                <div class="data-point"><span>Temps de Simulation</span><span id="time-minecraft">00:00</span></div>
+                <div class="data-point"><span>Mémoire Glissante</span><span id="buffer-state">1024 pts</span></div>
                 
-                <div id="anomaly-log">LOG: Système auto-effacé. Prêt pour fusion totale.</div> <hr>
+                <div id="anomaly-log">LOG: Pont de l'Infini prêt.</div> <hr>
                 
                 <div class="controls-grid">
                     <button id="gps-pause-toggle">▶️ MARCHE GPS (UKF-21)</button>
@@ -134,9 +134,10 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
 
             <section class="panel">
                 <h2><i class="fas fa-microchip"></i> IMU (Fusion Subatomique)</h2>
-                <div class="data-point"><span>Accélération X (Effacée)</span><span id="acc-x">0</span></div>
-                <div class="data-point"><span>Accélération Y (Effacée)</span><span id="acc-y">0</span></div>
-                <div class="data-point"><span>Accélération Z (Effacée)</span><span id="acc-z">N/A</span></div>
+                <div class="data-point"><span>Accélération X</span><span id="acc-x">0</span></div>
+                <div class="data-point"><span>Accélération Y</span><span id="acc-y">0</span></div>
+                <div class="data-point"><span>Accélération Z</span><span id="acc-z">N/A</span></div>
+                <div class="data-point"><span>Biais Auto-Correctif</span><span id="acc-bias">0.000 mg</span></div>
                 <div class="data-point"><span>Mag X</span><span id="mag-x">N/A</span></div>
                 <div class="data-point"><span>Mag Y</span><span id="mag-y">N/A</span></div>
                 <div class="data-point"><span>Mag Z</span><span id="mag-z">N/A</span></div>
@@ -158,7 +159,7 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
 
                 <div class="speed-display">
                     <span id="speed-main-display">0.0 km/h</span> 
-                    <small id="speed-status-text">Fusion GPS-Relativiste...</small>
+                    <small id="speed-status-text">Flux de l'Infini Actif...</small>
                 </div>
                 
                 <div class="data-point"><span>Vitesse Stable (τ)</span><span id="speed-stable-kmh">0.0 km/h</span></div>
@@ -206,7 +207,7 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
                 
                 <canvas id="gforce-canvas"></canvas>
 
-                <div class="data-point"><span>Nombre Reynolds (Re)</span><span id="reynolds-number">N/A</span></div>
+                <div class="data-point"><span>Usure Silicium (Miner)</span><span id="silicon-wear">0.000%</span></div>
                 <div class="data-point"><span>Force Traînée (Drag)</span><span id="drag-force">0.00 N</span></div>
                 <div class="data-point"><span>Force Coriolis</span><span id="coriolis-force">0.00 N</span></div>
                 <div class="data-point"><span>Flux Magnétique (Φ)</span><span id="ui-elec-flux">---</span></div>
@@ -215,9 +216,9 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
             <section class="panel">
                 <h2><i class="fas fa-brain"></i> Filtre UKF-21 (Infaillible)</h2>
                 <div class="data-point"><span>Statut EKF (Hologram)</span><span id="ukf-status">ACTIF</span></div>
-                <div class="data-point"><span>Statut Filtre</span><span id="filter-status">SOUSTRACTION MASSE OK</span></div> 
+                <div class="data-point"><span>Auto-Guérison</span><span id="self-healing-status">STABLE</span></div> 
                 <div class="data-point"><span>Incertitude (Δv)</span><span id="ukf-velocity-uncertainty">N/A</span></div> 
-                <div class="data-point"><span>Biais Auto-Correctif</span><span id="acc-bias">0.000 mg</span></div>
+                <div class="data-point"><span>Causalité Auditée</span><span id="audit-status">VÉRIFIÉ</span></div>
             </section>
 
             <section class="panel">
@@ -232,7 +233,7 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
 
         <div class="column-4">
             <section class="panel">
-                <h2><i class="fas fa-globe-americas"></i> Astro Position (Temps Réel)</h2>
+                <h2><i class="fas fa-globe-americas"></i> Astro Position (VSOP2013)</h2>
                 <div id="minecraft-clock">
                     <div id="biome-half"></div>
                     <canvas id="mc-clock-canvas" width="100" height="50"></canvas>
@@ -246,7 +247,7 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
                 <div class="data-point"><span>Temps Sidéral (LST)</span><span id="tslv">N/A</span></div>
                 <div class="data-point"><span>Alt. Soleil</span><span id="sun-alt">N/A</span></div>
                 <div class="data-point"><span>Azimut Soleil</span><span id="sun-azimuth">N/A</span></div>
-                <div class="data-point"><span>Lever (UTC)</span><span id="sunrise-times">N/A</span></div>
+                <div class="data-point"><span>Correction G-Céleste</span><span id="celestial-g-corr">0.0000</span></div>
                 <div class="data-point"><span>Coucher (UTC)</span><span id="sunset-times">N/A</span></div>
                 <hr>
                 <h3>Lune (Horizon 2026)</h3>
@@ -260,7 +261,7 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
     <div id="hud-overlay">
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <span style="color:#0f0;">OMNI V21-SINGULARITÉ</span>
-            <span style="color:#ff0;">MASSE-FUSION: <span id="g-force-hud">ACTIVE</span></span>
+            <span style="color:#ff0;">PONT DE L'INFINI: <span id="g-force-hud">VERROUILLÉ</span></span>
         </div>
         <div style="text-align:center; margin:10px 0;">
             <div style="font-size:3em; color:#fff; font-weight:bold;" id="sp-main">0.0</div>
@@ -282,7 +283,7 @@ input, select { background: #000; border: 1px solid var(--border); color: #fff; 
         </button>
         
         <div style="display:flex; gap:5px; margin-top:5px;">
-            <button onclick="BLACK_BOX.exportCSV()" style="flex:1; background:#0055ff;">EXPORTER JOURNAL (CSV)</button>
+            <button onclick="OMNI_SOUVERAIN.generateAuditReport()" style="flex:1; background:#0055ff; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">EXPORTER JOURNAL (AUDIT)</button>
         </div>
     </div>
 
