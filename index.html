@@ -77,13 +77,14 @@ function setupSonic() {
     });
 }
 
-// --- LOGIQUE PHYSIQUE ---
 function getVsopAcc() {
     try {
-        let jd = (Date.now() / 86400000) + 2440587.5;
-        // Appel selon la structure vsop2013 fournie
-        let earth = vsop2013.compute(3, jd); 
-        return new Big(earth.acc[2] || 0);
+        if (typeof vsop2013 !== 'undefined' && vsop2013.compute) {
+            let jd = (Date.now() / 86400000) + 2440587.5;
+            let earth = vsop2013.compute(3, jd); 
+            return new Big(earth.acc[2] || 0);
+        }
+        return new Big(0); // Retourne 0 si le fichier n'est pas trouvé
     } catch(e) { return new Big(0); }
 }
 
