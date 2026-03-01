@@ -2,292 +2,175 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GNSS SpaceTime Dashboard • UKF 21 | SINGULARITÉ 2026</title>
-    
+    <title>OMNI GENESIS V110 - ABSOLUTE REALITY</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="leaflet.css" />
-    <link rel="stylesheet" href="fontawesome.min.css" />
-          
-<style> 
-:root {
-    --bg-dark: #07070a; --panel-dark: #12121a; --border: #252533;
-    --text-main: #e0e0e0; --text-dim: #888;
-    --col-sys: #00d2ff; --col-nav: #00ff88; --col-phy: #ff00ff; --col-ast: #ffcc00;
-    --success: #00ff66; --warning: #ffcc00; --danger: #ff4444;
-}
-
-body {
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    margin: 0; padding: 0; background-color: var(--bg-dark);
-    color: var(--text-main); width: 100vw; height: 100vh;
-    overflow-x: hidden; overscroll-behavior-y: none;
-}
-
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg-dark); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-header { background: rgba(0,0,0,0.8); border-bottom: 1px solid var(--border); padding: 5px 0; }
-header h1 { font-size: 1rem; margin: 0; text-align: center; text-transform: uppercase; letter-spacing: 2px; color: var(--text-main); }
-
-.dashboard-container {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px;
-    box-sizing: border-box; height: calc(100vh - 40px);
-    padding-bottom: 200px; 
-}
-
-section.panel {
-    background: var(--panel-dark); border: 1px solid var(--border);
-    border-radius: 6px; padding: 10px; display: flex; flex-direction: column;
-    overflow-y: auto; position: relative;
-}
-
-.column-1 section.panel { border-top: 3px solid var(--col-sys); } .column-1 h2 { color: var(--col-sys); }
-.column-2 section.panel { border-top: 3px solid var(--col-nav); } .column-2 h2 { color: var(--col-nav); }
-.column-3 section.panel { border-top: 3px solid var(--col-phy); } .column-3 h2 { color: var(--col-phy); }
-.column-4 section.panel { border-top: 3px solid var(--col-ast); } .column-4 h2 { color: var(--col-ast); }
-
-h2 { font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin: 5px 0 10px 0; display: flex; align-items: center; gap: 8px; }
-h3 { font-size: 0.65rem; color: var(--text-dim); margin: 10px 0 5px 0; text-transform: uppercase; }
-
-.data-point { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.75rem; }
-.data-point span:first-child { color: var(--text-dim); }
-.data-point span[id] { font-family: 'Courier New', monospace; font-weight: bold; color: var(--text-main); text-align: right; }
-
-.column-1 span[id] { color: var(--col-sys); } .column-2 span[id] { color: var(--col-nav); }
-.column-3 span[id] { color: var(--col-phy); } .column-4 span[id] { color: var(--col-ast); }
-
-.speed-display { background: #000; border: 1px solid var(--border); border-radius: 4px; padding: 15px 0; text-align: center; margin-bottom: 10px; }
-#speed-main-display { display: block; font-size: 2.5rem; font-weight: 900; color: var(--col-nav); line-height: 1; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
-
-#map-container { position: relative; width: 100%; margin-top: 5px; }
-#map, #globe-container { width: 100%; height: 180px; background: #000; border-radius: 4px; border: 1px solid var(--border); z-index: 1; }
-canvas#gforce-canvas { width: 100%; height: 60px; background: #000; border-radius: 4px; margin-top: 5px; }
-video#ui-canvas { width: 100%; height: 100px; background: #000; border-radius: 4px; object-fit: cover; margin-bottom: 5px; }
-#anomaly-log { height: 60px; overflow-y: auto; font-size: 0.6rem; background: #000; border: 1px solid #333; margin-top: 5px; color: #0f0; padding: 2px;}
-
-.controls-grid { display: flex; flex-direction: column; gap: 5px; }
-button { background: var(--panel-dark); border: 1px solid var(--border); color: #fff; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: bold; }
-input, select { background: #000; border: 1px solid var(--border); color: #fff; padding: 4px; width: 100%; box-sizing: border-box; font-family: inherit; font-size: 0.7rem; }
-
-#hud-overlay {
-    position: fixed; bottom: 10px; right: 10px; width: 320px; z-index: 9999;
-    background: rgba(0, 20, 0, 0.9); border: 2px solid #0f0; border-radius: 12px;
-    padding: 15px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-    font-family: monospace;
-}
-
-@media (max-width: 900px) {
-    .dashboard-container { grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 2px; padding-bottom: 350px; }
-    section.panel { padding: 4px 2px !important; min-height: 100px; }
-    h2 { font-size: 0.5rem !important; white-space: nowrap; overflow: hidden; } h2 i { display: none; }
-    .data-point { flex-direction: column !important; text-align: center !important; font-size: 0.55rem !important; }
-    #speed-main-display { font-size: 1.2rem !important; }
-    #map, #globe-container { height: 120px !important; }
-    #hud-overlay { width: 90%; left: 5%; bottom: 10px; right: auto; }
-}
-</style>
+    <script src="lib/ephem.js"></script>
+    <style>
+        :root { --neon: #00f2ff; --bg: #000000; }
+        body { background: var(--bg); color: #0f0; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        #hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 10px; height: 50vh; }
+        .box { border: 1px solid #1a1a1a; padding: 8px; background: rgba(0, 242, 255, 0.02); position: relative; }
+        .label { font-size: 0.55rem; color: #555; display: block; margin-bottom: 5px; }
+        .val { font-size: 1.2rem; color: var(--neon); text-shadow: 0 0 5px var(--neon); }
+        #spectrogram { height: 15vh; width: 100%; border-top: 1px solid #222; background: #050505; }
+        #console { height: 35vh; background: #000; border-top: 2px solid #111; padding: 10px; font-size: 0.7rem; overflow-y: auto; color: #00ff41; }
+        #boot { position: fixed; width:100%; height:100%; background: #000; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        button { padding: 20px 40px; border: 2px solid #0f0; background: none; color: #0f0; font-size: 1.2rem; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #0f0; color: #000; }
+        .warning { color: #ff0; font-size: 0.6rem; margin-top: 10px; }
+    </style>
 </head>
-<body class="dark-mode"> 
+<body>
 
-    <header>
-        <h1 style="text-align: center; color: var(--col-sys);">SINGULARITÉ • GNSS SpaceTime Dashboard UKF 21</h1>
-    </header>
-    
-    <main class="dashboard-container">
-        
-        <div class="column-1">
-            <section class="panel">
-                <h2><i class="fas fa-cog"></i> Contrôles & Système (Singulet)</h2>
-                <div class="data-point"><span>Source Master</span><span id="master-source">BARYCENTRE J2000</span></div>
-                <div class="data-point"><span>Sampling Rate</span><span id="ui-sampling-rate">2048 Hz</span></div>
-                <div class="data-point"><span>Heure UTC (TT)</span><span id="utc-datetime">SYNC...</span></div>
-                <div class="data-point"><span>Horloge Interne</span><span id="ui-clock">00:00:00</span></div>
-                <div class="data-point"><span>Précision (c)</span><span id="clock-accuracy-1">±1.2e-15s</span></div>
-                <div class="data-point"><span>Date Julienne (VSOP)</span><span id="ast-jd">246...</span></div>
-                
-                <div class="data-point"><span>Flux de l'Infini</span><span id="elapsed-time">0.00 s</span></div>
-                <div class="data-point"><span>Mémoire Glissante</span><span id="buffer-state">1024 pts</span></div>
-                
-                <div id="anomaly-log">LOG: Pont de l'Infini prêt.</div> <hr>
-                
-                <div class="controls-grid">
-                    <button id="gps-pause-toggle">▶️ MARCHE GPS (UKF-21)</button>
-                    <select id="freq-select">
-                        <option value="HIGH_FREQ">Mode Pont vers l'Infini</option>
-                        <option value="HOLOGRAM">Mode Holographique 2D/3D</option>
-                    </select>
-                    <button id="emergency-stop-btn">🛑 Purge Mémoire Circulaire</button>
-                    <button id="reset-all-btn">RÉINITIALISER TOUT (CALIBRAGE ZÉRO)</button>
-                    
-                    <div class="control-input-full">
-                        <label>Masse Identitaire (Singulet)</label>
-                        <input type="number" id="mass-input" value="70.1500000001">
-                    </div>
-                </div>
-            </section>
+<div id="boot">
+    <h1 style="color:var(--neon); margin-bottom: 5px;">OMNI GENESIS V110</h1>
+    <p style="font-size: 0.7rem; color: #444;">FUSION INERTIELLE / VSOP2013 / 20KHZ SONIC</p>
+    <button onclick="ignite()">LANCER LA RÉALITÉ</button>
+    <p class="warning">L'accès aux capteurs et au micro est requis pour le mode 20,000Hz</p>
+</div>
 
-            <section class="panel">
-                <h2><i class="fas fa-microchip"></i> IMU (Fusion Subatomique)</h2>
-                <div class="data-point"><span>Accélération X</span><span id="acc-x">0</span></div>
-                <div class="data-point"><span>Accélération Y</span><span id="acc-y">0</span></div>
-                <div class="data-point"><span>Accélération Z</span><span id="acc-z">N/A</span></div>
-                <div class="data-point"><span>Biais Auto-Correctif</span><span id="acc-bias">0.000 mg</span></div>
-                <div class="data-point"><span>Mag X</span><span id="mag-x">N/A</span></div>
-                <div class="data-point"><span>Mag Y</span><span id="mag-y">N/A</span></div>
-                <div class="data-point"><span>Mag Z</span><span id="mag-z">N/A</span></div>
-            </section>
-            
-            <section class="panel">
-                <h2><i class="fas fa-camera-retro"></i> Environnement (Lux-Photon)</h2>
-                <div class="data-point"><span>Luminosité (Quantum)</span><span id="env-lux">N/A</span></div>
-                <div class="data-point"><span>Bruit de Fond (dB)</span><span id="sound-level">N/A</span></div>
-                <div class="data-point"><span>État Thermique</span><span id="status-thermal">THERMAL STABLE</span></div>
-            </section>
-        </div>
+<div id="hud">
+    <div class="box"><span class="label">DISTANCE (mm)</span><span id="dist" class="val">0.000</span></div>
+    <div class="box"><span class="label">VITESSE (m/s)</span><span id="vel" class="val">0.0000</span></div>
+    <div class="box"><span class="label">G-FORCE NETTE</span><span id="acc" class="val">0.000</span></div>
+    <div class="box"><span class="label">CORIOLIS (Terre)</span><span id="corio" class="val">0.000</span></div>
+    <div class="box"><span class="label">VSOP BARYCENTRE</span><span id="vsop" class="val">---</span></div>
+    <div class="box"><span class="label">20KHZ VIBRATION</span><span id="sonic" class="val">---</span></div>
+</div>
 
-        <div class="column-2">
-            <section class="panel">
-                <h2><i class="fas fa-tachometer-alt"></i> Vitesse & Relativité</h2>
-                
-                <video id="ui-canvas" autoplay playsinline muted></video>
+<canvas id="spectrogram"></canvas>
 
-                <div class="speed-display">
-                    <span id="speed-main-display">0.0 km/h</span> 
-                    <small id="speed-status-text">Flux de l'Infini Actif...</small>
-                </div>
-                
-                <div class="data-point"><span>Vitesse Stable (τ)</span><span id="speed-stable-kmh">0.0 km/h</span></div>
-                <div class="data-point"><span>Vitesse Raw (v)</span><span id="vitesse-raw">0.0000</span></div> 
-                <div class="data-point"><span>Vitesse Verticale</span><span id="vel-z">0.00 m/s</span></div>    
-                <hr>
-                <h3>Physique Relativiste (ER=EPR)</h3>
-                <div class="data-point"><span>% Vitesse Son</span><span id="perc-speed-sound">0.00 %</span></div>
-                <div class="data-point"><span>Facteur Lorentz (γ)</span><span id="ui-lorentz">1.000000000</span></div> 
-                <div class="data-point"><span>Temps Propre (τ)</span><span id="ui-tau">0.00 s</span></div> 
-                <div class="data-point"><span>Dilatation Tps (Δt)</span><span id="time-dilation">0.00 ns/s</span></div>    
-                
-                <hr>
-                <h3>Géométrie Informationnelle</h3>
-                <div class="data-point"><span>Dist. Home (Projection)</span><span id="ui-home-dist">0.00 m</span></div>
-                <div class="data-point"><span>Dist. Totale (Réelle)</span><span id="distance-totale">0.00 m</span></div>
-                <div class="data-point"><span>Entropie / Distance</span><span id="distance-ratio">1.000000</span></div>
-            </section>
+<div id="console"></div>
 
-            <section class="panel">
-                <h2><i class="fas fa-map-marked-alt"></i> Carte GNSS Holographique</h2>
-                <div class="data-point"><span>Incertitude Planck</span><span id="gps-accuracy-display">±1.6e-35m</span></div> 
-                <div id="map-container">
-                    <div id="globe-container" style="display:none;"></div>
-                    <div id="map">SOUSTRACTION MASSE APPAREIL...</div>
-                    <button id="toggle-globe-btn" style="position: absolute; top: 5px; left: 5px; z-index: 1000;">PROJECTION GLOBE</button>
-                </div>
-             </section>
-        </div>
+<script>
+// --- CORE CONFIGURATION ---
+const OMNI_PHYS = {
+    h: new Big('6.62607015e-34'),
+    omega_earth: new Big('7.2921159e-5'),
+    s10_cm_offset: { x: 0.0125, y: -0.045, z: 0.0021 }, // Offset S10e centre de masse
+    sonic_target: 20000 // Analyse à 20kHz
+};
 
-        <div class="column-3">
-            <section class="panel">
-                <h2><i class="fas fa-cloud-sun"></i> Météo (Flux Web 2026)</h2>
-                <div class="data-point"><span>Statut Météo</span><span id="statut-meteo">SYNC UNIVERSEL</span></div>
-                <div class="data-point"><span>Temp. Air (Réelle)</span><span id="air-temp-c">N/A</span></div>
-                <div class="data-point"><span>Pression (Atm)</span><span id="pressure-hpa">N/A</span></div>
-                <div class="data-point"><span>Densité Air (ρ)</span><span id="air-density">1.225</span></div>
-                <div class="data-point"><span>Source Pression</span><span id="pressure-source-status">WEB-RESONANCE...</span></div>
-            </section>
-            
-            <section class="panel">
-                 <h2><i class="fas fa-balance-scale-right"></i> Dynamique (Fusion Totale)</h2>
-                <div class="data-point"><span>Force G Inst. (F=ma)</span><span id="force-g-inst">1.000 G</span></div>
-                <div class="data-point"><span>Impact Max (Impact)</span><span id="ui-impact-g">1.000 G</span></div>
-                
-                <canvas id="gforce-canvas"></canvas>
+let state = {
+    isLive: false, calib: true, samples: [],
+    d: new Big(0), v: new Big(0), g: new Big(0),
+    lat: 48.85, lastT: Date.now(),
+    sonicLevel: 0
+};
 
-                <div class="data-point"><span>Usure Silicium (Miner)</span><span id="silicon-wear">0.000%</span></div>
-                <div class="data-point"><span>Force Traînée (Drag)</span><span id="drag-force">0.00 N</span></div>
-                <div class="data-point"><span>Force Coriolis</span><span id="coriolis-force">0.00 N</span></div>
-                <div class="data-point"><span>Flux Magnétique (Φ)</span><span id="ui-elec-flux">---</span></div>
-            </section>
+const logger = (m) => { 
+    const c = document.getElementById('console');
+    c.innerHTML = `> ${new Date().toTimeString().split(' ')[0]} | ${m}<br>` + c.innerHTML;
+};
 
-            <section class="panel">
-                <h2><i class="fas fa-brain"></i> Filtre UKF-21 (Infaillible)</h2>
-                <div class="data-point"><span>Statut EKF (Hologram)</span><span id="ukf-status">ACTIF</span></div>
-                <div class="data-point"><span>Auto-Guérison</span><span id="self-healing-status">STABLE</span></div> 
-                <div class="data-point"><span>Incertitude (Δv)</span><span id="ukf-velocity-uncertainty">N/A</span></div> 
-                <div class="data-point"><span>Causalité Auditée</span><span id="audit-status">VÉRIFIÉ</span></div>
-            </section>
+// --- ANALYSEUR SONIQUE 20,000 HZ ---
+let audioCtx, analyser, dataArray;
+function setupSonic() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 44100});
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        logger("CAPTEUR SONIQUE 20KHZ ACTIF");
+        drawSpectro();
+    });
+}
 
-            <section class="panel">
-                <h2><i class="fas fa-compass"></i> Niveau (Inclinomètre Fusion)</h2>
-                <div class="spirit-level-container" id="spirit-level" style="height:50px; background:#222; position:relative; border:1px solid #444;">
-                    <div id="bubble" style="width:10px; height:10px; background:#0f0; border-radius:50%; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);"></div>
-                </div>
-                <div class="data-point"><span>Pitch (Tangage)</span><span id="pitch">0.0°</span></div>
-                <div class="data-point"><span>Roll (Roulis)</span><span id="roll">0.0°</span></div>
-            </section>
-        </div>
+// --- LOGIQUE PHYSIQUE ---
+function getVsopAcc() {
+    try {
+        let jd = (Date.now() / 86400000) + 2440587.5;
+        // Appel selon la structure vsop2013 fournie
+        let earth = vsop2013.compute(3, jd); 
+        return new Big(earth.acc[2] || 0);
+    } catch(e) { return new Big(0); }
+}
 
-        <div class="column-4">
-            <section class="panel">
-                <h2><i class="fas fa-globe-americas"></i> Astro Position (VSOP2013)</h2>
-                <div id="minecraft-clock">
-                    <div id="biome-half"></div>
-                    <canvas id="mc-clock-canvas" width="100" height="50"></canvas>
-                </div>
-                
-                <div class="data-point"><span>Lat [UKF-PRO]</span><span id="lat-ekf">0.00000000</span></div> 
-                <div class="data-point"><span>Lon [UKF-PRO]</span><span id="lon-ekf">0.00000000</span></div>
-                <div class="data-point"><span>Alt [EKF-PRO]</span><span id="alt-ekf">0.00 m</span></div>
-                <hr>
-                <h3>Temps Sidéral & Solaire</h3>
-                <div class="data-point"><span>Temps Sidéral (LST)</span><span id="tslv">N/A</span></div>
-                <div class="data-point"><span>Alt. Soleil</span><span id="sun-alt">N/A</span></div>
-                <div class="data-point"><span>Azimut Soleil</span><span id="sun-azimuth">N/A</span></div>
-                <div class="data-point"><span>Correction G-Céleste</span><span id="celestial-g-corr">0.0000</span></div>
-                <div class="data-point"><span>Coucher (UTC)</span><span id="sunset-times">N/A</span></div>
-                <hr>
-                <h3>Lune (Horizon 2026)</h3>
-                <div class="data-point"><span>Phase Actuelle</span><span id="moon-phase-name">N/A</span></div>
-                <div class="data-point"><span>Illumination (%)</span><span id="moon-illuminated">N/A</span></div>
-                <div class="data-point"><span>Distance (km)</span><span id="moon-distance">N/A</span></div>  
-             </section>
-        </div>
-    </main>
+function getCoriolis(v) {
+    return OMNI_PHYS.omega_earth.times(2).times(v).times(Math.sin(state.lat * Math.PI / 180));
+}
 
-    <div id="hud-overlay">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <span style="color:#0f0;">OMNI V21-SINGULARITÉ</span>
-            <span style="color:#ff0;">PONT DE L'INFINI: <span id="g-force-hud">VERROUILLÉ</span></span>
-        </div>
-        <div style="text-align:center; margin:10px 0;">
-            <div style="font-size:3em; color:#fff; font-weight:bold;" id="sp-main">0.0</div>
-            <div style="font-size:0.8em; color:#888;">KM/H (PROPRE τ)</div>
-        </div>
-        <div style="border-top:1px solid #0f0; padding-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:0.8em;">
-            <div>DIST (2D): <span id="dist-3d" style="color:#fff;">0.0</span> m</div>
-            <div>LORENTZ (γ): <span id="lorentz-val" style="color:#fff;">1.000000</span></div>
-            <div>SUN-ALT: <span id="sun-alt-hud">--</span></div>
-            <div>MODE: <span style="color:#0ff;">UKF-PRO-2026</span></div>
-        </div>
+function process(e) {
+    if(!state.isLive) return;
 
-        <div id="poi-alert" style="display:none; background:#ff0; color:#000; text-align:center; padding:5px; margin-top:10px; font-weight:bold;">
-            ⚠️ PERTURBATION ESPACE-TEMPS
-        </div>
+    // 1. CALIBRAGE (5 secondes)
+    if(state.calib) {
+        state.samples.push(new Big(e.accelerationIncludingGravity.z || 0));
+        if(state.samples.length > 250) {
+            state.g = state.samples.reduce((a,b)=>a.plus(b), new Big(0)).div(state.samples.length);
+            state.calib = false;
+            logger("G-LOCAL FIXÉ : " + state.g.toFixed(6));
+        }
+        return;
+    }
 
-        <button id="main-init-btn" style="width:100%; padding:15px; background:#0f0; color:#000; border:none; margin-top:15px; font-weight:bold; cursor:pointer;">
-            INITIALISER OMNISCIENCE (FUSION TOTALE)
-        </button>
-        
-        <div style="display:flex; gap:5px; margin-top:5px;">
-            <button onclick="OMNI_SOUVERAIN.generateAuditReport()" style="flex:1; background:#0055ff; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">EXPORTER JOURNAL (AUDIT)</button>
-        </div>
-    </div>
+    let now = Date.now();
+    let dt = new Big(now - state.lastT).div(1000);
+    state.lastT = now;
 
-    <script src="gnss-dashboard-full.js"></script>
+    // 2. FILTRAGE 20KHZ (Soustraction des micro-vibrations de structure)
+    if(analyser) {
+        analyser.getByteFrequencyData(dataArray);
+        let idx = Math.floor(OMNI_PHYS.sonic_target / (audioCtx.sampleRate / analyser.fftSize));
+        state.sonicLevel = dataArray[idx];
+        document.getElementById('sonic').innerText = state.sonicLevel + " dB";
+    }
 
+    // 3. CALCUL DU CENTRE DE MASSE (SOUSTRACTION GYROSCOPIQUE)
+    let rawZ = new Big(e.accelerationIncludingGravity.z || 0);
+    let gyroZ = new Big(e.rotationRate.alpha || 0).times(Math.PI/180);
+    let cleanAcc = rawZ.minus(gyroZ.pow(2).times(OMNI_PHYS.s10_cm_offset.z));
+
+    // 4. ÉQUATION DE RÉALITÉ (Nettoyage VSOP + Coriolis)
+    let vsop = getVsopAcc();
+    let corio = getCoriolis(state.v);
+    let netA = cleanAcc.minus(state.g).minus(vsop).minus(corio);
+
+    // 5. FILTRE DE PLANCK DYNAMIQUE (Si vibrations sonores > seuil, on durcit le filtre)
+    let noiseFloor = new Big('0.0005');
+    if(state.sonicLevel > 150) noiseFloor = noiseFloor.times(5); // Protection chocs manège
+
+    if(netA.abs().lt(noiseFloor)) {
+        netA = new Big(0);
+        state.v = state.v.times(0.96); // Amortissement de dérive
+    }
+
+    // 6. INTÉGRATION DE VERLET
+    let vOld = state.v;
+    state.v = state.v.plus(netA.times(dt));
+    state.d = state.d.plus(vOld.plus(state.v).div(2).times(dt));
+
+    // 7. UI UPDATE
+    document.getElementById('dist').innerText = state.d.times(1000).toFixed(3);
+    document.getElementById('vel').innerText = state.v.toFixed(4);
+    document.getElementById('acc').innerText = netA.toFixed(3);
+    document.getElementById('corio').innerText = corio.toFixed(6);
+    document.getElementById('vsop').innerText = vsop.toFixed(8);
+}
+
+// Visualisation
+function drawSpectro() {
+    requestAnimationFrame(drawSpectro);
+    const canvas = document.getElementById('spectrogram');
+    const ctx = canvas.getContext('2d');
+    analyser.getByteFrequencyData(dataArray);
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0,0,canvas.width, canvas.height);
+    for(let i=0; i<dataArray.length; i++) {
+        ctx.fillStyle = i === Math.floor(20000 / (44100/1024)) ? '#00f2ff' : '#003333';
+        ctx.fillRect(i * 2, canvas.height - dataArray[i]/2, 1, dataArray[i]/2);
+    }
+}
+
+function ignite() {
+    document.getElementById('boot').style.display = 'none';
+    state.isLive = true;
+    setupSonic();
+    window.addEventListener('devicemotion', process);
+    logger("INITIALISATION OMNI V110...");
+    logger("SYSTÈME BARYCENTRIQUE PRÊT");
+}
+</script>
 </body>
-                    </html>
+</html>
