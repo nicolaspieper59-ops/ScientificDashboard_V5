@@ -1,134 +1,149 @@
 /**
- * OMNI V21.0 - SINGULARITÉ SOUVERAINE
- * Moteur Hybride : Inertiel + Astronomique + Acoustique
+ * OMNI-CORE SOUVERAIN V2026 - SYSTÈME DE NAVIGATION CONTINENTALE
+ * Synthèse Finale : Physique des fluides, Identité Matérielle et Recalage Stellaire
  */
-const OMNI_SOUVERAIN_FINAL = {
-    states: new Array(42).fill(null).map(() => new Big(0)),
-    bias_calibration: { x: new Big(0), noise: new Big(0) },
-    C: new Big('299792458'),
-    isCalibrated: false,
-    
-    async init() {
-        this.log("INITIALISATION SYSTÈME SOUVERAIN...");
-        this.startTime = performance.now();
-        this.lastTime = performance.now();
+
+const OMNI_SOUVERAIN = {
+    // --- ÉTAT DU SYSTÈME ---
+    state: {
+        lastV: 0,
+        dist: 0,
+        temp: 25,
+        rho: 1.225,
+        integrity: 1.0,
+        lastTick: performance.now(),
+        coords: { lat: 48.8566, lon: 2.3522 }, // Défaut: Paris
+        mode: "STATIQUE",
+        isSaturated: false
+    },
+
+    // --- IDENTITÉ IA (Coefficients de dérive appris) ---
+    identity: {
+        k2: 0.12, // Stochastique (Atomes)
+        k3: 0.08, // Relaxation (Structure Alu)
+        k4: 0.05, // Scintillation (Électronique)
+        lastStarFix: performance.now()
+    },
+
+    // --- 1. INITIALISATION ---
+    async initialize(lat, lon) {
+        this.state.coords = { lat, lon };
+        this.state.temp = (await Sensor.getTemp()) || 25;
+        this.state.rho = this.calculateRho(101325, this.state.temp); // Pression mer par défaut
         
-        try {
-            await this.setupHardware();
-            this.runWarmup(); // 2s de calibration du vide
-        } catch (e) {
-            this.log("ERREUR CRITIQUE : " + e.message);
+        // Initialisation des modules visuels et auditifs
+        ATOMIC_VISUALIZER.init();
+        ACOUSTIC_STABILIZER.startPulse(20000); 
+        
+        console.log("OMNI-CORE: Souveraineté activée.");
+        this.startLoop();
+    },
+
+    calculateRho(p, t) { return p / (287.058 * (t + 273.15)); },
+
+    // --- 2. MOTEUR D'ADAPTATION (MARCHE / VÉLO) ---
+    adaptTerrain() {
+        const acc = Sensor.getAccel();
+        const speed = this.state.lastV;
+        
+        if (speed > 2.5) { // Env 9 km/h
+            this.state.mode = "VELO";
+            this.identity.k2 = 0.6; this.identity.k3 = 0.2; this.identity.k4 = 0.2;
+        } else if (acc.mag > 1.2) {
+            this.state.mode = "MARCHE";
+            this.identity.k2 = 0.2; this.identity.k3 = 0.7; this.identity.k4 = 0.1;
+        } else {
+            this.state.mode = "STATIQUE";
+            this.identity.k4 = 0.8;
         }
     },
 
-    async setupHardware() {
-        // Flux Acoustique (Validation par l'air)
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        this.audioCtx = new AudioContext();
-        this.analyser = this.audioCtx.createAnalyser();
-        this.audioCtx.createMediaStreamSource(stream).connect(this.analyser);
-        this.fftData = new Uint8Array(this.analyser.frequencyBinCount);
-
-        // Capteurs Hybrides (Contre la Saturation)
-        window.addEventListener('devicemotion', (e) => this.coreLoop(e), true);
-        window.addEventListener('deviceorientation', (e) => this.processGeometry(e), true);
+    // --- 3. CALCUL DE LA DÉRIVE MULTI-RACINES ---
+    getCombinedDrift(dt_sec) {
+        const d2 = this.identity.k2 * Math.sqrt(dt_sec);
+        const d3 = this.identity.k3 * Math.pow(dt_sec, 1/3);
+        const d4 = this.identity.k4 * Math.pow(dt_sec, 1/4);
+        return (d2 + d3 + d4) / 3;
     },
 
-    runWarmup() {
-        this.log("CALIBRATION DU VIDE (REPOS ABSOLU)...");
-        let samples = [];
-        const capture = (e) => samples.push(new Big(e.acceleration.x || 0));
-        window.addEventListener('devicemotion', capture);
-
-        setTimeout(() => {
-            window.removeEventListener('devicemotion', capture);
-            this.bias_calibration.x = samples.reduce((a, b) => a.plus(b), new Big(0)).div(samples.length || 1);
-            this.bias_calibration.noise = new Big(0.005); 
-            this.isCalibrated = true;
-            this.log("SCELLÉ : BIAIS RECTIFIÉ.");
-            document.getElementById('main-init-btn').style.display = 'none';
-        }, 2000);
-    },
-
-    coreLoop(event) {
-        if (!this.isCalibrated) return;
-
-        // 1. HORLOGE ASTRONOMIQUE (Correction du Jitter)
+    // --- 4. BOUCLE DE RÉALITÉ (CORE LOOP) ---
+    process() {
         const now = performance.now();
-        const dt = new Big(now - this.lastTime).div(1000);
-        this.lastTime = now;
-        const jd = (Date.now() / 86400000) + 2440587.5;
+        const dt = (now - this.state.lastTick) / 1000;
+        this.state.lastTick = now;
 
-        // 2. GESTION DE LA SATURATION (HYBRIDATION)
-        let rawAcc = new Big(event.acceleration.x || 0);
-        
-        // Si l'accéléromètre sature (> 15G), on bascule sur le modèle de flux
-        if (rawAcc.abs().gt(15)) {
-            this.log("SATURATION ! RECOUVREMENT PAR FLUX...");
-            // Ici, intégration du flux magnétique ou acoustique pour boucher le trou
-            rawAcc = new Big(this.states[3].gt(0) ? 1 : -1).times(0.1); 
+        this.adaptTerrain();
+
+        // Lecture Capteurs
+        const rawAcc = Sensor.getAccel().mag;
+        const matStress = MATTER_SINGULARITY.computeStress(this.state.temp);
+
+        // Détection de Saturation (Inertie vs Flux)
+        if (rawAcc > 15.8 || this.state.mode === "VELO") {
+            this.state.isSaturated = true;
+            // Loi de Bernoulli : v = sqrt(2*deltaP / rho)
+            const v_pression = Math.sqrt((2 * Sensor.getDeltaP()) / this.state.rho);
+            this.state.lastV = (v_pression * 0.8) + (ACOUSTIC_STABILIZER.getDoppler() * 0.2);
+        } else {
+            this.state.isSaturated = false;
+            const driftCorrection = 1 - this.getCombinedDrift(dt);
+            this.state.lastV += (rawAcc * matStress) * dt * driftCorrection;
         }
 
-        // 3. CORRECTION DE BELL & GÉOMÉTRIE
-        let correctedAcc = rawAcc.minus(this.bias_calibration.x).minus(this.bias_dynamic || 0);
-        if (correctedAcc.abs().lt(this.bias_calibration.noise)) correctedAcc = new Big(0);
+        this.updateGeodesic(this.state.lastV * dt);
 
-        // 4. MISE À JOUR DES 42 ÉTATS (Vitesse, Distance, Relativité)
-        this.states[3] = this.states[3].plus(correctedAcc.times(dt)); // v
-        this.states[0] = this.states[0].plus(this.states[3].abs().times(dt)); // d
-        
-        const v = this.states[3].abs();
-        const gamma = new Big(1).div(new Big(1).minus(v.pow(2).div(this.C.pow(2))).sqrt());
-        this.states[10] = gamma;
-
-        // 5. VALIDATION ACOUSTIQUE (Preuve de Matière)
-        this.analyser.getByteFrequencyData(this.fftData);
-        const energy = this.fftData.reduce((a, b) => a + b, 0);
-
-        this.updateDashboard(v, gamma, jd, energy, correctedAcc);
-    },
-
-    processGeometry(e) {
-        // Correction de la fuite gravitationnelle (Inclinomètre)
-        const pitchRad = (e.beta * Math.PI) / 180;
-        this.bias_dynamic = new Big(Math.sin(pitchRad)).times(9.80665);
-        
-        // Update visuel de la bulle
-        const bubble = document.getElementById('bubble');
-        if(bubble) {
-            bubble.style.transform = `translate(calc(-50% + ${e.gamma}px), calc(-50% + ${e.beta}px))`;
+        // Recalage Stellaire automatique (Toutes les 30 min)
+        if (now - this.identity.lastStarFix > 1800000) {
+            this.celestialFix();
         }
-        document.getElementById('pitch').innerText = e.beta.toFixed(2) + "°";
-        document.getElementById('roll').innerText = e.gamma.toFixed(2) + "°";
+
+        this.refreshUI();
     },
 
-    updateDashboard(v, gamma, jd, energy, acc) {
-        const v_kmh = v.times(3.6);
+    // --- 5. NAVIGATION GÉODÉSIQUE (COURBURE TERRE) ---
+    updateGeodesic(dist_m) {
+        const R = 6371000; // Rayon Terre
+        const brng = Sensor.getCompass() * (Math.PI / 180);
         
-        // Mapping des IDs du Dashboard
-        document.getElementById('speed-main-display').innerText = v_kmh.toFixed(2) + " km/h";
-        document.getElementById('sp-main').innerText = v_kmh.toFixed(2);
-        document.getElementById('ast-jd').innerText = jd.toFixed(8);
-        document.getElementById('ui-lorentz').innerText = gamma.toFixed(15);
-        document.getElementById('lorentz-val').innerText = gamma.toFixed(12);
-        document.getElementById('dist-3d').innerText = this.states[0].toFixed(6);
-        document.getElementById('distance-totale').innerText = this.states[0].toFixed(3) + " m";
-        document.getElementById('force-g-inst').innerText = acc.div(9.80665).plus(1).toFixed(4) + " G";
-        document.getElementById('sound-level').innerText = (energy/10).toFixed(0) + " Hz-Eq";
-        document.getElementById('acc-x').innerText = acc.toFixed(4);
-        
-        // Audit de Causalité
-        const audit = document.getElementById('audit-status');
-        const isSafe = (v_kmh.lt(2) || energy > 50);
-        audit.innerText = isSafe ? "SCELLÉ (COHÉRENT)" : "ALERTE CAUSALITÉ";
-        audit.style.color = isSafe ? "#00ff88" : "#ff4444";
+        const lat1 = this.state.coords.lat * (Math.PI / 180);
+        const lon1 = this.state.coords.lon * (Math.PI / 180);
+
+        const lat2 = Math.asin(Math.sin(lat1) * Math.cos(dist_m/R) +
+                     Math.cos(lat1) * Math.sin(dist_m/R) * Math.cos(brng));
+        const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(dist_m/R) * Math.cos(lat1),
+                     Math.cos(dist_m/R) - Math.sin(lat1) * Math.sin(lat2));
+
+        this.state.coords.lat = lat2 * (180 / Math.PI);
+        this.state.coords.lon = lon2 * (180 / Math.PI);
+        this.state.dist += Math.abs(dist_m);
     },
 
-    log(msg) {
-        const log = document.getElementById('anomaly-log');
-        if (log) log.innerHTML = `> ${msg}<br>${log.innerHTML}`;
-    }
+    // --- 6. RECALAGE STELLAIRE ---
+    async celestialFix() {
+        const fix = await CELESTIAL_SYNC.capture();
+        if (fix.success) {
+            const error = this.calculateGap(this.state.coords, fix.coords);
+            // Apprentissage IA des coefficients
+            IDENTITY_LEARNER.optimize(error, 1800);
+            this.state.coords = fix.coords;
+            this.identity.lastStarFix = performance.now();
+        }
+    },
+
+    refreshUI() {
+        document.getElementById('speed-val').innerText = (this.state.lastV * 3.6).toFixed(2);
+        document.getElementById('dist-val').innerText = (this.state.dist / 1000).toFixed(3) + " KM";
+        document.getElementById('transport-mode').innerText = this.state.mode;
+        document.getElementById('lat-val').innerText = this.state.coords.lat.toFixed(5);
+        document.getElementById('lon-val').innerText = this.state.coords.lon.toFixed(5);
+        
+        // Mise à jour des barres d'identité
+        document.getElementById('bar-k2').style.width = (this.identity.k2 * 100) + "%";
+        document.getElementById('bar-k3').style.width = (this.identity.k3 * 100) + "%";
+        document.getElementById('bar-k4').style.width = (this.identity.k4 * 100) + "%";
+        
+        ATOMIC_VISUALIZER.render(this.state.integrity);
+    },
+
+    startLoop() { setInterval(() => this.process(), 100); }
 };
-
-// Liaison finale au bouton
-document.getElementById('main-init-btn').addEventListener('click', () => OMNI_SOUVERAIN_FINAL.init());
