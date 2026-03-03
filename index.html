@@ -2,176 +2,59 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>OMNI GENESIS V110 - ABSOLUTE REALITY</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
-    <script src="lib/ephem.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNI 2026 - Souverain</title>
     <style>
-        :root { --neon: #00f2ff; --bg: #000000; }
-        body { background: var(--bg); color: #0f0; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
-        #hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 10px; height: 50vh; }
-        .box { border: 1px solid #1a1a1a; padding: 8px; background: rgba(0, 242, 255, 0.02); position: relative; }
-        .label { font-size: 0.55rem; color: #555; display: block; margin-bottom: 5px; }
-        .val { font-size: 1.2rem; color: var(--neon); text-shadow: 0 0 5px var(--neon); }
-        #spectrogram { height: 15vh; width: 100%; border-top: 1px solid #222; background: #050505; }
-        #console { height: 35vh; background: #000; border-top: 2px solid #111; padding: 10px; font-size: 0.7rem; overflow-y: auto; color: #00ff41; }
-        #boot { position: fixed; width:100%; height:100%; background: #000; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        button { padding: 20px 40px; border: 2px solid #0f0; background: none; color: #0f0; font-size: 1.2rem; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #0f0; color: #000; }
-        .warning { color: #ff0; font-size: 0.6rem; margin-top: 10px; }
+        :root { --neon-blue: #00d2ff; --neon-red: #ff3e3e; --bg: #050505; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        
+        #dashboard { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; padding: 15px; box-sizing: border-box; }
+        
+        .header { border-bottom: 1px solid var(--neon-blue); padding-bottom: 10px; display: flex; justify-content: space-between; }
+        .mode-tag { background: var(--neon-blue); color: black; padding: 2px 8px; font-weight: bold; border-radius: 3px; }
+
+        .main-metrics { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .speed { font-size: 5rem; font-weight: bold; color: var(--neon-blue); }
+        .unit { font-size: 1.2rem; opacity: 0.7; }
+        .dist { font-size: 2rem; margin-top: 10px; }
+
+        .identity-matrix { background: #111; border-radius: 10px; padding: 15px; margin-top: 20px; width: 100%; }
+        .root-bar { height: 6px; background: #333; margin: 10px 0; border-radius: 3px; position: relative; }
+        .root-fill { height: 100%; background: var(--neon-blue); transition: width 0.3s; }
+
+        .footer { font-size: 0.8rem; opacity: 0.6; display: flex; justify-content: space-between; border-top: 1px solid #333; padding-top: 10px; }
+        canvas { width: 100%; height: 60px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div id="boot">
-    <h1 style="color:var(--neon); margin-bottom: 5px;">OMNI GENESIS V110</h1>
-    <p style="font-size: 0.7rem; color: #444;">FUSION INERTIELLE / VSOP2013 / 20KHZ SONIC</p>
-    <button onclick="ignite()">LANCER LA RÉALITÉ</button>
-    <p class="warning">L'accès aux capteurs et au micro est requis pour le mode 20,000Hz</p>
+<div id="dashboard">
+    <div class="header">
+        <span>STRATÉGIE: 999KM</span>
+        <span id="transport-mode" class="mode-tag">INITIALISATION</span>
+    </div>
+
+    <div class="main-metrics">
+        <div id="speed-val" class="speed">0.00</div>
+        <div class="unit">KM/H (FLUX)</div>
+        <div id="dist-val" class="dist">000.000 KM</div>
+        
+        <div class="identity-matrix">
+            <div style="font-size: 0.7rem;">ANALYSE RACINES (ENTROPIE)</div>
+            <div class="root-bar"><span>√ (Atomes)</span><div id="bar-k2" class="root-fill" style="width: 33%"></div></div>
+            <div class="root-bar"><span>∛ (Structure)</span><div id="bar-k3" class="root-fill" style="width: 33%"></div></div>
+            <div class="root-bar"><span>∜ (Interface)</span><div id="bar-k4" class="root-fill" style="width: 33%"></div></div>
+        </div>
+        <canvas id="atomic-canvas"></canvas>
+    </div>
+
+    <div class="footer">
+        <div>LAT: <span id="lat-val">0.0000</span></div>
+        <div>LON: <span id="lon-val">0.0000</span></div>
+        <div>INTÉGRITÉ: <span id="int-val">100%</span></div>
+    </div>
 </div>
 
-<div id="hud">
-    <div class="box"><span class="label">DISTANCE (mm)</span><span id="dist" class="val">0.000</span></div>
-    <div class="box"><span class="label">VITESSE (m/s)</span><span id="vel" class="val">0.0000</span></div>
-    <div class="box"><span class="label">G-FORCE NETTE</span><span id="acc" class="val">0.000</span></div>
-    <div class="box"><span class="label">CORIOLIS (Terre)</span><span id="corio" class="val">0.000</span></div>
-    <div class="box"><span class="label">VSOP BARYCENTRE</span><span id="vsop" class="val">---</span></div>
-    <div class="box"><span class="label">20KHZ VIBRATION</span><span id="sonic" class="val">---</span></div>
-</div>
-
-<canvas id="spectrogram"></canvas>
-
-<div id="console"></div>
-
-<script>
-// --- CORE CONFIGURATION ---
-const OMNI_PHYS = {
-    h: new Big('6.62607015e-34'),
-    omega_earth: new Big('7.2921159e-5'),
-    s10_cm_offset: { x: 0.0125, y: -0.045, z: 0.0021 }, // Offset S10e centre de masse
-    sonic_target: 20000 // Analyse à 20kHz
-};
-
-let state = {
-    isLive: false, calib: true, samples: [],
-    d: new Big(0), v: new Big(0), g: new Big(0),
-    lat: 48.85, lastT: Date.now(),
-    sonicLevel: 0
-};
-
-const logger = (m) => { 
-    const c = document.getElementById('console');
-    c.innerHTML = `> ${new Date().toTimeString().split(' ')[0]} | ${m}<br>` + c.innerHTML;
-};
-
-// --- ANALYSEUR SONIQUE 20,000 HZ ---
-let audioCtx, analyser, dataArray;
-function setupSonic() {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 44100});
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 1024;
-    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
-        audioCtx.createMediaStreamSource(stream).connect(analyser);
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        logger("CAPTEUR SONIQUE 20KHZ ACTIF");
-        drawSpectro();
-    });
-}
-
-function getVsopAcc() {
-    try {
-        if (typeof vsop2013 !== 'undefined' && vsop2013.compute) {
-            let jd = (Date.now() / 86400000) + 2440587.5;
-            let earth = vsop2013.compute(3, jd); 
-            return new Big(earth.acc[2] || 0);
-        }
-        return new Big(0); // Retourne 0 si le fichier n'est pas trouvé
-    } catch(e) { return new Big(0); }
-}
-
-function getCoriolis(v) {
-    return OMNI_PHYS.omega_earth.times(2).times(v).times(Math.sin(state.lat * Math.PI / 180));
-}
-
-function process(e) {
-    if(!state.isLive) return;
-
-    // 1. CALIBRAGE (5 secondes)
-    if(state.calib) {
-        state.samples.push(new Big(e.accelerationIncludingGravity.z || 0));
-        if(state.samples.length > 250) {
-            state.g = state.samples.reduce((a,b)=>a.plus(b), new Big(0)).div(state.samples.length);
-            state.calib = false;
-            logger("G-LOCAL FIXÉ : " + state.g.toFixed(6));
-        }
-        return;
-    }
-
-    let now = Date.now();
-    let dt = new Big(now - state.lastT).div(1000);
-    state.lastT = now;
-
-    // 2. FILTRAGE 20KHZ (Soustraction des micro-vibrations de structure)
-    if(analyser) {
-        analyser.getByteFrequencyData(dataArray);
-        let idx = Math.floor(OMNI_PHYS.sonic_target / (audioCtx.sampleRate / analyser.fftSize));
-        state.sonicLevel = dataArray[idx];
-        document.getElementById('sonic').innerText = state.sonicLevel + " dB";
-    }
-
-    // 3. CALCUL DU CENTRE DE MASSE (SOUSTRACTION GYROSCOPIQUE)
-    let rawZ = new Big(e.accelerationIncludingGravity.z || 0);
-    let gyroZ = new Big(e.rotationRate.alpha || 0).times(Math.PI/180);
-    let cleanAcc = rawZ.minus(gyroZ.pow(2).times(OMNI_PHYS.s10_cm_offset.z));
-
-    // 4. ÉQUATION DE RÉALITÉ (Nettoyage VSOP + Coriolis)
-    let vsop = getVsopAcc();
-    let corio = getCoriolis(state.v);
-    let netA = cleanAcc.minus(state.g).minus(vsop).minus(corio);
-
-    // 5. FILTRE DE PLANCK DYNAMIQUE (Si vibrations sonores > seuil, on durcit le filtre)
-    let noiseFloor = new Big('0.0005');
-    if(state.sonicLevel > 150) noiseFloor = noiseFloor.times(5); // Protection chocs manège
-
-    if(netA.abs().lt(noiseFloor)) {
-        netA = new Big(0);
-        state.v = state.v.times(0.96); // Amortissement de dérive
-    }
-
-    // 6. INTÉGRATION DE VERLET
-    let vOld = state.v;
-    state.v = state.v.plus(netA.times(dt));
-    state.d = state.d.plus(vOld.plus(state.v).div(2).times(dt));
-
-    // 7. UI UPDATE
-    document.getElementById('dist').innerText = state.d.times(1000).toFixed(3);
-    document.getElementById('vel').innerText = state.v.toFixed(4);
-    document.getElementById('acc').innerText = netA.toFixed(3);
-    document.getElementById('corio').innerText = corio.toFixed(6);
-    document.getElementById('vsop').innerText = vsop.toFixed(8);
-}
-
-// Visualisation
-function drawSpectro() {
-    requestAnimationFrame(drawSpectro);
-    const canvas = document.getElementById('spectrogram');
-    const ctx = canvas.getContext('2d');
-    analyser.getByteFrequencyData(dataArray);
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0,0,canvas.width, canvas.height);
-    for(let i=0; i<dataArray.length; i++) {
-        ctx.fillStyle = i === Math.floor(20000 / (44100/1024)) ? '#00f2ff' : '#003333';
-        ctx.fillRect(i * 2, canvas.height - dataArray[i]/2, 1, dataArray[i]/2);
-    }
-}
-
-function ignite() {
-    document.getElementById('boot').style.display = 'none';
-    state.isLive = true;
-    setupSonic();
-    window.addEventListener('devicemotion', process);
-    logger("INITIALISATION OMNI V110...");
-    logger("SYSTÈME BARYCENTRIQUE PRÊT");
-}
-</script>
+<script src="OMNI_SOUVERAIN_999.js"></script>
 </body>
 </html>
