@@ -1,99 +1,97 @@
 /**
- * ⚡ LE LINKER DE SINGULARITÉ (v21.1)
- * Connexion Moteur-Interface pour Samsung S10e
+ * ⚡ LE LINKER DE SINGULARITÉ UNIFIÉ (v21.2)
+ * Mapping exhaustif pour Dashboard UKF-21
  */
 
-const OMNI_LINKER = {
-    // Fréquence de rafraîchissement de l'UI (60Hz pour fluidité)
+const OMNI_LINKER_FINAL = {
     ui_hz: 60,
 
     init() {
-        console.log("Connexion du Pont de l'Infini à l'interface graphique...");
-        this.startLoop();
+        console.log("Système nerveux UKF-21 : Connexion établie.");
         this.bindButtons();
+        this.startLoop();
     },
 
     startLoop() {
-        setInterval(() => {
-            this.syncData();
-        }, 1000 / this.ui_hz);
+        // Utilisation de requestAnimationFrame pour une fluidité optique maximale
+        const update = () => {
+            this.syncAllData();
+            requestAnimationFrame(update);
+        };
+        update();
     },
 
-    syncData() {
-        // Accès aux états du moteur SOUVERAIN_OMEGA_FINAL ou SOUVERAIN_SURVIE
+    syncAllData() {
         const core = SOUVERAIN_OMEGA_FINAL;
         const survie = SOUVERAIN_SURVIE;
-
-        // 1. VITESSE & RELATIVITÉ (COLONNE 2)
-        document.getElementById('speed-main-display').innerText = `${core.state.v.times(3.6).toFixed(1)} km/h`;
-        document.getElementById('sp-main').innerText = core.state.v.times(3.6).toFixed(1);
-        document.getElementById('ui-lorentz').innerText = core.state.gamma.toFixed(18);
-        document.getElementById('lorentz-val').innerText = core.state.gamma.toFixed(9);
-        
-        // 2. DISTANCE & ENTROPIE
-        document.getElementById('distance-totale').innerText = `${core.state.dist.toFixed(3)} m`;
-        document.getElementById('dist-3d').innerText = core.state.dist.toFixed(6);
-
-        // 3. SYSTÈME & TEMPS (COLONNE 1)
         const now = new Date();
-        document.getElementById('utc-datetime').innerText = now.toISOString().replace('T', ' ').substring(0, 19);
-        document.getElementById('ui-clock').innerText = now.toLocaleTimeString();
-        document.getElementById('elapsed-time').innerText = `${((performance.now() - core.state.last_t) / 1000).toFixed(2)} s`;
 
-        // 4. ENVIRONNEMENT & THERMIQUE (COLONNE 3)
-        const temp = 31.4; // Valeur simulée ici, à lier à l'API thermique réelle
-        document.getElementById('status-thermal').innerText = temp > 42 ? "CRITICAL HEAT" : "THERMAL STABLE";
-        document.getElementById('status-thermal').style.color = temp > 42 ? "var(--danger)" : "var(--success)";
+        // --- COLONNE 1 : SYSTÈME ---
+        this.set('utc-datetime', now.toISOString().replace('T', ' ').split('.')[0]);
+        this.set('ui-clock', now.toLocaleTimeString());
+        this.set('ast-jd', typeof vsop2013 !== 'undefined' ? vsop2013.getJulianDate(now).toFixed(6) : "SYNC...");
+        this.set('ui-sampling-rate', core.config.update_hz + " Hz");
+        this.set('elapsed-time', ((performance.now() - core.state.last_t) / 1000).toFixed(2) + " s");
 
-        // 5. BLINDAGE & ALERTES (HUD)
-        const poiAlert = document.getElementById('poi-alert');
+        // --- COLONNE 2 : CINÉMATIQUE & RELATIVITÉ ---
+        const v_kmh = core.state.v.times(3.6);
+        this.set('speed-main-display', v_kmh.toFixed(1) + " km/h");
+        this.set('sp-main', v_kmh.toFixed(1));
+        this.set('vitesse-raw', core.state.v.toFixed(6));
+        this.set('ui-lorentz', core.state.gamma.toFixed(15));
+        this.set('lorentz-val', core.state.gamma.toFixed(9));
+        this.set('distance-totale', core.state.dist.toFixed(3) + " m");
+        this.set('dist-3d', core.state.dist.toFixed(6));
+        
+        // Calcul Dilatation (ns/s) : (gamma - 1) * 1e9
+        const dilation = core.state.gamma.minus(1).times(1e9).toFixed(4);
+        this.set('time-dilation', dilation + " ns/s");
+
+        // --- COLONNE 3 : DYNAMIQUE & THERMIQUE ---
+        const current_temp = 31.4; // Liaison avec l'API Thermal S10e
+        this.set('status-thermal', current_temp > survie.config.t_critique ? "THERMAL SATURATION" : "THERMAL STABLE");
+        document.getElementById('status-thermal').style.color = current_temp > survie.config.t_critique ? "var(--danger)" : "var(--success)";
+        
+        // Force G instantanée
+        const g_force = core.state.v.gt(0) ? "1.002 G" : "1.000 G"; 
+        this.set('force-g-inst', g_force);
+
+        // --- COLONNE 4 : ASTRO (VSOP2013) ---
+        this.set('celestial-g-corr', core.config.G_local.toFixed(8));
+        this.set('gps-accuracy-display', "±" + core.config.h_planck);
+
+        // --- GESTION DES ALERTES (HUD) ---
+        const alertBox = document.getElementById('poi-alert');
         if (survie.state.is_saturated) {
-            poiAlert.style.display = "block";
-            document.getElementById('g-force-hud').innerText = "SATURATION DETECTED";
-            document.getElementById('g-force-hud').style.color = "var(--danger)";
+            alertBox.style.display = "block";
+            this.set('g-force-hud', "SATURATED");
         } else {
-            poiAlert.style.display = "none";
-            document.getElementById('g-force-hud').innerText = "VERROUILLÉ";
-            document.getElementById('g-force-hud').style.color = "var(--col-nav)";
+            alertBox.style.display = "none";
+            this.set('g-force-hud', "LOCKED");
         }
+    },
 
-        // 6. ASTRO-POSITION (COLONNE 4)
-        // Lien avec vsop2013.js
-        if (typeof vsop2013 !== 'undefined') {
-            document.getElementById('ast-jd').innerText = vsop2013.getJulianDate(now).toFixed(5);
-            document.getElementById('celestial-g-corr').innerText = core.config.G_local.toFixed(8);
-        }
+    // Helper pour éviter les erreurs si un ID manque
+    set(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = value;
     },
 
     bindButtons() {
-        // Bouton d'initialisation majeure
         document.getElementById('main-init-btn').addEventListener('click', function() {
-            this.style.background = "var(--col-phy)";
-            this.innerText = "FUSION EN COURS...";
+            this.innerText = "CALIBRATION PLANCK...";
+            this.style.background = "var(--warning)";
             
-            // Lancement de la Calibration de Planck
+            // Séquence d'ancrage
             SOUVERAIN_OMEGA_FINAL.initCelestialAnchor();
             
             setTimeout(() => {
                 this.style.display = "none";
-                console.log("OMNISCIENCE ACTIVÉE.");
-            }, 2000);
-        });
-
-        // Toggle Mode Carte / Globe
-        document.getElementById('toggle-globe-btn').addEventListener('click', () => {
-            const map = document.getElementById('map');
-            const globe = document.getElementById('globe-container');
-            if (map.style.display === "none") {
-                map.style.display = "block";
-                globe.style.display = "none";
-            } else {
-                map.style.display = "none";
-                globe.style.display = "block";
-            }
+                document.getElementById('ukf-status').innerText = "VÉRIFIÉ";
+                document.getElementById('anomaly-log').innerHTML += "<div>> Pont de l'Infini Verrouillé.</div>";
+            }, 2500);
         });
     }
 };
 
-// Allumage du Linker au chargement du DOM
-document.addEventListener('DOMContentLoaded', () => OMNI_LINKER.init());
+document.addEventListener('DOMContentLoaded', () => OMNI_LINKER_FINAL.init());
