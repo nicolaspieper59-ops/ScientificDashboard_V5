@@ -2,15 +2,15 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>OMNI V21.5 | SÉQUENCE SOUVERAINE</title>
+    <title>OMNI V21.5 | ACTIVATION PHYSIQUE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
     <style>
         :root { --neon-green: #00ff66; --deep-black: #050505; }
-        body { background: var(--deep-black); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 20px; }
-        .val { font-size: 1.4em; color: var(--neon-green); word-break: break-all; }
+        body { background: var(--deep-black); color: white; font-family: 'Courier New', monospace; padding: 20px; }
+        .val { font-size: 1.4em; color: var(--neon-green); word-break: break-all; margin-bottom: 5px; }
         .module { border: 1px solid #222; padding: 15px; margin-bottom: 10px; background: #0a0a0a; }
+        .label { font-size: 0.7em; color: #666; text-transform: uppercase; }
         #main-init-btn { width: 100%; padding: 20px; background: var(--neon-green); border: none; font-weight: bold; cursor: pointer; font-size: 1.2em; }
-        #main-init-btn:disabled { background: #111; color: #444; }
     </style>
 </head>
 <body>
@@ -18,15 +18,16 @@
 <div id="dashboard">
     <div class="module">
         <div id="dist-3d" class="val">0.00000000000000000000</div>
-        <div style="font-size: 0.7em; color: #666;">DISTANCE ATOMIQUE CUMULÉE (m)</div>
+        <div class="label">Distance Atomique Cumulée (m)</div>
     </div>
     <div class="module">
-        <div id="ui-elec-flux" class="val">0.000e-34</div>
-        <div style="font-size: 0.7em; color: #666;">FLUX QUANTIQUE RÉEL (EXTRAIT DU SILICIUM)</div>
+        <div id="ui-elec-flux" class="val">0.000e-44</div>
+        <div class="label">Flux Quantique (Bruit de Silicium)</div>
     </div>
+    <div id="debug" style="font-size: 0.6em; color: #444;">Statut : En attente d'initialisation...</div>
 </div>
 
-<button id="main-init-btn">LANCER LA GRAVURE PHYSIQUE</button>
+<button id="main-init-btn">AUTORISER ET LANCER LA GRAVURE</button>
 
 <script>
 const BN = BigNumber.clone({ DECIMAL_PLACES: 50 });
@@ -35,57 +36,67 @@ const H = new BN('6.62607015e-34');
 
 let totalDistance = new BN(0);
 let lastTimestamp = null;
-let isRunning = false;
 
-// FONCTION CLÉ : EXTRACTION DU BRUIT PHYSIQUE (SANS MATH.RANDOM)
-function getPhysicalEntropy(event) {
-    // On récupère les 15e décimales de l'accélération brute.
-    // Ce sont des fluctuations électriques réelles du capteur (Bruit de Johnson).
-    const rawX = event.accelerationIncludingGravity.x || 0.123456789;
-    const rawY = event.accelerationIncludingGravity.y || 0.987654321;
-    
-    // On transforme la vibration électrique en un multiplicateur entre 0 et 1
-    const entropy = Math.abs((rawX * rawY * 1000000) % 1);
-    return new BN(entropy);
-}
+const distDisplay = document.getElementById('dist-3d');
+const fluxDisplay = document.getElementById('ui-elec-flux');
+const debug = document.getElementById('debug');
 
-document.getElementById('main-init-btn').addEventListener('click', () => {
-    isRunning = true;
-    window.addEventListener('devicemotion', (e) => {
-    console.log("Accélération brute détectée : ", e.acceleration.x);
-    if(e.acceleration.x === null) alert("Capteurs bloqués par le système !");
-}, { once: true });
-    document.getElementById('main-init-btn').disabled = true;
-    document.getElementById('main-init-btn').innerText = "SYSTÈME ANCRÉ DANS LA MATIÈRE";
+async function startEngine() {
+    // 1. Demande de permission (Indispensable pour la "vraie vie")
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        const permission = await DeviceMotionEvent.requestPermission();
+        if (permission !== 'granted') {
+            debug.innerText = "ERREUR : Permission capteurs refusée.";
+            return;
+        }
+    }
 
-    window.addEventListener('devicemotion', (e) => {
-        if (!isRunning) return;
-        
+    debug.innerText = "STATUT : Capteurs connectés. Gravure en cours...";
+    document.getElementById('main-init-btn').style.display = 'none';
+
+    // 2. Écoute du flux de matière
+    window.addEventListener('devicemotion', (event) => {
         const now = performance.now();
         if (!lastTimestamp) { lastTimestamp = now; return; }
         const dt = new BN(now - lastTimestamp).div(1000);
         lastTimestamp = now;
 
-        // 1. EXTRACTION DU BRUIT DE GRENADE (Shot Noise)
-        // Au lieu de Math.random(), on utilise la fluctuation de tension du capteur
-        const physicalEntropy = getPhysicalEntropy(e);
-        const quantumFlux = H.times(physicalEntropy);
-        document.getElementById('ui-elec-flux').innerText = quantumFlux.toExponential(10);
-
-        // 2. CALCUL DE VITESSE (Correction par entropie physique)
-        let acc = new BN(e.acceleration.x || 0).abs();
+        // EXTRACTION DU BRUIT PHYSIQUE (SANS MATH.RANDOM)
+        // On utilise les micro-variations de l'accélération avec gravité
+        const rawX = event.accelerationIncludingGravity.x || 0;
+        const rawY = event.accelerationIncludingGravity.y || 0;
+        const rawZ = event.accelerationIncludingGravity.z || 0;
         
-        // 3. LORENTZ & DISTANCE
-        const v2 = acc.pow(2); 
-        const c2 = C.pow(2);
-        const lorentz = new BN(1).div(BN.sqrt(new BN(1).minus(v2.div(c2))));
-        
-        const deltaDist = acc.times(dt).times(lorentz);
-        totalDistance = totalDistance.plus(deltaDist);
+        // Entropie basée sur le bruit de fond électrique
+        const noise = Math.abs((rawX * rawY * rawZ * 1000000) % 1);
+        const physicalEntropy = new BN(noise);
+        fluxDisplay.innerText = H.times(physicalEntropy).toExponential(10);
 
-        document.getElementById('dist-3d').innerText = totalDistance.toFixed(20);
+        // CALCUL DU MOUVEMENT RÉEL (Accélération pure)
+        // On prend la magnitude du vecteur 3D pour les saltos
+        const accX = new BN(event.acceleration.x || 0);
+        const accY = new BN(event.acceleration.y || 0);
+        const accZ = new BN(event.acceleration.z || 0);
+        
+        // Magnitude : sqrt(x²+y²+z²)
+        const aMagnitude = BN.sqrt(accX.pow(2).plus(accY.pow(2)).plus(accZ.pow(2)));
+
+        // Si le mouvement est trop faible (bruit thermique), on ne bouge pas
+        if (aMagnitude.gt(0.01)) { 
+            // CALCUL RELATIVISTE (Lorentz)
+            const v2 = aMagnitude.pow(2); // Approximation v=a*dt simplifiée pour le flux
+            const c2 = C.pow(2);
+            const lorentz = new BN(1).div(BN.sqrt(new BN(1).minus(v2.div(c2))));
+
+            // Mise à jour du Pont de l'Infini
+            const deltaDist = aMagnitude.times(dt).times(dt).div(2).times(lorentz);
+            totalDistance = totalDistance.plus(deltaDist);
+            distDisplay.innerText = totalDistance.toFixed(20);
+        }
     }, true);
-});
+}
+
+document.getElementById('main-init-btn').addEventListener('click', startEngine);
 </script>
 </body>
 </html>
