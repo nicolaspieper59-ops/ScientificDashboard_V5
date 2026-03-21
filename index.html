@@ -51,6 +51,10 @@ function getPhysicalEntropy(event) {
 
 document.getElementById('main-init-btn').addEventListener('click', () => {
     isRunning = true;
+    window.addEventListener('devicemotion', (e) => {
+    console.log("Accélération brute détectée : ", e.acceleration.x);
+    if(e.acceleration.x === null) alert("Capteurs bloqués par le système !");
+}, { once: true });
     document.getElementById('main-init-btn').disabled = true;
     document.getElementById('main-init-btn').innerText = "SYSTÈME ANCRÉ DANS LA MATIÈRE";
 
