@@ -2,101 +2,116 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>OMNI V21.5 | ACTIVATION PHYSIQUE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNI v130 • ISOLATION THERMIQUE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
     <style>
-        :root { --neon-green: #00ff66; --deep-black: #050505; }
-        body { background: var(--deep-black); color: white; font-family: 'Courier New', monospace; padding: 20px; }
-        .val { font-size: 1.4em; color: var(--neon-green); word-break: break-all; margin-bottom: 5px; }
-        .module { border: 1px solid #222; padding: 15px; margin-bottom: 10px; background: #0a0a0a; }
-        .label { font-size: 0.7em; color: #666; text-transform: uppercase; }
-        #main-init-btn { width: 100%; padding: 20px; background: var(--neon-green); border: none; font-weight: bold; cursor: pointer; font-size: 1.2em; }
+        :root { --neon: #00ff66; --bg: #050505; --heat: #ff4400; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+        .m { border: 1px solid #222; padding: 15px; margin-bottom: 10px; background: #0a0a0a; border-radius: 4px; }
+        .v { font-size: 1.3em; color: var(--neon); word-break: break-all; }
+        .h { color: var(--heat); font-size: 1.1em; }
+        .l { font-size: 0.75em; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+        button { width: 100%; padding: 25px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 10px; border-radius: 5px; }
+        #cal-btn { background: #333; color: white; }
+        #run-btn { background: var(--neon); color: black; display: none; }
     </style>
 </head>
 <body>
 
-<div id="dashboard">
-    <div class="module">
-        <div id="dist-3d" class="val">0.00000000000000000000</div>
-        <div class="label">Distance Atomique Cumulée (m)</div>
-    </div>
-    <div class="module">
-        <div id="ui-elec-flux" class="val">0.000e-44</div>
-        <div class="label">Flux Quantique (Bruit de Silicium)</div>
-    </div>
-    <div id="debug" style="font-size: 0.6em; color: #444;">Statut : En attente d'initialisation...</div>
+<div id="status" style="text-align:center; color:orange; margin-bottom:10px;">PRÊT POUR SÉPARATION MATIÈRE/CHALEUR</div>
+
+<div class="m">
+    <div class="l">Distance Réelle (m) • Sans Bruit Thermique</div>
+    <div id="dist-3d" class="v">0.00000000000000000000</div>
 </div>
 
-<button id="main-init-btn">AUTORISER ET LANCER LA GRAVURE</button>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+    <div class="m">
+        <div class="l">Vitesse Inertielle (km/h)</div>
+        <div id="vel-val" class="v">0.00000</div>
+    </div>
+    <div class="m">
+        <div class="l">Agitation Thermique (H)</div>
+        <div id="flux" class="v h">0.000e-44</div>
+    </div>
+</div>
+
+<button id="cal-btn">1. CALIBRER LE SILICIUM (À FROID)</button>
+<button id="run-btn">2. LANCER LA GRAVURE ISOLÉE</button>
 
 <script>
-const BN = BigNumber.clone({ DECIMAL_PLACES: 50 });
+const BN = BigNumber.clone({ DECIMAL_PLACES: 60 });
 const C = new BN('299792458');
 const H = new BN('6.62607015e-34');
 
-let totalDistance = new BN(0);
-let lastTimestamp = null;
+let totalDist = new BN(0);
+let v_inst = new BN(0); 
+let lastT = null;
+let sensorBias = { x: new BN(0), y: new BN(0), z: new BN(0) };
+let thermalFloor = new BN(0);
 
-const distDisplay = document.getElementById('dist-3d');
-const fluxDisplay = document.getElementById('ui-elec-flux');
-const debug = document.getElementById('debug');
+// --- PHASE 1 : MESURE DU BRUIT DE FOND THERMIQUE ---
+document.getElementById('cal-btn').onclick = async () => {
+    document.getElementById('status').innerText = "ANALYSE DU BRUIT DE JOHNSON-NYQUIST...";
+    let samples = [];
+    const capture = (e) => {
+        samples.push({
+            x: new BN(e.acceleration.x || 0),
+            y: new BN(e.acceleration.y || 0),
+            z: new BN(e.acceleration.z || 0)
+        });
+    };
+    window.addEventListener('devicemotion', capture, true);
+    await new Promise(r => setTimeout(r, 3000));
+    window.removeEventListener('devicemotion', capture, true);
 
-async function startEngine() {
-    // 1. Demande de permission (Indispensable pour la "vraie vie")
-    if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        const permission = await DeviceMotionEvent.requestPermission();
-        if (permission !== 'granted') {
-            debug.innerText = "ERREUR : Permission capteurs refusée.";
-            return;
-        }
-    }
+    // Calcul du Biais et de la variance thermique (Le "plancher")
+    sensorBias.x = samples.reduce((a, b) => a.plus(b.x), new BN(0)).div(samples.length);
+    sensorBias.y = samples.reduce((a, b) => a.plus(b.y), new BN(0)).div(samples.length);
+    sensorBias.z = samples.reduce((a, b) => a.plus(b.z), new BN(0)).div(samples.length);
+    
+    // Détermination de la limite thermique (Stdev approximative)
+    thermalFloor = samples.reduce((acc, s) => acc.plus(s.x.minus(sensorBias.x).abs()), new BN(0)).div(samples.length);
 
-    debug.innerText = "STATUT : Capteurs connectés. Gravure en cours...";
-    document.getElementById('main-init-btn').style.display = 'none';
+    document.getElementById('status').innerText = "CHALEUR ISOLÉE. PONT PRÊT.";
+    document.getElementById('cal-btn').style.display = "none";
+    document.getElementById('run-btn').style.display = "block";
+};
 
-    // 2. Écoute du flux de matière
-    window.addEventListener('devicemotion', (event) => {
+// --- PHASE 2 : SÉPARATION DES FLUX ---
+document.getElementById('run-btn').onclick = () => {
+    document.getElementById('status').innerText = "GRAVURE : SÉPARATION ACTUELLE";
+    
+    window.addEventListener('devicemotion', (e) => {
         const now = performance.now();
-        if (!lastTimestamp) { lastTimestamp = now; return; }
-        const dt = new BN(now - lastTimestamp).div(1000);
-        lastTimestamp = now;
+        if (!lastT) { lastT = now; return; }
+        const dt = new BN(now - lastT).div(1000);
+        lastT = now;
 
-        // EXTRACTION DU BRUIT PHYSIQUE (SANS MATH.RANDOM)
-        // On utilise les micro-variations de l'accélération avec gravité
-        const rawX = event.accelerationIncludingGravity.x || 0;
-        const rawY = event.accelerationIncludingGravity.y || 0;
-        const rawZ = event.accelerationIncludingGravity.z || 0;
+        const ax = new BN(e.acceleration.x || 0).minus(sensorBias.x);
+        const ay = new BN(e.acceleration.y || 0).minus(sensorBias.y);
+        const az = new BN(e.acceleration.z || 0).minus(sensorBias.z);
+        const aMag = BN.sqrt(ax.pow(2).plus(ay.pow(2)).plus(az.pow(2)));
+
+        // --- LE BOUCLIER DE JOHNSON ---
+        // On ne garde que ce qui dépasse l'agitation thermique mesurée
+        let realMotion = aMag.gt(thermalFloor) ? aMag.minus(thermalFloor) : new BN(0);
+        let heatOnly = aMag.minus(realMotion);
+
+        // Moteur d'Inertie sur le mouvement pur
+        v_inst = v_inst.plus(realMotion.times(dt));
         
-        // Entropie basée sur le bruit de fond électrique
-        const noise = Math.abs((rawX * rawY * rawZ * 1000000) % 1);
-        const physicalEntropy = new BN(noise);
-        fluxDisplay.innerText = H.times(physicalEntropy).toExponential(10);
+        // Calcul Lorentz et Distance
+        const lorentz = new BN(1).div(BN.sqrt(new BN(1).minus(v_inst.pow(2).div(C.pow(2)))));
+        totalDist = totalDist.plus(v_inst.times(dt).times(lorentz));
 
-        // CALCUL DU MOUVEMENT RÉEL (Accélération pure)
-        // On prend la magnitude du vecteur 3D pour les saltos
-        const accX = new BN(event.acceleration.x || 0);
-        const accY = new BN(event.acceleration.y || 0);
-        const accZ = new BN(event.acceleration.z || 0);
-        
-        // Magnitude : sqrt(x²+y²+z²)
-        const aMagnitude = BN.sqrt(accX.pow(2).plus(accY.pow(2)).plus(accZ.pow(2)));
-
-        // Si le mouvement est trop faible (bruit thermique), on ne bouge pas
-        if (aMagnitude.gt(0.01)) { 
-            // CALCUL RELATIVISTE (Lorentz)
-            const v2 = aMagnitude.pow(2); // Approximation v=a*dt simplifiée pour le flux
-            const c2 = C.pow(2);
-            const lorentz = new BN(1).div(BN.sqrt(new BN(1).minus(v2.div(c2))));
-
-            // Mise à jour du Pont de l'Infini
-            const deltaDist = aMagnitude.times(dt).times(dt).div(2).times(lorentz);
-            totalDistance = totalDistance.plus(deltaDist);
-            distDisplay.innerText = totalDistance.toFixed(20);
-        }
+        // Affichage séparé
+        document.getElementById('dist-3d').innerText = totalDist.toFixed(20);
+        document.getElementById('vel-val').innerText = v_inst.times(3.6).toFixed(5);
+        document.getElementById('flux').innerText = H.times(heatOnly.abs().times(1000000)).toExponential(10);
     }, true);
-}
-
-document.getElementById('main-init-btn').addEventListener('click', startEngine);
+};
 </script>
 </body>
 </html>
