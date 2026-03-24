@@ -27,7 +27,7 @@ const OMNI_ASSEMBLER = {
         
         // A. Mesure du "Zéro de Stase"
         // Le téléphone définit le bruit thermique ambiant comme le néant.
-        const bruit_fond = await this.mesurerBruitThermique(60000); // 60s
+        const bruit_fond = await this.mesurerBruitThermique(0000); // 60s
         
         // B. Verrouillage du Gradient de Masse
         // On enregistre la pesanteur G locale par rapport à la pression P.
