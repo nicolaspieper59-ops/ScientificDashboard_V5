@@ -2,181 +2,104 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OMNI v250 • SOUVERAINETÉ MATÉRIELLE</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OMNI v2000 | Suture de Réalité</title>
     <style>
-        :root { --neon: #00ff66; --bg: #020202; --suture: #00d4ff; --chaos: #ff0055; }
-        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; font-size: 10px; margin: 0; padding: 15px; overflow-x: hidden; }
-        .panel { border: 1px solid #222; padding: 10px; margin-bottom: 8px; background: rgba(10,10,10,0.9); position: relative; }
-        .v { font-size: 1.6em; color: var(--neon); word-break: break-all; letter-spacing: -1px; }
-        .label { color: #555; text-transform: uppercase; font-size: 0.75em; margin-bottom: 4px; display: block; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .status-bar { height: 4px; width: 100%; background: #111; margin-top: 5px; }
-        #integrity-fill { height: 100%; width: 0%; background: var(--suture); transition: width 0.1s; }
-        button { width: 100%; padding: 20px; border: 1px solid #333; cursor: pointer; font-weight: bold; font-family: inherit; transition: 0.3s; }
-        #cal-btn { background: #111; color: #666; }
-        #run-btn { background: var(--suture); color: black; display: none; }
-        .unit { font-size: 0.6em; color: #444; margin-left: 4px; }
+        body {
+            background: #050505;
+            color: #00ff41; /* Vert Matrix pour lisibilité OLED */
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        #header {
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 0.8em;
+        }
+
+        #main-display {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        #distance {
+            font-size: 2.2em;
+            font-weight: bold;
+            word-wrap: break-word;
+        }
+
+        .unit { font-size: 0.4em; color: #aaa; }
+
+        #sensors-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+            font-size: 0.7em;
+        }
+
+        .sensor-card {
+            border: 1px solid #222;
+            padding: 8px;
+            background: #0a0a0a;
+        }
+
+        .status-ok { color: #00ff41; }
+        .status-warn { color: #ffae00; }
+        .status-locked { color: #ff0000; }
+
+        #log-console {
+            margin-top: 20px;
+            height: 100px;
+            font-size: 0.6em;
+            background: #000;
+            border: 1px dashed #333;
+            padding: 5px;
+            overflow-y: scroll;
+            color: #888;
+        }
     </style>
 </head>
 <body>
 
-<div style="text-align:center; margin-bottom:15px; letter-spacing: 2px; color: var(--suture);">
-    SUTURE ATOMIQUE SCELÉE • 9999 KM
-</div>
-
-<div class="panel" style="border-left: 4px solid var(--neon);">
-    <span class="label">Distance Absolue (Pont de l'Infini)</span>
-    <div id="dist-3d" class="v">0.0000000000000000000000000000</div>
-    <span class="unit">MÈTRES</span>
-</div>
-
-<div class="grid">
-    <div class="panel">
-        <span class="label">Densité du Milieu (ρ)</span>
-        <div id="val-rho" class="v" style="color:var(--suture)">1.225</div>
-        <span class="unit">kg/m³</span>
+    <div id="header">
+        SAMSUNG S10e | PROTOCOLE OMNI v2000 | SCELLEMENT ACTIF
     </div>
-    <div class="panel">
-        <span class="label">Chaos Motorisé (Jerk)</span>
-        <div id="val-jerk" class="v" style="color:var(--chaos)">0.000</div>
-        <span class="unit">m/s³</span>
+
+    <div id="main-display">
+        <div id="distance">0000.0000000000000000000000000000000000000000</div>
+        <div class="unit">KILOMÈTRES (SUTURE ATOMIQUE)</div>
     </div>
-</div>
 
-<div class="grid">
-    <div class="panel">
-        <span class="label">Charge Statique (EM)</span>
-        <div id="val-static" class="v" style="color:#ffcc00">0.00</div>
-        <span class="unit">µT / INDUCT</span>
+    <div id="sensors-grid">
+        <div class="sensor-card">
+            ACCEL (X): <span id="val-accel">0.000</span><br>
+            STASE: <span id="stase-status" class="status-locked">LOCKED</span>
+        </div>
+        <div class="sensor-card">
+            TEMP DIE: <span id="val-temp">0.0</span>°C<br>
+            DILATATION: <span id="val-dilat">1.000</span>
+        </div>
+        <div class="sensor-card">
+            MAG FLUX: <span id="val-mag">0.00</span> nT<br>
+            COHÉRENCE: <span id="val-cohe">0%</span>
+        </div>
+        <div class="sensor-card">
+            PRESSION: <span id="val-press">0.0</span> hPa<br>
+            G-BOUGUER: <span id="val-grav">9.81</span>
+        </div>
     </div>
-    <div class="panel">
-        <span class="label">Résonance Coque (20kHz)</span>
-        <div id="val-phase" class="v">LOCKED</div>
-        <div class="status-bar"><div id="integrity-fill"></div></div>
+
+    <div id="log-console">
+        > Initialisation de la matière...<br>
+        > Attente de stase (60s)...<br>
     </div>
-</div>
 
-<div class="panel">
-    <span class="label">Vecteur Environnemental</span>
-    <div id="val-env" class="v" style="font-size: 1.1em; color: white;">INITIALISATION...</div>
-</div>
+    <script src="omni_core.js"></script>
 
-<button id="cal-btn">1. ANALYSER LA MATIÈRE (3s)</button>
-<button id="run-btn">2. LANCER LA SOUVERAINETÉ</button>
-
-<script>
-const BN = BigNumber.clone({ DECIMAL_PLACES: 100 });
-const C = new BN('299792458');
-const R_EARTH = new BN('6371000');
-const G_STD = new BN('9.80665');
-
-// Matériaux du S10e
-const ALU_EXPANSION = new BN('23e-6');
-const COQUE_SURFACE = new BN('0.0091');
-
-let totalDist = new BN(0);
-let v_inst = new BN(0);
-let lastT = null;
-let lastAx = new BN(0);
-let sensorBias = new BN(0);
-let thermalFloor = new BN(0);
-
-// État des fluides
-let env = { mag: 0, lux: 0, press: 101325, touch: 0 };
-
-window.ondeviceorientation = e => env.mag = e.alpha;
-window.addEventListener('devicelight', e => env.lux = e.value);
-window.ontouchstart = () => env.touch = 1;
-window.ontouchend = () => env.touch = 0;
-
-// --- CALIBRATION RÉELLE ---
-document.getElementById('cal-btn').onclick = async () => {
-    let samples = [];
-    const capture = (e) => samples.push(new BN(e.acceleration.x || 0));
-    window.addEventListener('devicemotion', capture, true);
-    await new Promise(r => setTimeout(r, 3000));
-    window.removeEventListener('devicemotion', capture, true);
-
-    sensorBias = samples.reduce((a, b) => a.plus(b), new BN(0)).div(samples.length);
-    thermalFloor = samples.reduce((acc, s) => acc.plus(s.minus(sensorBias).abs()), new BN(0)).div(samples.length);
-
-    document.getElementById('cal-btn').style.display = 'none';
-    document.getElementById('run-btn').style.display = 'block';
-};
-
-// --- BOUCLE SOUVERAINE ---
-document.getElementById('run-btn').onclick = async () => {
-    // 1. Pêche Acoustique (Dither physique)
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    osc.frequency.value = 20000;
-    const gain = audioCtx.createGain();
-    gain.gain.value = 0.008;
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start();
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const source = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    source.connect(analyser);
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    window.addEventListener('devicemotion', (e) => {
-        const now = performance.now();
-        if (!lastT) { lastT = now; return; }
-        const dt = new BN(now - lastT).div(1000);
-        lastT = now;
-
-        // --- SUTURE 1 : DENSITÉ & TEMPÉRATURE ---
-        let kelvin = new BN(25).plus(new BN(env.lux).div(50)).plus(273.15);
-        let rho = new BN(env.press).div(new BN('287.05').times(kelvin));
-
-        // --- SUTURE 2 : MATIÈRE & CHAOS ---
-        let ax = new BN(e.acceleration.x || 0).minus(sensorBias);
-        let jerk = ax.minus(lastAx).div(dt).abs();
-        lastAx = ax;
-
-        // --- SUTURE 3 : ACOUSTIQUE (Pêche du zéro) ---
-        analyser.getByteFrequencyData(dataArray);
-        let p20k = dataArray[analyser.frequencyBinCount - 1];
-        let integrity = (p20k > 0 && ax.abs().lt(thermalFloor.times(2))) ? new BN(0) : new BN(1);
-
-        // --- SUTURE 4 : RÉSISTANCE DU MILIEU (Drag) ---
-        // Force de traînée réelle sur la coque
-        let drag = new BN(0.5).times(rho).times(v_inst.pow(2)).times('1.05').times(COQUE_SURFACE);
-        
-        // --- SUTURE 5 : COURBURE TERRESTRE (Schuler) ---
-        let theta = totalDist.div(R_EARTH);
-        let gLeak = G_STD.times(BN.sin(theta));
-
-        // --- CALCUL FINAL SANS TRICHE ---
-        let finalA = ax.minus(drag.div('0.157')).minus(gLeak).times(integrity);
-
-        if (finalA.abs().gt(thermalFloor)) {
-            v_inst = v_inst.plus(finalA.times(dt));
-            let beta2 = v_inst.pow(2).div(C.pow(2));
-            let lorentz = new BN(1).div(BN.sqrt(new BN(1).minus(beta2)));
-            totalDist = totalDist.plus(v_inst.times(dt).times(lorentz));
-        }
-
-        // --- MISE À JOUR INTERFACE ---
-        document.getElementById('dist-3d').innerText = totalDist.toFixed(28);
-        document.getElementById('val-rho').innerText = rho.toFixed(3);
-        document.getElementById('val-jerk').innerText = jerk.toFixed(3);
-        document.getElementById('val-static').innerText = new BN(env.mag).toFixed(2);
-        document.getElementById('integrity-fill').style.width = (p20k / 2.55) + "%";
-        
-        // Détection Environnement
-        let envTag = "TERRESTRE";
-        if (p20k < 30) envTag = "EXTÉRIEUR / EAU";
-        if (jerk.gt(20)) envTag = "CHAOS MOTORISÉ";
-        if (env.mag > 100) envTag = "VÉHICULE ÉLECTRIQUE";
-        document.getElementById('val-env').innerText = envTag;
-
-    }, true);
-};
-</script>
 </body>
-    </html>
+</html>
