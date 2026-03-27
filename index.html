@@ -2,104 +2,93 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNI v2000 | Suture de Réalité</title>
+    <title>OMNI-SCANNER : COMPOSANTS BRUTS</title>
     <style>
-        body {
-            background: #050505;
-            color: #00ff41; /* Vert Matrix pour lisibilité OLED */
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            padding: 15px;
-            overflow: hidden;
-        }
-
-        #header {
-            border-bottom: 1px solid #00ff41;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            font-size: 0.8em;
-        }
-
-        #main-display {
-            text-align: center;
-            padding: 20px 0;
-        }
-
-        #distance {
-            font-size: 2.2em;
-            font-weight: bold;
-            word-wrap: break-word;
-        }
-
-        .unit { font-size: 0.4em; color: #aaa; }
-
-        #sensors-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-            font-size: 0.7em;
-        }
-
-        .sensor-card {
-            border: 1px solid #222;
-            padding: 8px;
-            background: #0a0a0a;
-        }
-
-        .status-ok { color: #00ff41; }
-        .status-warn { color: #ffae00; }
-        .status-locked { color: #ff0000; }
-
-        #log-console {
-            margin-top: 20px;
-            height: 100px;
-            font-size: 0.6em;
-            background: #000;
-            border: 1px dashed #333;
-            padding: 5px;
-            overflow-y: scroll;
-            color: #888;
-        }
+        body { background: #000; color: #00ff88; font-family: monospace; padding: 10px; font-size: 0.8em; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .comp { border: 1px solid #222; padding: 5px; background: #050505; }
+        .label { color: #555; font-size: 0.7em; }
+        .val { color: #00d2ff; font-weight: bold; }
+        #master-val { font-size: 1.8em; color: #fff; text-align: center; margin: 15px 0; border: 1px double #00ff88; padding: 10px; word-break: break-all; }
+        button { width: 100%; padding: 20px; background: #00ff88; border: none; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="header">
-        SAMSUNG S10e | PROTOCOLE OMNI v2000 | SCELLEMENT ACTIF
-    </div>
+<div id="master-val">0.0000000000000000000000000000000000000000</div>
 
-    <div id="main-display">
-        <div id="distance">0000.0000000000000000000000000000000000000000</div>
-        <div class="unit">KILOMÈTRES (SUTURE ATOMIQUE)</div>
-    </div>
+<button id="ignite">SCANNER LES COMPOSANTS</button>
 
-    <div id="sensors-grid">
-        <div class="sensor-card">
-            ACCEL (X): <span id="val-accel">0.000</span><br>
-            STASE: <span id="stase-status" class="status-locked">LOCKED</span>
-        </div>
-        <div class="sensor-card">
-            TEMP DIE: <span id="val-temp">0.0</span>°C<br>
-            DILATATION: <span id="val-dilat">1.000</span>
-        </div>
-        <div class="sensor-card">
-            MAG FLUX: <span id="val-mag">0.00</span> nT<br>
-            COHÉRENCE: <span id="val-cohe">0%</span>
-        </div>
-        <div class="sensor-card">
-            PRESSION: <span id="val-press">0.0</span> hPa<br>
-            G-BOUGUER: <span id="val-grav">9.81</span>
-        </div>
-    </div>
+<div class="grid" id="sensors">
+    <div class="comp"><span class="label">MAGNÉTISME X:</span> <span id="magX" class="val">0</span></div>
+    <div class="comp"><span class="label">MAGNÉTISME Y:</span> <span id="magY" class="val">0</span></div>
+    <div class="comp"><span class="label">BATTERIE V:</span> <span id="batV" class="val">0</span></div>
+    <div class="comp"><span class="label">CHARGE:</span> <span id="batC" class="val">0</span></div>
+    <div class="comp"><span class="label">QUARTZ DT:</span> <span id="qdt" class="val">0</span></div>
+    <div class="comp"><span class="label">GRAVITÉ Z:</span> <span id="gz" class="val">0</span></div>
+</div>
 
-    <div id="log-console">
-        > Initialisation de la matière...<br>
-        > Attente de stase (60s)...<br>
-    </div>
+<script>
+const CONFIG = { PRECISION: 10n ** 40n, STORAGE: "OMNI_SCAN_42" };
+let state = { dist: BigInt(localStorage.getItem(CONFIG.STORAGE) || "0"), lastT: performance.now(), active: false };
 
-    <script src="gnss-dashboard-full.js"></script>
+async function initSensors() {
+    // 1. SCAN DE LA BATTERIE (Tension et Chaleur indirecte)
+    if ('getBattery' in navigator) {
+        const bat = await navigator.getBattery();
+        const updateBat = () => {
+            document.getElementById('batV').innerText = bat.level.toFixed(4);
+            document.getElementById('batC').innerText = bat.charging ? "FLUX" : "STABLE";
+        };
+        bat.addEventListener('levelchange', updateBat);
+        updateBat();
+    }
 
+    // 2. SCAN DU CHAMP MAGNÉTIQUE (Boussole / Fer)
+    window.addEventListener('deviceorientation', (e) => {
+        if (!state.active) return;
+        document.getElementById('magX').innerText = e.beta ? e.beta.toFixed(4) : "0";
+        document.getElementById('magY').innerText = e.gamma ? e.gamma.toFixed(4) : "0";
+    });
+
+    // 3. SCAN DU SILICIUM (Accéléromètre + Gyroscope + Temps)
+    window.addEventListener('devicemotion', (e) => {
+        if (!state.active) return;
+
+        const now = performance.now();
+        const dt = (now - state.lastT) / 1000;
+        state.lastT = now;
+        document.getElementById('qdt').innerText = (dt * 1000).toFixed(3) + "ms";
+
+        const a = e.accelerationIncludingGravity;
+        const r = e.rotationRate || {alpha:0, beta:0, gamma:0};
+        if (!a || a.x === null) return;
+
+        document.getElementById('gz').innerText = a.z.toFixed(4);
+
+        // LE CALCUL SOUVERAIN : Fusion de TOUS les composants
+        // Force + Rotation + Delta Temps
+        const force = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
+        const rot = Math.sqrt(r.alpha**2 + r.beta**2 + r.gamma**2);
+        
+        // On enregistre l'Action Totale (Energie x Temps)
+        const action = force * (1 + rot) * dt * 0.001;
+        state.dist += BigInt(Math.floor(action * Number(CONFIG.PRECISION)));
+
+        // Rendu
+        let s = state.dist.toString().padStart(41, '0');
+        document.getElementById('master-val').innerText = `${s.slice(0, -40) || '0'}.${s.slice(-40)}`;
+
+        if (state.dist % 7n === 0n) localStorage.setItem(CONFIG.STORAGE, state.dist.toString());
+    });
+}
+
+document.getElementById('ignite').addEventListener('click', async () => {
+    if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
+    state.active = true;
+    document.getElementById('ignite').style.display = 'none';
+    initSensors();
+});
+</script>
 </body>
 </html>
