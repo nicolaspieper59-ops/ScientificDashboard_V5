@@ -1,98 +1,10 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>SOUVERAIN : NAVIGATION INERTIELLE 3D</title>
-    <style>
-        body { background: #000; color: #00ff88; font-family: 'Courier New', monospace; padding: 15px; font-size: 0.8em; }
-        #val { font-size: 1.6em; color: #fff; text-shadow: 0 0 15px #00d2ff; word-break: break-all; background: #080808; padding: 10px; border: 1px solid #333; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
-        .cell { border: 1px solid #1a1a1a; padding: 8px; background: #050505; }
-        .label { color: #444; font-size: 0.7em; text-transform: uppercase; }
-        .val-3d { color: #ff0055; font-weight: bold; }
-        button { width: 100%; padding: 25px; background: #00d2ff; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; }
-    </style>
-</head>
-<body>
-
-<div class="label">Distance Absolue dans l'Espace-Temps (Mètres) :</div>
-<div id="val">0.0000000000000000000000000000000000000000</div>
-
-<div class="grid">
-    <div class="cell"><span class="label">V-MONDE X:</span><br><span id="vx" class="val-3d">0</span></div>
-    <div class="cell"><span class="label">V-MONDE Y:</span><br><span id="vy" class="val-3d">0</span></div>
-    <div class="cell"><span class="label">V-MONDE Z:</span><br><span id="vz" class="val-3d">0</span></div>
-    <div class="cell"><span class="label">PITCH/ROLL/YAW:</span><br><span id="ori" style="color:#00ff88">0/0/0</span></div>
-</div>
-
-<button id="ignite">ALIGNER LE RÉFÉRENTIEL 3D</button>
-
-<script>
-const CONFIG = { PRECISION: 10n ** 40n, STORAGE: "SOUVERAIN_3D_FINAL" };
-let state = {
-    dist: BigInt(localStorage.getItem(CONFIG.STORAGE) || "0"),
-    lastT: 0, active: false,
-    vx: 0, vy: 0, vz: 0,
-    a: 0, b: 0, g: 0 // Alpha, Beta, Gamma
-};
-
-window.addEventListener('deviceorientation', (e) => {
-    // Conversion en radians pour la trigonométrie
-    state.a = e.alpha * Math.PI / 180; // Yaw
-    state.b = e.beta * Math.PI / 180;  // Pitch
-    state.g = e.gamma * Math.PI / 180; // Roll
-    document.getElementById('ori').innerText = `${e.beta.toFixed(0)}°|${e.gamma.toFixed(0)}°|${e.alpha.toFixed(0)}°`;
-});
-
 window.addEventListener('devicemotion', (e) => {
-    if (!state.active) return;
+    if (!CALIBRATION.isCalibrated) return; // Ne pas compter avant l'alignement
 
-    const now = performance.now();
-    if (state.lastT === 0) { state.lastT = now; return; }
-    const dt = (now - state.lastT) / 1000;
-    state.lastT = now;
+    // SUTURE PHYSIQUE : On retire la "vitesse d'existence" du bruit
+    const ax = e.acceleration.x - CALIBRATION.bias.x;
+    const ay = e.acceleration.y - CALIBRATION.bias.y;
+    const az = e.acceleration.z - CALIBRATION.bias.z;
 
-    const acc = e.acceleration; 
-    if (!acc || acc.x === null) return;
-
-    // --- LA MATRICE DE ROTATION COMPLÈTE (PROJECTION MONDE) ---
-    // On calcule les sinus et cosinus une seule fois pour la performance
-    const ca = Math.cos(state.a), sa = Math.sin(state.a);
-    const cb = Math.cos(state.b), sb = Math.sin(state.b);
-    const cg = Math.cos(state.g), sg = Math.sin(state.g);
-
-    // Transformation du vecteur accélération (Body -> World)
-    const ax_w = acc.x * (ca * cg - sa * sb * sg) - acc.y * (sa * cb) + acc.z * (ca * sg + sa * sb * cg);
-    const ay_w = acc.x * (sa * cg + ca * sb * sg) + acc.y * (ca * cb) + acc.z * (sa * sg - ca * sb * cg);
-    const az_w = acc.x * (-cb * sg) + acc.y * (sb) + acc.z * (cb * cg);
-
-    // --- INTÉGRATION DE NEWTON (V = V0 + AT) ---
-    state.vx += ax_w * dt;
-    state.vy += ay_w * dt;
-    state.vz += az_w * dt;
-
-    // Magnitude de la vélocité 3D réelle
-    const v_total = Math.sqrt(state.vx**2 + state.vy**2 + state.vz**2);
-    const ds_meters = v_total * dt;
-    
-    // Gravure dans le marbre numérique
-    state.dist += BigInt(Math.floor(ds_meters * Number(CONFIG.PRECISION)));
-
-    // Rendu
-    let s = state.dist.toString().padStart(41, '0');
-    document.getElementById('val').innerText = `${s.slice(0, -40) || '0'}.${s.slice(-40)}`;
-    document.getElementById('vx').innerText = state.vx.toFixed(4);
-    document.getElementById('vy').innerText = state.vy.toFixed(4);
-    document.getElementById('vz').innerText = state.vz.toFixed(4);
-
-    if (state.dist % 100n === 0n) localStorage.setItem(CONFIG.STORAGE, state.dist.toString());
+    // Suite du calcul (Vitesse, Matrice de rotation, Distance...)
 });
-
-document.getElementById('ignite').addEventListener('click', async () => {
-    if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
-    state.active = true;
-    document.getElementById('ignite').style.display = 'none';
-});
-</script>
-</body>
-</html>
