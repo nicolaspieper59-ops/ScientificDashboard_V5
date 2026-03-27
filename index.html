@@ -2,92 +2,104 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>OMNI-SCANNER : COMPOSANTS BRUTS</title>
+    <title>SOUVERAIN : CINÉMATIQUE RÉALISTE</title>
     <style>
-        body { background: #000; color: #00ff88; font-family: monospace; padding: 10px; font-size: 0.8em; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        .comp { border: 1px solid #222; padding: 5px; background: #050505; }
-        .label { color: #555; font-size: 0.7em; }
-        .val { color: #00d2ff; font-weight: bold; }
-        #master-val { font-size: 1.8em; color: #fff; text-align: center; margin: 15px 0; border: 1px double #00ff88; padding: 10px; word-break: break-all; }
-        button { width: 100%; padding: 20px; background: #00ff88; border: none; cursor: pointer; font-weight: bold; }
+        body { background: #000; color: #00ff88; font-family: monospace; padding: 15px; }
+        .main-val { font-size: 1.8em; color: #fff; text-shadow: 0 0 10px #00ff88; word-break: break-all; margin-bottom: 20px; border-left: 3px solid #00d2ff; padding-left: 10px; }
+        .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .card { border: 1px solid #222; padding: 10px; background: #050505; }
+        .label { font-size: 0.7em; color: #555; text-transform: uppercase; display: block; }
+        .unit { font-size: 1.2em; color: #00d2ff; font-weight: bold; }
+        .vector { font-size: 0.6em; color: #ff0055; margin-top: 5px; }
+        button { width: 100%; padding: 25px; background: #00d2ff; color: #000; border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-<div id="master-val">0.0000000000000000000000000000000000000000</div>
+<div class="label">Distance Cinématique Absolue (Mètres) :</div>
+<div id="val" class="main-val">0.0000000000000000000000000000000000000000</div>
 
-<button id="ignite">SCANNER LES COMPOSANTS</button>
-
-<div class="grid" id="sensors">
-    <div class="comp"><span class="label">MAGNÉTISME X:</span> <span id="magX" class="val">0</span></div>
-    <div class="comp"><span class="label">MAGNÉTISME Y:</span> <span id="magY" class="val">0</span></div>
-    <div class="comp"><span class="label">BATTERIE V:</span> <span id="batV" class="val">0</span></div>
-    <div class="comp"><span class="label">CHARGE:</span> <span id="batC" class="val">0</span></div>
-    <div class="comp"><span class="label">QUARTZ DT:</span> <span id="qdt" class="val">0</span></div>
-    <div class="comp"><span class="label">GRAVITÉ Z:</span> <span id="gz" class="val">0</span></div>
+<div class="metrics">
+    <div class="card">
+        <span class="label">Vélocité Réelle</span>
+        <span id="v_ms" class="unit">0.0000</span> <small>m/s</small>
+        <div id="v_vec" class="vector">X: 0 | Y: 0 | Z: 0</div>
+    </div>
+    <div class="card">
+        <span class="label">Distance Humaine</span>
+        <span id="d_m" class="unit">0.0000</span> <small>km</small>
+        <div class="vector">Friction 3D Active</div>
+    </div>
 </div>
 
+<button id="ignite">ACTIVER LA PHYSIQUE DU MATÉRIEL</button>
+
 <script>
-const CONFIG = { PRECISION: 10n ** 40n, STORAGE: "OMNI_SCAN_42" };
-let state = { dist: BigInt(localStorage.getItem(CONFIG.STORAGE) || "0"), lastT: performance.now(), active: false };
+const CONFIG = { PRECISION: 10n ** 40n, STORAGE: "CINEMATIQUE_REAL_42" };
 
-async function initSensors() {
-    // 1. SCAN DE LA BATTERIE (Tension et Chaleur indirecte)
-    if ('getBattery' in navigator) {
-        const bat = await navigator.getBattery();
-        const updateBat = () => {
-            document.getElementById('batV').innerText = bat.level.toFixed(4);
-            document.getElementById('batC').innerText = bat.charging ? "FLUX" : "STABLE";
-        };
-        bat.addEventListener('levelchange', updateBat);
-        updateBat();
-    }
+let state = { 
+    dist: BigInt(localStorage.getItem(CONFIG.STORAGE) || "0"), 
+    lastT: 0, 
+    active: false,
+    vx: 0, vy: 0, vz: 0, // Vecteurs de vitesse
+    km_accumulated: 0 
+};
 
-    // 2. SCAN DU CHAMP MAGNÉTIQUE (Boussole / Fer)
-    window.addEventListener('deviceorientation', (e) => {
-        if (!state.active) return;
-        document.getElementById('magX').innerText = e.beta ? e.beta.toFixed(4) : "0";
-        document.getElementById('magY').innerText = e.gamma ? e.gamma.toFixed(4) : "0";
-    });
+window.addEventListener('devicemotion', (e) => {
+    if (!state.active) return;
 
-    // 3. SCAN DU SILICIUM (Accéléromètre + Gyroscope + Temps)
-    window.addEventListener('devicemotion', (e) => {
-        if (!state.active) return;
+    const now = performance.now();
+    if (state.lastT === 0) { state.lastT = now; return; }
+    const dt = (now - state.lastT) / 1000;
+    state.lastT = now;
 
-        const now = performance.now();
-        const dt = (now - state.lastT) / 1000;
-        state.lastT = now;
-        document.getElementById('qdt').innerText = (dt * 1000).toFixed(3) + "ms";
+    // 1. FORCE NETTE (Loi de Newton)
+    // On utilise l'accélération pure sans gravité car la force de réaction du sol l'annule.
+    const a = e.acceleration;
+    if (!a || a.x === null) return;
 
-        const a = e.accelerationIncludingGravity;
-        const r = e.rotationRate || {alpha:0, beta:0, gamma:0};
-        if (!a || a.x === null) return;
+    // 2. INTÉGRATION VECTORIELLE (Inertie)
+    // La vitesse s'accumule sur chaque axe.
+    state.vx += a.x * dt;
+    state.vy += a.y * dt;
+    state.vz += a.z * dt;
 
-        document.getElementById('gz').innerText = a.z.toFixed(4);
+    // 3. LA FRICTION UNIVERSELLE (Thermodynamique)
+    // Rien ne glisse éternellement. On simule la perte d'énergie (frottement de l'air/sol).
+    // Cela remplace les "filtres" mathématiques par une réalité physique.
+    const friction = 0.96; // 4% d'énergie perdue par micro-cycle (ajustable)
+    state.vx *= friction;
+    state.vy *= friction;
+    state.vz *= friction;
 
-        // LE CALCUL SOUVERAIN : Fusion de TOUS les composants
-        // Force + Rotation + Delta Temps
-        const force = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
-        const rot = Math.sqrt(r.alpha**2 + r.beta**2 + r.gamma**2);
-        
-        // On enregistre l'Action Totale (Energie x Temps)
-        const action = force * (1 + rot) * dt * 0.001;
-        state.dist += BigInt(Math.floor(action * Number(CONFIG.PRECISION)));
+    // 4. MAGNITUDE DE LA VÉLOCITÉ 3D
+    // V_total = √(Vx² + Vy² + Vz²)
+    const v_magnitude = Math.sqrt(state.vx**2 + state.vy**2 + state.vz**2);
 
-        // Rendu
-        let s = state.dist.toString().padStart(41, '0');
-        document.getElementById('master-val').innerText = `${s.slice(0, -40) || '0'}.${s.slice(-40)}`;
+    // 5. DÉPLACEMENT (Cinématique finale)
+    const ds_meters = v_magnitude * dt;
+    state.km_accumulated += (ds_meters / 1000);
 
-        if (state.dist % 7n === 0n) localStorage.setItem(CONFIG.STORAGE, state.dist.toString());
-    });
-}
+    // Gravure Atomique (Planck-Scale)
+    const ds_quanta = BigInt(Math.floor(ds_meters * Number(CONFIG.PRECISION)));
+    state.dist += ds_quanta;
+
+    // --- RENDU ÉCRAN ---
+    let s = state.dist.toString().padStart(41, '0');
+    document.getElementById('val').innerText = `${s.slice(0, -40) || '0'}.${s.slice(-40)}`;
+    
+    document.getElementById('v_ms').innerText = v_magnitude.toFixed(4);
+    document.getElementById('v_vec').innerText = `X: ${state.vx.toFixed(2)} | Y: ${state.vy.toFixed(2)} | Z: ${state.vz.toFixed(2)}`;
+    document.getElementById('d_m').innerText = state.km_accumulated.toFixed(6);
+
+    // Sauvegarde tous les 250 quanta
+    if (state.dist % 250n === 0n) localStorage.setItem(CONFIG.STORAGE, state.dist.toString());
+});
 
 document.getElementById('ignite').addEventListener('click', async () => {
     if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
     state.active = true;
     document.getElementById('ignite').style.display = 'none';
-    initSensors();
 });
 </script>
 </body>
