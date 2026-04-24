@@ -3,135 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suture Absolue - Pilote de Flux</title>
+    <title>Sextant Digital - Suture Directe</title>
     <style>
-        body {
-            background-color: #0a0a0a;
-            color: #00ff00;
-            font-family: 'Courier New', Courier, monospace;
-            padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        h1 {
-            border-bottom: 2px solid #00ff00;
-            padding-bottom: 10px;
-            font-size: 1.5em;
-            text-transform: uppercase;
-        }
-        label {
-            display: block;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-        input {
-            background-color: #1a1a1a;
-            color: #00ff00;
-            border: 1px solid #00ff00;
-            padding: 10px;
-            width: 100%;
-            box-sizing: border-box;
-            font-family: 'Courier New', Courier, monospace;
-        }
-        button {
-            margin-top: 20px;
-            background-color: #00ff00;
-            color: #000000;
-            border: none;
-            padding: 15px;
-            width: 100%;
-            font-size: 1.2em;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-        button:hover {
-            background-color: #00cc00;
-        }
-        #resultat {
-            margin-top: 30px;
-            padding: 15px;
-            border: 1px dashed #00ff00;
-            background-color: #111;
-            font-size: 1.2em;
-        }
-        .sys-msg {
-            font-size: 0.8em;
-            color: #888;
-            margin-top: 50px;
-        }
+        body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; padding: 15px; text-align: center; }
+        .monitor { border: 2px solid #00ff41; padding: 20px; margin-bottom: 20px; background: #000; box-shadow: 0 0 15px #00ff41; }
+        .live-value { font-size: 3em; font-weight: bold; margin: 10px 0; }
+        .controls { background: #111; padding: 15px; border: 1px solid #333; text-align: left; }
+        input { background: #000; color: #00ff41; border: 1px solid #00ff41; width: 60px; padding: 5px; }
+        button { background: #00ff41; color: #000; border: none; padding: 20px; width: 100%; font-size: 1.5em; font-weight: bold; cursor: pointer; margin-top: 20px; text-transform: uppercase; }
+        #log { margin-top: 20px; border-top: 1px solid #00ff41; padding-top: 10px; text-align: left; font-size: 0.9em; }
+        .highlight { color: #fff; }
     </style>
 </head>
 <body>
 
-    <h1>Interface de Suture Solaire/Lunaire</h1>
-    <p>>_ CONNEXION AU GÉOÏDE... OK</p>
-
-    <label for="angle">Angle Apparent Mesuré (Degrés) :</label>
-    <input type="number" id="angle" step="0.01" placeholder="Ex: 45.50">
-
-    <label for="pression">Pression Atmosphérique (hPa) :</label>
-    <input type="number" id="pression" step="1" value="1010" placeholder="Ex: 1015">
-
-    <label for="temp">Température Locale (°C) :</label>
-    <input type="number" id="temp" step="0.1" value="5" placeholder="Ex: 5.0">
-
-    <button onclick="calculerSuture()">Calculer l'Angle Vrai</button>
-
-    <div id="resultat">
-        >_ EN ATTENTE DES DONNÉES DU HARDWARE...
+    <div class="monitor">
+        <div>-- FLUX GRAVITÉ LIVE --</div>
+        <div id="live-angle" class="live-value">00.00°</div>
+        <div id="status">INITIATION CAPTEURS...</div>
     </div>
 
-    <div class="sys-msg">
-        SYS.INFO: Ce terminal ignore l'horloge interne de l'appareil. Seules les lois physiques de la réfraction sont traitées par le silicium.
+    <div class="controls">
+        <div>SOUSTRACTION MÉTÉO :</div>
+        <label>Pression (hPa): </label><input type="number" id="p" value="1013"><br>
+        <label>Temp (°C): </label><input type="number" id="t" value="15">
+    </div>
+
+    <button onclick="capturerSuture()">VERROUILLER SUTURE</button>
+
+    <div id="log">
+        >_ SYSTÈME PRÊT. ALIGNER LA TRANCHE DU S10e SUR L'ASTRE.
     </div>
 
     <script>
-        function calculerSuture() {
-            // Extraction des données brutes
-            let angle_mesure = parseFloat(document.getElementById('angle').value);
-            let pression_locale = parseFloat(document.getElementById('pression').value);
-            let temperature_locale = parseFloat(document.getElementById('temp').value);
+        let currentBeta = 0;
 
-            if (isNaN(angle_mesure) || isNaN(pression_locale) || isNaN(temperature_locale)) {
-                document.getElementById('resultat').innerHTML = ">_ ERREUR : DONNÉES MANQUANTES OU CORROMPUES.";
-                return;
-            }
+        // Demander l'autorisation pour iOS ou simplement écouter sur Android (S10e)
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', (event) => {
+                // Beta est l'inclinaison avant/arrière du téléphone
+                currentBeta = event.beta;
+                document.getElementById('live-angle').innerText = currentBeta.toFixed(2) + "°";
+                document.getElementById('status').innerText = "CAPTEUR ACTIF - S10e SILICIUM";
+            }, true);
+        } else {
+            document.getElementById('status').innerText = "ERREUR: CAPTEUR NON DÉTECTÉ";
+        }
 
-            // Constantes du Géoïde
-            const const_optique_a = 7.31;
-            const const_optique_b = 4.4;
-            const pression_ref = 1010.0;
-            const temp_kelvin_a = 283.0;
-            const temp_kelvin_b = 273.0;
+        function capturerSuture() {
+            let p = parseFloat(document.getElementById('p').value);
+            let t = parseFloat(document.getElementById('t').value);
+            let a = currentBeta;
 
-            // Conversion Degrés -> Radians pour la tangente
-            let deg2rad = Math.PI / 180.0;
+            // Constantes de soustraction des défauts
+            const a1 = 7.31;
+            const a2 = 4.4;
+            const p_ref = 1010;
+            const t_ref = 283;
+            const t_zero = 273;
 
-            // Logique de Suture
-            let facteur_courbure = angle_mesure + (const_optique_a / (angle_mesure + const_optique_b));
+            // Calcul de la réfraction (Suture Atmosphérique)
+            let rad = Math.PI / 180;
+            let R = 1.0 / Math.tan((a + (a1 / (a + a2))) * rad);
             
-            // La formule donne la réfraction en arcminutes
-            let refraction_brute_arcmin = 1.0 / Math.tan(facteur_courbure * deg2rad);
+            // Correction densité air
+            let corr = (p / p_ref) * (t_ref / (t + t_zero));
+            let refracDeg = (R * corr) / 60;
 
-            let ratio_pression = pression_locale / pression_ref;
-            let ratio_temperature = temp_kelvin_a / (temp_kelvin_b + temperature_locale);
-            let ajustement_densite_air = ratio_pression * ratio_temperature;
+            let angleVrai = a - refracDeg;
 
-            let refraction_finale_arcmin = refraction_brute_arcmin * ajustement_densite_air;
-            
-            // Conversion des arcminutes en degrés
-            let refraction_finale_deg = refraction_finale_arcmin / 60.0;
-
-            // Soustraction des défauts (Le point de Suture)
-            let angle_vrai = angle_mesure - refraction_finale_deg;
-
-            // Affichage Brut
-            document.getElementById('resultat').innerHTML = 
-                ">_ SUTURE RÉUSSIE<br><br>" +
-                "RÉFRACTION DÉDUITE : " + refraction_finale_deg.toFixed(4) + "°<br>" +
-                "<strong style='color: white;'>ANGLE VRAI GÉOÏDE : " + angle_vrai.toFixed(4) + "°</strong>";
+            // Sortie de l'instrument
+            document.getElementById('log').innerHTML = `
+                <span class="highlight">>_ SUTURE FIGÉE : ${a.toFixed(2)}°</span><br>
+                >_ BRUIT ATMOSPHÉRIQUE : -${refracDeg.toFixed(4)}°<br>
+                <span class="highlight">>_ ANGLE VRAI GÉOÏDE : ${angleVrai.toFixed(4)}°</span><br>
+                >_ RECHERCHE JPL... (COMPARAISON MANUELLE REQUISE)
+            `;
         }
     </script>
 </body>
-    </html>
+</html>
