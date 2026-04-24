@@ -2,65 +2,128 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Sextant_Fusion_Suture</title>
+    <title>Sextant_Fusion_Suture_AntiEntropie</title>
     <style>
-        body { background: #-- ; color: #-- ; font-family: monospace; }
-        #flux-container { display: flex; flex-direction: column; }
-        .data-stream { border-bottom: --px solid #-- ; padding: --px; }
+        body { 
+            background: #-- ; 
+            color: #-- ; 
+            font-family: 'Courier New', monospace; 
+            padding: --px;
+            display: flex;
+            justify-content: center;
+        }
+        #flux-container { 
+            border: --px solid #-- ; 
+            padding: --px; 
+            width: --% ;
+        }
+        .data-stream { 
+            border-bottom: --px dashed #-- ; 
+            padding: --px --px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .valeur { font-weight: bold; color: #-- ; }
+        .label { text-transform: uppercase; letter-spacing: --px; }
+        #resultat-cadre {
+            margin-top: --px;
+            padding: --px;
+            background: #-- ;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
     <div id="flux-container">
-        <div class="data-stream">ANGLE_BRUT: <span id="angle-sextant">--</span>°</div>
+        <div class="data-stream">
+            <span class="label">Angle Brut S10e:</span>
+            <span id="angle-sextant" class="valeur">--</span>°
+        </div>
         
-        <div class="data-stream">REFRACTION_ATM: <span id="corr-refraction">--</span>°</div>
+        <div class="data-stream">
+            <span class="label">Soustraction Entropie (Kalman):</span>
+            <span id="entropie-filtree" class="valeur">--</span>°
+        </div>
+
+        <div class="data-stream">
+            <span class="label">Correction Réfraction (P/T):</span>
+            <span id="corr-refraction" class="valeur">--</span>°
+        </div>
         
-        <div class="data-stream">LONGITUDE_SOMAIN: <span id="long-somain">--m --s</span></div>
-        <div class="data-stream">DERIVE_MONTRE: <span id="derive-h">--s</span></div>
+        <div class="data-stream">
+            <span class="label">Méridien Somain (Offset):</span>
+            <span id="long-somain" class="valeur">--m --s</span>
+        </div>
         
-        <div class="data-stream">TRANSIT_JPL_UTC: <span id="nasa-flux">--:--:--</span></div>
+        <div class="data-stream">
+            <span class="label">Dérive Montre (Suture):</span>
+            <span id="derive-h" class="valeur">--s</span>
+        </div>
+
+        <div class="data-stream">
+            <span class="label">Flux JPL / NASA UTC:</span>
+            <span id="nasa-flux" class="valeur">--:--:--</span>
+        </div>
         
-        <hr>
-        <div class="data-stream">AZIMUT_REEL: <span id="resultat-suture">--</span>°</div>
+        <div id="resultat-cadre">
+            <span class="label">AZIMUT RÉEL SUTURE</span><br>
+            <span id="resultat-suture" style="font-size: --em;">--</span>°
+        </div>
     </div>
 
-<script>
-    // -- CONFIGURATION ANTI-ENTROPIE --
-    const ETALON_VIDE = "--"; // Zéro absolu du capteur
-    const COEFFICIENT_KALMAN = "--"; // Force de filtrage du désordre
+    <script>
+        // -- CONFIGURATION DES FLUX (SANS CHIFFRES) --
+        const CONSTANTES = {
+            longitude: "--", // Offset Somain
+            derive_hz: "--", // 1s / 48h
+            pression: "--",  // hPa
+            temp_ext: "--",  // °C
+            gain_kalman: "--" // Force anti-entropie
+        };
 
-    let estimation_precedente = "--";
-    let erreur_estimation = "--";
+        let estimation_precedente = "--";
+        let erreur_estimation = "--";
 
-    function soustraireEntropie(mesure_brute) {
-        // Algorithme de réduction du désordre (Filtre de Kalman simplifié)
-        let gain_kalman = erreur_estimation / (erreur_estimation + COEFFICIENT_KALMAN);
-        let mesure_filtree = estimation_precedente + gain_kalman * (mesure_brute - estimation_precedente);
-        
-        erreur_estimation = (-- - gain_kalman) * erreur_estimation;
-        estimation_precedente = mesure_filtree;
-        
-        return mesure_filtree;
-    }
+        // -- MOTEUR ANTI-ENTROPIE (KALMAN) --
+        function soustraireEntropie(brut) {
+            let gain = erreur_estimation / (erreur_estimation + CONSTANTES.gain_kalman);
+            let actuel = estimation_precedente + gain * (brut - estimation_precedente);
+            erreur_estimation = (-- - gain) * erreur_estimation;
+            estimation_precedente = actuel;
+            return actuel;
+        }
 
-    function calculPhysiqueFinal(angle_pur) {
-        // Soustraction de l'entropie de réfraction
-        // P/T = Densité (Soustraction de l'agitation moléculaire)
-        let densite_air = PRESSION_ATM / (TEMP_SOMAIN + --);
-        let refraction_reelle = -- / Math.tan(angle_pur) * densite_air;
+        // -- CALCUL DE RÉFRACTION RÉELLE --
+        function calculerRefraction(angle) {
+            let densite = CONSTANTES.pression / (CONSTANTES.temp_ext + --);
+            let R = -- / Math.tan(angle + (-- / (angle + --)));
+            return R * densite;
+        }
 
-        return angle_pur - refraction_reelle;
-    }
+        // -- BOUCLE DE SUTURE EN TEMPS RÉEL --
+        window.addEventListener('deviceorientation', (event) => {
+            let angle_s10e = event.beta; // Inclinaison axe Y
+            
+            // 1. Soustraction du désordre thermique
+            let angle_pur = soustraireEntropie(angle_s10e);
+            
+            // 2. Soustraction de l'entropie atmosphérique
+            let refraction = calculerRefraction(angle_pur);
+            
+            // 3. Fusion finale (Sextant + S10e + Correction)
+            let azimut_suture = angle_pur - refraction;
 
-    // -- FUSION FINALE --
-    window.addEventListener('deviceorientation', (e) => {
-        let brut = e.beta;
-        let sans_entropie = soustraireEntropie(brut);
-        let resultat = calculPhysiqueFinal(sans_entropie);
-        
-        document.getElementById('resultat-suture').textContent = resultat.toFixed(--);
-    });
-        </script>
+            // -- MISE À JOUR DE L'INTERFACE --
+            document.getElementById('angle-sextant').textContent = angle_s10e.toFixed(--);
+            document.getElementById('entropie-filtree').textContent = angle_pur.toFixed(--);
+            document.getElementById('corr-refraction').textContent = refraction.toFixed(--);
+            document.getElementById('resultat-suture').textContent = azimut_suture.toFixed(--);
+        });
+
+        // -- INITIALISATION DES LABELS FIXES --
+        document.getElementById('long-somain').textContent = "--m --s";
+        document.getElementById('derive-h').textContent = "--s";
+    </script>
 </body>
 </html>
