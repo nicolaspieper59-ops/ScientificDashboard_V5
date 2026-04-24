@@ -2,84 +2,65 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sextant Digital - Suture Directe</title>
+    <title>Sextant_Fusion_Suture</title>
     <style>
-        body { background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; padding: 15px; text-align: center; }
-        .monitor { border: 2px solid #00ff41; padding: 20px; margin-bottom: 20px; background: #000; box-shadow: 0 0 15px #00ff41; }
-        .live-value { font-size: 3em; font-weight: bold; margin: 10px 0; }
-        .controls { background: #111; padding: 15px; border: 1px solid #333; text-align: left; }
-        input { background: #000; color: #00ff41; border: 1px solid #00ff41; width: 60px; padding: 5px; }
-        button { background: #00ff41; color: #000; border: none; padding: 20px; width: 100%; font-size: 1.5em; font-weight: bold; cursor: pointer; margin-top: 20px; text-transform: uppercase; }
-        #log { margin-top: 20px; border-top: 1px solid #00ff41; padding-top: 10px; text-align: left; font-size: 0.9em; }
-        .highlight { color: #fff; }
+        body { background: #-- ; color: #-- ; font-family: monospace; }
+        #flux-container { display: flex; flex-direction: column; }
+        .data-stream { border-bottom: --px solid #-- ; padding: --px; }
     </style>
 </head>
 <body>
 
-    <div class="monitor">
-        <div>-- FLUX GRAVITÉ LIVE --</div>
-        <div id="live-angle" class="live-value">00.00°</div>
-        <div id="status">INITIATION CAPTEURS...</div>
+    <div id="flux-container">
+        <div class="data-stream">ANGLE_BRUT: <span id="angle-sextant">--</span>°</div>
+        
+        <div class="data-stream">REFRACTION_ATM: <span id="corr-refraction">--</span>°</div>
+        
+        <div class="data-stream">LONGITUDE_SOMAIN: <span id="long-somain">--m --s</span></div>
+        <div class="data-stream">DERIVE_MONTRE: <span id="derive-h">--s</span></div>
+        
+        <div class="data-stream">TRANSIT_JPL_UTC: <span id="nasa-flux">--:--:--</span></div>
+        
+        <hr>
+        <div class="data-stream">AZIMUT_REEL: <span id="resultat-suture">--</span>°</div>
     </div>
 
-    <div class="controls">
-        <div>SOUSTRACTION MÉTÉO :</div>
-        <label>Pression (hPa): </label><input type="number" id="p" value="1013"><br>
-        <label>Temp (°C): </label><input type="number" id="t" value="15">
-    </div>
+<script>
+    // -- CONFIGURATION ANTI-ENTROPIE --
+    const ETALON_VIDE = "--"; // Zéro absolu du capteur
+    const COEFFICIENT_KALMAN = "--"; // Force de filtrage du désordre
 
-    <button onclick="capturerSuture()">VERROUILLER SUTURE</button>
+    let estimation_precedente = "--";
+    let erreur_estimation = "--";
 
-    <div id="log">
-        >_ SYSTÈME PRÊT. ALIGNER LA TRANCHE DU S10e SUR L'ASTRE.
-    </div>
+    function soustraireEntropie(mesure_brute) {
+        // Algorithme de réduction du désordre (Filtre de Kalman simplifié)
+        let gain_kalman = erreur_estimation / (erreur_estimation + COEFFICIENT_KALMAN);
+        let mesure_filtree = estimation_precedente + gain_kalman * (mesure_brute - estimation_precedente);
+        
+        erreur_estimation = (-- - gain_kalman) * erreur_estimation;
+        estimation_precedente = mesure_filtree;
+        
+        return mesure_filtree;
+    }
 
-    <script>
-        let currentBeta = 0;
+    function calculPhysiqueFinal(angle_pur) {
+        // Soustraction de l'entropie de réfraction
+        // P/T = Densité (Soustraction de l'agitation moléculaire)
+        let densite_air = PRESSION_ATM / (TEMP_SOMAIN + --);
+        let refraction_reelle = -- / Math.tan(angle_pur) * densite_air;
 
-        // Demander l'autorisation pour iOS ou simplement écouter sur Android (S10e)
-        if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', (event) => {
-                // Beta est l'inclinaison avant/arrière du téléphone
-                currentBeta = event.beta;
-                document.getElementById('live-angle').innerText = currentBeta.toFixed(2) + "°";
-                document.getElementById('status').innerText = "CAPTEUR ACTIF - S10e SILICIUM";
-            }, true);
-        } else {
-            document.getElementById('status').innerText = "ERREUR: CAPTEUR NON DÉTECTÉ";
-        }
+        return angle_pur - refraction_reelle;
+    }
 
-        function capturerSuture() {
-            let p = parseFloat(document.getElementById('p').value);
-            let t = parseFloat(document.getElementById('t').value);
-            let a = currentBeta;
-
-            // Constantes de soustraction des défauts
-            const a1 = 7.31;
-            const a2 = 4.4;
-            const p_ref = 1010;
-            const t_ref = 283;
-            const t_zero = 273;
-
-            // Calcul de la réfraction (Suture Atmosphérique)
-            let rad = Math.PI / 180;
-            let R = 1.0 / Math.tan((a + (a1 / (a + a2))) * rad);
-            
-            // Correction densité air
-            let corr = (p / p_ref) * (t_ref / (t + t_zero));
-            let refracDeg = (R * corr) / 60;
-
-            let angleVrai = a - refracDeg;
-
-            // Sortie de l'instrument
-            document.getElementById('log').innerHTML = `
-                <span class="highlight">>_ SUTURE FIGÉE : ${a.toFixed(2)}°</span><br>
-                >_ BRUIT ATMOSPHÉRIQUE : -${refracDeg.toFixed(4)}°<br>
-                <span class="highlight">>_ ANGLE VRAI GÉOÏDE : ${angleVrai.toFixed(4)}°</span><br>
-                >_ RECHERCHE JPL... (COMPARAISON MANUELLE REQUISE)
-            `;
-        }
-    </script>
+    // -- FUSION FINALE --
+    window.addEventListener('deviceorientation', (e) => {
+        let brut = e.beta;
+        let sans_entropie = soustraireEntropie(brut);
+        let resultat = calculPhysiqueFinal(sans_entropie);
+        
+        document.getElementById('resultat-suture').textContent = resultat.toFixed(--);
+    });
+        </script>
 </body>
 </html>
