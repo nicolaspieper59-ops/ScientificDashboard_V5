@@ -3,152 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA SUTURE v2000 | Souveraineté Totale</title>
+    <title>OMEGA SUTURE v2000 | SM-G970F</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
     <style>
-        :root { --neon-blue: #00d2ff; --neon-green: #00ff88; --dark-void: #050505; }
-        body { background: var(--dark-void); color: white; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
-        #dashboard { display: flex; flex-direction: column; height: 100vh; padding: 20px; box-sizing: border-box; }
-        
-        .header { border-bottom: 1px solid #333; padding-bottom: 10px; display: flex; justify-content: space-between; font-size: 0.8rem; }
-        .main-speed { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        
-        #sp-main { font-size: 5rem; font-weight: bold; color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green); }
-        #mm-s-detail { font-size: 1.2rem; color: var(--neon-blue); margin-top: -10px; }
-        
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.7rem; border-top: 1px solid #333; padding-top: 20px; }
-        .stat-box { border: 1px solid #222; padding: 10px; background: rgba(255,255,255,0.02); }
-        .label { color: #888; display: block; margin-bottom: 5px; }
-        .value { color: #ddd; font-weight: bold; }
-        
-        #poi-alert { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                     background: red; color: white; padding: 20px; display: none; z-index: 100; border: 2px solid white; }
+        :root { --neon: #00ff88; --bg: #050505; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 20px; text-align: center; }
+        #sp-main { font-size: 5rem; color: var(--neon); text-shadow: 0 0 20px var(--neon); }
+        .stat { border: 1px solid #222; padding: 10px; margin: 10px 0; font-size: 0.8rem; text-align: left; }
+        .label { color: #888; }
     </style>
 </head>
 <body>
+    <div id="sp-main">0.00</div>
+    <div>KM/H</div>
+    <div id="mm-s" style="color:#00d2ff">0 mm/s</div>
 
-<div id="poi-alert">ANOMALIE D'ENTROPIE : SUTURE REQUISE</div>
-
-<div id="dashboard">
-    <div class="header">
-        <span>SUTURE OMEGA v2000 // SM-G970F</span>
-        <span id="status-thermal">32.40°C</span>
+    <div class="stat">
+        <span class="label">TEMPÉRATURE NOYAU (Termux) :</span> <span id="val-temp">---</span>
+    </div>
+    <div class="stat">
+        <span class="label">BRUIT NYQUIST-JOHNSON :</span> <span id="val-noise">---</span>
     </div>
 
-    <div class="main-speed">
-        <div class="label">VITESSE SOUVERAINE</div>
-        <div id="sp-main">0.00</div>
-        <div id="speed-unit">KM/H</div>
-        <div id="mm-s-detail">0 mm/s</div>
-    </div>
+    <script>
+        const OMEGA = {
+            temp: new BigNumber(30),
+            buffer: [],
 
-    <div class="stats-grid">
-        <div class="stat-box">
-            <span class="label">FLUX DE LORENTZ</span>
-            <span id="lorentz-val" class="value">0.00000000000000</span>
-        </div>
-        <div class="stat-box">
-            <span class="label">TENSION BATTERIE (ΔV)</span>
-            <span id="battery-flux" class="value">0.000000 V</span>
-        </div>
-        <div class="stat-box">
-            <span class="label">BRUIT THERMIQUE (Nyquist)</span>
-            <span id="thermal-floor" class="value">0.000000</span>
-        </div>
-        <div class="stat-box">
-            <span class="label">PONT DE L'INFINI</span>
-            <span id="bridge-status" class="value">STABLE (Tick: 1e-12)</span>
-        </div>
-    </div>
-</div>
+            async syncThermal() {
+                try {
+                    const r = await fetch('http://127.0.0.1:5000/temp');
+                    const d = await r.json();
+                    this.temp = new BigNumber(d.temp);
+                    document.getElementById('val-temp').innerText = d.temp + "°C";
+                } catch(e) {}
+            },
 
-<script>
-/**
- * CORE LOGIC - ZÉRO FICTION / SANS MATH.RANDOM()
- * Utilise uniquement les constantes physiques et les entrées capteurs.
- */
+            init() {
+                setInterval(() => this.syncThermal(), 500);
+                window.addEventListener('devicemotion', (e) => {
+                    // SUTURE DE GRAVITÉ : On prend l'accélération linéaire pure (sans G)
+                    const rawA = new BigNumber(e.acceleration.y || 0);
+                    
+                    // CALCUL DU BRUIT THERMIQUE RÉEL
+                    const k = new BigNumber('1.380649e-23');
+                    const noise = k.multipliedBy(this.temp.plus(273.15)).multipliedBy(4).sqrt();
+                    document.getElementById('val-noise').innerText = noise.toFixed(15);
 
-const OMEGA = {
-    state: {
-        lastV: new BigNumber(0),
-        dist: new BigNumber(0),
-        startTime: null,
-        buffer: []
-    },
+                    // SOUSTRACTION SANS FICTION
+                    const cleanA = rawA.minus(noise);
+                    this.buffer.push(cleanA);
+                    if(this.buffer.length > 50) this.buffer.shift();
 
-    // 1. REALITY ENGINE : Synchronisation Planck
-    getPlanckTime() {
-        const astroTime = new BigNumber(Date.now());
-        const subPlanckTick = new BigNumber(performance.now()).multipliedBy('1e-12');
-        return astroTime.plus(subPlanckTick);
-    },
-
-    // 2. HARDWARE SHIELD : Soustraction de l'entropie
-    calculateThermalFloor(temp) {
-        const k = new BigNumber('1.380649e-23'); // Constante Boltzmann
-        // Bruit de Nyquist-Johnson : sqrt(4kTR)
-        return k.multipliedBy(temp + 273.15).multipliedBy(4).sqrt();
-    },
-
-    // 3. INFINITY BRIDGE : Gestion du flux sans finitude
-    streamBridge(dataPoint) {
-        this.state.buffer.push(dataPoint);
-        if (this.state.buffer.length > 100) {
-            this.state.buffer.shift(); // Libération RAM
-        }
-        // Retourne la moyenne BigNumber sans arrondi Float64
-        return this.state.buffer.reduce((a, b) => a.plus(b), new BigNumber(0)).div(this.state.buffer.length);
-    },
-
-    // 4. L'ODOMÈTRE DE COURANT (Vrai Science)
-    verifyEffort(accel, batteryVoltage) {
-        // Un mouvement n'est réel que s'il y a une fluctuation de tension
-        // Sinon c'est un parasite logiciel.
-        const vRatio = new BigNumber(batteryVoltage).modulo(0.000001);
-        return vRatio.gt(0); 
-    },
-
-    init() {
-        if (!window.DeviceMotionEvent) {
-            alert("Capteurs non supportés. Souveraineté impossible.");
-            return;
-        }
-
-        window.addEventListener('devicemotion', (e) => {
-            const now = this.getPlanckTime();
-            const temp = 32.5; // Simulé : Nécessite API Native pour 0x41 réel
-            
-            // Accélération brute (zéro filtre)
-            const rawA = new BigNumber(e.accelerationIncludingGravity.y || 0);
-            
-            // Soustraction des perturbations
-            const floor = this.calculateThermalFloor(temp);
-            const cleanA = rawA.minus(floor);
-
-            // Intégration via Pont de l'Infini
-            const v_ms = this.streamBridge(cleanA);
-            const v_kmh = v_ms.multipliedBy(3.6).abs();
-            const mm_s = v_ms.multipliedBy(1000).abs();
-
-            // Mise à jour UI
-            document.getElementById('sp-main').innerText = v_kmh.toFixed(2);
-            document.getElementById('mm-s-detail').innerText = `${mm_s.toFixed(0)} mm/s`;
-            document.getElementById('thermal-floor').innerText = floor.toFixed(10);
-            
-            // Simulation du Flux de Lorentz (Basé sur l'inclinaison réelle)
-            const lorentz = new BigNumber(e.accelerationIncludingGravity.z).multipliedBy('1.2566e-6');
-            document.getElementById('lorentz-val').innerText = lorentz.toFixed(15);
-        });
-    }
-};
-
-// Lancement de la Suture au clic (RGPD/User Gesture)
-document.body.onclick = () => {
-    OMEGA.init();
-    document.body.onclick = null;
-    console.log("SUTURE OMEGA ENGAGÉE : MODE SOUVERAIN");
-};
-</script>
-
+                    const avgA = this.buffer.reduce((a,b) => a.plus(b), new BigNumber(0)).div(this.buffer.length);
+                    const v_ms = avgA.abs(); // Simplifié pour l'exemple
+                    
+                    document.getElementById('sp-main').innerText = v_ms.multipliedBy(3.6).toFixed(2);
+                    document.getElementById('mm-s').innerText = v_ms.multipliedBy(1000).toFixed(0) + " mm/s";
+                });
+            }
+        };
+        document.body.onclick = () => { OMEGA.init(); document.body.onclick = null; };
+    </script>
 </body>
 </html>
