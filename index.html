@@ -51,107 +51,123 @@
     <script>
         let isRunning = false;
         
-        // États des capteurs
-        let sys = {
-            vitesse_ms: new BigNumber(0),
-            mag_total: 0,
-            audio_volume: 0,
-            audio_freq: 0,
-            last_time: performance.now()
-        };
+// États des capteurs
+let sys = {
+    vitesse_ms: new BigNumber(0),
+    mag_total: 0,
+    mag_last: 0,
+    mag_delta: 0, // Variation du champ (la Vrai Science)
+    audio_volume: 0,
+    audio_freq: 0,
+    last_time: performance.now()
+};
 
-        const ui = {
-            btn: document.getElementById('start-btn'),
-            speed: document.getElementById('val-speed'),
-            mag: document.getElementById('val-mag'),
-            magVec: document.getElementById('val-mag-vector'),
-            audio: document.getElementById('val-audio'),
-            audioFreq: document.getElementById('val-audio-freq'),
-            reality: document.getElementById('val-reality')
-        };
+const ui = {
+    btn: document.getElementById('start-btn'),
+    speed: document.getElementById('val-speed'),
+    mag: document.getElementById('val-mag'),
+    magVec: document.getElementById('val-mag-vector'),
+    audio: document.getElementById('val-audio'),
+    audioFreq: document.getElementById('val-audio-freq'),
+    reality: document.getElementById('val-reality')
+};
 
-        ui.btn.addEventListener('click', async () => {
-            ui.btn.style.display = 'none';
-            isRunning = true;
+ui.btn.addEventListener('click', async () => {
+    ui.btn.style.display = 'none';
+    isRunning = true;
+    
+    // 1. DÉVERROUILLAGE AUDIO (Corrigé pour sécurité navigateur)
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await audioCtx.resume(); // OBLIGATOIRE POUR CHROME/KIWI
+        
+        const analyser = audioCtx.createAnalyser();
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        setInterval(() => {
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            let maxFreqIndex = 0;
+            let maxFreqVal = 0;
             
-            // 1. DÉVERROUILLAGE AUDIO (Le Son)
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const analyser = audioCtx.createAnalyser();
-                const source = audioCtx.createMediaStreamSource(stream);
-                source.connect(analyser);
-                analyser.fftSize = 256;
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-
-                setInterval(() => {
-                    analyser.getByteFrequencyData(dataArray);
-                    let sum = 0;
-                    let maxFreqIndex = 0;
-                    let maxFreqVal = 0;
-                    
-                    for(let i = 0; i < bufferLength; i++) {
-                        sum += dataArray[i];
-                        if(dataArray[i] > maxFreqVal) {
-                            maxFreqVal = dataArray[i];
-                            maxFreqIndex = i;
-                        }
-                    }
-                    sys.audio_volume = sum / bufferLength; // Proxy de pression
-                    sys.audio_freq = maxFreqIndex * (audioCtx.sampleRate / analyser.fftSize);
-                }, 100);
-            } catch(e) { ui.audio.innerText = "MICRO REFUSÉ"; }
-
-            // 2. DÉVERROUILLAGE ÉLECTROMAGNÉTIQUE (Le Magnétisme)
-            if ('Magnetometer' in window) {
-                try {
-                    const magSensor = new Magnetometer({frequency: 10});
-                    magSensor.addEventListener('reading', e => {
-                        // Calcul du champ local brut (racine carrée de x²+y²+z²)
-                        sys.mag_total = Math.sqrt(magSensor.x**2 + magSensor.y**2 + magSensor.z**2);
-                        ui.magVec.innerText = `X:${magSensor.x.toFixed(1)} Y:${magSensor.y.toFixed(1)} Z:${magSensor.z.toFixed(1)}`;
-                    });
-                    magSensor.start();
-                } catch(e) { ui.mag.innerText = "CAPTEUR EM VERROUILLÉ"; }
-            } else {
-                ui.mag.innerText = "API MAGNÉTOMÈTRE NON SUPPORTÉE";
-            }
-
-            // 3. CINÉTIQUE (Silicium) ET FUSION DE RÉALITÉ
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                await DeviceMotionEvent.requestPermission();
-            }
-            
-            window.addEventListener('devicemotion', (e) => {
-                const now = performance.now();
-                const dt = new BigNumber(now - sys.last_time).div(1000);
-                sys.last_time = now;
-
-                let rawA = new BigNumber(e.acceleration.y || 0).abs();
-                if (rawA.lt(0.08)) rawA = new BigNumber(0); // Noise floor
-
-                sys.vitesse_ms = sys.vitesse_ms.plus(rawA.multipliedBy(dt)).multipliedBy(0.99);
-                
-                // Mises à jour UI
-                ui.speed.innerText = sys.vitesse_ms.multipliedBy(3.6).toFixed(2) + " KM/H";
-                ui.mag.innerText = sys.mag_total.toFixed(2) + " µT";
-                ui.audio.innerText = sys.audio_volume.toFixed(1) + " (Énergie)";
-                ui.audioFreq.innerText = `Dominante: ${sys.audio_freq.toFixed(0)} Hz`;
-
-                // LA FUSION DE VÉRITÉ (Reconstruction de Réalité)
-                // Si la vitesse augmente ET que le champ électromagnétique ou sonore change, 
-                // alors le mouvement est "Prouvé" par les 3 dimensions physiques.
-                if(sys.vitesse_ms.gt(0.5) && sys.mag_total > 0 && sys.audio_volume > 5) {
-                    const truthHash = sys.vitesse_ms.multipliedBy(sys.mag_total).multipliedBy(sys.audio_volume);
-                    ui.reality.innerText = `VÉRIFICATION CROISÉE VALIDE. MATRICE : ${truthHash.toExponential(10)}`;
-                    ui.reality.style.color = "#00ff88";
-                } else {
-                    ui.reality.innerText = "SIGNAL NON CONFIRMÉ PAR L'ENVIRONNEMENT ONDULATOIRE.";
-                    ui.reality.style.color = "#ff3333";
+            for(let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+                if(dataArray[i] > maxFreqVal) {
+                    maxFreqVal = dataArray[i];
+                    maxFreqIndex = i;
                 }
+            }
+            sys.audio_volume = sum / bufferLength; 
+            sys.audio_freq = maxFreqIndex * (audioCtx.sampleRate / analyser.fftSize);
+        }, 100);
+    } catch(e) { ui.audio.innerText = "MICRO REFUSÉ/BLOQUÉ"; }
+
+    // 2. DÉVERROUILLAGE ÉLECTROMAGNÉTIQUE (Focus sur la variation)
+    if ('Magnetometer' in window) {
+        try {
+            const magSensor = new Magnetometer({frequency: 10});
+            magSensor.addEventListener('reading', e => {
+                let currentMag = Math.sqrt(magSensor.x**2 + magSensor.y**2 + magSensor.z**2);
+                sys.mag_delta = Math.abs(currentMag - sys.mag_last);
+                sys.mag_last = currentMag;
+                sys.mag_total = currentMag;
+                
+                ui.magVec.innerText = `X:${magSensor.x.toFixed(0)} Y:${magSensor.y.toFixed(0)} Z:${magSensor.z.toFixed(0)} | Δ: ${sys.mag_delta.toFixed(2)}`;
             });
-        });
+            magSensor.start();
+        } catch(e) { ui.mag.innerText = "API MAG REQUIERT FLAGS/HTTPS"; }
+    } else {
+        ui.mag.innerText = "CAPTEUR EM INCONNU";
+    }
+
+    // 3. CINÉTIQUE 3D ET FUSION DE RÉALITÉ
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        await DeviceMotionEvent.requestPermission();
+    }
+    
+    window.addEventListener('devicemotion', (e) => {
+        const now = performance.now();
+        const dt = new BigNumber(now - sys.last_time).div(1000);
+        sys.last_time = now;
+
+        // VRAI VECTEUR 3D D'ACCÉLÉRATION (Indépendant de l'orientation du téléphone)
+        let accX = e.acceleration.x || 0;
+        let accY = e.acceleration.y || 0;
+        let accZ = e.acceleration.z || 0;
+        let rawA_3D = new BigNumber(Math.sqrt(accX**2 + accY**2 + accZ**2));
+
+        if (rawA_3D.lt(0.1)) rawA_3D = new BigNumber(0); // Noise floor relevé pour 3D
+
+        // Intégration vitesse avec friction indexée sur le temps
+        let friction = new BigNumber(Math.pow(0.95, dt.toNumber())); // Perd 5% par seconde, pas par frame
+        sys.vitesse_ms = sys.vitesse_ms.plus(rawA_3D.multipliedBy(dt)).multipliedBy(friction);
+        
+        // Mises à jour UI
+        ui.speed.innerText = sys.vitesse_ms.multipliedBy(3.6).toFixed(2) + " KM/H";
+        ui.mag.innerText = sys.mag_total.toFixed(1) + " µT";
+        ui.audio.innerText = sys.audio_volume.toFixed(1) + " (Énergie)";
+        ui.audioFreq.innerText = `Dominante: ${sys.audio_freq.toFixed(0)} Hz`;
+
+        // MATRICE DE VÉRITÉ : Basée sur la variation magnétique et le bruit, pas juste la vitesse
+        if(sys.vitesse_ms.gt(0.5) && sys.mag_delta > 0.5 && sys.audio_volume > 5) {
+            // Le Hash intègre la variation spatiale (delta mag)
+            const truthHash = sys.vitesse_ms.multipliedBy(sys.mag_delta).multipliedBy(sys.audio_volume);
+            ui.reality.innerText = `MOUVEMENT PROUVÉ. MATRICE : ${truthHash.toExponential(10)}`;
+            ui.reality.style.color = "#00ff88";
+        } else if (sys.vitesse_ms.gt(0.5)) {
+            ui.reality.innerText = "ATTENTION : CINÉTIQUE DÉTECTÉE MAIS ENVIRONNEMENT ISOLÉ (FICTION ?)";
+            ui.reality.style.color = "#ffeb3b";
+        } else {
+            ui.reality.innerText = "REPOS QUANTIQUE.";
+            ui.reality.style.color = "#888";
+        }
+    });
+});
     </script>
 </body>
             </html>
