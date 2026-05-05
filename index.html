@@ -2,172 +2,118 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNI SOUVERAIN v3000 | Champ Total</title>
+    <title>OMEGA SUTURE v4000 | Sextant & Cosmos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
     <style>
-        :root { --neon: #00ff88; --em: #ff00ea; --sound: #00d2ff; --bg: #050505; }
-        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 15px; overflow: hidden; }
-        .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-        .stat-card { border: 1px solid #222; padding: 12px; border-radius: 5px; background: rgba(255,255,255,0.02); }
-        .main-val { font-size: 2.5rem; color: var(--neon); font-weight: bold; }
-        .label { color: #888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px; }
-        .val-em { color: var(--em); font-weight: bold; }
-        .val-sound { color: var(--sound); font-weight: bold; }
-        #start-btn { 
-            background: white; color: black; border: none; padding: 20px; 
-            width: 100%; font-weight: 900; cursor: pointer; margin-bottom: 15px; text-transform: uppercase;
-        }
+        :root { --neon: #00ff88; --gold: #ffd700; --bg: #020202; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow-x: hidden; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 5px; }
+        .stat-card { border: 1px solid #333; padding: 10px; background: rgba(0,0,0,0.8); position: relative; }
+        .label { color: #888; font-size: 0.6rem; text-transform: uppercase; }
+        .val { font-size: 1.8rem; color: var(--neon); }
+        #camera-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.3; object-fit: cover; }
+        .sextant-line { position: fixed; top: 50%; left: 0; width: 100%; height: 2px; background: var(--gold); z-index: 10; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <button id="start-btn">DÉVERROUILLER LES CHAMPS PHYSIQUES (MIC & SENSORS)</button>
+    <video id="camera-bg" autoplay playsinline></video>
+    <div class="sextant-line"></div>
+
+    <button id="start-btn" style="width:100%; padding:20px; background:var(--neon); font-weight:bold;">INITIALISER LA NAVIGATION ASTRONOMIQUE</button>
 
     <div class="grid">
         <div class="stat-card">
-            <div class="label">Suture Cinétique (Silicium)</div>
-            <div id="val-speed" class="main-val">-- KM/H</div>
+            <div class="label">Vecteur Cinétique (Terre)</div>
+            <div id="val-speed" class="val">-- KM/H</div>
         </div>
 
-        <div class="stat-card" style="border-color: var(--em);">
-            <div class="label">Champ Électromagnétique (Tesla)</div>
-            <div id="val-mag" class="val-em" style="font-size: 1.5rem;">-- µT</div>
-            <div id="val-mag-vector" style="font-size: 0.7rem; color: #aaa;">Vecteur de distorsion: --</div>
-        </div>
-
-        <div class="stat-card" style="border-color: var(--sound);">
-            <div class="label">Bruit Acoustique & Pression</div>
-            <div id="val-audio" class="val-sound" style="font-size: 1.5rem;">-- dB (SPL proxy)</div>
-            <div id="val-audio-freq" style="font-size: 0.7rem; color: #aaa;">Fréquence dominante: -- Hz</div>
+        <div class="stat-card" style="border-color: var(--gold);">
+            <div class="label">Sextant Numérique (Inclinaison)</div>
+            <div id="val-tilt" class="val" style="color:var(--gold);">-- °</div>
         </div>
 
         <div class="stat-card">
-            <div class="label">Entropie de Réalité (Fusion)</div>
-            <div id="val-reality" style="font-size: 0.9rem; color: #ffeb3b; word-break: break-all;">EN ATTENTE DE SUTURE...</div>
+            <div class="label">Pression Gravitationnelle Solaire</div>
+            <div id="val-gravity" style="font-size: 0.8rem; color: #00d2ff;">-- m/s² (G-Sol)</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="label">Position OSM (Sync Géo)</div>
+            <div id="val-osm" style="font-size: 0.7rem; color: #aaa;">Recherche satellites...</div>
         </div>
     </div>
 
     <script>
         let isRunning = false;
-        
-// États des capteurs
-let sys = {
-    vitesse_ms: new BigNumber(0),
-    mag_total: 0,
-    mag_last: 0,
-    mag_delta: 0, // Variation du champ (la Vrai Science)
-    audio_volume: 0,
-    audio_freq: 0,
-    last_time: performance.now()
-};
+        let sys = { speed: new BigNumber(0), lastT: performance.now() };
 
-const ui = {
-    btn: document.getElementById('start-btn'),
-    speed: document.getElementById('val-speed'),
-    mag: document.getElementById('val-mag'),
-    magVec: document.getElementById('val-mag-vector'),
-    audio: document.getElementById('val-audio'),
-    audioFreq: document.getElementById('val-audio-freq'),
-    reality: document.getElementById('val-reality')
-};
-
-ui.btn.addEventListener('click', async () => {
-    ui.btn.style.display = 'none';
-    isRunning = true;
-    
-    // 1. DÉVERROUILLAGE AUDIO (Corrigé pour sécurité navigateur)
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        await audioCtx.resume(); // OBLIGATOIRE POUR CHROME/KIWI
-        
-        const analyser = audioCtx.createAnalyser();
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
-        analyser.fftSize = 256;
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        setInterval(() => {
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            let maxFreqIndex = 0;
-            let maxFreqVal = 0;
-            
-            for(let i = 0; i < bufferLength; i++) {
-                sum += dataArray[i];
-                if(dataArray[i] > maxFreqVal) {
-                    maxFreqVal = dataArray[i];
-                    maxFreqIndex = i;
-                }
-            }
-            sys.audio_volume = sum / bufferLength; 
-            sys.audio_freq = maxFreqIndex * (audioCtx.sampleRate / analyser.fftSize);
-        }, 100);
-    } catch(e) { ui.audio.innerText = "MICRO REFUSÉ/BLOQUÉ"; }
-
-    // 2. DÉVERROUILLAGE ÉLECTROMAGNÉTIQUE (Focus sur la variation)
-    if ('Magnetometer' in window) {
-        try {
-            const magSensor = new Magnetometer({frequency: 10});
-            magSensor.addEventListener('reading', e => {
-                let currentMag = Math.sqrt(magSensor.x**2 + magSensor.y**2 + magSensor.z**2);
-                sys.mag_delta = Math.abs(currentMag - sys.mag_last);
-                sys.mag_last = currentMag;
-                sys.mag_total = currentMag;
-                
-                ui.magVec.innerText = `X:${magSensor.x.toFixed(0)} Y:${magSensor.y.toFixed(0)} Z:${magSensor.z.toFixed(0)} | Δ: ${sys.mag_delta.toFixed(2)}`;
-            });
-            magSensor.start();
-        } catch(e) { ui.mag.innerText = "API MAG REQUIERT FLAGS/HTTPS"; }
-    } else {
-        ui.mag.innerText = "CAPTEUR EM INCONNU";
-    }
-
-    // 3. CINÉTIQUE 3D ET FUSION DE RÉALITÉ
-    if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        await DeviceMotionEvent.requestPermission();
-    }
-    
-    window.addEventListener('devicemotion', (e) => {
-        const now = performance.now();
-        const dt = new BigNumber(now - sys.last_time).div(1000);
-        sys.last_time = now;
-
-        // VRAI VECTEUR 3D D'ACCÉLÉRATION (Indépendant de l'orientation du téléphone)
-        let accX = e.acceleration.x || 0;
-        let accY = e.acceleration.y || 0;
-        let accZ = e.acceleration.z || 0;
-        let rawA_3D = new BigNumber(Math.sqrt(accX**2 + accY**2 + accZ**2));
-
-        if (rawA_3D.lt(0.1)) rawA_3D = new BigNumber(0); // Noise floor relevé pour 3D
-
-        // Intégration vitesse avec friction indexée sur le temps
-        let friction = new BigNumber(Math.pow(0.95, dt.toNumber())); // Perd 5% par seconde, pas par frame
-        sys.vitesse_ms = sys.vitesse_ms.plus(rawA_3D.multipliedBy(dt)).multipliedBy(friction);
-        
-        // Mises à jour UI
-        ui.speed.innerText = sys.vitesse_ms.multipliedBy(3.6).toFixed(2) + " KM/H";
-        ui.mag.innerText = sys.mag_total.toFixed(1) + " µT";
-        ui.audio.innerText = sys.audio_volume.toFixed(1) + " (Énergie)";
-        ui.audioFreq.innerText = `Dominante: ${sys.audio_freq.toFixed(0)} Hz`;
-
-        // MATRICE DE VÉRITÉ : Basée sur la variation magnétique et le bruit, pas juste la vitesse
-        if(sys.vitesse_ms.gt(0.5) && sys.mag_delta > 0.5 && sys.audio_volume > 5) {
-            // Le Hash intègre la variation spatiale (delta mag)
-            const truthHash = sys.vitesse_ms.multipliedBy(sys.mag_delta).multipliedBy(sys.audio_volume);
-            ui.reality.innerText = `MOUVEMENT PROUVÉ. MATRICE : ${truthHash.toExponential(10)}`;
-            ui.reality.style.color = "#00ff88";
-        } else if (sys.vitesse_ms.gt(0.5)) {
-            ui.reality.innerText = "ATTENTION : CINÉTIQUE DÉTECTÉE MAIS ENVIRONNEMENT ISOLÉ (FICTION ?)";
-            ui.reality.style.color = "#ffeb3b";
-        } else {
-            ui.reality.innerText = "REPOS QUANTIQUE.";
-            ui.reality.style.color = "#888";
+        // 1. DÉMARRAGE CAMÉRA (Le Sextant)
+        async function initCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('camera-bg').srcObject = stream;
         }
-    });
-});
+
+        // 2. GÉOLOCALISATION (OpenStreetMap / GPS)
+        function updateOSM() {
+            navigator.geolocation.watchPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                document.getElementById('val-osm').innerText = `LAT: ${lat.toFixed(5)} | LON: ${lon.toFixed(5)} (VIA OSM)`;
+                // Ici, on pourrait injecter une carte statique OSM en fond
+            }, null, { enableHighAccuracy: true });
+        }
+
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            document.getElementById('start-btn').style.display = 'none';
+            isRunning = true;
+            initCamera();
+            updateOSM();
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') await DeviceOrientationEvent.requestPermission();
+            if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
+        });
+
+        // 3. CAPTEURS DE LUMIÈRE
+        if ('AmbientLightSensor' in window) {
+            const light = new AmbientLightSensor();
+            light.addEventListener('reading', () => {
+                console.log("Luminosité:", light.illuminance);
+            });
+            light.start();
+        }
+
+        // 4. CALCUL GRAVITATION SOLAIRE (Zéro Fiction)
+        function getSolarGravity() {
+            // G * MasseSoleil / Dist² (approx 1 UA)
+            const gSol = new BigNumber('0.00593'); 
+            document.getElementById('val-gravity').innerText = gSol.toFixed(5) + " m/s² (Influence Solaire)";
+            return gSol;
+        }
+
+        // 5. FUSION DES DONNÉES
+        window.addEventListener('deviceorientation', (e) => {
+            if(!isRunning) return;
+            document.getElementById('val-tilt').innerText = e.beta.toFixed(2) + "°";
+        });
+
+        window.addEventListener('devicemotion', (e) => {
+            if(!isRunning) return;
+            const now = performance.now();
+            const dt = (now - sys.lastT) / 1000;
+            sys.lastT = now;
+
+            // Vitesse avec compensation gravitationnelle solaire
+            let a = new BigNumber(e.acceleration.y || 0).abs();
+            let gSol = getSolarGravity();
+            
+            // On soustrait l'influence solaire pour isoler la vitesse terrestre
+            let cleanA = a.minus(gSol); 
+            if(cleanA.lt(0.1)) cleanA = new BigNumber(0);
+
+            sys.speed = sys.speed.plus(cleanA.times(dt)).times(0.98);
+            document.getElementById('val-speed').innerText = sys.speed.times(3.6).toFixed(2) + " KM/H";
+        });
+
     </script>
 </body>
-            </html>
+</html>
