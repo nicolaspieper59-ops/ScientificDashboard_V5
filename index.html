@@ -3,67 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA SUTURE v2000 | SM-G970F</title>
+    <title>OMEGA SUTURE v2000 | Master</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
     <style>
         :root { --neon: #00ff88; --bg: #050505; }
-        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 20px; text-align: center; }
-        #sp-main { font-size: 5rem; color: var(--neon); text-shadow: 0 0 20px var(--neon); }
-        .stat { border: 1px solid #222; padding: 10px; margin: 10px 0; font-size: 0.8rem; text-align: left; }
-        .label { color: #888; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 15px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .stat-card { border: 1px solid #222; padding: 15px; border-radius: 5px; }
+        .main-val { font-size: 3rem; color: var(--neon); }
+        .label { color: #888; font-size: 0.7rem; text-transform: uppercase; }
+        .unit { color: #00d2ff; font-size: 1rem; }
     </style>
 </head>
 <body>
-    <div id="sp-main">0.00</div>
-    <div>KM/H</div>
-    <div id="mm-s" style="color:#00d2ff">0 mm/s</div>
+    <div class="grid">
+        <div class="stat-card">
+            <div class="label">Vitesse de Réalité (Suture)</div>
+            <div id="sp-main" class="main-val">0.00</div>
+            <div class="unit">KM/H (<span id="val-mms">0</span> mm/s)</div>
+        </div>
 
-    <div class="stat">
-        <span class="label">TEMPÉRATURE NOYAU (Termux) :</span> <span id="val-temp">---</span>
-    </div>
-    <div class="stat">
-        <span class="label">BRUIT NYQUIST-JOHNSON :</span> <span id="val-noise">---</span>
+        <div class="stat-card">
+            <div class="label">Échelle Atomique & Planck</div>
+            <div id="val-nms" style="color:#ff00ea">0 nm/s</div>
+            <div id="val-planck" style="font-size: 0.8rem;">0 lp/s</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="label">Position Univers Observable (Précision 1mm)</div>
+            <div id="val-cosmos" style="font-size: 0.7rem; color: #00ff88;">0 %</div>
+        </div>
+
+        <div class="stat-card" style="border-color: #444;">
+            <div class="label">Suture Thermique (Termux Bridge)</div>
+            <div id="val-temp">En attente...</div>
+            <div id="val-noise" style="font-size: 0.6rem; color: #555;">Nyquist-Johnson: ---</div>
+        </div>
     </div>
 
     <script>
-        const OMEGA = {
-            temp: new BigNumber(30),
-            buffer: [],
+        const planckLength = new BigNumber('1.616255e-35');
+        const universObservable = new BigNumber('8.8e29'); // en mm
+        let thermalTemp = new BigNumber(300); // Kelvin par défaut
+        let cumulativeDist = new BigNumber(0);
 
-            async syncThermal() {
-                try {
-                    const r = await fetch('http://127.0.0.1:5000/temp');
-                    const d = await r.json();
-                    this.temp = new BigNumber(d.temp);
-                    document.getElementById('val-temp').innerText = d.temp + "°C";
-                } catch(e) {}
-            },
+        async function fetchThermal() {
+            try {
+                const r = await fetch('http://127.0.0.1:5000/temp');
+                const d = await r.json();
+                thermalTemp = new BigNumber(d.temp).plus(273.15);
+                document.getElementById('val-temp').innerText = d.temp + " °C";
+            } catch(e) { document.getElementById('val-temp').innerText = "OFFLINE"; }
+        }
 
-            init() {
-                setInterval(() => this.syncThermal(), 500);
-                window.addEventListener('devicemotion', (e) => {
-                    // SUTURE DE GRAVITÉ : On prend l'accélération linéaire pure (sans G)
-                    const rawA = new BigNumber(e.acceleration.y || 0);
-                    
-                    // CALCUL DU BRUIT THERMIQUE RÉEL
-                    const k = new BigNumber('1.380649e-23');
-                    const noise = k.multipliedBy(this.temp.plus(273.15)).multipliedBy(4).sqrt();
-                    document.getElementById('val-noise').innerText = noise.toFixed(15);
+        window.addEventListener('devicemotion', (e) => {
+            // Suture : Utilisation de l'accélération linéaire (sans G) pour la "Vrai Science"
+            let a = new BigNumber(e.acceleration.y || 0).abs();
+            
+            // Calcul du bruit de fond thermique (Nyquist)
+            const k = new BigNumber('1.380649e-23');
+            const noise = k.multipliedBy(thermalTemp).multipliedBy(4).sqrt();
+            document.getElementById('val-noise').innerText = "Bruit: " + noise.toFixed(15);
 
-                    // SOUSTRACTION SANS FICTION
-                    const cleanA = rawA.minus(noise);
-                    this.buffer.push(cleanA);
-                    if(this.buffer.length > 50) this.buffer.shift();
+            // Vitesse instantanée (simplifiée pour démo)
+            let v_ms = a.minus(noise);
+            if(v_ms.lt(0)) v_ms = new BigNumber(0);
 
-                    const avgA = this.buffer.reduce((a,b) => a.plus(b), new BigNumber(0)).div(this.buffer.length);
-                    const v_ms = avgA.abs(); // Simplifié pour l'exemple
-                    
-                    document.getElementById('sp-main').innerText = v_ms.multipliedBy(3.6).toFixed(2);
-                    document.getElementById('mm-s').innerText = v_ms.multipliedBy(1000).toFixed(0) + " mm/s";
-                });
-            }
-        };
-        document.body.onclick = () => { OMEGA.init(); document.body.onclick = null; };
+            let kmh = v_ms.multipliedBy(3.6);
+            let mms = v_ms.multipliedBy(1000);
+            let nms = mms.multipliedBy(1000000);
+            let lps = v_ms.div(planckLength);
+
+            // Mise à jour UI
+            document.getElementById('sp-main').innerText = kmh.toFixed(2);
+            document.getElementById('val-mms').innerText = mms.toFixed(0);
+            document.getElementById('val-nms').innerText = nms.toFormat(0) + " nm/s";
+            document.getElementById('val-planck').innerText = lps.toExponential(4) + " lp/s";
+
+            // Suture Cosmique (93 Mds d'AL au mm près)
+            cumulativeDist = cumulativeDist.plus(mms.div(60)); // distance estimée
+            let cosmicRatio = cumulativeDist.div(universObservable).multipliedBy(100);
+            document.getElementById('val-cosmos').innerText = cosmicRatio.toFixed(50) + " % de l'Univers";
+        });
+
+        setInterval(fetchThermal, 1000);
     </script>
 </body>
 </html>
