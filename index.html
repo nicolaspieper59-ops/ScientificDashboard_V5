@@ -3,134 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA SUTURE v2000 | Ultra-Max</title>
+    <title>OMNI SOUVERAIN v3000 | Champ Total</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
     <style>
-        :root { --neon: #00ff88; --bg: #050505; }
+        :root { --neon: #00ff88; --em: #ff00ea; --sound: #00d2ff; --bg: #050505; }
         body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 15px; overflow: hidden; }
         .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-        .stat-card { border: 1px solid #222; padding: 12px; border-radius: 5px; background: rgba(0,255,136,0.03); }
-        .main-val { font-size: 3.2rem; color: var(--neon); text-shadow: 0 0 10px rgba(0,255,136,0.3); }
-        .label { color: #666; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px; }
-        .unit { color: #00d2ff; font-size: 0.9rem; }
-        .data-text { font-family: monospace; color: #ff00ea; font-weight: bold; }
+        .stat-card { border: 1px solid #222; padding: 12px; border-radius: 5px; background: rgba(255,255,255,0.02); }
+        .main-val { font-size: 2.5rem; color: var(--neon); font-weight: bold; }
+        .label { color: #888; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px; }
+        .val-em { color: var(--em); font-weight: bold; }
+        .val-sound { color: var(--sound); font-weight: bold; }
         #start-btn { 
-            background: var(--neon); color: black; border: none; padding: 25px; 
-            width: 100%; font-weight: 900; cursor: pointer; margin-bottom: 15px;
-            box-shadow: 0 0 20px rgba(0,255,136,0.4);
+            background: white; color: black; border: none; padding: 20px; 
+            width: 100%; font-weight: 900; cursor: pointer; margin-bottom: 15px; text-transform: uppercase;
         }
     </style>
 </head>
 <body>
 
-    <button id="start-btn">ACTIVER LA SUTURE QUANTIQUE</button>
+    <button id="start-btn">DÉVERROUILLER LES CHAMPS PHYSIQUES (MIC & SENSORS)</button>
 
     <div class="grid">
         <div class="stat-card">
-            <div class="label">Vecteur Vitesse (Réel)</div>
-            <div id="sp-main" class="main-val">--</div>
-            <div class="unit">KM/H | <span id="val-mms">--</span> mm/s</div>
+            <div class="label">Suture Cinétique (Silicium)</div>
+            <div id="val-speed" class="main-val">-- KM/H</div>
+        </div>
+
+        <div class="stat-card" style="border-color: var(--em);">
+            <div class="label">Champ Électromagnétique (Tesla)</div>
+            <div id="val-mag" class="val-em" style="font-size: 1.5rem;">-- µT</div>
+            <div id="val-mag-vector" style="font-size: 0.7rem; color: #aaa;">Vecteur de distorsion: --</div>
+        </div>
+
+        <div class="stat-card" style="border-color: var(--sound);">
+            <div class="label">Bruit Acoustique & Pression</div>
+            <div id="val-audio" class="val-sound" style="font-size: 1.5rem;">-- dB (SPL proxy)</div>
+            <div id="val-audio-freq" style="font-size: 0.7rem; color: #aaa;">Fréquence dominante: -- Hz</div>
         </div>
 
         <div class="stat-card">
-            <div class="label">Résolution Planck & Atomique</div>
-            <div id="val-nms" class="data-text">-- nm/s</div>
-            <div id="val-planck" style="font-size: 0.75rem; color: #888;">-- lp/s</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="label">Suture Univers Observable (93 Gly)</div>
-            <div id="val-cosmos" style="font-size: 0.7rem; color: var(--neon); word-break: break-all; line-height: 1.2;">-- %</div>
-        </div>
-
-        <div class="stat-card" style="border-color: #333;">
-            <div class="label">Température Noyau (Bridge)</div>
-            <div id="val-temp" class="unit">-- °C</div>
-            <div id="val-info" style="font-size: 0.6rem; color: #444;">PRÉCISION: BIG_NUMBER_MAX</div>
+            <div class="label">Entropie de Réalité (Fusion)</div>
+            <div id="val-reality" style="font-size: 0.9rem; color: #ffeb3b; word-break: break-all;">EN ATTENTE DE SUTURE...</div>
         </div>
     </div>
 
     <script>
-        // Configuration BigNumber pour le max de décimales (Zéro Fiction)
-        BigNumber.config({ DECIMAL_PLACES: 100, ROUNDING_MODE: BigNumber.ROUND_HALF_UP });
-
-        const planckLength = new BigNumber('1.616255e-35');
-        const universObservable = new BigNumber('8.8e29'); 
-        
-        // Accumulateurs de précision
-        let velocity = new BigNumber(0);
-        let cumulativeDist = new BigNumber(0);
         let isRunning = false;
-        let lastA = new BigNumber(0);
-
-        const ui = {
-            main: document.getElementById('sp-main'),
-            mms: document.getElementById('val-mms'),
-            nms: document.getElementById('val-nms'),
-            planck: document.getElementById('val-planck'),
-            cosmos: document.getElementById('val-cosmos'),
-            temp: document.getElementById('val-temp')
+        
+        // États des capteurs
+        let sys = {
+            vitesse_ms: new BigNumber(0),
+            mag_total: 0,
+            audio_volume: 0,
+            audio_freq: 0,
+            last_time: performance.now()
         };
 
-        document.getElementById('start-btn').addEventListener('click', async function() {
-            this.style.display = 'none';
+        const ui = {
+            btn: document.getElementById('start-btn'),
+            speed: document.getElementById('val-speed'),
+            mag: document.getElementById('val-mag'),
+            magVec: document.getElementById('val-mag-vector'),
+            audio: document.getElementById('val-audio'),
+            audioFreq: document.getElementById('val-audio-freq'),
+            reality: document.getElementById('val-reality')
+        };
+
+        ui.btn.addEventListener('click', async () => {
+            ui.btn.style.display = 'none';
+            isRunning = true;
+            
+            // 1. DÉVERROUILLAGE AUDIO (Le Son)
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioCtx.createAnalyser();
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                setInterval(() => {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    let maxFreqIndex = 0;
+                    let maxFreqVal = 0;
+                    
+                    for(let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                        if(dataArray[i] > maxFreqVal) {
+                            maxFreqVal = dataArray[i];
+                            maxFreqIndex = i;
+                        }
+                    }
+                    sys.audio_volume = sum / bufferLength; // Proxy de pression
+                    sys.audio_freq = maxFreqIndex * (audioCtx.sampleRate / analyser.fftSize);
+                }, 100);
+            } catch(e) { ui.audio.innerText = "MICRO REFUSÉ"; }
+
+            // 2. DÉVERROUILLAGE ÉLECTROMAGNÉTIQUE (Le Magnétisme)
+            if ('Magnetometer' in window) {
+                try {
+                    const magSensor = new Magnetometer({frequency: 10});
+                    magSensor.addEventListener('reading', e => {
+                        // Calcul du champ local brut (racine carrée de x²+y²+z²)
+                        sys.mag_total = Math.sqrt(magSensor.x**2 + magSensor.y**2 + magSensor.z**2);
+                        ui.magVec.innerText = `X:${magSensor.x.toFixed(1)} Y:${magSensor.y.toFixed(1)} Z:${magSensor.z.toFixed(1)}`;
+                    });
+                    magSensor.start();
+                } catch(e) { ui.mag.innerText = "CAPTEUR EM VERROUILLÉ"; }
+            } else {
+                ui.mag.innerText = "API MAGNÉTOMÈTRE NON SUPPORTÉE";
+            }
+
+            // 3. CINÉTIQUE (Silicium) ET FUSION DE RÉALITÉ
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
                 await DeviceMotionEvent.requestPermission();
             }
-            isRunning = true;
-        });
+            
+            window.addEventListener('devicemotion', (e) => {
+                const now = performance.now();
+                const dt = new BigNumber(now - sys.last_time).div(1000);
+                sys.last_time = now;
 
-        // Loop Thermique
-        setInterval(async () => {
-            if(!isRunning) return;
-            try {
-                const r = await fetch('http://127.0.0.1:5000/temp');
-                const d = await r.json();
-                ui.temp.innerText = d.temp.toFixed(2) + " °C";
-            } catch(e) { ui.temp.innerText = "OFFLINE (BRIDGE REQUIS)"; }
-        }, 2000);
+                let rawA = new BigNumber(e.acceleration.y || 0).abs();
+                if (rawA.lt(0.08)) rawA = new BigNumber(0); // Noise floor
 
-        window.addEventListener('devicemotion', (e) => {
-            if(!isRunning) return;
+                sys.vitesse_ms = sys.vitesse_ms.plus(rawA.multipliedBy(dt)).multipliedBy(0.99);
+                
+                // Mises à jour UI
+                ui.speed.innerText = sys.vitesse_ms.multipliedBy(3.6).toFixed(2) + " KM/H";
+                ui.mag.innerText = sys.mag_total.toFixed(2) + " µT";
+                ui.audio.innerText = sys.audio_volume.toFixed(1) + " (Énergie)";
+                ui.audioFreq.innerText = `Dominante: ${sys.audio_freq.toFixed(0)} Hz`;
 
-            // Utilisation de l'intervalle natif du capteur (en ms) pour plus de précision
-            const dt = new BigNumber(e.interval || 16.666).div(1000);
-
-            // Accélération sur l'axe Y (sens de la marche)
-            let currentA = new BigNumber(e.acceleration.y || 0);
-
-            // Filtre de seuil (Noise Floor) pour éviter la dérive à l'arrêt
-            if (currentA.abs().lt(0.08)) currentA = new BigNumber(0);
-
-            // INTEGRATION TRAPEZOÏDALE (Plus précis que l'Euler simple)
-            // v = v + ((a_old + a_new) / 2) * dt
-            const avgA = lastA.plus(currentA).div(2);
-            velocity = velocity.plus(avgA.multipliedBy(dt));
-            lastA = currentA;
-
-            // Friction virtuelle (empêche la dérive infinie du capteur)
-            velocity = velocity.multipliedBy(0.99); 
-            if (velocity.lt(0.01) && currentA.isZero()) velocity = new BigNumber(0);
-
-            // CALCULS DERIVES
-            const speed_ms = velocity.abs();
-            const kmh = speed_ms.multipliedBy(3.6);
-            const mms = speed_ms.multipliedBy(1000);
-            const nms = mms.multipliedBy(1000000);
-            const lps = speed_ms.div(planckLength);
-
-            // DISTANCE ET SUTURE COSMIQUE
-            const dist_step = speed_ms.multipliedBy(dt).multipliedBy(1000); // en mm
-            cumulativeDist = cumulativeDist.plus(dist_step);
-            const cosmicRatio = cumulativeDist.div(universObservable).multipliedBy(100);
-
-            // MAJ UI
-            ui.main.innerText = kmh.toFixed(2);
-            ui.mms.innerText = mms.toFixed(0);
-            ui.nms.innerText = nms.toFormat(0) + " nm/s";
-            ui.planck.innerText = lps.toExponential(4) + " lp/s";
-            ui.cosmos.innerText = cosmicRatio.toFixed(60) + " %";
+                // LA FUSION DE VÉRITÉ (Reconstruction de Réalité)
+                // Si la vitesse augmente ET que le champ électromagnétique ou sonore change, 
+                // alors le mouvement est "Prouvé" par les 3 dimensions physiques.
+                if(sys.vitesse_ms.gt(0.5) && sys.mag_total > 0 && sys.audio_volume > 5) {
+                    const truthHash = sys.vitesse_ms.multipliedBy(sys.mag_total).multipliedBy(sys.audio_volume);
+                    ui.reality.innerText = `VÉRIFICATION CROISÉE VALIDE. MATRICE : ${truthHash.toExponential(10)}`;
+                    ui.reality.style.color = "#00ff88";
+                } else {
+                    ui.reality.innerText = "SIGNAL NON CONFIRMÉ PAR L'ENVIRONNEMENT ONDULATOIRE.";
+                    ui.reality.style.color = "#ff3333";
+                }
+            });
         });
     </script>
 </body>
-    </html>
+            </html>
