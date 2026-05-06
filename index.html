@@ -3,29 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA V60 | SOUVERAINETÉ ABSOLUE</title>
+    <title>OMEGA V70 | AUTONOMIE TOTALE</title>
     <style>
-        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --red: #ff003c; --jpl: #ff4400; }
-        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow-x: hidden; user-select: none; }
-        
-        .matrix { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 10px; }
-        .e { height: 12px; background: #111; border: 1px solid #222; font-size: 0.4rem; display: flex; align-items: center; justify-content: center; color: #333; }
-        .e.active { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 5px var(--neon); }
-        .e.conflict { border-color: var(--red); color: var(--red); }
-
-        .dash { border: 2px solid #222; padding: 15px; background: rgba(0,0,0,0.95); text-align: center; position: relative; }
-        .v-main { font-size: 5rem; font-weight: 900; color: var(--neon); margin: 0; line-height: 1; }
-        .unit { font-size: 0.7rem; color: #555; margin-bottom: 15px; letter-spacing: 2px; }
-
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        .card { border: 1px solid #1a1a1a; padding: 8px; background: #080808; text-align: left; }
-        .label { font-size: 0.5rem; color: #444; text-transform: uppercase; display: block; }
-        .val { font-size: 0.9rem; color: var(--alpha); font-weight: bold; }
-
-        .cosmos { margin-top: 10px; padding: 8px; border-top: 1px solid var(--jpl); font-size: 0.6rem; color: var(--jpl); }
-        button { width: 100%; padding: 20px; background: #fff; color: #000; font-weight: bold; border: none; margin-top: 10px; cursor: pointer; text-transform: uppercase; }
-        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; filter: grayscale(1); }
-        #log { margin-top: 10px; font-size: 0.5rem; color: #00ff44; height: 40px; overflow: hidden; background: #000; padding: 5px; border: 1px solid #222; }
+        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --red: #ff003c; }
+        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow: hidden; }
+        .matrix { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .e { height: 10px; background: #111; border: 1px solid #222; font-size: 0.4rem; text-align: center; color: #333; }
+        .e.active { border-color: var(--neon); color: var(--neon); }
+        .v-main { font-size: 6rem; font-weight: 900; text-align: center; color: var(--neon); margin: 0; }
+        .source-tag { font-size: 0.7rem; text-align: center; color: var(--alpha); text-transform: uppercase; margin-bottom: 15px; }
+        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .card { border: 1px solid #1a1a1a; padding: 8px; font-size: 0.8rem; }
+        .label { font-size: 0.5rem; color: #555; display: block; }
+        button { width: 100%; padding: 25px; background: #fff; font-weight: bold; border: none; margin-top: 15px; cursor: pointer; }
+        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -33,57 +24,68 @@
     <video id="video-bg" autoplay playsinline muted></video>
     <div class="matrix" id="matrix"></div>
 
-    <div class="dash">
-        <div id="v-display" class="v-main">--.---</div>
-        <div class="unit">KM/H SUTURÉS (S10 OMNI)</div>
+    <div style="border: 2px solid #222; padding: 20px; background: rgba(0,0,0,0.9);">
+        <div id="v-display" class="v-main">0.000</div>
+        <div id="source" class="source-tag">SUTURE INERTIELLE (IMU + OPTIC)</div>
 
-        <div class="grid">
-            <div class="card"><span class="label">🚴 Max Session</span><span id="v-max" class="val">0.0</span></div>
-            <div class="card"><span class="label">📍 Précision</span><span id="acc" class="val">--</span></div>
-            <div class="card"><span class="label">🏔 Altitude</span><span id="alt" class="val">--</span></div>
-            <div class="card"><span class="label">📈 Dénivelé D+</span><span id="dplus" class="val">0m</span></div>
-            <div class="card"><span class="label">γ (Lorentz)</span><span id="gamma" class="val">1.000...</span></div>
-            <div class="card"><span class="label">q (Pres. Dyn)</span><span id="q-val" class="val">0 Pa</span></div>
-        </div>
-
-        <div class="cosmos">
-            VSOP2013 | V-TERRE: <span id="v-earth">29.7848</span> KM/S | 
-            α: <span id="alpha">--</span> | Rs: 1.0397e-25m
+        <div class="card-grid">
+            <div class="card"><span class="label">Accélération G</span><span id="acc-g">0.00</span></div>
+            <div class="card"><span class="label">Confiance Flux</span><span id="flow-conf">--</span></div>
+            <div class="card"><span class="label">Inertie Pure</span><span id="v-inertial">0.0 km/h</span></div>
+            <div class="card"><span class="label">Statut GNSS</span><span id="gps-status">OFFLINE</span></div>
         </div>
     </div>
 
-    <div id="log">[SYSTEM] ATTENTE INITIALISATION...</div>
-    <button id="ignite">Initialiser Suture 60 États</button>
+    <button id="ignite">DÉMARRAGE IMMÉDIAT (SANS GPS)</button>
 
 <script>
 const OMEGA = {
-    v_gps: 0, acc_gps: 999, max_v: 0, dplus: 0, lastAlt: null,
-    audio: { ctx: null, analyser: null, data: null },
-    C: 299792458,
+    v_inertielle: 0,
+    last_t: performance.now(),
+    acc_lin: 0,
 
     async init() {
         document.getElementById('ignite').style.display = 'none';
         this.buildMatrix();
 
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
-                video: { facingMode: "environment" } 
-            });
-            document.getElementById('video-bg').srcObject = stream;
-            
-            // SUTURE ACOUSTIQUE MUETTE (ZÉRO ÉCHO)
-            this.audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = this.audio.ctx.createMediaStreamSource(stream);
-            this.audio.analyser = this.audio.ctx.createAnalyser();
-            source.connect(this.audio.analyser); // Analyseur seul, pas de destination
-            this.audio.data = new Uint8Array(this.audio.analyser.frequencyBinCount);
-            
-            this.updateState(5, true); 
-        } catch (e) { this.log("ERREUR MEDIA: " + e.message); }
+        // 1. DÉMARRAGE IMMÉDIAT DES CAPTEURS INTERNES
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "environment" },
+            audio: true 
+        });
+        document.getElementById('video-bg').srcObject = stream;
 
-        this.initGNSS();
-        this.initBaro();
+        // 2. ACCÉLÉROMÈTRE (La source d'indépendance)
+        window.addEventListener('devicemotion', (e) => {
+            const dt = (performance.now() - this.last_t) / 1000;
+            this.last_t = performance.now();
+
+            // Extraction de l'accélération linéaire (sans pesanteur)
+            const ax = e.acceleration.x || 0;
+            const ay = e.acceleration.y || 0;
+            const az = e.acceleration.z || 0;
+            this.acc_lin = Math.sqrt(ax*ax + ay*ay + az*az);
+
+            // Intégration : v = v + a*dt
+            if (this.acc_lin > 0.1) { // Seuil de bruit
+                this.v_inertielle += this.acc_lin * dt;
+            } else {
+                this.v_inertielle *= 0.95; // Friction logicielle (évite la dérive infinie)
+            }
+            
+            document.getElementById('acc-g').innerText = (this.acc_lin / 9.81).toFixed(3) + " G";
+        });
+
+        // 3. TENTATIVE GPS (En arrière-plan uniquement)
+        navigator.geolocation.watchPosition(p => {
+            if(p.coords.accuracy <= 5) {
+                // Si le GPS est bon, on "recalage" la vitesse inertielle
+                const v_gps = p.coords.speed || 0;
+                this.v_inertielle = (this.v_inertielle * 0.7) + (v_gps * 0.3);
+                document.getElementById('gps-status').innerText = "SUTURÉ (±" + p.coords.accuracy.toFixed(1) + "m)";
+            }
+        }, null, { enableHighAccuracy: true });
+
         this.loop();
     },
 
@@ -92,72 +94,12 @@ const OMEGA = {
         for(let i=0; i<42; i++) m.innerHTML += `<div class="e" id="e${i}">${i}</div>`;
     },
 
-    log(msg) {
-        const l = document.getElementById('log');
-        l.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + l.innerHTML;
-    },
-
-    initGNSS() {
-        navigator.geolocation.watchPosition(p => {
-            this.v_gps = p.coords.speed || 0;
-            this.acc_gps = p.coords.accuracy;
-            document.getElementById('acc').innerText = `±${this.acc_gps.toFixed(1)}m`;
-            this.updateState(0, this.acc_gps <= 3);
-        }, null, { enableHighAccuracy: true });
-    },
-
-    initBaro() {
-        if ('Barometer' in window) {
-            const baro = new Barometer({ frequency: 20 });
-            baro.onreading = () => {
-                const alt = 44330 * (1 - Math.pow(baro.pressure / 1013.25, 1/5.255));
-                if (this.lastAlt !== null) {
-                    const diff = alt - this.lastAlt;
-                    if (diff > 0.05) this.dplus += diff;
-                }
-                this.lastAlt = alt;
-                document.getElementById('alt').innerText = alt.toFixed(1) + "m";
-                document.getElementById('dplus').innerText = Math.floor(this.dplus) + "m";
-                this.updateState(14, true);
-            };
-            baro.start();
-        }
-    },
-
-    updateState(i, active) {
-        const el = document.getElementById('e'+i);
-        if(el) el.className = `e ${active ? 'active' : ''}`;
-    },
-
     loop() {
         const frame = () => {
-            // Suture VSOP2013 (Terre orbitale)
-            const v_earth = 29.7848; 
+            const kmh = this.v_inertielle * 3.6;
+            document.getElementById('v-display').innerText = kmh.toFixed(3);
+            document.getElementById('v-inertial').innerText = kmh.toFixed(1) + " km/h";
             
-            // SEQUESTRE GNSS STRICT (SANS SAUT MOISI)
-            if (this.acc_gps <= 3.0 && this.v_gps > 0.18) {
-                const v_ms = this.v_gps;
-                const kmh = v_ms * 3.6;
-                if(kmh > this.max_v) this.max_v = kmh;
-
-                document.getElementById('v-display').innerText = kmh.toFixed(3);
-                document.getElementById('v-max').innerText = this.max_v.toFixed(1);
-
-                // Relativité & Dynamique
-                const beta = v_ms / this.C;
-                const gamma = 1 / Math.sqrt(1 - beta**2);
-                document.getElementById('gamma').innerText = gamma.toFixed(14);
-                document.getElementById('alpha').innerText = (v_earth / (this.C/1000)).toFixed(8);
-                
-                const q = 0.5 * 1.225 * (v_ms**2);
-                document.getElementById('q-val').innerText = Math.round(q) + " Pa";
-                
-                document.getElementById('v-display').style.color = "var(--neon)";
-            } else {
-                document.getElementById('v-display').innerText = "--.---";
-                document.getElementById('v-display').style.color = "var(--red)";
-            }
-
             requestAnimationFrame(frame);
         };
         frame();
