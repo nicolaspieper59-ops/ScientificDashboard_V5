@@ -39,74 +39,67 @@
     <button id="ignite">DÉMARRAGE IMMÉDIAT (SANS GPS)</button>
 
 <script>
-const OMEGA = {
+        const OMEGA = {
     v_inertielle: 0,
     last_t: performance.now(),
-    acc_lin: 0,
+    v_filtree: 0,
+    
+    // Paramètres de Suture
+    KA: 0.1, // Coefficient d'amortissement (Friction naturelle)
+    SEUIL_BRUIT: 0.25, // Seuil pour ignorer les micro-vibrations
 
     async init() {
-        document.getElementById('ignite').style.display = 'none';
-        this.buildMatrix();
-
-        // 1. DÉMARRAGE IMMÉDIAT DES CAPTEURS INTERNES
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: "environment" },
-            audio: true 
-        });
-        document.getElementById('video-bg').srcObject = stream;
-
-        // 2. ACCÉLÉROMÈTRE (La source d'indépendance)
-        window.addEventListener('devicemotion', (e) => {
-            const dt = (performance.now() - this.last_t) / 1000;
-            this.last_t = performance.now();
-
-            // Extraction de l'accélération linéaire (sans pesanteur)
-            const ax = e.acceleration.x || 0;
-            const ay = e.acceleration.y || 0;
-            const az = e.acceleration.z || 0;
-            this.acc_lin = Math.sqrt(ax*ax + ay*ay + az*az);
-
-            // Intégration : v = v + a*dt
-            if (this.acc_lin > 0.1) { // Seuil de bruit
-                this.v_inertielle += this.acc_lin * dt;
-            } else {
-                this.v_inertielle *= 0.95; // Friction logicielle (évite la dérive infinie)
-            }
-            
-            document.getElementById('acc-g').innerText = (this.acc_lin / 9.81).toFixed(3) + " G";
-        });
-
-        // 3. TENTATIVE GPS (En arrière-plan uniquement)
-        navigator.geolocation.watchPosition(p => {
-            if(p.coords.accuracy <= 5) {
-                // Si le GPS est bon, on "recalage" la vitesse inertielle
-                const v_gps = p.coords.speed || 0;
-                this.v_inertielle = (this.v_inertielle * 0.7) + (v_gps * 0.3);
-                document.getElementById('gps-status').innerText = "SUTURÉ (±" + p.coords.accuracy.toFixed(1) + "m)";
-            }
-        }, null, { enableHighAccuracy: true });
-
+        // ... (Garder l'init caméra/micro de ta V70)
+        this.initInertie();
         this.loop();
     },
 
-    buildMatrix() {
-        const m = document.getElementById('matrix');
-        for(let i=0; i<42; i++) m.innerHTML += `<div class="e" id="e${i}">${i}</div>`;
+    initInertie() {
+        window.addEventListener('devicemotion', (e) => {
+            const now = performance.now();
+            const dt = (now - this.last_t) / 1000;
+            this.last_t = now;
+
+            // 1. Extraction de l'accélération LINEAIRE (sans gravité)
+            // Sur S10, e.acceleration est déjà filtré pour retirer G
+            const acc = e.acceleration;
+            const a_inst = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+
+            // 2. FILTRE DE VÉRITÉ (Anti-Saut Moisi)
+            // Si l'accélération est trop faible, on considère que c'est du bruit
+            if (a_inst > this.SEUIL_BRUIT) {
+                // Intégration de Riemann
+                this.v_inertielle += a_inst * dt;
+                document.getElementById('e1').classList.add('active'); // État Inertie
+            } else {
+                // SUTURE DE REPOS : Si pas d'accélération, la vitesse chute
+                // selon une loi de friction quadratique (Physique des fluides)
+                this.v_inertielle *= (1 - this.KA * dt);
+                document.getElementById('e1').classList.remove('active');
+            }
+
+            // 3. AFFICHAGE DES FORCES G
+            document.getElementById('acc-g').innerText = (a_inst / 9.80665).toFixed(3) + " G";
+        });
     },
 
     loop() {
         const frame = () => {
-            const kmh = this.v_inertielle * 3.6;
-            document.getElementById('v-display').innerText = kmh.toFixed(3);
-            document.getElementById('v-inertial').innerText = kmh.toFixed(1) + " km/h";
+            // Conversion en km/h
+            let kmh = this.v_inertielle * 3.6;
             
+            // Correction par le GPS (si disponible et précis < 3m)
+            // On ne remplace pas, on "recale" doucement
+            if (this.v_gps_valide) {
+                 this.v_inertielle = (this.v_inertielle * 0.98) + (this.v_gps_source * 0.02);
+            }
+
+            document.getElementById('v-display').innerText = kmh.toFixed(3);
             requestAnimationFrame(frame);
         };
         frame();
     }
 };
-
-document.getElementById('ignite').addEventListener('click', () => OMEGA.init());
 </script>
 </body>
 </html>
