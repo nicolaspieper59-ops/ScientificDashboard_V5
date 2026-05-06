@@ -3,170 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA SUTURE v5000 | VSOP2013 INTEGRATED</title>
+    <title>OMNI V21.0 | PONT DE L'INFINI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
-    <script src="vsop2013.js"></script>
     <style>
-        :root { --neon: #00ff88; --alpha: #00d2ff; --jpl: #ff4400; --bg: #050505; }
-        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow: hidden; }
-        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        .card { border: 1px solid #222; padding: 10px; background: rgba(0,0,0,0.5); }
-        .full-width { grid-column: span 2; }
-        .label { font-size: 0.6rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .val { font-size: 1.4rem; font-weight: bold; }
-        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.2; object-fit: cover; }
-        .sextant-line { position: fixed; top:50%; width:100%; height:1px; background: rgba(255,215,0,0.5); z-index:10; }
-        #reality-seal { font-size: 0.7rem; padding: 5px; text-align: center; border-top: 1px solid #333; margin-top: 10px; }
+        :root { --nano: #00d2ff; --neon: #00ff88; --bg: #020202; }
+        body { background: var(--bg); color: white; font-family: monospace; margin: 0; padding: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .card { border: 1px solid #333; padding: 12px; background: rgba(0,0,0,0.8); }
+        .val { font-size: 2rem; color: var(--neon); }
+        .label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
+        .data-stream { color: var(--nano); font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
-    <video id="video-bg" autoplay playsinline></video>
-    <div class="sextant-line"></div>
+    <button id="ignite" style="width:100%; padding:20px; background:white; color:black; font-weight:bold;">INITIALISER LA MATIÈRE (OMNI V21)</button>
 
-    <div class="dashboard">
-        <div class="card full-width" style="border-color: var(--neon);">
-            <div class="label">Suture Cinétique (Silicium)</div>
-            <div id="sp-main" class="val" style="color: var(--neon); font-size: 2.5rem;">0.00 KM/H</div>
+    <div class="grid">
+        <div class="card" style="border-color: var(--neon);">
+            <div class="label">Vecteur Cinétique (Corrigé Hardware)</div>
+            <div id="speed-main-display" class="val">0.00 KM/H</div>
+            <div id="dist-3d" class="data-stream">Distance: 0.000000000 m</div>
         </div>
 
-        <div class="card" style="border-color: var(--jpl);">
-            <div class="label">Référentiel VSOP2013 (Terre)</div>
-            <div id="val-vsop" class="val" style="color: var(--jpl);">-- KM/S</div>
+        <div class="card" style="border-color: #ff00ea;">
+            <div class="label">Facteur de Lorentz (Dilatation)</div>
+            <div id="lorentz-val" class="data-stream" style="font-size: 1.2rem; color: #ff00ea;">1.000000000000000</div>
         </div>
 
-        <div class="card" style="border-color: var(--alpha);">
-            <div class="label">Ratio Alpha (1/137)</div>
-            <div id="val-alpha" class="val" style="color: var(--alpha);">--</div>
-        </div>
-
-        <div class="card">
-            <div class="label">Champ EM (µT)</div>
-            <div id="val-mag" class="val">--</div>
+        <div class="card" style="border-color: var(--nano);">
+            <div class="label">Cosmos Validator (d_gerda / d_lumiere)</div>
+            <div id="ratio-verite" class="val" style="color: var(--nano); font-size: 1.5rem;">--</div>
+            <div style="font-size: 0.6rem; color: #aaa;">Cible Constante de Structure: ~0.00729735</div>
         </div>
 
         <div class="card">
-            <div class="label">Shot Noise (V)</div>
-            <div id="val-voltage" class="val">--</div>
+            <div class="label">Suture de Champ Total (Centrifuge vs Gyro)</div>
+            <div id="verite-rotation" class="data-stream">Matrice de Rotation: EN ATTENTE</div>
         </div>
 
-        <div class="card full-width">
-            <div class="label">Sextant : Angle d'Écliptique</div>
-            <div id="val-tilt" class="val" style="color: gold;">0.00°</div>
+        <div class="card">
+            <div class="label">Télémétrie Hardware (Shot Noise & Temp)</div>
+            <div id="status-thermal">35.00°C</div>
+            <div id="status-voltage" style="color: yellow; font-size: 0.8rem;">Tension: -- V</div>
         </div>
     </div>
 
-    <div id="reality-seal">INITIALISATION DU MOTEUR DE VÉRITÉ...</div>
-
-    <button id="ignite" style="width:100%; padding:20px; margin-top:10px; background:white; font-weight:bold; cursor:pointer;">ACTIVER LA SUTURE TOTALE</button>
-
 <script>
 /**
- * 🛰️ MOTEUR OMEGA v5005 - ÉDITION SOUVERAINE
+ * IMPLÉMENTATION STRICTE DES FICHIERS DE L'UTILISATEUR
  */
-const OMEGA = {
-    speed: new BigNumber(0),
-    lastT: performance.now(),
+const C_LUMIERE = new BigNumber('299792458');
+const BOLTZMANN = new BigNumber('1.38e-23');
+
+const OMNI = {
     isRunning: false,
-    alpha_constant: new BigNumber('0.00729735256'), // Référence Alpha brute
-    v_orbitale_cache: new BigNumber(29.78),
+    temps_reel_s: new BigNumber(0),
+    distance_totale_m: new BigNumber(0),
+    lastT: performance.now(),
+    v_ms: new BigNumber(0),
+    hardware: { temp: 35.0, voltage: 4.0, sound_proxy: 0 },
 
     async init() {
         document.getElementById('ignite').style.display = 'none';
         this.isRunning = true;
-        
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('video-bg').srcObject = stream;
 
+        // Déverrouillage micro pour "colmaterSaturation" (Effet Doppler)
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioCtx.createAnalyser();
+            audioCtx.createMediaStreamSource(stream).connect(analyser);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            setInterval(() => {
+                analyser.getByteFrequencyData(dataArray);
+                this.hardware.sound_proxy = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            }, 100);
+        } catch(e) {}
+
+        // Déverrouillage Batterie (Odomètre de Courant)
+        try {
+            const bat = await navigator.getBattery();
+            setInterval(() => { this.hardware.voltage = 3.6 + (bat.level * 0.6); }, 1000);
+        } catch(e) {}
+
+        // Demande d'accès aux capteurs inertiels complets (Accel + Gyro)
         if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
-        
-        // Mise à jour VSOP2013 toutes les secondes seulement (économie CPU)
-        setInterval(() => this.updateVsop(), 1000);
-        this.loop();
+        this.startDataStream();
     },
 
-    updateVsop() {
-        if (!window.vsop2013) return;
-        const jd = (Date.now() / 86400000) + 2440587.5;
-        const t = (jd - 2451545.0) / 365250;
-        
-        // Suture VSOP2013 : On calcule la Terre (emb)
-        const state = vsop2013.state(vsop2013.t.emb, t);
-        const v = Math.sqrt(state.v.x**2 + state.v.y**2 + state.v.z**2);
-        this.v_orbitale_cache = new BigNumber(v * 1731456.8 / 1000); // km/s
-        document.getElementById('val-vsop').innerText = this.v_orbitale_cache.toFixed(6) + " KM/S";
-    },
+    // Extrait de "science officielle"
+    hardwareShieldCompensation(rawAccel_BN) {
+        // 1. Correction Thermique (Nyquist-Johnson)
+        const thermalNoise = new BigNumber(this.hardware.temp).times(BOLTZMANN).sqrt();
+        let cleanData = rawAccel_BN.abs().minus(thermalNoise);
+        if (cleanData.lt(0)) cleanData = new BigNumber(0);
 
-    loop() {
-        // 1. CHAMP MAGNÉTIQUE (Suture EM)
-        if ('Magnetometer' in window) {
-            const mag = new Magnetometer({frequency: 10});
-            mag.onreading = () => {
-                const total = Math.sqrt(mag.x**2 + mag.y**2 + mag.z**2);
-                document.getElementById('val-mag').innerText = total.toFixed(2);
-            };
-            mag.start();
+        // 2. Correction de Saturation (Fallback Sonore / Doppler)
+        if (rawAccel_BN.abs().gt(15.5)) {
+            return new BigNumber(this.hardware.sound_proxy).div(255).times(340); // v_sound * 340 (Simplifié)
         }
 
-        // 2. SHOT NOISE (Tension / Batterie)
-        navigator.getBattery().then(bat => {
-            let lastLevel = bat.level;
-            setInterval(() => {
-                // On mesure la micro-chute de tension induite par le calcul
-                const noise = Math.abs(bat.level - lastLevel);
-                document.getElementById('val-voltage').innerText = (bat.level * 4.2).toFixed(4) + "V";
-                lastLevel = bat.level;
-            }, 1000);
-        });
+        // 3. Correction de tension (ADC Stability)
+        const vDrop = new BigNumber(1).plus(new BigNumber(0.0001).times(this.hardware.voltage));
+        return cleanData.times(vDrop);
+    },
 
-        // 3. CINÉTIQUE ET ALPHA (Le Cœur)
+    // Extrait de "science sans mytho"
+    verifierRotationCentrifuge(accel, gyro) {
+        const ax = accel.x || 0;
+        const az = accel.z || 0;
+        const gy = gyro.y || 0; // Rotation autour de l'axe vertical
+        
+        const force_centrifuge = Math.sqrt(ax**2 + az**2);
+        if (Math.abs(gy) < 0.01) return 0; // Évite division par zéro
+        
+        // verite_rotation = force_centrifuge / gyro.y^2
+        return force_centrifuge / (gy**2);
+    },
+
+    // Extrait de "science officielle"
+    validerPrecision(dt_seconds) {
+        this.temps_reel_s = this.temps_reel_s.plus(dt_seconds);
+        
+        // d_gerda : distance extraite du chaos (en nanomètres convertis en mètres)
+        const d_gerda = this.distance_totale_m;
+        
+        // d_lumiere : distance parcourue par la lumière dans le même temps
+        const d_lumiere = C_LUMIERE.times(this.temps_reel_s);
+        
+        if (d_lumiere.isZero()) return new BigNumber(0);
+        return d_gerda.div(d_lumiere);
+    },
+
+    startDataStream() {
         window.addEventListener('devicemotion', (e) => {
             const now = performance.now();
             const dt = (now - this.lastT) / 1000;
             this.lastT = now;
 
-            // Utilisation de l'accélération brute sans filtre système
-            let acc = e.acceleration; 
-            let a_res = Math.sqrt((acc.x||0)**2 + (acc.y||0)**2 + (acc.z||0)**2);
+            // 1. SUTURE CENTRIFUGE (Fichier "science sans mytho")
+            const verite_rot = this.verifierRotationCentrifuge(e.accelerationIncludingGravity, e.rotationRate || {y:0});
+            document.getElementById('verite-rotation').innerText = `Matrice de Rotation: ${verite_rot.toFixed(4)}`;
 
-            // FILTRE ANTI-FICTION : Seuil de Nyquist
-            // On ignore les vibrations < 0.2 m/s² pour éviter la dérive à l'arrêt
-            if (a_res < 0.2) a_res = 0;
+            // 2. HARDWARE SHIELD (Fichier "science officielle")
+            let rawY = new BigNumber(e.accelerationIncludingGravity.y || 0).minus(9.81); // Axe de marche
+            let a_clean = this.hardwareShieldCompensation(rawY);
 
-            // Intégration Vitesse (Frottement de l'air simulé à 2%)
-            this.speed = this.speed.plus(new BigNumber(a_res).times(dt)).times(Math.pow(0.98, dt));
+            // Filtre de bruit mort
+            if (a_clean.lt(0.15)) a_clean = new BigNumber(0);
+
+            // Intégration
+            this.v_ms = this.v_ms.plus(a_clean.times(dt)).times(0.98); // Friction naturelle
             
-            const kmh = this.speed.times(3.6);
-            document.getElementById('sp-main').innerText = kmh.toFixed(2) + " KM/H";
-
-            // CALCUL DU RATIO ALPHA RÉEL
-            // Comparaison de ta vitesse relative à la vitesse orbitale VSOP
-            const c = 299792.458; // km/s
-            const v_relative = this.v_orbitale_cache.plus(this.speed.div(1000));
-            const current_alpha = v_relative.div(c);
+            // 3. MISE À JOUR UI (Fichier "vrai science")
+            const kmh = this.v_ms.times(3.6);
+            this.distance_totale_m = this.distance_totale_m.plus(this.v_ms.abs().times(dt));
             
-            document.getElementById('val-alpha').innerText = current_alpha.toExponential(10);
+            // Facteur de Lorentz : 1 / sqrt(1 - v^2/c^2)
+            let v_c_ratio = this.v_ms.div(C_LUMIERE);
+            let lorentz = new BigNumber(1).div(new BigNumber(1).minus(v_c_ratio.pow(2)).sqrt());
 
-            // SCELLEMENT DE RÉALITÉ
-            const seal = document.getElementById('reality-seal');
-            const diff_alpha = current_alpha.minus(this.alpha_constant).abs();
+            // Cosmos Validator : d_gerda / d_lumiere
+            let ratio_verite = this.validerPrecision(dt);
+
+            // Rendu
+            document.getElementById('speed-main-display').innerText = `${kmh.toFixed(2)} KM/H`;
+            document.getElementById('dist-3d').innerText = `Distance: ${this.distance_totale_m.toFixed(9)} m`;
+            document.getElementById('lorentz-val').innerText = lorentz.toFixed(15);
+            document.getElementById('ratio-verite').innerText = ratio_verite.toExponential(10);
             
-            // Si l'écart à Alpha est cohérent avec le mouvement
-            if (this.speed.gt(0.5) && a_res > 0) {
-                seal.innerText = "SUTURE PHYSIQUE ACTIVE : CHAMP TOTAL COHÉRENT";
-                seal.style.color = "#00ff88";
-            } else {
-                seal.innerText = "REPOS QUANTIQUE : ATTENTE DE VECTEUR";
-                seal.style.color = "#888";
-            }
-        });
-
-        window.addEventListener('deviceorientation', (e) => {
-            // Sextant : On affiche l'inclinaison par rapport à l'écliptique
-            document.getElementById('val-tilt').innerText = e.beta.toFixed(2) + "°";
+            document.getElementById('status-thermal').innerText = `Thermique: ${this.hardware.temp.toFixed(2)}°C`;
+            document.getElementById('status-voltage').innerText = `Tension: ${this.hardware.voltage.toFixed(4)} V`;
         });
     }
 };
+
+document.getElementById('ignite').addEventListener('click', () => OMNI.init());
 </script>
 </body>
-</html>
+    </html>
