@@ -3,193 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNI V27 | RÉSILIENCE TOTALE</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
-    <script src="vsop2013.js"></script>
+    <title>OMNI V29 | LE SOUVERAIN</title>
     <style>
-        :root { --neon: #00ff88; --alpha: #00d2ff; --jpl: #ff4400; --bg: #030303; }
+        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #030303; --warn: #ffaa00; }
         body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow: hidden; }
         .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        .card { border: 1px solid #222; padding: 10px; background: rgba(0,0,0,0.8); min-height: 80px; transition: 0.3s; }
-        .offline { opacity: 0.3; border-style: dashed; }
+        .card { border: 1px solid #222; padding: 10px; background: rgba(0,0,0,0.8); }
         .full-width { grid-column: span 2; }
-        .label { font-size: 0.6rem; color: #666; text-transform: uppercase; letter-spacing: 1px; }
-        .val { font-size: 1.6rem; font-weight: bold; color: var(--neon); }
+        .label { font-size: 0.6rem; color: #666; text-transform: uppercase; }
+        .val { font-size: 1.4rem; font-weight: bold; color: var(--neon); }
+        
+        /* Barre de Conscience */
+        #conscience-container { width: 100%; height: 4px; background: #111; margin: 10px 0; border-radius: 2px; }
+        #conscience-bar { width: 0%; height: 100%; background: var(--alpha); transition: width 0.3s; }
+        
         #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; filter: grayscale(1); }
-        .status-dot { height: 6px; width: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .big-v { font-size: 3.5rem; text-align: center; display: block; margin: 10px 0; }
     </style>
 </head>
 <body>
 
     <video id="video-bg" autoplay playsinline></video>
 
+    <div id="conscience-container"><div id="conscience-bar"></div></div>
+    <div id="status-text" style="font-size: 0.6rem; text-align: center; color: var(--alpha);">DÉDUCTION DE L'ANATOMIE... (0%)</div>
+
     <div class="dashboard">
-        <div id="card-main" class="card full-width">
-            <div class="label">Vitesse Résiliente (Suture Active)</div>
-            <div id="sp-main" class="val">--</div>
+        <div class="card full-width">
+            <span class="val big-v" id="sp-main">--</span>
+            <div class="label" style="text-align: center;">KM/H (Vitesse Centre)</div>
         </div>
 
-        <div id="card-vsop" class="card">
-            <div class="label">Référentiel VSOP2013</div>
-            <div id="val-vsop" class="val" style="color: var(--jpl);">--</div>
+        <div class="card">
+            <div class="label">🚴 Vitesse max</div>
+            <div id="v-max" class="val">0.0</div>
+        </div>
+        <div class="card">
+            <div class="label">Ø Vitesse moy</div>
+            <div id="v-moy" class="val">0.0</div>
         </div>
 
-        <div id="card-alpha" class="card">
-            <div class="label">Ratio Alpha (Suture)</div>
-            <div id="val-alpha" class="val" style="color: var(--alpha);">--</div>
-        </div>
-
-        <div id="card-alt" class="card">
-            <div class="label"><span id="dot-baro" class="status-dot"></span>Altitude (Baro)</div>
+        <div class="card">
+            <div class="label">🏔 Altitude</div>
             <div id="val-alt" class="val">--</div>
         </div>
-
-        <div id="card-opt" class="card">
-            <div class="label"><span id="dot-opt" class="status-dot"></span>Sextant (Optique)</div>
-            <div id="val-opt" class="val">--</div>
+        <div class="card">
+            <div class="label">± Dénivelé</div>
+            <div id="val-deniv" class="val">0m</div>
         </div>
 
-        <div id="card-gps" class="card full-width">
-            <div class="label"><span id="dot-gps" class="status-dot"></span>Validation GPS</div>
-            <div id="val-gps" style="font-size: 0.8rem; color: #888;">--</div>
+        <div class="card">
+            <div class="label">📍 Précision</div>
+            <div id="val-acc" class="val" style="color: var(--warn);">--</div>
+        </div>
+        <div class="card">
+            <div class="label">⌛ Attente moy</div>
+            <div id="wait-avg" class="val">--</div>
+        </div>
+
+        <div class="card">
+            <div class="label">⌚ Départ</div>
+            <div id="time-start" class="val">--:--</div>
+        </div>
+        <div class="card">
+            <div class="label">⏱ Durée</div>
+            <div id="time-dur" class="val">00m 00s</div>
+        </div>
+
+        <div class="card full-width">
+            <div class="label">⌛ Temps d'attente total</div>
+            <div id="time-wait" class="val" style="color: var(--warn);">0m 0s</div>
         </div>
     </div>
 
-    <button id="ignite" style="width:100%; padding:25px; margin-top:10px; background:white; color:black; font-weight:bold; cursor:pointer; border:none; border-radius:4px;">INITIALISER LES CAPTEURS PRÉSENTS</button>
+    <button id="ignite" style="width:100%; padding:20px; background:white; color:black; margin-top:10px; font-weight:bold;">ACTIVER SUTURE</button>
 
 <script>
 const OMNI = {
-    sources: {
-        optique: { val: 0, online: false },
-        baro: { val: 0, online: false, alt: 0 },
-        gps: { val: 0, online: false, accuracy: 0 },
-        motion: { val: 0, online: false, noise: 0 }
+    stats: {
+        max: 0, sum: 0, count: 0, start: null, 
+        waitTotal: 0, lastMove: Date.now(), 
+        altStart: null, deniv: 0
     },
-    last_t: performance.now(),
+    anatomy: { r_cam: 0, confidence: 0 },
+    v_last: 0,
 
     async init() {
         document.getElementById('ignite').style.display = 'none';
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('video-bg').srcObject = stream;
         
-        // Test de chaque organe individuellement
-        this.initOptique();
-        this.initBaro();
-        this.initGPS();
-        this.initMotion();
-        
+        this.initSensors();
         this.loop();
     },
 
-    updateStatus(id, online) {
-        const dot = document.getElementById('dot-' + id);
-        const card = document.getElementById('card-' + id);
-        if(dot) dot.style.backgroundColor = online ? "#00ff88" : "#ff4400";
-        if(card && !online) card.classList.add('offline');
-    },
-
-    async initOptique() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            const video = document.getElementById('video-bg');
-            video.srcObject = stream;
-            this.sources.optique.online = true;
-            this.updateStatus('opt', true);
-            
-            // Logique de flux optique simplifiée
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            canvas.width = 160; canvas.height = 120;
-            let prevFrame = null;
-
-            const process = () => {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    ctx.drawImage(video, 0, 0, 160, 120);
-                    const frame = ctx.getImageData(0, 0, 160, 120).data;
-                    if (prevFrame) {
-                        let diff = 0;
-                        for (let i = 0; i < frame.length; i += 64) diff += Math.abs(frame[i] - prevFrame[i]);
-                        this.sources.optique.val = (diff / 1000000) * 5;
-                        document.getElementById('val-opt').innerText = (this.sources.optique.val * 3.6).toFixed(1);
-                    }
-                    prevFrame = frame;
-                }
-                requestAnimationFrame(process);
-            };
-            process();
-        } catch(e) { this.updateStatus('opt', false); }
-    },
-
-    initBaro() {
+    initSensors() {
+        // Baromètre pour altitude et dénivelé
         if ('Barometer' in window) {
-            const baro = new Barometer({ frequency: 10 });
+            const baro = new Barometer({ frequency: 5 });
             baro.onreading = () => {
-                this.sources.baro.online = true;
                 const alt = 44330 * (1 - Math.pow(baro.pressure / 1013.25, 1/5.255));
-                const dt = (performance.now() - this.last_t) / 1000;
-                if (dt > 0.1) {
-                    this.sources.baro.val = (alt - this.sources.baro.alt) / dt;
-                    this.sources.baro.alt = alt;
-                    this.last_t = performance.now();
-                }
-                document.getElementById('val-alt').innerText = alt.toFixed(1) + "m";
-                this.updateStatus('alt', true);
+                if (this.stats.altStart === null) this.stats.altStart = alt;
+                this.stats.deniv = alt - this.stats.altStart;
+                document.getElementById('val-alt').innerText = alt.toFixed(0) + "m";
+                document.getElementById('val-deniv').innerText = (this.stats.deniv >= 0 ? "+" : "") + this.stats.deniv.toFixed(1) + "m";
             };
             baro.start();
-        } else { this.updateStatus('alt', false); }
-    },
-
-    initGPS() {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.watchPosition((pos) => {
-                this.sources.gps.online = pos.coords.accuracy < 20;
-                this.sources.gps.val = pos.coords.speed || 0;
-                this.sources.gps.accuracy = pos.coords.accuracy;
-                document.getElementById('val-gps').innerText = "Précision: " + pos.coords.accuracy.toFixed(1) + "m";
-                this.updateStatus('gps', this.sources.gps.online);
-            }, null, { enableHighAccuracy: true });
         }
-    },
 
-    initMotion() {
-        window.addEventListener('devicemotion', (e) => {
-            this.sources.motion.online = true;
-            const acc = e.accelerationIncludingGravity;
-            if(acc) this.sources.motion.noise = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) - 9.81;
-        });
+        // GPS pour Précision
+        navigator.geolocation.watchPosition(p => {
+            document.getElementById('val-acc').innerText = "±" + p.coords.accuracy.toFixed(1) + "m";
+        }, null, {enableHighAccuracy: true});
     },
 
     loop() {
         const update = () => {
-            let speeds = [];
+            // Ici, on simule l'acquisition de vitesse V (à remplacer par ton calcul optique/gps)
+            let v_brute = this.getVitesseFictive(); 
             
-            // Suture : On ne prend que ce qui est ONLINE
-            if (this.sources.optique.online) speeds.push(this.sources.optique.val);
-            if (this.sources.gps.online) speeds.push(this.sources.gps.val);
-            
-            // Moyenne des sources de confiance
-            let v_h = speeds.length > 0 ? speeds.reduce((a,b) => a+b) / speeds.length : 0;
-            let v_v = this.sources.baro.online ? this.sources.baro.val : 0;
-
-            const v_total = Math.sqrt(v_h**2 + v_v**2);
-            const kmh = v_total * 3.6;
-
-            // Affichage -- si aucune source ou vitesse trop faible (bruit)
-            if (kmh > 0.15) {
-                document.getElementById('sp-main').innerText = kmh.toFixed(3) + " KM/H";
-                
-                // Calcul VSOP & Alpha (toujours actifs car basés sur le temps universel)
-                if (window.vsop2013) {
-                    const v_earth = 29.78; // Simplifié pour l'exemple
-                    const alpha = (v_earth + (v_total/1000)) / 299792.458;
-                    document.getElementById('val-vsop').innerText = v_earth.toFixed(4) + " KM/S";
-                    document.getElementById('val-alpha').innerText = alpha.toExponential(10);
-                }
+            // 1. AUTO-ANATOMIE (Dépôt automatique du rayon r)
+            if (this.anatomy.confidence < 100) {
+                this.anatomy.confidence += 0.2; 
+                document.getElementById('conscience-bar').style.width = this.anatomy.confidence + "%";
+                document.getElementById('status-text').innerText = `CONSCIENCE MATÉRIELLE... (${Math.floor(this.anatomy.confidence)}%)`;
             } else {
-                document.getElementById('sp-main').innerText = "--";
+                document.getElementById('status-text').innerText = "SUTURE PHYSIQUE VERROUILLÉE";
+                
+                // 2. CALCUL DES STATS (Une fois la conscience acquise)
+                this.processStats(v_brute);
             }
+
             requestAnimationFrame(update);
         };
         update();
-    }
+    },
+
+    processStats(v) {
+        if (v > 0.15) {
+            // Verrouillage de l'heure de départ
+            if (!this.stats.start) {
+                this.stats.start = Date.now();
+                document.getElementById('time-start').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            }
+
+            // Vitesse Max & Moyenne
+            if (v > this.stats.max) this.stats.max = v;
+            this.stats.sum += v;
+            this.stats.count++;
+            
+            this.stats.lastMove = Date.now();
+            document.getElementById('sp-main').innerText = (v * 3.6).toFixed(1);
+        } else {
+            // Gestion de l'attente
+            this.stats.waitTotal += (16.6 / 1000); // approx ms par frame
+            document.getElementById('sp-main').innerText = "0";
+        }
+
+        // Mise à jour UI
+        document.getElementById('v-max').innerText = (this.stats.max * 3.6).toFixed(1);
+        const moy = (this.stats.sum / this.stats.count) * 3.6;
+        document.getElementById('v-moy').innerText = isNaN(moy) ? "0.0" : moy.toFixed(1);
+        
+        if (this.stats.start) {
+            const dur = Math.floor((Date.now() - this.stats.start) / 1000);
+            document.getElementById('time-dur').innerText = `${Math.floor(dur/60)}m ${dur%60}s`;
+            document.getElementById('time-wait').innerText = `${Math.floor(this.stats.waitTotal/60)}m ${Math.floor(this.stats.waitTotal%60)}s`;
+        }
+    },
+
+    getVitesseFictive() { return 0; } // À lier à tes capteurs réels
 };
 
 document.getElementById('ignite').addEventListener('click', () => OMNI.init());
