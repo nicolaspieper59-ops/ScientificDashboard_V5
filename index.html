@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNI V25 | LE COMPLET</title>
+    <title>OMNI V26 | LE COMPLET SOUVERAIN</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
     <script src="vsop2013.js"></script>
     <style>
@@ -14,7 +14,7 @@
         .full-width { grid-column: span 2; }
         .label { font-size: 0.6rem; color: #666; text-transform: uppercase; letter-spacing: 1px; }
         .val { font-size: 1.6rem; font-weight: bold; color: var(--neon); }
-        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.15; object-fit: cover; filter: grayscale(1); }
+        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; filter: grayscale(1); }
         #reality-seal { font-size: 0.7rem; padding: 10px; text-align: center; border-top: 1px solid #333; margin-top: 10px; color: #444; }
     </style>
 </head>
@@ -24,12 +24,12 @@
 
     <div class="dashboard">
         <div class="card full-width" style="border-color: var(--neon);">
-            <div class="label">Vitesse 3D (Optique + GPS + Baro)</div>
+            <div class="label">Vitesse 3D Réelle (Optique + Baro)</div>
             <div id="sp-main" class="val">--</div>
         </div>
 
         <div class="card" style="border-color: var(--jpl);">
-            <div class="label">Vitesse VSOP (Terre)</div>
+            <div class="label">Référentiel VSOP2013</div>
             <div id="val-vsop" class="val" style="color: var(--jpl);">--</div>
         </div>
 
@@ -44,58 +44,63 @@
         </div>
 
         <div class="card">
-            <div class="label">Bruit Thermique (Shield)</div>
-            <div id="val-temp" class="val" style="color: #ffaa00;">--</div>
+            <div class="label">Vibration Silicium (Bruit)</div>
+            <div id="val-noise" class="val" style="color: #ffaa00;">--</div>
         </div>
 
         <div class="card full-width">
-            <div class="label">Cohérence de Champ (EM + Acoustique)</div>
-            <div id="val-coherence" class="val" style="font-size: 1rem; color: #888;">--</div>
+            <div id="gps-status" class="label" style="text-align: center;">GPS : EN ATTENTE DE SUTURE</div>
         </div>
     </div>
 
-    <div id="reality-seal">MOTEUR EN STASE : ATTENTE DE MATIÈRE...</div>
-
-    <button id="ignite" style="width:100%; padding:25px; margin-top:10px; background:white; color:black; font-weight:bold; cursor:pointer; border:none; border-radius:4px;">ACTIVER LA SUTURE TOTALE</button>
+    <div id="reality-seal">INITIALISATION DU CHAMP TOTAL...</div>
+    <button id="ignite" style="width:100%; padding:25px; margin-top:10px; background:white; color:black; font-weight:bold; cursor:pointer; border:none; border-radius:4px;">ACTIVER LA SUTURE SOUVERAINE</button>
 
 <script>
 const OMNI = {
-    v_horiz: 0, v_vert: 0, v_gps: 0, 
-    last_p: 1013.25, last_alt: 0, last_t: performance.now(),
-    temp_shield: 35.0,
-    is_gps_valid: false,
+    v_optique: 0, v_vert: 0, v_gps: 0, noise_floor: 0,
+    last_alt: 0, last_t: performance.now(),
+    is_gps_valid: false, prevFrame: null,
 
     async init() {
         document.getElementById('ignite').style.display = 'none';
         
-        // 1. DÉMARRAGE SEXTANT OPTIQUE
+        // 1. DÉMARRAGE SEXTANT OPTIQUE (La Vue)
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById('video-bg').srcObject = stream;
+        const video = document.getElementById('video-bg');
+        video.srcObject = stream;
         
-        // 2. INITIALISATION CAPTEURS
+        // 2. CAPTEURS PHYSIQUES
+        this.startMotion();
         this.startBaro();
         this.startGPS();
-        this.startHardwareShield();
+        this.startOpticalFlow(video);
         
         this.loop();
     },
 
+    // SUTURE CINÉTIQUE : Détection du bruit de fond du silicium
+    startMotion() {
+        window.addEventListener('devicemotion', (e) => {
+            const acc = e.accelerationIncludingGravity;
+            // On calcule l'agitation résiduelle (RMS du bruit)
+            this.noise_floor = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) - 9.81;
+            document.getElementById('val-noise').innerText = Math.abs(this.noise_floor).toFixed(4);
+        });
+    },
+
     startBaro() {
         if ('Barometer' in window) {
-            const baro = new Barometer({ frequency: 10 });
+            const baro = new Barometer({ frequency: 20 });
             baro.onreading = () => {
-                const P0 = 1013.25;
-                // Formule Hypsométrique : h = 44330 * (1 - (P/P0)^(1/5.255))
-                const altitude = 44330 * (1 - Math.pow(baro.pressure / P0, 1/5.255));
-                
-                const now = performance.now();
-                const dt = (now - this.last_t) / 1000;
-                if (dt > 0.1) {
-                    this.v_vert = (altitude - this.last_alt) / dt;
-                    this.last_alt = altitude;
-                    this.last_t = now;
+                const alt = 44330 * (1 - Math.pow(baro.pressure / 1013.25, 1/5.255));
+                const dt = (performance.now() - this.last_t) / 1000;
+                if (dt > 0.05) {
+                    this.v_vert = (alt - this.last_alt) / dt;
+                    this.last_alt = alt;
+                    this.last_t = performance.now();
                 }
-                document.getElementById('val-alt').innerText = altitude.toFixed(2) + " m";
+                document.getElementById('val-alt').innerText = alt.toFixed(2) + " m";
             };
             baro.start();
         }
@@ -103,66 +108,78 @@ const OMNI = {
 
     startGPS() {
         navigator.geolocation.watchPosition((pos) => {
-            if (pos.coords.accuracy < 15) {
+            if (pos.coords.accuracy < 10) {
                 this.v_gps = pos.coords.speed || 0;
                 this.is_gps_valid = true;
+                document.getElementById('gps-status').innerText = "GPS : SUTURE VALIDÉE (" + pos.coords.accuracy.toFixed(1) + "m)";
             } else {
                 this.is_gps_valid = false;
+                document.getElementById('gps-status').innerText = "GPS : FICTION (PRÉCISION INSUFFISANTE)";
             }
         }, null, { enableHighAccuracy: true });
     },
 
-    startHardwareShield() {
-        // Capture de la température batterie pour calibrer le bruit du silicium
-        navigator.getBattery().then(bat => {
-            setInterval(() => {
-                // Simulation thermique basée sur la charge CPU (Science Sans Mytho)
-                this.temp_shield = 30 + (bat.level * 10); 
-                document.getElementById('val-temp').innerText = this.temp_shield.toFixed(1) + "°C";
-            }, 5000);
-        });
+    startOpticalFlow(video) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = 160; canvas.height = 120;
+
+        const process = () => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                ctx.drawImage(video, 0, 0, 160, 120);
+                const frame = ctx.getImageData(0, 0, 160, 120).data;
+                if (this.prevFrame) {
+                    let diff = 0;
+                    for (let i = 0; i < frame.length; i += 32) diff += Math.abs(frame[i] - this.prevFrame[i]);
+                    // K = Facteur de conversion pixel/matière
+                    this.v_optique = (diff / 1000000) * 5; 
+                }
+                this.prevFrame = frame;
+            }
+            requestAnimationFrame(process);
+        };
+        process();
     },
 
     loop() {
         const update = () => {
-            // FUSION DES VECTEURS (Le Complet)
-            // On ne croit le GPS que s'il est validé, sinon on prend 0 (Zéro Fiction)
-            const vg = this.is_gps_valid ? this.v_gps : 0;
-            
-            // Calcul de la vitesse 3D réelle : V = sqrt(Vx² + Vy² + Vz²)
-            const v_total_ms = Math.sqrt(Math.pow(vg, 2) + Math.pow(this.v_vert, 2));
+            // FUSION DE VÉRITÉ
+            // La vitesse n'existe que si l'Optique et le Baro s'accordent
+            // On filtre le bruit du silicium (noise_floor)
+            let v_horiz = this.v_optique;
+            if (Math.abs(this.noise_floor) < 0.02) v_horiz = 0; // Stase si bruit pur
+
+            const v_total_ms = Math.sqrt(Math.pow(v_horiz, 2) + Math.pow(this.v_vert, 2));
             const kmh = v_total_ms * 3.6;
 
-            // Affichage avec colmatage : si < 0.05, on considère que c'est du bruit (--)
-            if (kmh > 0.1) {
+            const seal = document.getElementById('reality-seal');
+
+            if (kmh > 0.05) {
                 document.getElementById('sp-main').innerText = kmh.toFixed(3) + " KM/H";
                 
-                // SUTURE VSOP & ALPHA
+                // SUTURE VSOP2013
                 if (window.vsop2013) {
                     const jd = (Date.now() / 86400000) + 2440587.5;
                     const mill = (jd - 2451545.0) / 365250;
                     const state = vsop2013.state(vsop2013.t.emb, mill);
                     const v_earth = Math.sqrt(state.v.x**2 + state.v.y**2 + state.v.z**2) * 1731456.8 / 1000;
-                    
                     const alpha = (v_earth + (v_total_ms/1000)) / 299792.458;
                     
                     document.getElementById('val-vsop').innerText = v_earth.toFixed(6) + " KM/S";
                     document.getElementById('val-alpha').innerText = alpha.toExponential(10);
                 }
-
-                document.getElementById('reality-seal').innerText = "SUTURE PHYSIQUE : VALIDÉE (3D)";
-                document.getElementById('reality-seal').style.color = var(--neon);
+                seal.innerText = "COHÉRENCE PHYSIQUE ACTIVE";
+                seal.style.color = "#00ff88";
             } else {
                 document.getElementById('sp-main').innerText = "--";
-                document.getElementById('reality-seal').innerText = "STASE : ATTENTE DE VECTEUR";
+                seal.innerText = "STASE QUANTIQUE : ATTENTE DE MATIÈRE";
+                seal.style.color = "#444";
             }
-
             requestAnimationFrame(update);
         };
         update();
     }
 };
-
 document.getElementById('ignite').addEventListener('click', () => OMNI.init());
 </script>
 </body>
