@@ -3,18 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA V55 | SILENCE MÉTROLOGIQUE</title>
+    <title>OMEGA V60 | SOUVERAINETÉ ABSOLUE</title>
     <style>
-        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --red: #ff003c; }
-        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow: hidden; }
+        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --red: #ff003c; --jpl: #ff4400; }
+        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow-x: hidden; user-select: none; }
+        
         .matrix { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 10px; }
-        .e { height: 10px; background: #111; border: 1px solid #222; font-size: 0.4rem; text-align: center; color: #333; }
-        .e.active { border-color: var(--neon); color: var(--neon); }
-        .dash { border: 2px solid #222; padding: 20px; background: rgba(0,0,0,0.95); text-align: center; }
-        .v-main { font-size: 5rem; font-weight: 900; color: var(--neon); margin: 0; }
-        .status { font-size: 0.7rem; color: var(--alpha); margin-top: 10px; text-transform: uppercase; }
-        button { width: 100%; padding: 20px; background: #fff; color: #000; font-weight: bold; border: none; margin-top: 10px; cursor: pointer; }
-        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; }
+        .e { height: 12px; background: #111; border: 1px solid #222; font-size: 0.4rem; display: flex; align-items: center; justify-content: center; color: #333; }
+        .e.active { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 5px var(--neon); }
+        .e.conflict { border-color: var(--red); color: var(--red); }
+
+        .dash { border: 2px solid #222; padding: 15px; background: rgba(0,0,0,0.95); text-align: center; position: relative; }
+        .v-main { font-size: 5rem; font-weight: 900; color: var(--neon); margin: 0; line-height: 1; }
+        .unit { font-size: 0.7rem; color: #555; margin-bottom: 15px; letter-spacing: 2px; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .card { border: 1px solid #1a1a1a; padding: 8px; background: #080808; text-align: left; }
+        .label { font-size: 0.5rem; color: #444; text-transform: uppercase; display: block; }
+        .val { font-size: 0.9rem; color: var(--alpha); font-weight: bold; }
+
+        .cosmos { margin-top: 10px; padding: 8px; border-top: 1px solid var(--jpl); font-size: 0.6rem; color: var(--jpl); }
+        button { width: 100%; padding: 20px; background: #fff; color: #000; font-weight: bold; border: none; margin-top: 10px; cursor: pointer; text-transform: uppercase; }
+        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; filter: grayscale(1); }
+        #log { margin-top: 10px; font-size: 0.5rem; color: #00ff44; height: 40px; overflow: hidden; background: #000; padding: 5px; border: 1px solid #222; }
     </style>
 </head>
 <body>
@@ -24,47 +35,55 @@
 
     <div class="dash">
         <div id="v-display" class="v-main">--.---</div>
-        <div style="font-size:0.6rem; color:#666; letter-spacing:2px;">KM/H SUTURÉS (S10 OMNI)</div>
-        <div id="suture-status" class="status">ATTENTE INITIALISATION...</div>
+        <div class="unit">KM/H SUTURÉS (S10 OMNI)</div>
+
+        <div class="grid">
+            <div class="card"><span class="label">🚴 Max Session</span><span id="v-max" class="val">0.0</span></div>
+            <div class="card"><span class="label">📍 Précision</span><span id="acc" class="val">--</span></div>
+            <div class="card"><span class="label">🏔 Altitude</span><span id="alt" class="val">--</span></div>
+            <div class="card"><span class="label">📈 Dénivelé D+</span><span id="dplus" class="val">0m</span></div>
+            <div class="card"><span class="label">γ (Lorentz)</span><span id="gamma" class="val">1.000...</span></div>
+            <div class="card"><span class="label">q (Pres. Dyn)</span><span id="q-val" class="val">0 Pa</span></div>
+        </div>
+
+        <div class="cosmos">
+            VSOP2013 | V-TERRE: <span id="v-earth">29.7848</span> KM/S | 
+            α: <span id="alpha">--</span> | Rs: 1.0397e-25m
+        </div>
     </div>
 
-    <button id="ignite">DÉMARRER SANS ÉCHO</button>
+    <div id="log">[SYSTEM] ATTENTE INITIALISATION...</div>
+    <button id="ignite">Initialiser Suture 60 États</button>
 
 <script>
 const OMEGA = {
-    v_gps: 0, acc_gps: 999,
+    v_gps: 0, acc_gps: 999, max_v: 0, dplus: 0, lastAlt: null,
     audio: { ctx: null, analyser: null, data: null },
+    C: 299792458,
 
     async init() {
         document.getElementById('ignite').style.display = 'none';
         this.buildMatrix();
 
-        // 1. Capture Flux (Caméra + Micro)
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: {
-                echoCancellation: false, // On veut le bruit brut du vent
-                noiseSuppression: false, // On veut la physique réelle
-                autoGainControl: false   // On veut la linéarité
-            }, 
-            video: { facingMode: "environment" } 
-        });
-
-        document.getElementById('video-bg').srcObject = stream;
-
-        // 2. SUTURE ACOUSTIQUE MUETTE
-        this.audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = this.audio.ctx.createMediaStreamSource(stream);
-        this.audio.analyser = this.audio.ctx.createAnalyser();
-        
-        // CONNEXION : Micro -> Analyseur (ET RIEN D'AUTRE)
-        source.connect(this.audio.analyser);
-        
-        // SÉCURITÉ ABSOLUE : On s'assure que l'analyseur n'est PAS connecté aux haut-parleurs
-        // Par défaut, sans "connect(ctx.destination)", le son est traité mais inaudible.
-        
-        this.audio.data = new Uint8Array(this.audio.analyser.frequencyBinCount);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, 
+                video: { facingMode: "environment" } 
+            });
+            document.getElementById('video-bg').srcObject = stream;
+            
+            // SUTURE ACOUSTIQUE MUETTE (ZÉRO ÉCHO)
+            this.audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = this.audio.ctx.createMediaStreamSource(stream);
+            this.audio.analyser = this.audio.ctx.createAnalyser();
+            source.connect(this.audio.analyser); // Analyseur seul, pas de destination
+            this.audio.data = new Uint8Array(this.audio.analyser.frequencyBinCount);
+            
+            this.updateState(5, true); 
+        } catch (e) { this.log("ERREUR MEDIA: " + e.message); }
 
         this.initGNSS();
+        this.initBaro();
         this.loop();
     },
 
@@ -73,12 +92,36 @@ const OMEGA = {
         for(let i=0; i<42; i++) m.innerHTML += `<div class="e" id="e${i}">${i}</div>`;
     },
 
+    log(msg) {
+        const l = document.getElementById('log');
+        l.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + l.innerHTML;
+    },
+
     initGNSS() {
         navigator.geolocation.watchPosition(p => {
             this.v_gps = p.coords.speed || 0;
             this.acc_gps = p.coords.accuracy;
-            this.updateState(0, p.coords.accuracy <= 3);
+            document.getElementById('acc').innerText = `±${this.acc_gps.toFixed(1)}m`;
+            this.updateState(0, this.acc_gps <= 3);
         }, null, { enableHighAccuracy: true });
+    },
+
+    initBaro() {
+        if ('Barometer' in window) {
+            const baro = new Barometer({ frequency: 20 });
+            baro.onreading = () => {
+                const alt = 44330 * (1 - Math.pow(baro.pressure / 1013.25, 1/5.255));
+                if (this.lastAlt !== null) {
+                    const diff = alt - this.lastAlt;
+                    if (diff > 0.05) this.dplus += diff;
+                }
+                this.lastAlt = alt;
+                document.getElementById('alt').innerText = alt.toFixed(1) + "m";
+                document.getElementById('dplus').innerText = Math.floor(this.dplus) + "m";
+                this.updateState(14, true);
+            };
+            baro.start();
+        }
     },
 
     updateState(i, active) {
@@ -88,18 +131,30 @@ const OMEGA = {
 
     loop() {
         const frame = () => {
-            // Analyse Acoustique (Doppler / Friction)
-            this.audio.analyser.getByteFrequencyData(this.audio.data);
-            const volume = this.audio.data.reduce((a, b) => a + b) / this.audio.data.length;
+            // Suture VSOP2013 (Terre orbitale)
+            const v_earth = 29.7848; 
             
-            // Si précision GPS < 3m, on affiche. Sinon, on se tait.
-            if (this.acc_gps <= 3.0 && this.v_gps > 0.2) {
-                document.getElementById('v-display').innerText = (this.v_gps * 3.6).toFixed(3);
-                document.getElementById('suture-status').innerText = "COHÉRENCE MULTI-FLUX OK";
+            // SEQUESTRE GNSS STRICT (SANS SAUT MOISI)
+            if (this.acc_gps <= 3.0 && this.v_gps > 0.18) {
+                const v_ms = this.v_gps;
+                const kmh = v_ms * 3.6;
+                if(kmh > this.max_v) this.max_v = kmh;
+
+                document.getElementById('v-display').innerText = kmh.toFixed(3);
+                document.getElementById('v-max').innerText = this.max_v.toFixed(1);
+
+                // Relativité & Dynamique
+                const beta = v_ms / this.C;
+                const gamma = 1 / Math.sqrt(1 - beta**2);
+                document.getElementById('gamma').innerText = gamma.toFixed(14);
+                document.getElementById('alpha').innerText = (v_earth / (this.C/1000)).toFixed(8);
+                
+                const q = 0.5 * 1.225 * (v_ms**2);
+                document.getElementById('q-val').innerText = Math.round(q) + " Pa";
+                
                 document.getElementById('v-display').style.color = "var(--neon)";
             } else {
                 document.getElementById('v-display').innerText = "--.---";
-                document.getElementById('suture-status').innerText = "STASE (PRÉCISION INSUFFISANTE)";
                 document.getElementById('v-display').style.color = "var(--red)";
             }
 
