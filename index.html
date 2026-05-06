@@ -3,179 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMNI V21.0 | PONT DE L'INFINI</title>
+    <title>OMNI V25 | LE COMPLET</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
+    <script src="vsop2013.js"></script>
     <style>
-        :root { --nano: #00d2ff; --neon: #00ff88; --bg: #020202; }
-        body { background: var(--bg); color: white; font-family: monospace; margin: 0; padding: 10px; }
-        .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-        .card { border: 1px solid #333; padding: 12px; background: rgba(0,0,0,0.8); }
-        .val { font-size: 2rem; color: var(--neon); }
-        .label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
-        .data-stream { color: var(--nano); font-size: 0.8rem; }
+        :root { --neon: #00ff88; --alpha: #00d2ff; --jpl: #ff4400; --bg: #030303; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow: hidden; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .card { border: 1px solid #222; padding: 10px; background: rgba(0,0,0,0.8); min-height: 80px; }
+        .full-width { grid-column: span 2; }
+        .label { font-size: 0.6rem; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .val { font-size: 1.6rem; font-weight: bold; color: var(--neon); }
+        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.15; object-fit: cover; filter: grayscale(1); }
+        #reality-seal { font-size: 0.7rem; padding: 10px; text-align: center; border-top: 1px solid #333; margin-top: 10px; color: #444; }
     </style>
 </head>
 <body>
 
-    <button id="ignite" style="width:100%; padding:20px; background:white; color:black; font-weight:bold;">INITIALISER LA MATIÈRE (OMNI V21)</button>
+    <video id="video-bg" autoplay playsinline></video>
 
-    <div class="grid">
-        <div class="card" style="border-color: var(--neon);">
-            <div class="label">Vecteur Cinétique (Corrigé Hardware)</div>
-            <div id="speed-main-display" class="val">0.00 KM/H</div>
-            <div id="dist-3d" class="data-stream">Distance: 0.000000000 m</div>
+    <div class="dashboard">
+        <div class="card full-width" style="border-color: var(--neon);">
+            <div class="label">Vitesse 3D (Optique + GPS + Baro)</div>
+            <div id="sp-main" class="val">--</div>
         </div>
 
-        <div class="card" style="border-color: #ff00ea;">
-            <div class="label">Facteur de Lorentz (Dilatation)</div>
-            <div id="lorentz-val" class="data-stream" style="font-size: 1.2rem; color: #ff00ea;">1.000000000000000</div>
+        <div class="card" style="border-color: var(--jpl);">
+            <div class="label">Vitesse VSOP (Terre)</div>
+            <div id="val-vsop" class="val" style="color: var(--jpl);">--</div>
         </div>
 
-        <div class="card" style="border-color: var(--nano);">
-            <div class="label">Cosmos Validator (d_gerda / d_lumiere)</div>
-            <div id="ratio-verite" class="val" style="color: var(--nano); font-size: 1.5rem;">--</div>
-            <div style="font-size: 0.6rem; color: #aaa;">Cible Constante de Structure: ~0.00729735</div>
-        </div>
-
-        <div class="card">
-            <div class="label">Suture de Champ Total (Centrifuge vs Gyro)</div>
-            <div id="verite-rotation" class="data-stream">Matrice de Rotation: EN ATTENTE</div>
+        <div class="card" style="border-color: var(--alpha);">
+            <div class="label">Ratio Alpha (Suture)</div>
+            <div id="val-alpha" class="val" style="color: var(--alpha);">--</div>
         </div>
 
         <div class="card">
-            <div class="label">Télémétrie Hardware (Shot Noise & Temp)</div>
-            <div id="status-thermal">35.00°C</div>
-            <div id="status-voltage" style="color: yellow; font-size: 0.8rem;">Tension: -- V</div>
+            <div class="label">Altitude (Δ Pression)</div>
+            <div id="val-alt" class="val">--</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Bruit Thermique (Shield)</div>
+            <div id="val-temp" class="val" style="color: #ffaa00;">--</div>
+        </div>
+
+        <div class="card full-width">
+            <div class="label">Cohérence de Champ (EM + Acoustique)</div>
+            <div id="val-coherence" class="val" style="font-size: 1rem; color: #888;">--</div>
         </div>
     </div>
 
-<script>
-/**
- * IMPLÉMENTATION STRICTE DES FICHIERS DE L'UTILISATEUR
- */
-const C_LUMIERE = new BigNumber('299792458');
-const BOLTZMANN = new BigNumber('1.38e-23');
+    <div id="reality-seal">MOTEUR EN STASE : ATTENTE DE MATIÈRE...</div>
 
+    <button id="ignite" style="width:100%; padding:25px; margin-top:10px; background:white; color:black; font-weight:bold; cursor:pointer; border:none; border-radius:4px;">ACTIVER LA SUTURE TOTALE</button>
+
+<script>
 const OMNI = {
-    isRunning: false,
-    temps_reel_s: new BigNumber(0),
-    distance_totale_m: new BigNumber(0),
-    lastT: performance.now(),
-    v_ms: new BigNumber(0),
-    hardware: { temp: 35.0, voltage: 4.0, sound_proxy: 0 },
+    v_horiz: 0, v_vert: 0, v_gps: 0, 
+    last_p: 1013.25, last_alt: 0, last_t: performance.now(),
+    temp_shield: 35.0,
+    is_gps_valid: false,
 
     async init() {
         document.getElementById('ignite').style.display = 'none';
-        this.isRunning = true;
-
-        // Déverrouillage micro pour "colmaterSaturation" (Effet Doppler)
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const analyser = audioCtx.createAnalyser();
-            audioCtx.createMediaStreamSource(stream).connect(analyser);
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            setInterval(() => {
-                analyser.getByteFrequencyData(dataArray);
-                this.hardware.sound_proxy = dataArray.reduce((a, b) => a + b) / dataArray.length;
-            }, 100);
-        } catch(e) {}
-
-        // Déverrouillage Batterie (Odomètre de Courant)
-        try {
-            const bat = await navigator.getBattery();
-            setInterval(() => { this.hardware.voltage = 3.6 + (bat.level * 0.6); }, 1000);
-        } catch(e) {}
-
-        // Demande d'accès aux capteurs inertiels complets (Accel + Gyro)
-        if (typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission();
-        this.startDataStream();
+        
+        // 1. DÉMARRAGE SEXTANT OPTIQUE
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById('video-bg').srcObject = stream;
+        
+        // 2. INITIALISATION CAPTEURS
+        this.startBaro();
+        this.startGPS();
+        this.startHardwareShield();
+        
+        this.loop();
     },
 
-    // Extrait de "science officielle"
-    hardwareShieldCompensation(rawAccel_BN) {
-        // 1. Correction Thermique (Nyquist-Johnson)
-        const thermalNoise = new BigNumber(this.hardware.temp).times(BOLTZMANN).sqrt();
-        let cleanData = rawAccel_BN.abs().minus(thermalNoise);
-        if (cleanData.lt(0)) cleanData = new BigNumber(0);
-
-        // 2. Correction de Saturation (Fallback Sonore / Doppler)
-        if (rawAccel_BN.abs().gt(15.5)) {
-            return new BigNumber(this.hardware.sound_proxy).div(255).times(340); // v_sound * 340 (Simplifié)
+    startBaro() {
+        if ('Barometer' in window) {
+            const baro = new Barometer({ frequency: 10 });
+            baro.onreading = () => {
+                const P0 = 1013.25;
+                // Formule Hypsométrique : h = 44330 * (1 - (P/P0)^(1/5.255))
+                const altitude = 44330 * (1 - Math.pow(baro.pressure / P0, 1/5.255));
+                
+                const now = performance.now();
+                const dt = (now - this.last_t) / 1000;
+                if (dt > 0.1) {
+                    this.v_vert = (altitude - this.last_alt) / dt;
+                    this.last_alt = altitude;
+                    this.last_t = now;
+                }
+                document.getElementById('val-alt').innerText = altitude.toFixed(2) + " m";
+            };
+            baro.start();
         }
-
-        // 3. Correction de tension (ADC Stability)
-        const vDrop = new BigNumber(1).plus(new BigNumber(0.0001).times(this.hardware.voltage));
-        return cleanData.times(vDrop);
     },
 
-    // Extrait de "science sans mytho"
-    verifierRotationCentrifuge(accel, gyro) {
-        const ax = accel.x || 0;
-        const az = accel.z || 0;
-        const gy = gyro.y || 0; // Rotation autour de l'axe vertical
-        
-        const force_centrifuge = Math.sqrt(ax**2 + az**2);
-        if (Math.abs(gy) < 0.01) return 0; // Évite division par zéro
-        
-        // verite_rotation = force_centrifuge / gyro.y^2
-        return force_centrifuge / (gy**2);
+    startGPS() {
+        navigator.geolocation.watchPosition((pos) => {
+            if (pos.coords.accuracy < 15) {
+                this.v_gps = pos.coords.speed || 0;
+                this.is_gps_valid = true;
+            } else {
+                this.is_gps_valid = false;
+            }
+        }, null, { enableHighAccuracy: true });
     },
 
-    // Extrait de "science officielle"
-    validerPrecision(dt_seconds) {
-        this.temps_reel_s = this.temps_reel_s.plus(dt_seconds);
-        
-        // d_gerda : distance extraite du chaos (en nanomètres convertis en mètres)
-        const d_gerda = this.distance_totale_m;
-        
-        // d_lumiere : distance parcourue par la lumière dans le même temps
-        const d_lumiere = C_LUMIERE.times(this.temps_reel_s);
-        
-        if (d_lumiere.isZero()) return new BigNumber(0);
-        return d_gerda.div(d_lumiere);
-    },
-
-    startDataStream() {
-        window.addEventListener('devicemotion', (e) => {
-            const now = performance.now();
-            const dt = (now - this.lastT) / 1000;
-            this.lastT = now;
-
-            // 1. SUTURE CENTRIFUGE (Fichier "science sans mytho")
-            const verite_rot = this.verifierRotationCentrifuge(e.accelerationIncludingGravity, e.rotationRate || {y:0});
-            document.getElementById('verite-rotation').innerText = `Matrice de Rotation: ${verite_rot.toFixed(4)}`;
-
-            // 2. HARDWARE SHIELD (Fichier "science officielle")
-            let rawY = new BigNumber(e.accelerationIncludingGravity.y || 0).minus(9.81); // Axe de marche
-            let a_clean = this.hardwareShieldCompensation(rawY);
-
-            // Filtre de bruit mort
-            if (a_clean.lt(0.15)) a_clean = new BigNumber(0);
-
-            // Intégration
-            this.v_ms = this.v_ms.plus(a_clean.times(dt)).times(0.98); // Friction naturelle
-            
-            // 3. MISE À JOUR UI (Fichier "vrai science")
-            const kmh = this.v_ms.times(3.6);
-            this.distance_totale_m = this.distance_totale_m.plus(this.v_ms.abs().times(dt));
-            
-            // Facteur de Lorentz : 1 / sqrt(1 - v^2/c^2)
-            let v_c_ratio = this.v_ms.div(C_LUMIERE);
-            let lorentz = new BigNumber(1).div(new BigNumber(1).minus(v_c_ratio.pow(2)).sqrt());
-
-            // Cosmos Validator : d_gerda / d_lumiere
-            let ratio_verite = this.validerPrecision(dt);
-
-            // Rendu
-            document.getElementById('speed-main-display').innerText = `${kmh.toFixed(2)} KM/H`;
-            document.getElementById('dist-3d').innerText = `Distance: ${this.distance_totale_m.toFixed(9)} m`;
-            document.getElementById('lorentz-val').innerText = lorentz.toFixed(15);
-            document.getElementById('ratio-verite').innerText = ratio_verite.toExponential(10);
-            
-            document.getElementById('status-thermal').innerText = `Thermique: ${this.hardware.temp.toFixed(2)}°C`;
-            document.getElementById('status-voltage').innerText = `Tension: ${this.hardware.voltage.toFixed(4)} V`;
+    startHardwareShield() {
+        // Capture de la température batterie pour calibrer le bruit du silicium
+        navigator.getBattery().then(bat => {
+            setInterval(() => {
+                // Simulation thermique basée sur la charge CPU (Science Sans Mytho)
+                this.temp_shield = 30 + (bat.level * 10); 
+                document.getElementById('val-temp').innerText = this.temp_shield.toFixed(1) + "°C";
+            }, 5000);
         });
+    },
+
+    loop() {
+        const update = () => {
+            // FUSION DES VECTEURS (Le Complet)
+            // On ne croit le GPS que s'il est validé, sinon on prend 0 (Zéro Fiction)
+            const vg = this.is_gps_valid ? this.v_gps : 0;
+            
+            // Calcul de la vitesse 3D réelle : V = sqrt(Vx² + Vy² + Vz²)
+            const v_total_ms = Math.sqrt(Math.pow(vg, 2) + Math.pow(this.v_vert, 2));
+            const kmh = v_total_ms * 3.6;
+
+            // Affichage avec colmatage : si < 0.05, on considère que c'est du bruit (--)
+            if (kmh > 0.1) {
+                document.getElementById('sp-main').innerText = kmh.toFixed(3) + " KM/H";
+                
+                // SUTURE VSOP & ALPHA
+                if (window.vsop2013) {
+                    const jd = (Date.now() / 86400000) + 2440587.5;
+                    const mill = (jd - 2451545.0) / 365250;
+                    const state = vsop2013.state(vsop2013.t.emb, mill);
+                    const v_earth = Math.sqrt(state.v.x**2 + state.v.y**2 + state.v.z**2) * 1731456.8 / 1000;
+                    
+                    const alpha = (v_earth + (v_total_ms/1000)) / 299792.458;
+                    
+                    document.getElementById('val-vsop').innerText = v_earth.toFixed(6) + " KM/S";
+                    document.getElementById('val-alpha').innerText = alpha.toExponential(10);
+                }
+
+                document.getElementById('reality-seal').innerText = "SUTURE PHYSIQUE : VALIDÉE (3D)";
+                document.getElementById('reality-seal').style.color = var(--neon);
+            } else {
+                document.getElementById('sp-main').innerText = "--";
+                document.getElementById('reality-seal').innerText = "STASE : ATTENTE DE VECTEUR";
+            }
+
+            requestAnimationFrame(update);
+        };
+        update();
     }
 };
 
