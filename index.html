@@ -3,180 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA V150 | SOUVERAINETÉ TOTALE</title>
-    <style>
-        :root { --neon: #00ff88; --alpha: #00d2ff; --warn: #ff003c; --bg: #000; }
-        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
-        
-        /* Matrice de Cohérence (42 États) */
-        #matrix { display: grid; grid-template-columns: repeat(14, 1fr); gap: 1px; background: #111; }
-        .e { height: 6px; background: #050505; border: 0.1px solid #111; }
-        .e.active { background: var(--neon); box-shadow: 0 0 5px var(--neon); }
-
-        .dashboard { padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .v-container { text-align: center; border: 1px solid #222; width: 100%; padding: 30px 0; background: rgba(0,255,136,0.02); }
-        #v-real { font-size: 6rem; font-weight: 900; color: var(--neon); margin: 0; letter-spacing: -4px; }
-        .unit { font-size: 0.7rem; color: var(--alpha); letter-spacing: 5px; }
-
-        .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 20px; }
-        .card { border-left: 2px solid var(--alpha); padding: 10px; background: #050505; }
-        .label { font-size: 0.5rem; color: #555; text-transform: uppercase; display: block; }
-        .val { font-size: 0.9rem; color: var(--alpha); font-weight: bold; }
-
-        #audit-log { width: 100%; height: 60px; margin-top: 20px; font-size: 0.6rem; color: #444; overflow: hidden; border-top: 1px solid #111; padding-top: 10px; }
-        
-        .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 10px; }
-        button { background: #fff; color: #000; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        button.sec { background: transparent; color: #fff; border: 1px solid #333; }
-        .hidden { display: none; }
-        
-        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; filter: grayscale(1); }
-    </style>
+    <title>OMEGA V200 | TOTAL SENSOR HUB</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="matrix-42"></div>
 
-    <video id="video-bg" autoplay playsinline muted></video>
-    <div id="matrix"></div>
-
-    <main class="dashboard">
-        <div class="v-container">
+    <main class="omniscience">
+        <div class="v-main-container">
             <h1 id="v-real">0.000</h1>
-            <div class="unit">KM/H SUTURÉS</div>
+            <div class="v-unit">KM/H SUTURÉS (Σ-REALITY)</div>
         </div>
 
-        <div class="metrics">
-            <div class="card"><span class="label">Ratio Vérité (c)</span><span id="ratio-val">--</span></div>
-            <div class="card"><span class="label">Lorentz (γ)</span><span id="lorentz-val">1.000...</span></div>
-            <div class="card"><span class="label">Shot Noise (μV)</span><span id="shot-val">0.00</span></div>
-            <div class="card"><span class="label">Temp. Silicium</span><span id="temp-val">28.4°C</span></div>
+        <div class="sensor-clusters">
+            <div class="cluster">
+                <h3>CINÉMATIQUE</h3>
+                <div class="row"><label>Accélération G</label><span id="val-g">0.000</span></div>
+                <div class="row"><label>Rotation (rad/s)</label><span id="val-gyro">0.00</span></div>
+                <div class="row"><label>Lorentz (γ)</label><span id="val-gamma">1.000...</span></div>
+            </div>
+
+            <div class="cluster">
+                <h3>ENVIRONNEMENT</h3>
+                <div class="row"><label>Pression (hPa)</label><span id="val-press">--</span></div>
+                <div class="row"><label>Lumière (Lux)</label><span id="val-lux">--</span></div>
+                <div class="row"><label>Acoustique (dB)</label><span id="val-audio">--</span></div>
+            </div>
+
+            <div class="cluster">
+                <h3>CHAMPS (EMF)</h3>
+                <div class="row"><label>Magnétisme (μT)</label><span id="val-mag">--</span></div>
+                <div class="row"><label>Bruit de Shot</label><span id="val-shot">--</span></div>
+                <div class="row"><label>Ratio Vérité</label><span id="val-ratio">--</span></div>
+            </div>
+
+            <div class="cluster">
+                <h3>HARDWARE (S10/TAB)</h3>
+                <div class="row"><label>Batterie (mV)</label><span id="val-volt">--</span></div>
+                <div class="row"><label>Temp. CPU</label><span id="val-temp">--</span></div>
+                <div class="row"><label>Planck Tick</label><span id="val-planck">--</span></div>
+            </div>
         </div>
 
-        <div id="audit-log">> INITIALISATION DES REGISTRES...</div>
+        <div id="audit-trail">SYSTEM READY. ZERO FICTION PROTOCOL ACTIVE.</div>
     </main>
 
-    <div class="controls">
-        <button id="ignite">Ignition</button>
-        <button id="seal" class="hidden sec">Sceller (SHA-256)</button>
+    <div class="footer-actions">
+        <button id="ignite">IGNITION</button>
+        <button id="seal" class="hidden">SCELLER LE MANIFESTE SHA-256</button>
     </div>
 
-<script>
-const OMEGA = {
-    // 1. ÉTAT PHYSIQUE BRUT
-    state: {
-        v: 0,
-        dist_nm: 0,
-        t0: performance.now(),
-        entropy: 0,
-        logs: { raw: "T;ACC;V\n", audit: "--- AUDIT SANS MYTHO ---\n" }
-    },
-    
-    CONST: { C: 299792458, H: 6.626e-34, K: 1.38e-23 },
-
-    async init() {
-        // Demande d'accès aux capteurs (Nécessaire sur iOS/Android récents)
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            await DeviceMotionEvent.requestPermission();
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        document.getElementById('video-bg').srcObject = stream;
-        
-        this.setupMatrix();
-        this.startEngine();
-        
-        document.getElementById('ignite').classList.add('hidden');
-        document.getElementById('seal').classList.remove('hidden');
-    },
-
-    setupMatrix() {
-        const m = document.getElementById('matrix');
-        for(let i=0; i<42; i++) m.innerHTML += `<div class="e" id="e${i}"></div>`;
-    },
-
-    startEngine() {
-        window.addEventListener('devicemotion', (e) => {
-            const now = performance.now();
-            const dt = (now - this.state.t0) / 1000;
-            this.state.t0 = now;
-
-            // 2. HARDWARE SHIELD (Science Officielle)
-            const rawAcc = e.acceleration;
-            const noiseFloor = Math.sqrt(298 * this.CONST.K); // Bruit à 25°C
-            const mag = Math.sqrt(rawAcc.x**2 + rawAcc.y**2 + rawAcc.z**2) - (noiseFloor * 1e12);
-
-            // 3. SUTURE DÉTERMINISTE (Vrai Science)
-            if (mag > 0.18) {
-                this.state.v += mag * dt;
-                this.state.dist_nm += this.state.v * dt * 1e9;
-                
-                // Simulation du Shot Noise (Odomètre de courant)
-                const shot = (mag * 0.0000001).toFixed(9);
-                this.state.entropy += parseFloat(shot);
-                
-                this.updateUI(mag, shot);
-            } else {
-                this.state.v *= 0.985; // Friction naturelle
-                this.updateUI(0, 0);
-            }
-            
-            this.state.logs.raw += `${now.toFixed(0)};${mag.toFixed(4)};${this.state.v.toFixed(4)}\n`;
-        });
-    },
-
-    updateUI(mag, shot) {
-        // Vitesse
-        document.getElementById('v-real').innerText = (this.state.v * 3.6).toFixed(3);
-        
-        // Lorentz & Relativité
-        const beta = this.state.v / this.CONST.C;
-        const gamma = 1 / Math.sqrt(1 - beta**2);
-        document.getElementById('lorentz-val').innerText = gamma.toFixed(15);
-        
-        // Ratio de Vérité (Cité dans tes fichiers)
-        const ratio = (this.state.v / this.CONST.C).toExponential(4);
-        document.getElementById('ratio-val').innerText = ratio;
-        
-        // Shot Noise
-        document.getElementById('shot-val').innerText = (shot * 1e6).toFixed(3);
-
-        // Matrix update
-        const idx = Math.floor(mag * 2) % 42;
-        document.querySelectorAll('.e').forEach((el, i) => {
-            el.classList.toggle('active', i === idx);
-        });
-    },
-
-    async sealManifest() {
-        // 4. SCELLEMENT SHA-256 (Le juge final)
-        const dataToHash = this.state.dist_nm + this.state.entropy + "SOUVERAIN";
-        const encoder = new TextEncoder();
-        const data = encoder.encode(dataToHash);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-        const manifeste = {
-            distance_totale_nm: this.state.dist_nm,
-            entropie_shot_noise: this.state.entropy,
-            signature_sha256: hashHex,
-            methode: "Σ-ULTRA-100 / OMEGA V150",
-            horodatage: new Date().toISOString()
-        };
-
-        this.download("MANIFESTE_VERITE.json", JSON.stringify(manifeste, null, 2));
-    },
-
-    download(name, content) {
-        const blob = new Blob([content], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        a.click();
-    }
-};
-
-document.getElementById('ignite').onclick = () => OMEGA.init();
-document.getElementById('seal').onclick = () => OMEGA.sealManifest();
-</script>
+    <script src="engine.js"></script>
 </body>
 </html>
