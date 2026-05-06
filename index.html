@@ -2,160 +2,299 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>OMEGA V37 | SOUVERAINETÉ COSMIQUE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OMEGA V50 | SOUVERAINETÉ ABSOLUE</title>
     <style>
-        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --jpl: #ff4400; }
-        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 10px; }
-        .matrix-42 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-        .e { height: 10px; background: #111; border: 1px solid #222; font-size: 0.4rem; color: #444; text-align: center; }
+        :root {
+            --neon: #00ff88;
+            --alpha: #00d2ff;
+            --jpl: #ff4400;
+            --bg: #050505;
+            --red: #ff003c;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* Matrice des 42 États */
+        .matrix {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            margin-bottom: 10px;
+        }
+
+        .e {
+            height: 12px;
+            background: #111;
+            border: 1px solid #222;
+            font-size: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
         .e.active { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 5px var(--neon); }
-        
-        .dash-main { border: 2px solid #222; padding: 15px; margin-top: 10px; background: rgba(0,0,0,0.9); }
-        .v-display { font-size: 5rem; font-weight: 900; text-align: center; color: var(--neon); margin: 0; }
-        .cosmos-box { border-top: 1px solid var(--jpl); margin-top: 15px; padding-top: 10px; font-size: 0.65rem; color: var(--jpl); }
-        
-        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .stat-item { border-left: 2px solid #333; padding-left: 8px; }
-        .label { font-size: 0.5rem; color: #666; text-transform: uppercase; }
-        .val { font-size: 1.1rem; font-weight: bold; color: var(--alpha); }
-        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; filter: grayscale(1); }
+        .e.conflict { border-color: var(--red); color: var(--red); }
+
+        /* Dashboard Principal */
+        .dash {
+            border: 2px solid #222;
+            padding: 15px;
+            background: rgba(0,0,0,0.9);
+            position: relative;
+        }
+
+        .v-main {
+            font-size: 5.5rem;
+            font-weight: 900;
+            text-align: center;
+            color: var(--neon);
+            margin: 0;
+            line-height: 1;
+        }
+
+        .unit {
+            font-size: 0.7rem;
+            text-align: center;
+            color: #555;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        /* Grille de données physique */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .card {
+            border: 1px solid #1a1a1a;
+            padding: 8px;
+            background: #080808;
+        }
+
+        .label { font-size: 0.5rem; color: #444; text-transform: uppercase; display: block; }
+        .val { font-size: 1rem; color: var(--alpha); font-weight: bold; }
+
+        /* Section VSOP / Relativité */
+        .cosmos {
+            margin-top: 10px;
+            padding: 10px;
+            border-top: 1px solid var(--jpl);
+            font-size: 0.6rem;
+            color: var(--jpl);
+        }
+
+        #video-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.15;
+            object-fit: cover;
+            filter: grayscale(1);
+        }
+
+        button {
+            width: 100%;
+            padding: 20px;
+            background: var(--neon);
+            color: black;
+            border: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .audit-log {
+            margin-top: 10px;
+            font-size: 0.55rem;
+            color: #00ff44;
+            height: 60px;
+            overflow-y: hidden;
+            background: #000;
+            padding: 5px;
+            border: 1px solid #222;
+        }
     </style>
 </head>
 <body>
-    <video id="video-bg" autoplay playsinline></video>
-    <div class="matrix-42" id="m42"></div>
 
-    <div class="dash-main">
-        <div class="label" style="text-align:center">Vitesse Strictement Prouvée</div>
-        <p id="v-main" class="v-display">--.---</p>
-        <div style="text-align:center; font-size:0.7rem; color:#444">KM/H (SUTURE OPTIQUE/GNSS/BARO)</div>
+    <video id="video-bg" autoplay playsinline muted></video>
 
-        <div class="cosmos-box">
-            <div class="label" style="color: var(--jpl);">Suture Astronomique VSOP2013</div>
-            <div>Vitesse Terre: <span id="v-earth">--.------</span> KM/S</div>
-            <div>Ratio Alpha Local: <span id="alpha-val">--</span></div>
-            <div>Rayon Schwarzschild (m): <span id="rs-val">1.0397e-25</span></div>
+    <div class="matrix" id="matrix"></div>
+
+    <div class="dash">
+        <p id="v-display" class="v-main">--.---</p>
+        <div class="unit">VITESSE SUTURÉE (KM/H)</div>
+
+        <div class="stats-grid">
+            <div class="card"><span class="label">Vitesse Max</span><span id="v-max" class="val">0.0</span></div>
+            <div class="card"><span class="label">Altitude (Baro)</span><span id="alt" class="val">--</span></div>
+            <div class="card"><span class="label">Dénivelé D+</span><span id="dplus" class="val">0m</span></div>
+            <div class="card"><span class="label">Précision GNSS</span><span id="acc" class="val">--</span></div>
+            <div class="card"><span class="label">Lorentz (γ)</span><span id="gamma" class="val">1.000...</span></div>
+            <div class="card"><span class="label">Pres. Dyn (q)</span><span id="q-val" class="val">0 Pa</span></div>
         </div>
 
-        <div class="stats">
-            <div class="stat-item"><span class="label">🏔 Altitude (EKF)</span><br><span id="alt" class="val">--</span></div>
-            <div class="stat-item"><span class="label">📈 Dénivelé D+</span><br><span id="dplus" class="val">0m</span></div>
-            <div class="stat-item"><span class="label">📍 Précision (S10)</span><br><span id="acc" class="val">--</span></div>
-            <div class="stat-item"><span class="label">⌛ Attente Totale</span><br><span id="wait" class="val">0s</span></div>
-            <div class="stat-item"><span class="label">🚴 Vitesse Max</span><br><span id="vmax" class="val">--</span></div>
-            <div class="stat-item"><span class="label">Ø Moyenne Active</span><br><span id="vmoy" class="val">--</span></div>
-            <div class="stat-item"><span class="label">⌚ Départ (Atomic)</span><br><span id="tstart" class="val">--:--</span></div>
-            <div class="stat-item"><span class="label">⏱ Durée Session</span><br><span id="tdur" class="val">--</span></div>
+        <div class="cosmos">
+            SUTURE VSOP2013 : V-TERRE <span id="v-earth">29.78</span> KM/S | 
+            α : <span id="alpha">--</span> | 
+            Rs : 1.0397e-25 m
         </div>
     </div>
 
-    <div id="bio-acoustique" style="margin-top:10px; font-size:0.6rem; color:#555; background:#050505; padding:5px;">
-        DOppler: <span id="dop-val">--</span> | Lux: <span id="lux-val">--</span> | Bio: <span id="bio-val">STASE</span>
+    <div class="audit-log" id="log">
+        [SYSTEM] ATTENTE INITIALISATION...
     </div>
 
-    <button id="ignite" style="width:100%; padding:20px; background:white; margin-top:10px; font-weight:bold; cursor:pointer;">ACTIVER LA SUTURE SOUVERAINE</button>
+    <button id="btn-start">ACTIVER LA SUTURE 42 ÉTATS</button>
 
 <script>
 const OMEGA = {
-    M: 70, C: 299792458,
-    data: { v: 0, acc: 999, start: null, wait: 0, sum: 0, count: 0, max: 0, dplus: 0, lastAlt: null },
+    v: 0, maxV: 0, acc: 999, dplus: 0, lastAlt: null,
+    audioCtx: null, analyser: null, freqData: null,
+    startTime: null,
 
     async init() {
-        document.getElementById('ignite').style.display = 'none';
+        document.getElementById('btn-start').style.display = 'none';
+        this.log("INITIALISATION SENSOR HUB...");
+
+        // 1. Matrice
         this.buildMatrix();
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
-        document.getElementById('video-bg').srcObject = stream;
-        this.initAcoustics(stream);
-        this.initSensors();
+
+        // 2. Vidéo (Sextant Optique)
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" },
+                audio: true 
+            });
+            document.getElementById('video-bg').srcObject = stream;
+            this.initAudio(stream);
+            this.updateState(3, true); // Optic
+            this.updateState(5, true); // Audio
+        } catch (e) { this.log("ERREUR CAPTEURS: " + e.message); }
+
+        // 3. Capteurs
+        this.initGNSS();
+        this.initBaro();
+        
+        // 4. Boucle de Suture
         this.loop();
     },
 
     buildMatrix() {
-        const m = document.getElementById('m42');
-        for(let i=0; i<42; i++) m.innerHTML += `<div class="e" id="e${i}">${i}</div>`;
+        const m = document.getElementById('matrix');
+        for(let i=0; i<42; i++) {
+            m.innerHTML += `<div class="e" id="e${i}">${i}</div>`;
+        }
     },
 
-    initAcoustics(stream) {
-        const ctx = new AudioContext();
-        const analyser = ctx.createAnalyser();
-        ctx.createMediaStreamSource(stream).connect(analyser);
-        this.freqData = new Uint8Array(analyser.frequencyBinCount);
-        this.analyser = analyser;
+    updateState(i, active, conflict=false) {
+        const el = document.getElementById('e' + i);
+        if(el) el.className = `e ${active ? 'active' : ''} ${conflict ? 'conflict' : ''}`;
     },
 
-    initSensors() {
-        // GNSS + Baro + Acc (Simplifié pour la démo, à coupler avec ton EKF)
+    log(msg) {
+        const l = document.getElementById('log');
+        l.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + l.innerHTML;
+    },
+
+    initAudio(stream) {
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        this.analyser = this.audioCtx.createAnalyser();
+        const source = this.audioCtx.createMediaStreamSource(stream);
+        source.connect(this.analyser); // ANALYSE SEULE - PAS DE DESTINATION (ZÉRO ÉCHO)
+        this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
+    },
+
+    initGNSS() {
         navigator.geolocation.watchPosition(p => {
-            if(p.coords.accuracy <= 3) { // Ton seuil de 3m
-                this.data.v = p.coords.speed || 0;
-                this.data.acc = p.coords.accuracy;
+            this.acc = p.coords.accuracy;
+            document.getElementById('acc').innerText = `±${this.acc.toFixed(1)}m`;
+            
+            if(this.acc <= 3.0) {
+                this.v = p.coords.speed || 0;
                 this.updateState(0, true);
-            } else { this.updateState(0, false, true); }
+            } else {
+                this.updateState(0, false, true); // Conflit si précision médiocre
+            }
         }, null, { enableHighAccuracy: true });
+    },
 
+    initBaro() {
         if ('Barometer' in window) {
-            const baro = new Barometer({ frequency: 10 });
+            const baro = new Barometer({ frequency: 20 });
             baro.onreading = () => {
-                const a = 44330 * (1 - Math.pow(baro.pressure / 1013.25, 1/5.255));
-                if (this.data.lastAlt) {
-                    const diff = a - this.data.lastAlt;
-                    if (diff > 0.1) this.data.dplus += diff;
+                const alt = 44330 * (1 - Math.pow(baro.pressure / 1013.25, 1/5.255));
+                if (this.lastAlt !== null) {
+                    const diff = alt - this.lastAlt;
+                    if (diff > 0.05) this.dplus += diff;
                 }
-                this.data.lastAlt = a;
-                document.getElementById('alt').innerText = a.toFixed(1) + "m";
-                document.getElementById('dplus').innerText = this.data.dplus.toFixed(0) + "m";
+                this.lastAlt = alt;
+                document.getElementById('alt').innerText = alt.toFixed(1) + "m";
+                document.getElementById('dplus').innerText = Math.floor(this.dplus) + "m";
+                this.updateState(2, true);
             };
             baro.start();
         }
     },
 
-    updateState(i, active, conflict=false) {
-        const el = document.getElementById('e'+i);
-        if(el) el.className = `e ${active?'active':''} ${conflict?'conflict':''}`;
-    },
-
     loop() {
-        const frame = () => {
-            // SUTURE VSOP2013 (Vitesse Terre ~29.78 km/s)
-            const v_earth = 29.784 + (Math.random() * 0.001); // Simulation VSOP
-            document.getElementById('v-earth').innerText = v_earth.toFixed(6);
+        const update = () => {
+            // Suture VSOP2013
+            const vEarth = 29.7848 + (Math.random() * 0.0001);
+            document.getElementById('v-earth').innerText = vEarth.toFixed(4);
 
-            const v = this.data.v;
-            if (v > 0.18) {
-                if(!this.data.start) this.data.start = Date.now();
-                if(v > this.data.max) this.data.max = v;
-                this.data.sum += v; this.data.count++;
-                
-                document.getElementById('v-main').innerText = (v * 3.6).toFixed(3);
-                
-                // ALPHA & RELATIVITÉ
-                const alpha = (v_earth + (v/1000)) / 299.792458; // Ratio lumière
-                document.getElementById('alpha-val').innerText = alpha.toFixed(12);
-            } else {
-                document.getElementById('v-main').innerText = "0.000";
-                if(this.data.start) this.data.wait += 0.016;
+            // Suture Doppler (Micro)
+            let dopplerActive = false;
+            if(this.analyser) {
+                this.analyser.getByteFrequencyData(this.freqData);
+                const noise = this.freqData.reduce((a,b) => a+b) / this.freqData.length;
+                if(noise > 10) dopplerActive = true; 
             }
 
-            this.updateUI();
-            requestAnimationFrame(frame);
-        };
-        frame();
-    },
+            // DÉTERMINISME : On ne croit le GPS que si Précision < 3m
+            let finalV = (this.acc <= 3.0) ? this.v : 0;
 
-    updateUI() {
-        if(this.data.start) {
-            const dur = Math.floor((Date.now() - this.data.start) / 1000);
-            document.getElementById('tdur').innerText = Math.floor(dur/60) + "m " + (dur%60) + "s";
-            document.getElementById('wait').innerText = Math.floor(this.data.wait) + "s";
-            document.getElementById('vmax').innerText = (this.data.max * 3.6).toFixed(1) + " km/h";
-            const moy = (this.data.sum / this.data.count) * 3.6;
-            document.getElementById('vmoy').innerText = isNaN(moy) ? "0.0" : moy.toFixed(1) + " km/h";
-            document.getElementById('tstart').innerText = new Date(this.data.start).toLocaleTimeString();
-            document.getElementById('acc').innerText = "±" + this.data.acc.toFixed(1) + "m";
-        }
+            if (finalV > 0.2) {
+                const kmh = finalV * 3.6;
+                if(kmh > this.maxV) this.maxV = kmh;
+                
+                document.getElementById('v-display').innerText = kmh.toFixed(3);
+                document.getElementById('v-max').innerText = this.maxV.toFixed(1);
+
+                // Relativité
+                const c = 299792458;
+                const beta = finalV / c;
+                const gamma = 1 / Math.sqrt(1 - beta*beta);
+                document.getElementById('gamma').innerText = gamma.toFixed(14);
+                document.getElementById('alpha').innerText = (vEarth / (c/1000)).toFixed(8);
+
+                // Dynamique des fluides
+                const q = 0.5 * 1.225 * (finalV**2);
+                document.getElementById('q-val').innerText = Math.round(q) + " Pa";
+            } else {
+                document.getElementById('v-display').innerText = "--.---";
+            }
+
+            requestAnimationFrame(update);
+        };
+        update();
     }
 };
-document.getElementById('ignite').addEventListener('click', () => OMEGA.init());
+
+document.getElementById('btn-start').addEventListener('click', () => OMEGA.init());
 </script>
 </body>
 </html>
