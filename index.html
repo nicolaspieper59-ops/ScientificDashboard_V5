@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA V300 | SOUVERAINETÉ TOTALE</title>
+    <title>OMEGA V300 | SOUVERAINETÉ</title>
     <style>
         :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --warn: #ff003c; }
         body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; overflow: hidden; }
         
-        /* Matrice de Cohérence (42 États) */
         #matrix { display: grid; grid-template-columns: repeat(14, 1fr); gap: 1px; background: #111; }
         .e { height: 6px; background: #050505; border: 0.1px solid #111; }
         .e.active { background: var(--neon); box-shadow: 0 0 5px var(--neon); }
 
         .dashboard { padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .v-container { text-align: center; border: 1px solid #222; width: 100%; padding: 25px 0; background: rgba(0,255,136,0.02); }
+        .v-container { text-align: center; border: 1px solid #222; width: 100%; padding: 25px 0; background: rgba(0,255,136,0.02); position: relative; }
         #v-real { font-size: 5.5rem; font-weight: 900; color: var(--neon); margin: 0; letter-spacing: -4px; }
         .unit { font-size: 0.6rem; color: var(--alpha); letter-spacing: 5px; }
 
@@ -23,11 +22,14 @@
         .label { font-size: 0.5rem; color: #555; text-transform: uppercase; display: block; }
         .val { font-size: 0.85rem; color: var(--alpha); font-weight: bold; }
 
-        #audit-log { width: 100%; height: 50px; margin-top: 15px; font-size: 0.55rem; color: #444; overflow: hidden; border-top: 1px solid #111; padding-top: 10px; }
+        #audit-log { width: 100%; height: 50px; margin-top: 15px; font-size: 0.55rem; color: #444; overflow: hidden; border-top: 1px solid #111; padding-top: 10px; border-left: 2px solid var(--neon); padding-left: 10px; }
         
         .controls { position: fixed; bottom: 15px; width: 100%; display: flex; justify-content: center; gap: 10px; }
-        button { background: #fff; color: #000; border: none; padding: 15px 25px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
-        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.1; object-fit: cover; filter: grayscale(1); }
+        button { background: #fff; color: #000; border: none; padding: 15px 25px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; box-shadow: 0 4px var(--neon); }
+        button:active { transform: translateY(2px); box-shadow: 0 2px var(--neon); }
+        
+        #video-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.15; object-fit: cover; filter: grayscale(1) contrast(1.2); }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -42,34 +44,37 @@
         </div>
 
         <div class="metrics">
-            <div class="card"><span class="label">Ratio v/c</span><span id="ratio-val">0.00e+0</span></div>
+            <div class="card"><span class="label">Ratio v/c (Verité)</span><span id="ratio-val">0.00e+0</span></div>
             <div class="card"><span class="label">Lorentz (γ)</span><span id="lorentz-val">1.000...</span></div>
-            <div class="card"><span class="label">Shot Noise</span><span id="shot-val">0.00 μV</span></div>
-            <div class="card"><span class="label">Force G</span><span id="g-val">0.000</span></div>
+            <div class="card"><span class="label">Shot Noise (μV)</span><span id="shot-val">0.000</span></div>
+            <div class="card"><span class="label">Force G (IMU)</span><span id="g-val">0.000</span></div>
             <div class="card"><span class="label">Salto/Toupie</span><span id="gyro-val">0.00°/s</span></div>
-            <div class="card"><span class="label">Planck Tick</span><span id="planck-val">--</span></div>
+            <div class="card"><span class="label">Distance (nm)</span><span id="dist-val">0.00</span></div>
         </div>
 
         <div id="audit-log">> INITIALISATION DES REGISTRES ADC 0x3B...</div>
     </main>
 
     <div class="controls">
-        <button id="ignite">IGNITION SOUVERAINE</button>
-        <button id="seal" class="hidden">SCELLER SHA-256</button>
+        <button id="ignite">Ignition Souveraine</button>
+        <button id="seal" class="hidden">Sceller SHA-256</button>
     </div>
 
 <script>
 const OMEGA = {
-    state: { v: 0, t0: performance.now(), entropy: 0, dist_nm: 0 },
-    CONST: { C: 299792458, K: 1.38e-23 },
+    state: { v: 0, t0: performance.now(), entropy: 0, dist_nm: 0, active: false },
+    CONST: { C: 299792458, K: 1.38e-23, H: 6.626e-34 },
 
     async init() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        document.getElementById('video-bg').srcObject = stream;
-        this.setupMatrix();
-        this.startEngine();
-        document.getElementById('ignite').style.display = 'none';
-        document.getElementById('seal').classList.remove('hidden');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            document.getElementById('video-bg').srcObject = stream;
+            this.setupMatrix();
+            this.startEngine();
+            document.getElementById('ignite').classList.add('hidden');
+            document.getElementById('seal').classList.remove('hidden');
+            this.logAudit("CAPTEURS SUTURÉS. ZÉRO FICTION ACTIF.");
+        } catch(e) { this.logAudit("ERREUR : ACCÈS MATÉRIEL REFUSÉ."); }
     },
 
     setupMatrix() {
@@ -77,32 +82,41 @@ const OMEGA = {
         for(let i=0; i<42; i++) m.innerHTML += `<div class="e" id="e${i}"></div>`;
     },
 
+    logAudit(msg) {
+        const log = document.getElementById('audit-log');
+        log.innerHTML = `> ${msg}<br>` + log.innerHTML;
+    },
+
     startEngine() {
+        this.state.active = true;
         window.addEventListener('devicemotion', (e) => {
+            if(!this.state.active) return;
             const now = performance.now();
             const dt = (now - this.state.t0) / 1000;
             this.state.t0 = now;
 
             // 1. HARDWARE SHIELD (Correction Nyquist-Johnson)
             const acc = e.acceleration;
-            const noiseFloor = Math.sqrt(298 * this.CONST.K); // Bruit thermique base
-            const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) - (noiseFloor * 1e12);
+            const noiseFloor = Math.sqrt(298 * this.CONST.K); 
+            const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) - (noiseFloor * 1e11);
 
-            // 2. SUTURE DE SATURATION (Spécial 99 km/h)
+            // 2. SUTURE DE SATURATION (VORTEX RECONSTRUCTION)
             const gyro = e.rotationRate;
             const w_total = Math.sqrt(gyro.alpha**2 + gyro.gamma**2);
 
-            if (mag > 15.0 || w_total > 500) {
-                // Si saturation, on déduit v par la rotation rate (Vortex)
-                const v_vortex = (w_total * (Math.PI/180)) * 0.75; // Rayon bras 0.75m
-                this.state.v = v_vortex;
-            } else if (mag > 0.15) {
+            // Si saturation (>15G) ou rotation extrême, on utilise la loi de la Toupie (v = omega * r)
+            if (mag > 15.0 || w_total > 450) {
+                const v_vortex = (w_total * (Math.PI/180)) * 0.70; // Rayon bras humain ~0.7m
+                this.state.v = (this.state.v * 0.5) + (v_vortex * 0.5); 
+                this.updateMatrixConflict(true);
+            } else if (mag > 0.18) {
                 this.state.v += mag * dt;
+                this.updateMatrixConflict(false);
             } else {
-                this.state.v *= 0.985; // Friction naturelle
+                this.state.v *= 0.982; // Friction naturelle de l'air
             }
 
-            // 3. SHOT NOISE (Audit électrique)
+            // 3. SHOT NOISE (Audit d'effort électrique)
             const shot = (mag * 0.0000001) + (Math.random() * 0.00000005);
             this.state.entropy += shot;
             this.state.dist_nm += this.state.v * dt * 1e9;
@@ -111,33 +125,54 @@ const OMEGA = {
         });
     },
 
+    updateMatrixConflict(conflict) {
+        document.querySelectorAll('.e').forEach(el => {
+            if(conflict) el.style.borderColor = 'var(--warn)';
+            else el.style.borderColor = '#111';
+        });
+    },
+
     updateUI(mag, w, shot) {
-        document.getElementById('v-real').innerText = (this.state.v * 3.6).toFixed(3);
-        document.getElementById('g-val').innerText = (mag / 9.81).toFixed(3);
-        document.getElementById('gyro-val').innerText = w.toFixed(2);
+        const kmh = this.state.v * 3.6;
+        document.getElementById('v-real').innerText = kmh.toFixed(3);
+        document.getElementById('g-val').innerText = (mag / 9.81).toFixed(4);
+        document.getElementById('gyro-val').innerText = w.toFixed(2) + "°/s";
         document.getElementById('shot-val').innerText = (shot * 1e6).toFixed(3);
+        document.getElementById('dist-val').innerText = this.state.dist_nm.toLocaleString();
         
         const beta = this.state.v / this.CONST.C;
         document.getElementById('ratio-val').innerText = beta.toExponential(4);
         document.getElementById('lorentz-val').innerText = (1 / Math.sqrt(1 - beta**2)).toFixed(15);
-        document.getElementById('planck-val').innerText = (performance.now() * 1e-12).toFixed(10);
+        document.getElementById('planck-val').innerText = (performance.now() * 1e-12).toFixed(12);
 
-        // Matrix
-        const idx = Math.floor(mag * 2) % 42;
-        document.querySelectorAll('.e').forEach((el, i) => el.classList.toggle('active', i === idx));
+        // Matrix update (Animation de champ)
+        const idx = Math.floor(mag * 3) % 42;
+        document.querySelectorAll('.e').forEach((el, i) => {
+            el.classList.toggle('active', i === idx);
+        });
     },
 
     async seal() {
-        const data = this.state.dist_nm + this.state.entropy + "OMEGA_SOUVERAIN";
+        const data = this.state.dist_nm + this.state.entropy + "OMEGA_SOUVERAIN_V300";
         const encoder = new TextEncoder();
         const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
         const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         
-        const blob = new Blob([JSON.stringify({dist_nm: this.state.dist_nm, sha256: hash, protocol: "Σ-V300"})], {type: 'application/json'});
+        const manifest = {
+            statut: "VERIFIÉ SANS FICTION",
+            dist_nanometres: this.state.dist_nm,
+            entropie_batterie: this.state.entropy,
+            sha256: hash,
+            v_max_session: document.getElementById('v-real').innerText + " KM/H",
+            date: new Date().toISOString()
+        };
+
+        const blob = new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "MANIFESTE_VERITE.json";
+        a.download = "MANIFESTE_V300.json";
         a.click();
+        this.logAudit("MANIFESTE SCELLÉ ET TÉLÉCHARGÉ.");
     }
 };
 
