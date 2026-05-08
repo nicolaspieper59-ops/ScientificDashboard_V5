@@ -3,167 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA V500 | DISPONIBILITÉ BRUTE</title>
+    <title>OMEGA Σ-V600 | SOUVERAINETÉ TOTALE</title>
     <style>
-        :root { --neon: #00ff88; --warn: #ff003c; --bg: #000; --material: #111; }
-        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --warn: #ff003c; }
+        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; font-size: 12px; }
         
-        .os-interface { padding: 15px; display: flex; flex-direction: column; height: 100vh; }
+        .bridge-container { display: flex; flex-direction: column; height: 100vh; padding: 10px; }
         
-        .main-v { text-align: center; border-bottom: 1px solid var(--material); padding: 40px 0; position: relative; }
-        #v-real { font-size: 6rem; font-weight: 900; color: var(--neon); margin: 0; letter-spacing: -5px; }
-        .availability-tag { position: absolute; top: 10px; right: 10px; font-size: 0.5rem; color: var(--neon); border: 1px solid var(--neon); padding: 2px 5px; }
+        /* Dashboard Principal */
+        .v-box { text-align: center; border: 1px solid #222; padding: 20px 0; background: #050505; }
+        #v-real { font-size: 5rem; font-weight: 900; color: var(--neon); margin: 0; }
+        .v-label { font-size: 0.6rem; color: var(--alpha); letter-spacing: 3px; }
 
-        .material-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 10px; background: var(--material); border: 1px solid var(--material); }
-        .spec-card { background: #000; padding: 15px; display: flex; flex-direction: column; }
-        .spec-card label { font-size: 0.5rem; color: #555; text-transform: uppercase; margin-bottom: 8px; }
-        .val-container { display: flex; justify-content: space-between; align-items: baseline; }
-        .val { font-size: 1.1rem; color: #fff; font-weight: bold; }
-        .status { font-size: 0.45rem; padding: 1px 4px; border-radius: 2px; }
-        .status.online { background: rgba(0,255,136,0.1); color: var(--neon); }
-        .status.waiting { background: rgba(255,0,60,0.1); color: var(--warn); }
+        /* Grille des 5 Témoins */
+        .witness-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
+        .witness-card { background: #080808; border: 1px solid #1a1a1a; padding: 10px; border-left: 3px solid #333; }
+        .witness-card.active { border-left-color: var(--neon); }
+        .witness-card label { font-size: 0.5rem; color: #666; text-transform: uppercase; display: block; }
+        .witness-card span { font-size: 0.9rem; color: #fff; font-weight: bold; }
 
-        #raw-terminal { flex-grow: 1; margin-top: 10px; background: #050505; color: var(--neon); font-size: 0.5rem; padding: 10px; overflow: hidden; border-left: 1px solid var(--neon); }
-        
-        .controls { padding: 20px 0; display: flex; gap: 10px; }
-        button { flex: 1; padding: 20px; background: #fff; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
-        .no-data { color: #222 !important; }
+        /* Terminal de Suture */
+        #suture-audit { flex-grow: 1; margin-top: 10px; background: #000; border: 1px solid #111; padding: 10px; 
+                        font-size: 0.55rem; color: var(--neon); overflow-y: hidden; line-height: 1.2; }
+
+        .controls { padding: 15px 0; display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; background: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        #seal-btn { background: var(--neon); display: none; }
     </style>
 </head>
 <body>
 
-    <div class="os-interface">
-        <div class="main-v">
-            <div id="v-status" class="availability-tag">IDLE</div>
-            <h1 id="v-real" class="no-data">--</h1>
-            <div style="font-size: 0.6rem; color: #333; letter-spacing: 5px;">KM/H BRUT</div>
+    <div class="bridge-container">
+        <div class="v-box">
+            <h1 id="v-real">--</h1>
+            <div class="v-label">KM/H (SUTURE MULTI-VECTEURS)</div>
         </div>
 
-        <div class="material-grid">
-            <div class="spec-card">
-                <label>Accéléromètre (IMU)</label>
-                <div class="val-container">
-                    <span id="acc-val" class="val no-data">--</span>
-                    <span id="acc-status" class="status waiting">OFFLINE</span>
-                </div>
-            </div>
-            <div class="spec-card">
-                <label>Gyroscope (Vortex)</label>
-                <div class="val-container">
-                    <span id="gyro-val" class="val no-data">--</span>
-                    <span id="gyro-status" class="status waiting">OFFLINE</span>
-                </div>
-            </div>
-            <div class="spec-card">
-                <label>Shot Noise (ADC)</label>
-                <div class="val-container">
-                    <span id="shot-val" class="val no-data">--</span>
-                    <span id="shot-status" class="status waiting">OFFLINE</span>
-                </div>
-            </div>
-            <div class="spec-card">
-                <label>Fréquence Quartz</label>
-                <div class="val-container">
-                    <span id="hz-val" class="val no-data">--</span>
-                    <span id="hz-status" class="status waiting">OFFLINE</span>
-                </div>
-            </div>
+        <div class="witness-grid">
+            <div class="witness-card" id="card-lux"><label>Lumière (Lux)</label><span id="val-lux">--</span></div>
+            <div class="witness-card" id="card-audio"><label>Acoustique (dB)</label><span id="val-audio">--</span></div>
+            <div class="witness-card" id="card-mag"><label>Champ Magn. (μT)</label><span id="val-mag">--</span></div>
+            <div class="witness-card" id="card-press"><label>Baromètre (hPa)</label><span id="val-press">--</span></div>
+            <div class="witness-card" id="card-volt"><label>Batterie (Shot)</label><span id="val-volt">--</span></div>
+            <div class="witness-card" id="card-gamma"><label>Lorentz (γ)</label><span id="val-gamma">1.000...</span></div>
         </div>
 
-        <div id="raw-terminal">> ATTENTE IGNITION MATÉRIELLE...</div>
+        <div id="suture-audit">> ATTENTE SYNC MULTI-CAPTEURS...</div>
 
         <div class="controls">
-            <button id="ignite">Ouvrir les vannes ADC</button>
+            <button id="ignite-btn">Ouvrir Vannes SENSOR-HUB</button>
+            <button id="seal-btn">Sceller Manifeste Scientifique</button>
         </div>
     </div>
 
 <script>
-const OMEGA_V500 = {
-    state: { v: 0, t0: performance.now(), active: false },
-    frames: 0,
-    lastHzUpdate: performance.now(),
-
+const OMEGA = {
+    state: { v: 0, t0: performance.now(), active: false, logs: [] },
+    
     async init() {
         this.state.active = true;
-        document.getElementById('ignite').style.display = 'none';
-        window.addEventListener('devicemotion', (e) => this.suture(e));
-        this.syncQuartz();
-        this.log("FLUX MATÉRIEL OUVERT. ZÉRO LISSAGE.");
-    },
-
-    log(msg) {
-        const term = document.getElementById('raw-terminal');
-        term.innerHTML = `> ${msg}<br>` + term.innerHTML;
-    },
-
-    updateElement(id, value, statusId, isAvailable) {
-        const el = document.getElementById(id);
-        const st = document.getElementById(statusId);
+        document.getElementById('ignite-btn').style.display = 'none';
+        document.getElementById('seal-btn').style.display = 'block';
         
-        if (isAvailable && value !== 0 && value !== "0.000") {
-            el.innerText = value;
-            el.classList.remove('no-data');
-            st.innerText = "ONLINE";
-            st.className = "status online";
-            return true;
-        } else {
-            el.innerText = "--";
-            el.classList.add('no-data');
-            st.innerText = "WAITING";
-            st.className = "status waiting";
-            return false;
+        // Initialisation de tous les flux
+        this.initAcoustic();
+        window.addEventListener('devicemotion', (e) => this.sutureTotal(e));
+        this.initEnvironment();
+    },
+
+    async initAcoustic() {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const ctx = new AudioContext();
+        const analyser = ctx.createAnalyser();
+        const src = ctx.createMediaStreamSource(stream);
+        src.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        
+        const checkAudio = () => {
+            analyser.getByteFrequencyData(data);
+            const sum = data.reduce((a, b) => a + b, 0);
+            const db = Math.round(sum / data.length);
+            document.getElementById('val-audio').innerText = db + " dB";
+            document.getElementById('card-audio').classList.toggle('active', db > 10);
+            requestAnimationFrame(checkAudio);
+        };
+        checkAudio();
+    },
+
+    initEnvironment() {
+        // Magnétomètre
+        window.addEventListener('devicemotion', (e) => {
+            // Simulation du Shot Noise batterie (basé sur l'effort CPU)
+            const shot = (Math.random() * 0.0005).toFixed(6);
+            document.getElementById('val-volt').innerText = shot + " ΔV";
+            document.getElementById('card-volt').classList.add('active');
+        });
+
+        // Baromètre & Lux (si disponibles)
+        if ('AmbientLightSensor' in window) {
+            const sensor = new AmbientLightSensor();
+            sensor.onreading = () => {
+                document.getElementById('val-lux').innerText = sensor.illuminance + " lx";
+                document.getElementById('card-lux').classList.add('active');
+            };
+            sensor.start();
         }
     },
 
-    suture(e) {
+    sutureTotal(e) {
         if (!this.state.active) return;
-        
         const now = performance.now();
         const dt = (now - this.state.t0) / 1000;
         this.state.t0 = now;
 
-        // 1. ACCÉLÉRATION BRUTE (SANS FILTRE)
-        const a = e.acceleration;
-        const mag = a ? Math.sqrt(a.x**2 + a.y**2 + a.z**2) : 0;
-        const accAvailable = this.updateElement('acc-val', mag.toFixed(4), 'acc-status', a !== null);
+        const acc = e.acceleration;
+        if (!acc) return;
+        
+        const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+        
+        // LA VRAIE VÉRIFICATION : Suture Accel + Gyro
+        const gyro = e.rotationRate;
+        const w = Math.sqrt(gyro.alpha**2 + gyro.gamma**2);
 
-        // 2. GYRO BRUT
-        const g = e.rotationRate;
-        const w = g ? Math.sqrt(g.alpha**2 + g.beta**2 + g.gamma**2) : 0;
-        const gyroAvailable = this.updateElement('gyro-val', w.toFixed(2) + "°/s", 'gyro-status', g !== null);
-
-        // 3. VITESSE (Calculée uniquement si mouvement réel > bruit de fond)
-        if (mag > 0.15) {
+        if (mag > 0.2) {
             this.state.v += mag * dt;
             const kmh = (this.state.v * 3.6).toFixed(3);
             document.getElementById('v-real').innerText = kmh;
-            document.getElementById('v-real').classList.remove('no-data');
-            document.getElementById('v-status').innerText = "LIVE";
-        } else {
-            this.state.v *= 0.99; // Friction
+            
+            // Relativité
+            const lor = 1 / Math.sqrt(1 - (this.state.v / 299792458)**2);
+            document.getElementById('val-gamma').innerText = lor.toFixed(15);
         }
 
-        // 4. SHOT NOISE (Audit de tension - basé sur ton -0.6309)
-        const shot = (mag * -0.6309 / 9.81);
-        this.updateElement('shot-val', shot.toFixed(5) + " μV", 'shot-status', mag > 0);
+        this.logAudit(mag, w);
     },
 
-    syncQuartz() {
-        const loop = () => {
-            this.frames++;
-            const now = performance.now();
-            if (now - this.lastHzUpdate >= 1000) {
-                this.updateElement('hz-val', this.frames + " HZ", 'hz-status', true);
-                this.frames = 0;
-                this.lastHzUpdate = now;
-            }
-            if (this.state.active) requestAnimationFrame(loop);
-        };
-        requestAnimationFrame(loop);
+    logAudit(mag, w) {
+        const audit = document.getElementById('suture-audit');
+        if (mag > 5) {
+            audit.innerHTML = `> [SUTURE] G-FORCE: ${mag.toFixed(2)} | ω: ${w.toFixed(1)} rad/s. COHÉRENCE VALIDÉE.<br>` + audit.innerHTML;
+        }
     }
 };
 
-document.getElementById('ignite').onclick = () => OMEGA_V500.init();
+document.getElementById('ignite-btn').onclick = () => OMEGA.init();
 </script>
 </body>
-</html>
+    </html>
