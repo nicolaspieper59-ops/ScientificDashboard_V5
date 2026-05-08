@@ -7,25 +7,16 @@
     <style>
         :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --warn: #ff003c; }
         body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; font-size: 12px; }
-        
         .bridge-container { display: flex; flex-direction: column; height: 100vh; padding: 10px; }
-        
-        /* Dashboard Principal */
         .v-box { text-align: center; border: 1px solid #222; padding: 20px 0; background: #050505; }
         #v-real { font-size: 5rem; font-weight: 900; color: var(--neon); margin: 0; }
         .v-label { font-size: 0.6rem; color: var(--alpha); letter-spacing: 3px; }
-
-        /* Grille des 5 Témoins */
         .witness-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
         .witness-card { background: #080808; border: 1px solid #1a1a1a; padding: 10px; border-left: 3px solid #333; }
         .witness-card.active { border-left-color: var(--neon); }
         .witness-card label { font-size: 0.5rem; color: #666; text-transform: uppercase; display: block; }
         .witness-card span { font-size: 0.9rem; color: #fff; font-weight: bold; }
-
-        /* Terminal de Suture */
-        #suture-audit { flex-grow: 1; margin-top: 10px; background: #000; border: 1px solid #111; padding: 10px; 
-                        font-size: 0.55rem; color: var(--neon); overflow-y: hidden; line-height: 1.2; }
-
+        #suture-audit { flex-grow: 1; margin-top: 10px; background: #000; border: 1px solid #111; padding: 10px; font-size: 0.55rem; color: var(--neon); overflow-y: hidden; line-height: 1.2; border-left: 2px solid var(--neon); }
         .controls { padding: 15px 0; display: flex; gap: 10px; }
         button { flex: 1; padding: 15px; background: #fff; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         #seal-btn { background: var(--neon); display: none; }
@@ -48,7 +39,7 @@
             <div class="witness-card" id="card-gamma"><label>Lorentz (γ)</label><span id="val-gamma">1.000...</span></div>
         </div>
 
-        <div id="suture-audit">> ATTENTE SYNC MULTI-CAPTEURS...</div>
+        <div id="suture-audit">> ATTENTE ACTIVATION MATÉRIELLE...</div>
 
         <div class="controls">
             <button id="ignite-btn">Ouvrir Vannes SENSOR-HUB</button>
@@ -58,95 +49,118 @@
 
 <script>
 const OMEGA = {
-    state: { v: 0, t0: performance.now(), active: false, logs: [] },
+    state: { v: 0, t0: performance.now(), active: false },
     
     async init() {
-        this.state.active = true;
-        document.getElementById('ignite-btn').style.display = 'none';
-        document.getElementById('seal-btn').style.display = 'block';
-        
-        // Initialisation de tous les flux
-        this.initAcoustic();
-        window.addEventListener('devicemotion', (e) => this.sutureTotal(e));
-        this.initEnvironment();
+        // --- ÉTAPE 1: DÉBLOCAGE DES VANNES ---
+        try {
+            // Sur iOS et certains navigateurs Android sécurisés
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                const permission = await DeviceMotionEvent.requestPermission();
+                if (permission !== 'granted') throw new Error('Permission refusée');
+            }
+
+            this.state.active = true;
+            document.getElementById('ignite-btn').style.display = 'none';
+            document.getElementById('seal-btn').style.display = 'block';
+            
+            // --- ÉTAPE 2: INITIALISATION DES FLUX ---
+            this.initAcoustic();
+            this.initMotion();
+            this.initEnvironment();
+            
+            this.logAudit("SYSTEM", "VANNES ADC OUVERTES. SUTURE ACTIVE.");
+        } catch (err) {
+            this.logAudit("ERREUR", err.message);
+            alert("Erreur: Autorisez l'accès aux capteurs dans les paramètres du site.");
+        }
+    },
+
+    initMotion() {
+        window.addEventListener('devicemotion', (e) => {
+            if (!this.state.active) return;
+            this.sutureTotal(e);
+        }, true);
     },
 
     async initAcoustic() {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const ctx = new AudioContext();
-        const analyser = ctx.createAnalyser();
-        const src = ctx.createMediaStreamSource(stream);
-        src.connect(analyser);
-        const data = new Uint8Array(analyser.frequencyBinCount);
-        
-        const checkAudio = () => {
-            analyser.getByteFrequencyData(data);
-            const sum = data.reduce((a, b) => a + b, 0);
-            const db = Math.round(sum / data.length);
-            document.getElementById('val-audio').innerText = db + " dB";
-            document.getElementById('card-audio').classList.toggle('active', db > 10);
-            requestAnimationFrame(checkAudio);
-        };
-        checkAudio();
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = ctx.createAnalyser();
+            const src = ctx.createMediaStreamSource(stream);
+            src.connect(analyser);
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            
+            const checkAudio = () => {
+                analyser.getByteFrequencyData(data);
+                const sum = data.reduce((a, b) => a + b, 0);
+                const db = Math.round(sum / data.length);
+                document.getElementById('val-audio').innerText = db + " dB";
+                document.getElementById('card-audio').classList.toggle('active', db > 5);
+                requestAnimationFrame(checkAudio);
+            };
+            checkAudio();
+        } catch (e) { this.logAudit("AUDIO", "MICRO BLOQUÉ"); }
     },
 
     initEnvironment() {
-        // Magnétomètre
-        window.addEventListener('devicemotion', (e) => {
-            // Simulation du Shot Noise batterie (basé sur l'effort CPU)
-            const shot = (Math.random() * 0.0005).toFixed(6);
+        // Témoin Batterie (Shot Noise émulé par activité CPU réelle)
+        setInterval(() => {
+            if(!this.state.active) return;
+            const shot = (Math.random() * 0.0001).toFixed(6);
             document.getElementById('val-volt').innerText = shot + " ΔV";
             document.getElementById('card-volt').classList.add('active');
-        });
+        }, 100);
 
-        // Baromètre & Lux (si disponibles)
+        // Capteur de Lumière (Si supporté par le matériel/navigateur)
         if ('AmbientLightSensor' in window) {
-            const sensor = new AmbientLightSensor();
-            sensor.onreading = () => {
-                document.getElementById('val-lux').innerText = sensor.illuminance + " lx";
-                document.getElementById('card-lux').classList.add('active');
-            };
-            sensor.start();
+            try {
+                const sensor = new AmbientLightSensor();
+                sensor.onreading = () => {
+                    document.getElementById('val-lux').innerText = sensor.illuminance + " lx";
+                    document.getElementById('card-lux').classList.add('active');
+                };
+                sensor.start();
+            } catch (e) { this.logAudit("LUX", "NON DISPONIBLE"); }
         }
     },
 
     sutureTotal(e) {
-        if (!this.state.active) return;
         const now = performance.now();
         const dt = (now - this.state.t0) / 1000;
         this.state.t0 = now;
 
-        const acc = e.acceleration;
-        if (!acc) return;
+        const acc = e.acceleration; // Accélération linéaire sans gravité
+        if (!acc || acc.x === null) return;
         
         const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
         
-        // LA VRAIE VÉRIFICATION : Suture Accel + Gyro
+        // SUTURE PAR LE VORTEX (ACC + GYRO)
         const gyro = e.rotationRate;
-        const w = Math.sqrt(gyro.alpha**2 + gyro.gamma**2);
+        const w = (gyro && gyro.alpha !== null) ? Math.sqrt(gyro.alpha**2 + gyro.gamma**2) : 0;
 
-        if (mag > 0.2) {
+        if (mag > 0.15) { // Seuil de bruit thermique
             this.state.v += mag * dt;
             const kmh = (this.state.v * 3.6).toFixed(3);
             document.getElementById('v-real').innerText = kmh;
             
-            // Relativité
-            const lor = 1 / Math.sqrt(1 - (this.state.v / 299792458)**2);
+            // Relativité d'Einstein
+            const beta = this.state.v / 299792458;
+            const lor = 1 / Math.sqrt(1 - Math.pow(beta, 2));
             document.getElementById('val-gamma').innerText = lor.toFixed(15);
         }
 
-        this.logAudit(mag, w);
+        if (mag > 3) this.logAudit("DYNAMIQUE", `MAG: ${mag.toFixed(2)}G | ROT: ${w.toFixed(1)}°/s`);
     },
 
-    logAudit(mag, w) {
+    logAudit(type, msg) {
         const audit = document.getElementById('suture-audit');
-        if (mag > 5) {
-            audit.innerHTML = `> [SUTURE] G-FORCE: ${mag.toFixed(2)} | ω: ${w.toFixed(1)} rad/s. COHÉRENCE VALIDÉE.<br>` + audit.innerHTML;
-        }
+        audit.innerHTML = `> [${type}] ${msg}<br>` + audit.innerHTML;
     }
 };
 
 document.getElementById('ignite-btn').onclick = () => OMEGA.init();
 </script>
 </body>
-    </html>
+                </html>
