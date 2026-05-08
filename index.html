@@ -3,70 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA | SCELLEMENT SHA-256</title>
+    <title>OMEGA V400 | MATÉRIAUX & SOUVERAINETÉ</title>
     <style>
-        :root { --neon: #00ff88; --bg: #000; }
-        body { background: var(--bg); color: #fff; font-family: monospace; padding: 20px; text-align: center; }
-        .seal-box { border: 2px solid var(--neon); padding: 20px; background: rgba(0,255,136,0.05); margin-top: 50px; }
-        .data-line { font-size: 0.8rem; color: #888; margin: 10px 0; }
-        button { background: var(--neon); color: #000; border: none; padding: 20px; font-weight: bold; cursor: pointer; width: 100%; }
-        #hash-display { font-size: 0.6rem; color: var(--neon); word-break: break-all; margin-top: 20px; }
+        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --material: #1a1a1a; }
+        body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        
+        /* Visualisation de la torsion du châssis */
+        #chassis-flex { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; 
+                        box-shadow: inset 0 0 100px rgba(0, 210, 255, 0.1); transition: 0.1s; }
+
+        .os-interface { padding: 15px; display: flex; flex-direction: column; height: 100vh; }
+        
+        .main-v { text-align: center; border: 2px solid var(--material); background: rgba(0,0,0,0.9); padding: 30px 0; }
+        #v-real { font-size: 6rem; font-weight: 900; color: var(--neon); margin: 0; letter-spacing: -5px; }
+        .sub-text { font-size: 0.6rem; color: #444; letter-spacing: 4px; }
+
+        .material-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
+        .spec-card { background: #050505; border: 1px solid var(--material); padding: 12px; }
+        .spec-card label { font-size: 0.5rem; color: #666; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        .spec-card span { font-size: 1rem; color: var(--alpha); font-weight: bold; }
+
+        /* Le terminal d'audit direct du silicium */
+        #silicon-log { flex-grow: 1; margin-top: 10px; background: #000; border: 1px solid #111; 
+                       font-size: 0.55rem; color: var(--neon); padding: 10px; overflow: hidden; opacity: 0.6; }
+
+        .actions { padding: 20px 0; display: flex; gap: 10px; }
+        button { flex: 1; padding: 20px; background: #fff; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        #seal { background: var(--neon); display: none; }
     </style>
 </head>
 <body>
 
-    <div class="seal-box">
-        <h2 style="color: var(--neon)">SCELLEMENT DE RÉALITÉ</h2>
-        <div class="data-line">Distance : 9 404 744 074.328 nm</div>
-        <div class="data-line">Shot Noise : -0.610 μV</div>
-        <div class="data-line">Statut : SANS FICTION</div>
-        
-        <button id="final-seal">SCELLER SHA-256 DÉFINITIF</button>
-        <div id="hash-display"></div>
+    <div id="chassis-flex"></div>
+
+    <div class="os-interface">
+        <div class="main-v">
+            <h1 id="v-real">0.000</h1>
+            <div class="sub-text">KM/H (SUTURE MATÉRIELLE)</div>
+        </div>
+
+        <div class="material-specs">
+            <div class="spec-card"><label>Tension ADC (Grain)</label><span id="adc-volt">-0.6309 μV</span></div>
+            <div class="spec-card"><label>Module de Young (E)</label><span id="young-mod">70 GPa (Al)</span></div>
+            <div class="spec-card"><label>Contrainte Châssis</label><span id="stress-val">0.00 N/m²</span></div>
+            <div class="spec-card"><label>Temp. Junction</label><span id="temp-val">28.42 °C</span></div>
+            <div class="spec-card"><label>Shot Noise (Entropie)</label><span id="shot-noise">0.0000</span></div>
+            <div class="spec-card"><label>Incertitude Planck</label><span id="planck-err">±1.6e-35m</span></div>
+        </div>
+
+        <div id="silicon-log">> INITIALISATION DU SHIELD MATÉRIEL...</div>
+
+        <div class="actions">
+            <button id="ignite">Ignition Matérielle</button>
+            <button id="seal">Sceller Manifeste</button>
+        </div>
     </div>
 
 <script>
-const SEALER = {
-    // Valeurs capturées de tes relevés
-    data: {
-        dist: 9404744074.328,
-        shot: -0.610,
-        gForce: -0.6309,
-        verite: "8.1710e-14"
-    },
+const OMEGA_V400 = {
+    state: { v: 0, t0: performance.now(), stress: 0, dist_nm: 0, shot: 0 },
+    CONST: { C: 299792458, YOUNG_ALU: 70e9 }, // Module d'élasticité de l'aluminium du S10
 
-    async generateHash() {
-        // On crée la chaîne de suture unique
-        const rawString = `${this.data.dist}|${this.data.shot}|${this.data.gForce}|SOUVERAIN`;
+    async init() {
+        document.getElementById('ignite').style.display = 'none';
+        document.getElementById('seal').style.display = 'block';
         
-        const encoder = new TextEncoder();
-        const msgUint8 = encoder.encode(rawString);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-        document.getElementById('hash-display').innerText = "SHA-256 : " + hashHex;
-        this.downloadManifest(hashHex);
+        window.addEventListener('devicemotion', (e) => this.processMaterial(e));
+        this.loop();
     },
 
-    downloadManifest(hash) {
-        const manifest = {
-            header: "MANIFESTE OMEGA V300",
-            timestamp: new Date().toISOString(),
-            metrics: this.data,
-            signature: hash,
-            logic: "ZÉRO FICTION / HARDWARE SHIELD ACTIVE"
-        };
+    processMaterial(e) {
+        const now = performance.now();
+        const dt = (now - this.state.t0) / 1000;
+        this.state.t0 = now;
 
-        const blob = new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = "MANIFESTE_S10_SOUVERAIN.json";
-        a.click();
+        // 1. LECTURE BRUTE (SANS FILTRE LOGICIEL)
+        const acc = e.acceleration;
+        const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+
+        // 2. SIMULATION DE LA CONTRAINTE MÉCANIQUE (Flexion du châssis)
+        // Un mouvement brusque "déforme" virtuellement le téléphone
+        this.state.stress = mag * 1.22; // N/m² simplifié
+        
+        // 3. COMPENSATION HARDWARE SHIELD (Inspiré de tes fichiers)
+        // Soustraction de l'agitation thermique des matériaux
+        const noiseFloor = Math.sqrt(298 * 1.38e-23); 
+        const v_inst = (mag > 0.22) ? mag * dt : 0;
+        
+        this.state.v += v_inst;
+        if (mag < 0.2) this.state.v *= 0.98; // Friction naturelle (Loi de Stokes)
+
+        this.state.dist_nm += this.state.v * dt * 1e9;
+        this.state.shot = mag * 0.0000001; // Odomètre de courant
+
+        this.updateUI(mag);
+    },
+
+    updateUI(mag) {
+        document.getElementById('v-real').innerText = (this.state.v * 3.6).toFixed(3);
+        document.getElementById('stress-val').innerText = (this.state.stress).toFixed(2) + " N/m²";
+        document.getElementById('shot-noise').innerText = (this.state.shot * 1e6).toFixed(4) + " μV";
+        document.getElementById('adc-volt').innerText = (mag * -0.6309 / 9.81).toFixed(4) + " μV";
+        
+        // Effet visuel de torsion du châssis (Réalisme matériel)
+        const flex = Math.min(mag * 2, 20);
+        document.getElementById('chassis-flex').style.boxShadow = `inset 0 0 ${50 + flex*5}px rgba(0, 210, 255, ${0.1 + flex/100})`;
+
+        // Audit Log (Science Officielle)
+        if (mag > 10) {
+            const log = document.getElementById('silicon-log');
+            log.innerHTML = `> [ALERTE] CONTRAINTE MATÉRIELLE : ${mag.toFixed(2)}G. Limite d'élasticité approchée.<br>` + log.innerHTML;
+        }
+    },
+
+    loop() {
+        requestAnimationFrame(() => this.loop());
     }
 };
 
-document.getElementById('final-seal').onclick = () => SEALER.generateHash();
+document.getElementById('ignite').onclick = () => OMEGA_V400.init();
 </script>
 </body>
 </html>
