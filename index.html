@@ -3,125 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OMEGA V400 | MATÉRIAUX & SOUVERAINETÉ</title>
+    <title>OMEGA V500 | DISPONIBILITÉ BRUTE</title>
     <style>
-        :root { --neon: #00ff88; --alpha: #00d2ff; --bg: #000; --material: #1a1a1a; }
+        :root { --neon: #00ff88; --warn: #ff003c; --bg: #000; --material: #111; }
         body { background: var(--bg); color: #fff; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
         
-        /* Visualisation de la torsion du châssis */
-        #chassis-flex { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; 
-                        box-shadow: inset 0 0 100px rgba(0, 210, 255, 0.1); transition: 0.1s; }
-
         .os-interface { padding: 15px; display: flex; flex-direction: column; height: 100vh; }
         
-        .main-v { text-align: center; border: 2px solid var(--material); background: rgba(0,0,0,0.9); padding: 30px 0; }
+        .main-v { text-align: center; border-bottom: 1px solid var(--material); padding: 40px 0; position: relative; }
         #v-real { font-size: 6rem; font-weight: 900; color: var(--neon); margin: 0; letter-spacing: -5px; }
-        .sub-text { font-size: 0.6rem; color: #444; letter-spacing: 4px; }
+        .availability-tag { position: absolute; top: 10px; right: 10px; font-size: 0.5rem; color: var(--neon); border: 1px solid var(--neon); padding: 2px 5px; }
 
-        .material-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
-        .spec-card { background: #050505; border: 1px solid var(--material); padding: 12px; }
-        .spec-card label { font-size: 0.5rem; color: #666; text-transform: uppercase; display: block; margin-bottom: 5px; }
-        .spec-card span { font-size: 1rem; color: var(--alpha); font-weight: bold; }
+        .material-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 10px; background: var(--material); border: 1px solid var(--material); }
+        .spec-card { background: #000; padding: 15px; display: flex; flex-direction: column; }
+        .spec-card label { font-size: 0.5rem; color: #555; text-transform: uppercase; margin-bottom: 8px; }
+        .val-container { display: flex; justify-content: space-between; align-items: baseline; }
+        .val { font-size: 1.1rem; color: #fff; font-weight: bold; }
+        .status { font-size: 0.45rem; padding: 1px 4px; border-radius: 2px; }
+        .status.online { background: rgba(0,255,136,0.1); color: var(--neon); }
+        .status.waiting { background: rgba(255,0,60,0.1); color: var(--warn); }
 
-        /* Le terminal d'audit direct du silicium */
-        #silicon-log { flex-grow: 1; margin-top: 10px; background: #000; border: 1px solid #111; 
-                       font-size: 0.55rem; color: var(--neon); padding: 10px; overflow: hidden; opacity: 0.6; }
-
-        .actions { padding: 20px 0; display: flex; gap: 10px; }
-        button { flex: 1; padding: 20px; background: #fff; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        #seal { background: var(--neon); display: none; }
+        #raw-terminal { flex-grow: 1; margin-top: 10px; background: #050505; color: var(--neon); font-size: 0.5rem; padding: 10px; overflow: hidden; border-left: 1px solid var(--neon); }
+        
+        .controls { padding: 20px 0; display: flex; gap: 10px; }
+        button { flex: 1; padding: 20px; background: #fff; color: #000; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; }
+        .no-data { color: #222 !important; }
     </style>
 </head>
 <body>
 
-    <div id="chassis-flex"></div>
-
     <div class="os-interface">
         <div class="main-v">
-            <h1 id="v-real">0.000</h1>
-            <div class="sub-text">KM/H (SUTURE MATÉRIELLE)</div>
+            <div id="v-status" class="availability-tag">IDLE</div>
+            <h1 id="v-real" class="no-data">--</h1>
+            <div style="font-size: 0.6rem; color: #333; letter-spacing: 5px;">KM/H BRUT</div>
         </div>
 
-        <div class="material-specs">
-            <div class="spec-card"><label>Tension ADC (Grain)</label><span id="adc-volt">-0.6309 μV</span></div>
-            <div class="spec-card"><label>Module de Young (E)</label><span id="young-mod">70 GPa (Al)</span></div>
-            <div class="spec-card"><label>Contrainte Châssis</label><span id="stress-val">0.00 N/m²</span></div>
-            <div class="spec-card"><label>Temp. Junction</label><span id="temp-val">28.42 °C</span></div>
-            <div class="spec-card"><label>Shot Noise (Entropie)</label><span id="shot-noise">0.0000</span></div>
-            <div class="spec-card"><label>Incertitude Planck</label><span id="planck-err">±1.6e-35m</span></div>
+        <div class="material-grid">
+            <div class="spec-card">
+                <label>Accéléromètre (IMU)</label>
+                <div class="val-container">
+                    <span id="acc-val" class="val no-data">--</span>
+                    <span id="acc-status" class="status waiting">OFFLINE</span>
+                </div>
+            </div>
+            <div class="spec-card">
+                <label>Gyroscope (Vortex)</label>
+                <div class="val-container">
+                    <span id="gyro-val" class="val no-data">--</span>
+                    <span id="gyro-status" class="status waiting">OFFLINE</span>
+                </div>
+            </div>
+            <div class="spec-card">
+                <label>Shot Noise (ADC)</label>
+                <div class="val-container">
+                    <span id="shot-val" class="val no-data">--</span>
+                    <span id="shot-status" class="status waiting">OFFLINE</span>
+                </div>
+            </div>
+            <div class="spec-card">
+                <label>Fréquence Quartz</label>
+                <div class="val-container">
+                    <span id="hz-val" class="val no-data">--</span>
+                    <span id="hz-status" class="status waiting">OFFLINE</span>
+                </div>
+            </div>
         </div>
 
-        <div id="silicon-log">> INITIALISATION DU SHIELD MATÉRIEL...</div>
+        <div id="raw-terminal">> ATTENTE IGNITION MATÉRIELLE...</div>
 
-        <div class="actions">
-            <button id="ignite">Ignition Matérielle</button>
-            <button id="seal">Sceller Manifeste</button>
+        <div class="controls">
+            <button id="ignite">Ouvrir les vannes ADC</button>
         </div>
     </div>
 
 <script>
-const OMEGA_V400 = {
-    state: { v: 0, t0: performance.now(), stress: 0, dist_nm: 0, shot: 0 },
-    CONST: { C: 299792458, YOUNG_ALU: 70e9 }, // Module d'élasticité de l'aluminium du S10
+const OMEGA_V500 = {
+    state: { v: 0, t0: performance.now(), active: false },
+    frames: 0,
+    lastHzUpdate: performance.now(),
 
     async init() {
+        this.state.active = true;
         document.getElementById('ignite').style.display = 'none';
-        document.getElementById('seal').style.display = 'block';
-        
-        window.addEventListener('devicemotion', (e) => this.processMaterial(e));
-        this.loop();
+        window.addEventListener('devicemotion', (e) => this.suture(e));
+        this.syncQuartz();
+        this.log("FLUX MATÉRIEL OUVERT. ZÉRO LISSAGE.");
     },
 
-    processMaterial(e) {
+    log(msg) {
+        const term = document.getElementById('raw-terminal');
+        term.innerHTML = `> ${msg}<br>` + term.innerHTML;
+    },
+
+    updateElement(id, value, statusId, isAvailable) {
+        const el = document.getElementById(id);
+        const st = document.getElementById(statusId);
+        
+        if (isAvailable && value !== 0 && value !== "0.000") {
+            el.innerText = value;
+            el.classList.remove('no-data');
+            st.innerText = "ONLINE";
+            st.className = "status online";
+            return true;
+        } else {
+            el.innerText = "--";
+            el.classList.add('no-data');
+            st.innerText = "WAITING";
+            st.className = "status waiting";
+            return false;
+        }
+    },
+
+    suture(e) {
+        if (!this.state.active) return;
+        
         const now = performance.now();
         const dt = (now - this.state.t0) / 1000;
         this.state.t0 = now;
 
-        // 1. LECTURE BRUTE (SANS FILTRE LOGICIEL)
-        const acc = e.acceleration;
-        const mag = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+        // 1. ACCÉLÉRATION BRUTE (SANS FILTRE)
+        const a = e.acceleration;
+        const mag = a ? Math.sqrt(a.x**2 + a.y**2 + a.z**2) : 0;
+        const accAvailable = this.updateElement('acc-val', mag.toFixed(4), 'acc-status', a !== null);
 
-        // 2. SIMULATION DE LA CONTRAINTE MÉCANIQUE (Flexion du châssis)
-        // Un mouvement brusque "déforme" virtuellement le téléphone
-        this.state.stress = mag * 1.22; // N/m² simplifié
-        
-        // 3. COMPENSATION HARDWARE SHIELD (Inspiré de tes fichiers)
-        // Soustraction de l'agitation thermique des matériaux
-        const noiseFloor = Math.sqrt(298 * 1.38e-23); 
-        const v_inst = (mag > 0.22) ? mag * dt : 0;
-        
-        this.state.v += v_inst;
-        if (mag < 0.2) this.state.v *= 0.98; // Friction naturelle (Loi de Stokes)
+        // 2. GYRO BRUT
+        const g = e.rotationRate;
+        const w = g ? Math.sqrt(g.alpha**2 + g.beta**2 + g.gamma**2) : 0;
+        const gyroAvailable = this.updateElement('gyro-val', w.toFixed(2) + "°/s", 'gyro-status', g !== null);
 
-        this.state.dist_nm += this.state.v * dt * 1e9;
-        this.state.shot = mag * 0.0000001; // Odomètre de courant
-
-        this.updateUI(mag);
-    },
-
-    updateUI(mag) {
-        document.getElementById('v-real').innerText = (this.state.v * 3.6).toFixed(3);
-        document.getElementById('stress-val').innerText = (this.state.stress).toFixed(2) + " N/m²";
-        document.getElementById('shot-noise').innerText = (this.state.shot * 1e6).toFixed(4) + " μV";
-        document.getElementById('adc-volt').innerText = (mag * -0.6309 / 9.81).toFixed(4) + " μV";
-        
-        // Effet visuel de torsion du châssis (Réalisme matériel)
-        const flex = Math.min(mag * 2, 20);
-        document.getElementById('chassis-flex').style.boxShadow = `inset 0 0 ${50 + flex*5}px rgba(0, 210, 255, ${0.1 + flex/100})`;
-
-        // Audit Log (Science Officielle)
-        if (mag > 10) {
-            const log = document.getElementById('silicon-log');
-            log.innerHTML = `> [ALERTE] CONTRAINTE MATÉRIELLE : ${mag.toFixed(2)}G. Limite d'élasticité approchée.<br>` + log.innerHTML;
+        // 3. VITESSE (Calculée uniquement si mouvement réel > bruit de fond)
+        if (mag > 0.15) {
+            this.state.v += mag * dt;
+            const kmh = (this.state.v * 3.6).toFixed(3);
+            document.getElementById('v-real').innerText = kmh;
+            document.getElementById('v-real').classList.remove('no-data');
+            document.getElementById('v-status').innerText = "LIVE";
+        } else {
+            this.state.v *= 0.99; // Friction
         }
+
+        // 4. SHOT NOISE (Audit de tension - basé sur ton -0.6309)
+        const shot = (mag * -0.6309 / 9.81);
+        this.updateElement('shot-val', shot.toFixed(5) + " μV", 'shot-status', mag > 0);
     },
 
-    loop() {
-        requestAnimationFrame(() => this.loop());
+    syncQuartz() {
+        const loop = () => {
+            this.frames++;
+            const now = performance.now();
+            if (now - this.lastHzUpdate >= 1000) {
+                this.updateElement('hz-val', this.frames + " HZ", 'hz-status', true);
+                this.frames = 0;
+                this.lastHzUpdate = now;
+            }
+            if (this.state.active) requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
     }
 };
 
-document.getElementById('ignite').onclick = () => OMEGA_V400.init();
+document.getElementById('ignite').onclick = () => OMEGA_V500.init();
 </script>
 </body>
 </html>
