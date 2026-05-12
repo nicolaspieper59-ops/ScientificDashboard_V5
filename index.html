@@ -3,127 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentinelle - 4D Celestial Tracker</title>
+    <title>Sentinelle V4 - Zero-Noise Tracker</title>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
     <script src="vsop2013.js"></script>
+    <script src="lib/ephem.js"></script>
+    
     <style>
-        :root { --neon: #00ff41; --bg: #0a0a0a; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; padding: 15px; font-size: 11px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-        .card { border: 1px solid var(--neon); padding: 10px; background: rgba(0,255,65,0.05); text-transform: uppercase; }
-        .card h3 { margin: 0 0 8px 0; border-bottom: 1px solid var(--neon); padding-bottom: 3px; color: #fff; }
+        :root { --neon: #00ff41; --bg: #000000; --dim: #004411; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; padding: 20px; font-size: 11px; overflow-x: hidden; }
+        
+        #terminal-header { border: 1px solid var(--neon); padding: 15px; margin-bottom: 20px; position: relative; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        
+        /* Les cartes ne s'affichent que si elles sont "actives" */
+        .card { border: 1px solid var(--neon); padding: 12px; background: rgba(0,255,65,0.02); display: none; }
+        .card.visible { display: block; }
+        
+        .card h3 { margin: 0 0 8px 0; color: #fff; text-transform: uppercase; border-bottom: 1px solid var(--dim); }
+        .data-line { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .label { color: var(--dim); }
         .val { color: #fff; font-weight: bold; }
-        #status-bar { border: 2px solid var(--neon); padding: 10px; margin-bottom: 15px; background: #000; }
-        .visibility-high { color: var(--neon); }
-        .visibility-low { color: #ff3e3e; }
-        .meteo-data { color: #00d4ff; }
+        
+        #boot-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; display:flex; align-items:center; justify-content:center; }
     </style>
 </head>
 <body>
 
-<div id="status-bar">
-    [STATION SENTINELLE - SYNC UTC 0]<br>
-    LAT/LON (UKF): <span id="gps-raw" class="val">WAITING FOR GNSS...</span><br>
-    METEO: <span id="meteo-info" class="meteo-data">SCANNING ATMOSPHERE...</span><br>
-    AIR DENSITY: <span id="air-rho" class="val">--</span> | SPEED OF SOUND: <span id="sound-v" class="val">--</span>
+<div id="boot-screen">
+    <div class="blink">[ EN ATTENTE DE SIGNAL GNSS / UTC ]</div>
 </div>
 
-<div id="celestial-grid" class="grid"></div>
+<div id="terminal-header">
+    <strong>SENTINELLE OS v4.0 - GEOGRAPHIC ZERO SYNC</strong><br>
+    <div class="data-line"><span class="label">GPS_UKF:</span> <span id="gps-pos" class="val">--</span></div>
+    <div class="data-line"><span class="label">TIME_UTC:</span> <span id="time-utc" class="val">--</span></div>
+    <div class="data-line"><span class="label">ATMOS_ρ:</span> <span id="rho" class="val">--</span> <span class="label">V_SOUND:</span> <span id="vsound" class="val">--</span></div>
+</div>
+
+<div id="planet-grid" class="grid"></div>
 
 <script>
-    const API_KEY = 'YOUR_OPENWEATHER_KEY'; // À remplacer
-    let currentGPS = { lat: 43.284565, lon: 5.358658, alt: 55 }; // Par défaut
-    let weatherData = { clouds: 0, pressure: 1013, temp: 288.15 };
+    const PROXY_BASE_URL = "https://scientific-dashboard5.vercel.app";
+    const PROXY_WEATHER_ENDPOINT = `${PROXY_BASE_URL}/api/weather`;
+    const SERVER_TIME_ENDPOINT = "https://worldtimeapi.org/api/utc";
 
-    const BODIES = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"];
+    let state = {
+        booted: false,
+        coords: { lat: null, lon: null, alt: null },
+        weather: { temp: null, press: null, clouds: null },
+        timeOffset: 0
+    };
 
-    // 1. Bridge avec ton fichier VSOP2013
-    // Note: VSOP2013 calcule les positions héliocentriques. 
-    // Nous devons convertir en Topocentrique (Alt/Az)
-    function getBodyAltAz(bodyName, lat, lon, time) {
-        // Ici, on utilise SunCalc pour le prototype, 
-        // mais VSOP2013 est appelé en arrière-plan pour la précision éphéméride
-        const pos = (bodyName === "Moon") ? SunCalc.getMoonPosition(time, lat, lon) : SunCalc.getPosition(time, lat, lon);
-        
-        return {
-            altitude: (pos.altitude * 180 / Math.PI),
-            azimuth: (pos.azimuth * 180 / Math.PI) + 180
-        };
+    // 1. Initialisation furtive (Pas de chiffres au départ)
+    async function initSystem() {
+        try {
+            // Sync Heure Atomique
+            const res = await fetch(SERVER_TIME_ENDPOINT);
+            const data = await res.json();
+            state.timeOffset = new Date(data.utc_datetime).getTime() - Date.now();
+            
+            // Lancement GPS
+            navigator.geolocation.watchPosition(updateGPS);
+            
+            // Premier fetch Météo
+            if(state.coords.lat) await fetchWeather();
+            
+            state.booted = true;
+            document.getElementById('boot-screen').style.display = 'none';
+        } catch (e) {
+            console.error("BOOT_ERROR: Re-syncing...");
+            setTimeout(initSystem, 2000);
+        }
     }
 
-    // 2. Calcul des Magnitudes (Physique stellaire)
-    function getMagnitudes(bodyName, alt, clouds) {
-        const baseMags = { "Sun": -26.74, "Moon": -12.74, "Venus": -4.4, "Jupiter": -2.9, "Mars": -2.0, "Saturn": 0.06 };
-        const base = baseMags[bodyName] || 5.0;
-        
-        // Ajustement selon l'extinction atmosphérique (loi de Beer-Lambert simplifiée)
-        // Plus l'altitude est basse, plus l'atmosphère absorbe la lumière
-        const extinction = 0.2 / Math.sin(Math.max(alt, 1) * Math.PI / 180);
-        const apparent = base + extinction;
-        
-        // Ajustement selon la couverture nuageuse réelle (Vercel/Météo)
-        const adjusted = apparent + (clouds / 20); 
-        
-        return { app: apparent.toFixed(2), adj: adjusted.toFixed(2) };
+    function updateGPS(p) {
+        state.coords.lat = p.coords.latitude;
+        state.coords.lon = p.coords.longitude;
+        state.coords.alt = p.coords.altitude || 0;
+        document.getElementById('gps-pos').innerText = `${state.coords.lat.toFixed(6)} / ${state.coords.lon.toFixed(6)}`;
     }
 
-    // 3. Mise à jour de l'interface
-    async function updateSentinel() {
-        const now = new Date();
-        const grid = document.getElementById('celestial-grid');
-        grid.innerHTML = '';
+    async function fetchWeather() {
+        if(!state.coords.lat) return;
+        const res = await fetch(`${PROXY_WEATHER_ENDPOINT}?lat=${state.coords.lat}&lon=${state.coords.lon}`);
+        const d = await res.json();
+        state.weather.temp = d.main.temp + 273.15;
+        state.weather.press = d.main.pressure;
+        state.weather.clouds = d.clouds.all;
+        
+        // Calcul Densité et Son
+        const rho = state.weather.press * 100 / (287.05 * state.weather.temp);
+        const vsound = 331.3 * Math.sqrt(state.weather.temp / 273.15);
+        document.getElementById('rho').innerText = rho.toFixed(4) + " kg/m³";
+        document.getElementById('vsound').innerText = vsound.toFixed(2) + " m/s";
+    }
 
-        BODIES.forEach(name => {
-            const coords = getBodyAltAz(name, currentGPS.lat, currentGPS.lon, now);
-            const mags = getMagnitudes(name, coords.altitude, weatherData.clouds);
-            const isVisible = coords.altitude > 0 && weatherData.clouds < 85;
+    // 2. Moteur de calcul (Remplacement SunCalc par Ephem/VSOP)
+    function computeCelestial() {
+        if(!state.booted) return;
+        
+        const now = new Date(Date.now() + state.timeOffset);
+        document.getElementById('time-utc').innerText = now.toISOString().replace('T', ' ').substring(0, 19) + " Z";
+        
+        const planets = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"];
+        const grid = document.getElementById('planet-grid');
+        
+        planets.forEach(name => {
+            // Ici, on utilise les fonctions de ton vsop2013.js et ephem.js
+            // Exemple : ephem.compute(name, now, state.coords)
+            // On simule ici la sortie de ephem.js pour la structure
+            let celestial;
+            try {
+                // Remplace ceci par l'appel exact de ta librairie ephem.js
+                celestial = ephem.getTopocentric(name, now, state.coords); 
+            } catch(e) { 
+                // Fallback si la librairie n'est pas encore chargée
+                return; 
+            }
 
-            const card = document.createElement('div');
-            card.className = 'card';
+            let card = document.getElementById(`card-${name}`);
+            if(!card) {
+                card = document.createElement('div');
+                card.id = `card-${name}`;
+                card.className = 'card';
+                grid.appendChild(card);
+            }
+
+            // Éteindre si non visible (Altitude < 0) pour économiser
+            if (celestial.altitude < 0) {
+                card.classList.remove('visible');
+                return;
+            }
+
+            card.classList.add('visible');
+
+            // Calcul Magnitudes
+            const airmass = 1 / Math.sin(Math.max(celestial.altitude, 1) * Math.PI / 180);
+            const magApp = celestial.baseMag + (0.2 * airmass);
+            const magAdj = magApp + (state.weather.clouds / 25);
+
             card.innerHTML = `
                 <h3>${name}</h3>
-                ALTITUDE: <span class="val">${coords.altitude.toFixed(4)}°</span><br>
-                DIRECTION: <span class="val">${coords.azimuth.toFixed(2)}°</span><br>
-                MAG APPARENT: <span class="val">${mags.app}</span><br>
-                MAG ADJUSTED: <span class="val">${mags.adj}</span><br>
-                VISIBILITY: <span class="${isVisible ? 'visibility-high' : 'visibility-low'}">
-                    ${isVisible ? 'CLEAR_SIGHT' : 'OBSCURED'}
-                </span>
+                <div class="data-line"><span class="label">ALT:</span><span class="val">${celestial.altitude.toFixed(4)}°</span></div>
+                <div class="data-line"><span class="label">DIR:</span><span class="val">${celestial.azimuth.toFixed(2)}°</span></div>
+                <div class="data-line"><span class="label">MAG_APP:</span><span class="val">${magApp.toFixed(2)}</span></div>
+                <div class="data-line"><span class="label">MAG_ADJ:</span><span class="val">${magAdj.toFixed(2)}</span></div>
+                <div class="data-line"><span class="label">VIS:</span><span class="val">${state.weather.clouds < 80 ? 'HIGH' : 'LOW'}</span></div>
             `;
-            grid.appendChild(card);
         });
     }
 
-    // 4. Intégration Météo Réelle
-    async function fetchMeteo() {
-        try {
-            const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${currentGPS.lat}&lon=${currentGPS.lon}&appid=${API_KEY}&units=metric`);
-            const data = await res.json();
-            weatherData.clouds = data.clouds.all;
-            weatherData.pressure = data.main.pressure;
-            weatherData.temp = data.main.temp + 273.15;
-
-            // Calcul métrologique issu de ton dashboard GNSS
-            const rho = weatherData.pressure * 100 / (287.05 * weatherData.temp);
-            const vsound = 331.3 * Math.sqrt(weatherData.temp / 273.15);
-
-            document.getElementById('meteo-info').innerText = `${data.weather[0].description} | Nuages: ${weatherData.clouds}%`;
-            document.getElementById('air-rho').innerText = `${rho.toFixed(3)} kg/m³`;
-            document.getElementById('sound-v').innerText = `${vsound.toFixed(2)} m/s`;
-        } catch (e) { console.error("Meteo Offline"); }
-    }
-
-    // 5. Initialisation GPS (WatchPosition)
-    navigator.geolocation.watchPosition(p => {
-        currentGPS.lat = p.coords.latitude;
-        currentGPS.lon = p.coords.longitude;
-        document.getElementById('gps-raw').innerText = `${currentGPS.lat.toFixed(6)}, ${currentGPS.lon.toFixed(6)}`;
-    });
-
-    setInterval(updateSentinel, 1000); // 1 FPS
-    setInterval(fetchMeteo, 600000);   // 10 minutes
-    fetchMeteo();
+    // Lancement
+    initSystem();
+    setInterval(computeCelestial, 1000);
+    setInterval(fetchWeather, 600000);
 </script>
+
 </body>
 </html>
