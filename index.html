@@ -61,50 +61,50 @@
     };
 
     // 1. DÉMARRAGE ET SYNC
-    async function boot() {
-        try {
-            // Synchronisation Temps Réel
-            const tStart = Date.now();
-            const resTime = await fetch(SERVER_TIME_ENDPOINT);
-            const tData = await resTime.json();
-            state.offset = new Date(tData.utc_datetime).getTime() - (Date.now() + (Date.now() - tStart)/2);
-            
-            // Activation GPS
-            navigator.geolocation.watchPosition(p => {
-                state.gps.lat = p.coords.latitude;
-                state.gps.lon = p.coords.longitude;
-                state.gps.alt = p.coords.altitude || 0;
-                document.getElementById('ui-gps').innerText = `${state.gps.lat.toFixed(6)} / ${state.gps.lon.toFixed(6)}`;
-                
-                // Une fois le GPS acquis et le temps sync, on lève le rideau
-                if (!state.isReady) {
-                    state.isReady = true;
-                    document.getElementById('boot-curtain').style.display = 'none';
-                    fetchWeather();
-                }
-            }, null, {enableHighAccuracy: true});
+async function boot() {
+    console.log("Tentative de boot...");
+    try {
+        // Force le rideau à se lever après 7 secondes même si le GPS hésite
+        setTimeout(() => {
+            if (!state.isReady) {
+                console.log("Force Boot: Signal GPS faible, passage en mode manuel.");
+                state.isReady = true;
+                document.getElementById('boot-curtain').style.display = 'none';
+                processCelestial();
+            }
+        }, 7000);
 
-        } catch (e) {
-            console.log("RETRYING_BOOT...");
-            setTimeout(boot, 3000);
-        }
-    }
-
-    // 2. MÉTÉO VIA PROXY VERCEL (ρ et v)
-    async function fetchWeather() {
-        if (!state.gps.lat) return;
-        try {
-            const res = await fetch(`${PROXY_WEATHER_ENDPOINT}?lat=${state.gps.lat}&lon=${state.gps.lon}`);
-            const d = await res.json();
-            state.weather.t = d.main.temp + 273.15;
-            state.weather.p = d.main.pressure;
-            state.weather.clouds = d.clouds.all;
+        // Sync Temps
+        const tStart = Date.now();
+        const resTime = await fetch(SERVER_TIME_ENDPOINT);
+        const tData = await resTime.json();
+        state.offset = new Date(tData.utc_datetime).getTime() - Date.now();
+        
+        // Activation GPS avec haute précision
+        navigator.geolocation.watchPosition(p => {
+            state.gps.lat = p.coords.latitude;
+            state.gps.lon = p.coords.longitude;
+            state.gps.alt = p.coords.altitude || 0;
             
-            const rho = state.weather.p * 100 / (287.05 * state.weather.t);
-            const vSound = 331.3 * Math.sqrt(state.weather.t / 273.15);
-            document.getElementById('ui-meteo').innerText = `ρ:${rho.toFixed(4)} v:${vSound.toFixed(1)}m/s`;
-        } catch (e) { console.error("METEO_ERR"); }
+            document.getElementById('ui-gps').innerText = `${state.gps.lat.toFixed(6)} / ${state.gps.lon.toFixed(6)}`;
+            
+            if (!state.isReady) {
+                state.isReady = true;
+                document.getElementById('boot-curtain').style.display = 'none';
+                fetchWeather();
+            }
+        }, (err) => {
+            console.error("Erreur GPS:", err.message);
+            // Si le GPS échoue, on utilise tes coordonnées de Marseille par défaut pour débloquer
+            state.gps.lat = 43.284565; 
+            state.gps.lon = 5.358658;
+        }, { enableHighAccuracy: true, timeout: 5000 });
+
+    } catch (e) {
+        console.log("Erreur Réseau (Time Sync) - Re-tentative...");
+        setTimeout(boot, 3000);
     }
+}
 
     // 3. MOTEUR DE CALCUL EPHEM (SANS VSOP)
     function processCelestial() {
@@ -158,7 +158,7 @@
 
     // BOUCLES
     boot();
-    setInterval(processCelestial, 1000); // 1 FPS
+    setinterval(processCelestial, 1000); // 1 FPS
     setInterval(fetchWeather, 600000);   // Sync Météo 10 min
 </script>
 
