@@ -10,40 +10,40 @@
     
     <style>
         :root { --neon: #00ff41; --bg: #000000; --dim: #003311; --data: #00d4ff; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; padding: 20px; font-size: 11px; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; padding: 15px; font-size: 11px; }
         
-        /* Rideau d'initialisation (Ghost Start) */
         #boot-screen { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; 
         }
 
-        .header { border: 1px solid var(--neon); padding: 15px; margin-bottom: 20px; background: rgba(0,255,65,0.02); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+        .header { border: 1px solid var(--neon); padding: 12px; margin-bottom: 15px; background: rgba(0,255,65,0.02); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
         
-        /* Les cartes n'apparaissent que si actives */
-        .card { border: 1px solid var(--neon); padding: 12px; display: none; background: rgba(0,255,65,0.04); }
+        .card { border: 1px solid var(--neon); padding: 10px; display: none; background: rgba(0,255,65,0.04); }
         .card.active { display: block; }
         
-        .card h3 { margin: 0 0 10px 0; color: #fff; border-bottom: 1px solid var(--dim); padding-bottom: 5px; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .card h3 { margin: 0 0 8px 0; color: #fff; border-bottom: 1px solid var(--dim); padding-bottom: 4px; font-size: 12px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
         .label { color: var(--dim); }
         .val { color: var(--data); font-weight: bold; }
         .blink { animation: blinker 1.5s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
+        #error-log { color: #ff3e3e; font-size: 9px; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div id="boot-screen">
-    <div class="blink">[ SYNC EN COURS : EPHEM ENGINE / UTC 0 / GNSS ]</div>
+    <div class="blink">[ SYNC EN COURS : EPHEM / UTC / GNSS ]</div>
 </div>
 
 <div class="header">
     <strong>[SYSTÈME SENTINELLE ANALYSE ACTIVE]</strong><br>
-    <div class="row"><span class="label">GPS_UKF:</span> <span id="gps-display" class="val"></span></div>
-    <div class="row"><span class="label">TIME_UTC:</span> <span id="time-display" class="val"></span></div>
-    <div class="row"><span class="label">ATMOS_ρ:</span> <span id="rho-display" class="val"></span> <span class="label">| SON_v:</span> <span id="vsound-display" class="val"></span></div>
+    <div class="row"><span class="label">GPS_UKF:</span> <span id="gps-display" class="val">RECHERCHE...</span></div>
+    <div class="row"><span class="label">TIME_UTC:</span> <span id="time-display" class="val">SYNC...</span></div>
+    <div class="row"><span class="label">ATMOS_ρ:</span> <span id="rho-display" class="val">--</span> <span class="label">| SON_v:</span> <span id="vsound-display" class="val">--</span></div>
+    <div id="error-log"></div>
 </div>
 
 <div id="planet-container" class="grid"></div>
@@ -55,41 +55,49 @@
 
     let state = {
         booted: false,
-        coords: { lat: null, lon: null, alt: null },
+        coords: { lat: 43.284565, lon: 5.358658, alt: 55 }, // Marseille par défaut
         weather: { temp: 288.15, press: 1013.25, clouds: 0 },
         timeOffset: 0
     };
 
-    // 1. Initialisation Système
+    function logError(msg) {
+        document.getElementById('error-log').innerText = msg;
+    }
+
     async function boot() {
         try {
-            // Sync Temps Atomique
             const resTime = await fetch(SERVER_TIME_ENDPOINT);
             const tData = await resTime.json();
             state.timeOffset = new Date(tData.utc_datetime).getTime() - Date.now();
+            
+            // On force la levée du rideau après 5s même si le GPS est lent
+            setTimeout(() => { 
+                if(!state.booted) {
+                    state.booted = true;
+                    document.getElementById('boot-screen').style.display = 'none';
+                }
+            }, 5000);
 
-            // Lancement GPS
-            navigator.geolocation.watchPosition(updatePosition, null, {enableHighAccuracy: true});
-        } catch (e) { setTimeout(boot, 3000); }
-    }
-
-    function updatePosition(p) {
-        state.coords.lat = p.coords.latitude;
-        state.coords.lon = p.coords.longitude;
-        state.coords.alt = p.coords.altitude || 0;
-        
-        document.getElementById('gps-display').innerText = `${state.coords.lat.toFixed(6)} / ${state.coords.lon.toFixed(6)}`;
-        
-        if (!state.booted) {
+            navigator.geolocation.watchPosition(p => {
+                state.coords.lat = p.coords.latitude;
+                state.coords.lon = p.coords.longitude;
+                state.coords.alt = p.coords.altitude || 0;
+                document.getElementById('gps-display').innerText = `${state.coords.lat.toFixed(6)} / ${state.coords.lon.toFixed(6)}`;
+                
+                if (!state.booted) {
+                    state.booted = true;
+                    document.getElementById('boot-screen').style.display = 'none';
+                    fetchWeather();
+                }
+            }, (err) => logError("GPS: " + err.message));
+        } catch (e) { 
+            logError("Sync Heure Échouée");
             state.booted = true;
             document.getElementById('boot-screen').style.display = 'none';
-            fetchWeather();
         }
     }
 
-    // 2. Météo & Physique de l'Air
     async function fetchWeather() {
-        if (!state.coords.lat) return;
         try {
             const res = await fetch(`${PROXY_WEATHER_ENDPOINT}?lat=${state.coords.lat}&lon=${state.coords.lon}`);
             const data = await res.json();
@@ -97,16 +105,14 @@
             state.weather.press = data.main.pressure;
             state.weather.clouds = data.clouds.all;
             
-            // ρ (Densité) et v (Son)
             const rho = state.weather.press * 100 / (287.05 * state.weather.temp);
             const vsound = 331.3 * Math.sqrt(state.weather.temp / 273.15);
             
             document.getElementById('rho-display').innerText = rho.toFixed(4) + " kg/m³";
             document.getElementById('vsound-display').innerText = vsound.toFixed(2) + " m/s";
-        } catch (e) { console.error("Weather Offline"); }
+        } catch (e) { logError("Météo Proxy indisponible"); }
     }
 
-    // 3. Moteur de calcul Ephem.js pur
     function updateCelestial() {
         if (!state.booted) return;
 
@@ -119,9 +125,18 @@
         bodies.forEach(name => {
             let res;
             try {
-                // Utilisation de TA librairie lib/ephem.js
+                // PROTECTION CRITIQUE : Vérifie si la librairie est chargée
+                if (typeof ephem === 'undefined') {
+                    logError("Moteur ephem.js manquant");
+                    return;
+                }
                 res = ephem.compute(name, now, state.coords);
-            } catch(e) { return; }
+            } catch(e) { 
+                logError("Erreur Calcul: " + name); 
+                return; 
+            }
+
+            if (!res) return;
 
             let card = document.getElementById(`card-${name}`);
             if (!card) {
@@ -131,35 +146,28 @@
                 container.appendChild(card);
             }
 
-            // ÉCONOMIE : On désactive si sous l'horizon
             if (res.altitude < 0) {
                 card.classList.remove('active');
                 return;
             }
 
             card.classList.add('active');
-
-            // Calcul Magnitudes
             const airmass = 1 / Math.sin(Math.max(res.altitude, 1) * Math.PI / 180);
-            const mApp = res.baseMag + (0.2 * airmass);
+            const mApp = (res.baseMag || 0) + (0.2 * airmass);
             const mAdj = mApp + (state.weather.clouds / 25);
 
             card.innerHTML = `
                 <h3>${name.toUpperCase()}</h3>
-                <div class="row"><span class="label">ALTITUDE</span><span class="val">${res.altitude.toFixed(4)}°</span></div>
-                <div class="row"><span class="label">DIRECTION</span><span class="val">${res.azimuth.toFixed(2)}°</span></div>
-                <div class="row"><span class="label">MAG_APP</span><span class="val">${mApp.toFixed(2)}</span></div>
+                <div class="row"><span class="label">ALT</span><span class="val">${res.altitude.toFixed(4)}°</span></div>
+                <div class="row"><span class="label">DIR</span><span class="val">${res.azimuth.toFixed(2)}°</span></div>
                 <div class="row"><span class="label">MAG_ADJ</span><span class="val">${mAdj.toFixed(2)}</span></div>
-                <div class="row"><span class="label">VISIBILITÉ</span><span class="val">${state.weather.clouds < 80 ? 'OPTIMAL' : 'LOW'}</span></div>
             `;
         });
     }
 
-    // Launch
     boot();
     setInterval(updateCelestial, 1000);
     setInterval(fetchWeather, 600000);
 </script>
-
 </body>
     </html>
