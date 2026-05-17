@@ -10,164 +10,222 @@
     
     <style>
         :root { --neon: #00ff41; --bg: #000000; --dim: #003311; --data: #00d4ff; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; padding: 15px; font-size: 11px; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; padding: 20px; font-size: 11px; }
         
+        /* Rideau protecteur (Ghost Start) */
         #boot-screen { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; 
         }
 
-        .header { border: 1px solid var(--neon); padding: 12px; margin-bottom: 15px; background: rgba(0,255,65,0.02); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .header { border: 1px solid var(--neon); padding: 15px; margin-bottom: 20px; background: rgba(0,255,65,0.02); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
         
-        .card { border: 1px solid var(--neon); padding: 10px; display: none; background: rgba(0,255,65,0.04); }
+        /* Dissimulation absolue par défaut pour économie d'énergie */
+        .card { border: 1px solid var(--neon); padding: 12px; display: none; background: rgba(0,255,65,0.04); }
         .card.active { display: block; }
         
-        .card h3 { margin: 0 0 8px 0; color: #fff; border-bottom: 1px solid var(--dim); padding-bottom: 4px; font-size: 12px; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+        .card h3 { margin: 0 0 10px 0; color: #fff; border-bottom: 1px solid var(--dim); padding-bottom: 5px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
         .label { color: var(--dim); }
         .val { color: var(--data); font-weight: bold; }
         .blink { animation: blinker 1.5s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
-        #error-log { color: #ff3e3e; font-size: 9px; margin-top: 5px; }
+        #log-terminal { color: #ff3e3e; font-size: 10px; margin-top: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="boot-screen">
-    <div class="blink">[ SYNC EN COURS : EPHEM / UTC / GNSS ]</div>
+    <div class="blink">[ COUPLAGE MATRICIEL : CALIBRATION DES ÉPHÉMÉRIDES... ]</div>
 </div>
 
 <div class="header">
-    <strong>[SYSTÈME SENTINELLE ANALYSE ACTIVE]</strong><br>
-    <div class="row"><span class="label">GPS_UKF:</span> <span id="gps-display" class="val">RECHERCHE...</span></div>
-    <div class="row"><span class="label">TIME_UTC:</span> <span id="time-display" class="val">SYNC...</span></div>
-    <div class="row"><span class="label">ATMOS_ρ:</span> <span id="rho-display" class="val">--</span> <span class="label">| SON_v:</span> <span id="vsound-display" class="val">--</span></div>
-    <div id="error-log"></div>
+    <strong>[SYSTEMA SENTINELA - KERNEL ACTIVE]</strong><br>
+    <div class="row"><span class="label">GPS_MÉTRIC (UKF):</span> <span id="gps-display" class="val">RECHERCHE SIGNAL FLUX...</span></div>
+    <div class="row"><span class="label">CHRONO_REAL_UTC:</span> <span id="time-display" class="val">INITIALISATION TDB...</span></div>
+    <div class="row"><span class="label">ATMOS_DENSITY (ρ):</span> <span id="rho-display" class="val">CALCUL NUMÉRIQUE...</span> <span class="label">| V_SON (v):</span> <span id="vsound-display" class="val">EN ATTENTE</span></div>
+    <div id="log-terminal"></div>
 </div>
 
 <div id="planet-container" class="grid"></div>
 
 <script>
-    const PROXY_BASE_URL = "https://scientific-dashboard-v5.vercel.app/";
+    const PROXY_BASE_URL = "https://scientific-dashboard5.vercel.app";
     const PROXY_WEATHER_ENDPOINT = `${PROXY_BASE_URL}/api/weather`;
     const SERVER_TIME_ENDPOINT = "https://worldtimeapi.org/api/utc";
 
     let state = {
         booted: false,
-        coords: { lat: 43.284565, lon: 5.358658, alt: 55 }, // Marseille par défaut
+        coords: { lat: 43.284565, lon: 5.358658, alt: 55 }, // Coordonnées de sécurité (Marseille)
         weather: { temp: 288.15, press: 1013.25, clouds: 0 },
         timeOffset: 0
     };
 
-    function logError(msg) {
-        document.getElementById('error-log').innerText = msg;
+    function printKernelLog(msg) {
+        document.getElementById('log-terminal').innerText = `> SYSTEM LOG: ${msg}`;
     }
 
-    async function boot() {
+    // 1. Initialisation asynchrone non-bloquante
+    async function bootSequence() {
         try {
+            printKernelLog("Interrogation du serveur temporel international...");
             const resTime = await fetch(SERVER_TIME_ENDPOINT);
             const tData = await resTime.json();
             state.timeOffset = new Date(tData.utc_datetime).getTime() - Date.now();
-            
-            // On force la levée du rideau après 5s même si le GPS est lent
-            setTimeout(() => { 
-                if(!state.booted) {
-                    state.booted = true;
-                    document.getElementById('boot-screen').style.display = 'none';
-                }
-            }, 5000);
+            printKernelLog("Synchronisation temporelle effectuée.");
 
-            navigator.geolocation.watchPosition(p => {
-                state.coords.lat = p.coords.latitude;
-                state.coords.lon = p.coords.longitude;
-                state.coords.alt = p.coords.altitude || 0;
-                document.getElementById('gps-display').innerText = `${state.coords.lat.toFixed(6)} / ${state.coords.lon.toFixed(6)}`;
-                
+            // Sécurité temporelle : lever le rideau si la géolocalisation prend du temps
+            setTimeout(() => {
                 if (!state.booted) {
                     state.booted = true;
                     document.getElementById('boot-screen').style.display = 'none';
+                    printKernelLog("Démarrage forcé (Mode Fail-Safe Capteurs).");
                     fetchWeather();
                 }
-            }, (err) => logError("GPS: " + err.message));
-        } catch (e) { 
-            logError("Sync Heure Échouée");
-            state.booted = true;
-            document.getElementById('boot-screen').style.display = 'none';
+            }, 4000);
+
+            printKernelLog("Acquisition de la télémétrie satellitaire GNSS...");
+            navigator.geolocation.watchPosition(
+                (p) => {
+                    state.coords.lat = p.coords.latitude;
+                    state.coords.lon = p.coords.longitude;
+                    state.coords.alt = p.coords.altitude || 0;
+                    
+                    document.getElementById('gps-display').innerText = `${state.coords.lat.toFixed(6)} N / ${state.coords.lon.toFixed(6)} E (Alt: ${state.coords.alt.toFixed(1)}m)`;
+                    
+                    if (!state.booted) {
+                        state.booted = true;
+                        document.getElementById('boot-screen').style.display = 'none';
+                        fetchWeather();
+                    }
+                },
+                (err) => {
+                    printKernelLog(`Alerte GNSS : ${err.message}. Utilisation des coordonnées géographiques par défaut.`);
+                    // Forcer le démarrage avec les coordonnées de secours
+                    state.booted = true;
+                    document.getElementById('boot-screen').style.display = 'none';
+                    fetchWeather();
+                },
+                { enableHighAccuracy: true, timeout: 6000 }
+            );
+
+        } catch (e) {
+            printKernelLog("Échec de connexion réseau. Relancement de la séquence...");
+            setTimeout(bootSequence, 3000);
         }
     }
 
+    // 2. Acquisition météo et calcul de l'airmass physique
     async function fetchWeather() {
         try {
             const res = await fetch(`${PROXY_WEATHER_ENDPOINT}?lat=${state.coords.lat}&lon=${state.coords.lon}`);
             const data = await res.json();
-            state.weather.temp = data.main.temp + 273.15;
-            state.weather.press = data.main.pressure;
+            state.weather.temp = data.main.temp + 273.15; // Conversion en Kelvin
+            state.weather.press = data.main.pressure; // hPa
             state.weather.clouds = data.clouds.all;
             
+            // Équation d'état des gaz parfaits pour la densité de l'air ρ
             const rho = state.weather.press * 100 / (287.05 * state.weather.temp);
             const vsound = 331.3 * Math.sqrt(state.weather.temp / 273.15);
             
             document.getElementById('rho-display').innerText = rho.toFixed(4) + " kg/m³";
             document.getElementById('vsound-display').innerText = vsound.toFixed(2) + " m/s";
-        } catch (e) { logError("Météo Proxy indisponible"); }
+            printKernelLog("Données atmosphériques synchronisées.");
+        } catch (e) {
+            printKernelLog("Erreur de liaison avec le serveur météo proxy. Recalcul au prochain cycle.");
+        }
     }
 
-    function updateCelestial() {
+    // 3. Traitement mathématique des données de ephem.js (VSOP2013)
+    function processCelestialEngine() {
         if (!state.booted) return;
 
         const now = new Date(Date.now() + state.timeOffset);
+        // Conversion précise au standard Jour Julien pour VSOP2013
+        const JD = (now.getTime() / 86400000) + 2440587.5;
+        
         document.getElementById('time-display').innerText = now.toISOString().replace('T',' ').substring(0,19) + " Z";
 
-        const bodies = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+        // Définition des clés d'accès présentes dans votre fichier vsop2013
+        const targetPlanets = [
+            { id: "Mercury", key: "mer", baseMag: -0.42 },
+            { id: "Venus",   key: "ven", baseMag: -4.40 },
+            { id: "Mars",    key: "mar", baseMag: -1.52 },
+            { id: "Jupiter", key: "jup", baseMag: -2.94 },
+            { id: "Saturn",  key: "sat", baseMag: 0.06 }
+        ];
+
         const container = document.getElementById('planet-container');
 
-        bodies.forEach(name => {
-            let res;
-            try {
-                // PROTECTION CRITIQUE : Vérifie si la librairie est chargée
-                if (typeof ephem === 'undefined') {
-                    logError("Moteur ephem.js manquant");
-                    return;
-                }
-                res = ephem.compute(name, now, state.coords);
-            } catch(e) { 
-                logError("Erreur Calcul: " + name); 
-                return; 
-            }
+        // Isolation de l'interrogation de l'objet vsop2013
+        if (typeof vsop2013 === 'undefined') {
+            printKernelLog("Erreur Fatale : L'objet structural 'vsop2013' n'est pas instancié par lib/ephem.js.");
+            return;
+        }
 
-            if (!res) return;
-
-            let card = document.getElementById(`card-${name}`);
+        targetPlanets.forEach(p => {
+            let card = document.getElementById(`card-${p.id}`);
             if (!card) {
                 card = document.createElement('div');
-                card.id = `card-${name}`;
+                card.id = `card-${p.id}`;
                 card.className = 'card';
                 container.appendChild(card);
             }
 
-            if (res.altitude < 0) {
-                card.classList.remove('active');
-                return;
+            try {
+                if (!vsop2013[p.key] || typeof vsop2013[p.key].position !== 'function') {
+                    return; // Ignore l'élément si la structure n'est pas encore lue
+                }
+
+                // Récupération des vecteurs d'état [x, y, z] de la planète et du barycentre terrestre
+                const pos = vsop2013[p.key].position(JD);
+                const earthPos = vsop2013.emb.position(JD);
+
+                // Soustraction vectorielle héliocentrique vers géocentrique
+                const dx = pos[0] - earthPos[0];
+                const dy = pos[1] - earthPos[1];
+                const dz = pos[2] - earthPos[2];
+                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                // Calcul trigonométrique des coordonnées topocentriques approchées
+                const altitude = Math.asin(dz / dist) * (180 / Math.PI);
+                const azimuth = (Math.atan2(dy, dx) * (180 / Math.PI) + 180) % 360;
+
+                // FILTRAGE ET CONSERVATION D'ÉNERGIE DUMMY DOM
+                if (altitude < 0) {
+                    card.classList.remove('active');
+                    return; // L'astre est sous l'horizon : masquage et arrêt des calculs d'affichage
+                }
+
+                card.classList.add('active');
+
+                // Calcul de l'épaisseur de la masse d'air (Airmass) pour l'ajustement de l'éclat
+                const airmass = 1 / Math.sin(Math.max(altitude, 1.2) * Math.PI / 180);
+                const mApp = p.baseMag + (0.22 * airmass);
+                const mAdj = mApp + (state.weather.clouds / 22);
+
+                card.innerHTML = `
+                    <h3>${p.id.toUpperCase()}</h3>
+                    <div class="row"><span class="label">ALTITUDE</span><span class="val">${altitude.toFixed(4)}°</span></div>
+                    <div class="row"><span class="label">DIRECTION</span><span class="val">${azimuth.toFixed(2)}°</span></div>
+                    <div class="row"><span class="label">MAGNITUDE_APP</span><span class="val">${mApp.toFixed(2)}</span></div>
+                    <div class="row"><span class="label">MAGNITUDE_ADJ</span><span class="val">${mAdj.toFixed(2)}</span></div>
+                    <div class="row"><span class="label">RELEVÉ_MÉTÉO</span><span class="val">${state.weather.clouds < 75 ? 'OPTIMAL' : 'ATTÉNUÉ'}</span></div>
+                `;
+
+            } catch (err) {
+                // Si le calcul d'un astre échoue, l'erreur est confinée ici pour ne pas bloquer le reste
+                console.warn(`Calcul suspendu pour l'astre : ${p.id}`);
             }
-
-            card.classList.add('active');
-            const airmass = 1 / Math.sin(Math.max(res.altitude, 1) * Math.PI / 180);
-            const mApp = (res.baseMag || 0) + (0.2 * airmass);
-            const mAdj = mApp + (state.weather.clouds / 25);
-
-            card.innerHTML = `
-                <h3>${name.toUpperCase()}</h3>
-                <div class="row"><span class="label">ALT</span><span class="val">${res.altitude.toFixed(4)}°</span></div>
-                <div class="row"><span class="label">DIR</span><span class="val">${res.azimuth.toFixed(2)}°</span></div>
-                <div class="row"><span class="label">MAG_ADJ</span><span class="val">${mAdj.toFixed(2)}</span></div>
-            `;
         });
     }
 
-    boot();
-    setInterval(updateCelestial, 1000);
-    setInterval(fetchWeather, 600000);
+    // Démarrage automatique des routines de la station
+    bootSequence();
+    setInterval(processCelestialEngine, 1000); // Rafraîchissement 1 FPS
+    setInterval(fetchWeather, 600000);         // Cycle météo toutes les 10 minutes
 </script>
+
 </body>
     </html>
